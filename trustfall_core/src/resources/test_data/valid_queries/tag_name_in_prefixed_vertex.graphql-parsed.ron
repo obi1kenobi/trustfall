@@ -1,0 +1,105 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(3),
+        "min": Int64(2),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "multiple",
+          alias: Some("m1_"),
+          arguments: {
+            "max": Int64(3),
+          },
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "multiple",
+          alias: Some("m1_"),
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "value",
+              output: [
+                OutputDirective(),
+              ],
+              tag: [
+                TagDirective(),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 8,
+            column: 9,
+          ),
+          name: "multiple",
+          alias: Some("m2_"),
+          arguments: {
+            "max": Int64(3),
+          },
+        ), FieldNode(
+          position: Pos(
+            line: 8,
+            column: 9,
+          ),
+          name: "multiple",
+          alias: Some("m2_"),
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "value",
+              filter: [
+                FilterDirective(
+                  operation: Equals((), TagRef("value")),
+                ),
+              ],
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

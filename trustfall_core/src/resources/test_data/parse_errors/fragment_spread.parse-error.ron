@@ -1,0 +1,4 @@
+Err(UnsupportedSyntax("fragment spread", Pos(
+  line: 6,
+  column: 9,
+)))

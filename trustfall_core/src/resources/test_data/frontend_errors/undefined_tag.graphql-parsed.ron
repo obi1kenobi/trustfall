@@ -1,0 +1,42 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "filesystem",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "OriginDirectory",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "OriginDirectory",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+          filter: [
+            FilterDirective(
+              operation: Equals((), TagRef("undefined_tag_name")),
+            ),
+          ],
+          output: [
+            OutputDirective(),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

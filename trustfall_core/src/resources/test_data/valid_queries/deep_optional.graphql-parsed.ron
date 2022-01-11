@@ -1,0 +1,142 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(6),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "predecessor",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "predecessor",
+              alias: Some("top_"),
+            ), FieldNode(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "predecessor",
+              alias: Some("top_"),
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 6,
+                    column: 17,
+                  ),
+                  name: "value",
+                ), FieldNode(
+                  position: Pos(
+                    line: 6,
+                    column: 17,
+                  ),
+                  name: "value",
+                  output: [
+                    OutputDirective(),
+                  ],
+                )),
+                (FieldConnection(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "predecessor",
+                  alias: Some("bottom_"),
+                  optional: Some(OptionalDirective()),
+                ), FieldNode(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "predecessor",
+                  alias: Some("bottom_"),
+                  connections: [
+                    (FieldConnection(
+                      position: Pos(
+                        line: 9,
+                        column: 21,
+                      ),
+                      name: "value",
+                    ), FieldNode(
+                      position: Pos(
+                        line: 9,
+                        column: 21,
+                      ),
+                      name: "value",
+                      output: [
+                        OutputDirective(),
+                      ],
+                    )),
+                    (FieldConnection(
+                      position: Pos(
+                        line: 11,
+                        column: 21,
+                      ),
+                      name: "multiple",
+                      alias: Some("mult_"),
+                      arguments: {
+                        "max": Int64(3),
+                      },
+                    ), FieldNode(
+                      position: Pos(
+                        line: 11,
+                        column: 21,
+                      ),
+                      name: "multiple",
+                      alias: Some("mult_"),
+                      connections: [
+                        (FieldConnection(
+                          position: Pos(
+                            line: 12,
+                            column: 25,
+                          ),
+                          name: "value",
+                        ), FieldNode(
+                          position: Pos(
+                            line: 12,
+                            column: 25,
+                          ),
+                          name: "value",
+                          output: [
+                            OutputDirective(),
+                          ],
+                        )),
+                      ],
+                    )),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

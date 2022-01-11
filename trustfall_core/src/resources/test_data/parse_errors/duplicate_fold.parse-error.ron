@@ -1,0 +1,4 @@
+Err(UnsupportedDuplicatedDirective("@fold", Pos(
+  line: 6,
+  column: 42,
+)))

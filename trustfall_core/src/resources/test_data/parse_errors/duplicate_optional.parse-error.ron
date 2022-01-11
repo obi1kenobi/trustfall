@@ -1,0 +1,4 @@
+Err(UnsupportedDuplicatedDirective("@optional", Pos(
+  line: 6,
+  column: 46,
+)))

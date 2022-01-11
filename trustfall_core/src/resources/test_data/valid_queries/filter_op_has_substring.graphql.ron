@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 10, max: 13) {
+        name @output @filter(op: "has_substring", value: ["$substr"])
+    }
+}"#,
+    arguments: {
+        "substr": String("el")
+    },
+)

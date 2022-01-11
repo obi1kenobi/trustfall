@@ -1,0 +1,4 @@
+Err(DuplicatedEdgeParameter("max", "Number", Pos(
+  line: 3,
+  column: 25,
+)))

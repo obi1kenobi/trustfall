@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        value @output
+
+        successor {
+            successor: value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

@@ -1,0 +1,19 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "filesystem",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "NonExistent",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "NonExistent",
+    ),
+  ),
+))

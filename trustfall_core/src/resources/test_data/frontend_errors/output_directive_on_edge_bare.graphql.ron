@@ -1,0 +1,11 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        name @output
+        out_Directory_Subdirectory @output
+    }
+}"#,
+    arguments: {},
+)

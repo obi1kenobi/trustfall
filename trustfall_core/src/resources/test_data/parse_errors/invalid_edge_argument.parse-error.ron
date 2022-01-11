@@ -1,0 +1,6 @@
+Err(InvalidFieldArgument("Number", "max", {
+  "x": "y",
+}, Pos(
+  line: 3,
+  column: 17,
+)))

@@ -1,0 +1,38 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: Some(EdgeParameters({
+      "max": Int64(3),
+      "min": Int64(0),
+    })),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+          filters: [
+            Equals(LocalField(
+              field_name: "value",
+              field_type: "Int",
+            ), Variable(VariableRef(
+              variable_name: "value",
+              variable_type: "Int",
+            ))),
+          ],
+        ),
+      },
+      outputs: {
+        "number_name": ContextField(
+          vertex_id: Vid(1),
+          field_name: "name",
+          field_type: "String",
+        ),
+      },
+    ),
+  ),
+  arguments: {
+    "value": Int64(3),
+  },
+))

@@ -1,0 +1,108 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "filesystem",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "OriginDirectory",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "OriginDirectory",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+          tag: [
+            TagDirective(
+              name: Some("tagged"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "out_Directory_ContainsFile",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "out_Directory_ContainsFile",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "name",
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "name",
+              tag: [
+                TagDirective(
+                  name: Some("tagged"),
+                ),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 10,
+            column: 9,
+          ),
+          name: "out_Directory_ContainsFile",
+        ), FieldNode(
+          position: Pos(
+            line: 10,
+            column: 9,
+          ),
+          name: "out_Directory_ContainsFile",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 11,
+                column: 13,
+              ),
+              name: "name",
+            ), FieldNode(
+              position: Pos(
+                line: 11,
+                column: 13,
+              ),
+              name: "name",
+              filter: [
+                FilterDirective(
+                  operation: HasSubstring((), TagRef("tagged")),
+                ),
+              ],
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

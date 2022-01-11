@@ -1,0 +1,18 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 4, max: 5) {
+        base: value @output
+
+        successor @recurse(depth: 3) {
+            value @output
+
+            multiple(max: 3) {
+                mult: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

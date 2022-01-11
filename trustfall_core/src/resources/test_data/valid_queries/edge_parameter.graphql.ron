@@ -1,0 +1,10 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 10) {
+        value @output
+    }
+}"#,
+    arguments: {},
+)

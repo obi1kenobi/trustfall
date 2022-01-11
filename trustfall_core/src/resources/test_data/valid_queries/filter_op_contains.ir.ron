@@ -1,0 +1,43 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: Some(EdgeParameters({
+      "max": Int64(11),
+      "min": Int64(8),
+    })),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+          filters: [
+            Contains(LocalField(
+              field_name: "vowelsInName",
+              field_type: "[String]",
+            ), Variable(VariableRef(
+              variable_name: "vowel",
+              variable_type: "[String]",
+            ))),
+          ],
+        ),
+      },
+      outputs: {
+        "value": ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        ),
+        "vowelsInName": ContextField(
+          vertex_id: Vid(1),
+          field_name: "vowelsInName",
+          field_type: "[String]",
+        ),
+      },
+    ),
+  ),
+  arguments: {
+    "vowel": String("i"),
+  },
+))

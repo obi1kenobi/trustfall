@@ -1,0 +1,4 @@
+Err(ValidationError(NonExistentPath([
+  "OriginDirectory",
+  "NonExistent",
+])))

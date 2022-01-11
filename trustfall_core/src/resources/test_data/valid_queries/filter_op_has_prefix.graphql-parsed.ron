@@ -1,0 +1,49 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(14),
+        "min": Int64(4),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+          filter: [
+            FilterDirective(
+              operation: HasPrefix((), VariableRef("prefix")),
+            ),
+          ],
+          output: [
+            OutputDirective(),
+          ],
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "prefix": String("four"),
+  },
+))

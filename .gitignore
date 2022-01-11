@@ -1,0 +1,12 @@
+**/target
+**/.vscode/
+**/.cargo/
+**/localdata/
+**/.ipynb_checkpoints/
+
+**/*.pyc
+**/*.pyo
+**/*.pyx
+**/__pycache__/
+**/pytrustfall.cpython-*.so
+**/.pytest_cache/

@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 5) {
+        successor @recurse(depth: 3) {
+            value @output
+                  @filter(op: "=", value: ["$bound"])
+        }
+    }
+}"#,
+    arguments: {
+        "bound": Int64(6)
+    },
+)

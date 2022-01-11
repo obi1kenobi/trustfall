@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        name @tag(name: "name with-various $%^&# chars!") @output
+
+        out_Directory_ContainsFile {
+            name @filter(op: "has_substring", value: ["%name with-various $%^&# chars!"])
+        }
+    }
+}"#,
+    arguments: {},
+)

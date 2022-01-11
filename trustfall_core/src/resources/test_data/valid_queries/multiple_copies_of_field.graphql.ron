@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        multiple(max: 3) {
+            value @output
+            value @filter(op: ">", value: ["$min_value"])
+        }
+    }
+}"#,
+    arguments: {
+        "min_value": Int64(5),
+    },
+)

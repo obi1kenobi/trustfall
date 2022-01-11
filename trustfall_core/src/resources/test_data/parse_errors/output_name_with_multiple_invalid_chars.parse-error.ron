@@ -1,0 +1,13 @@
+Err(InvalidOutputName("name with-various $%^&# chars!", [
+  ' ',
+  '-',
+  '$',
+  '%',
+  '^',
+  '&',
+  '#',
+  '!',
+], Pos(
+  line: 4,
+  column: 28,
+)))

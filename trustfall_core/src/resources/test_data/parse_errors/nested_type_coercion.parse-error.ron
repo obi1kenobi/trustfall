@@ -1,0 +1,4 @@
+Err(NestedTypeCoercion(Pos(
+  line: 8,
+  column: 17,
+)))

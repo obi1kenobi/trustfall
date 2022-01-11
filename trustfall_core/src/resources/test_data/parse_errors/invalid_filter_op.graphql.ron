@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        name @output @filter(op: "non_existent", value: ["$dir_name"])
+    }
+}"#,
+    arguments: {
+        "dir_name": String("<origin>")
+    },
+)

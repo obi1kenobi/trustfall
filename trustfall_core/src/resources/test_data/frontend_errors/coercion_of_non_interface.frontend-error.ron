@@ -1,0 +1,1 @@
+Err(ValidationError(CannotCoerceNonInterfaceType("Prime", "Composite")))

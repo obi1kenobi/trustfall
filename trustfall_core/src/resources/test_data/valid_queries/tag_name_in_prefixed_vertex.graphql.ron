@@ -1,0 +1,16 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 2, max: 3) {
+        m1_: multiple(max: 3) {
+            value @tag @output
+        }
+
+        m2_: multiple(max: 3) {
+            value @output @filter(op: "=", value: ["%value"])
+        }
+    }
+}"#,
+    arguments: {},
+)

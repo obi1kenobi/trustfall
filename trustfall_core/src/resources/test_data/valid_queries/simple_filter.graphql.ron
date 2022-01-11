@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 3) {
+        name @output(name: "number_name")
+        value @filter(op: "=", value: ["$value"])
+    }
+}"#,
+    arguments: {
+        "value": Int64(3)
+    },
+)

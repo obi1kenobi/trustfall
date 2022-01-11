@@ -1,0 +1,24 @@
+InputQuery (
+    query: r#"
+{
+    LatestStory(max: 100) {
+        title @output
+        url @filter(op: "is_not_null") @output
+        score @output
+
+        comment {
+            reply @recurse(depth: 5) {
+                comment: text @output
+
+                byUser {
+                    commenter: id @output
+                    commenter_karma: karma @filter(op: ">=", value: ["$min_karma"]) @output
+                }
+            }
+        }
+    }
+}"#,
+    args: {
+        "min_karma": Uint64(10000),
+    },
+)

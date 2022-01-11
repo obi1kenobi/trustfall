@@ -1,0 +1,29 @@
+InputQuery (
+    query: r#"
+{
+    Feed {
+        title {
+            content @filter(op: "has_substring", value: ["$feed"])
+        }
+
+        entry_: entries {
+            title_: title {
+                content @filter(op: "has_substring", value: ["$title_substr"])
+                        @output
+            }
+
+            links {
+                link: href @output
+            }
+
+            content {
+                body @output
+            }
+        }
+    }
+}"#,
+    args: {
+        "feed": "PCGamer",
+        "title_substr": "eview",  // skipping the leading "r" since it might be capitalized or not
+    },
+)

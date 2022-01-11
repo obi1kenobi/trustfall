@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 3) {
+        value @output
+        successor @recurse(depth: 3) {
+            next: value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

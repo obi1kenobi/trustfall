@@ -1,0 +1,21 @@
+InputQuery (
+    query: r#"
+{
+    Feed {
+        id @output
+        feedType @output
+
+        title_: title {
+            src @output
+            content @output
+            contentType @output
+        }
+
+        links_: links @fold {
+            title @output
+            href @output
+        }
+    }
+}"#,
+    args: {},
+)

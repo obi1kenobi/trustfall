@@ -1,0 +1,18 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 5, max: 7) {
+        base: value @output
+
+        multiple(max: 3) @fold {
+            value @output
+
+            multiple(max: 3) @fold {
+                mult: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

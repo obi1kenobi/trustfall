@@ -1,0 +1,89 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(
+    """Name of the filter operation to perform."""
+    op: String!
+    """List of string operands for the operator."""
+    value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """Name to apply to the given property field."""
+    name: String
+) on FIELD
+directive @output(
+    """What to designate the output field generated from this property field."""
+    name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
+
+type RootSchemaQuery {
+    FrontPage: [Item!]!
+    Top(max: Int): [Item!]!
+    LatestStory(max: Int): [Story!]!
+}
+
+interface Item {
+    id: Int!
+    score: Int!
+    title: String!
+    unixTime: Int!
+    url: String
+}
+
+type Job implements Item {
+    # properties from Item
+    id: Int!
+    score: Int!
+    title: String!
+    unixTime: Int!
+
+    # own properties -- type refined to be non-nullable
+    url: String!
+}
+
+type Story implements Item {
+    # properties from Item
+    id: Int!
+    score: Int!
+    title: String!
+    unixTime: Int!
+    url: String
+
+    # own properties
+    byUsername: String!
+    text: String
+    commentsCount: Int!
+
+    # edges
+    byUser: User!
+    comment: [Comment!]
+}
+
+type Comment {
+    # properties from Item
+    byUsername: String!
+    id: Int!
+    text: String!
+    unixTime: Int!
+    childCount: Int!
+
+    # edges
+    byUser: User!
+    reply: [Comment!]
+}
+
+type User {
+    id: String!
+    karma: Int!
+    about: String
+    unixCreatedAt: Int!
+    delay: Int
+}

@@ -1,0 +1,217 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(3),
+        "min": Int64(1),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          alias: Some("start"),
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          alias: Some("start"),
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "multiple",
+          arguments: {
+            "max": Int64(3),
+          },
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "multiple",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("mult"),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("mult"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "primeFactor",
+            ), FieldNode(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "primeFactor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 10,
+                    column: 17,
+                  ),
+                  name: "value",
+                ), FieldNode(
+                  position: Pos(
+                    line: 10,
+                    column: 17,
+                  ),
+                  name: "value",
+                  filter: [
+                    FilterDirective(
+                      operation: Equals((), VariableRef("prime")),
+                    ),
+                  ],
+                )),
+                (FieldConnection(
+                  position: Pos(
+                    line: 12,
+                    column: 17,
+                  ),
+                  name: "predecessor",
+                ), FieldNode(
+                  position: Pos(
+                    line: 12,
+                    column: 17,
+                  ),
+                  name: "predecessor",
+                  connections: [
+                    (FieldConnection(
+                      position: Pos(
+                        line: 13,
+                        column: 21,
+                      ),
+                      name: "predecessor",
+                    ), FieldNode(
+                      position: Pos(
+                        line: 13,
+                        column: 21,
+                      ),
+                      name: "predecessor",
+                      connections: [
+                        (FieldConnection(
+                          position: Pos(
+                            line: 14,
+                            column: 25,
+                          ),
+                          name: "predecessor",
+                          optional: Some(OptionalDirective()),
+                        ), FieldNode(
+                          position: Pos(
+                            line: 14,
+                            column: 25,
+                          ),
+                          name: "predecessor",
+                          connections: [
+                            (FieldConnection(
+                              position: Pos(
+                                line: 15,
+                                column: 29,
+                              ),
+                              name: "value",
+                            ), FieldNode(
+                              position: Pos(
+                                line: 15,
+                                column: 29,
+                              ),
+                              name: "value",
+                              tag: [
+                                TagDirective(
+                                  name: Some("predecessor"),
+                                ),
+                              ],
+                            )),
+                          ],
+                        )),
+                      ],
+                    )),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 22,
+            column: 9,
+          ),
+          name: "successor",
+        ), FieldNode(
+          position: Pos(
+            line: 22,
+            column: 9,
+          ),
+          name: "successor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 23,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("succ"),
+            ), FieldNode(
+              position: Pos(
+                line: 23,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("succ"),
+              filter: [
+                FilterDirective(
+                  operation: LessThan((), TagRef("predecessor")),
+                ),
+              ],
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "prime": Int64(2),
+  },
+))

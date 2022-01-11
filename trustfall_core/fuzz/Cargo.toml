@@ -1,0 +1,35 @@
+[package]
+name = "trustfall_core-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+async-graphql-parser = "^2.11.3"
+async-graphql-value = "^2.11.3"
+lazy_static = "1.4.0"
+ron = "0.7.0"
+serde = { version = "^1.0", features = ["derive"] }
+libfuzzer-sys = "0.4"
+trustfall_core = { path = ".." }
+regex = "1.5.4"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "frontend"
+path = "fuzz_targets/frontend.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "frontend_numbers"
+path = "fuzz_targets/frontend_numbers.rs"
+test = false
+doc = false

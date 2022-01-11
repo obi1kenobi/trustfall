@@ -1,0 +1,6 @@
+Err(InvalidOutputName("name-with-dashes", [
+  '-',
+], Pos(
+  line: 4,
+  column: 28,
+)))

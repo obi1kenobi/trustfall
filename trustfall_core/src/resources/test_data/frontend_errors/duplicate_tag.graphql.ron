@@ -1,0 +1,18 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        name @tag(name: "tagged")
+
+        out_Directory_ContainsFile {
+            name @tag(name: "tagged")
+        }
+
+        out_Directory_ContainsFile {
+            name @output @filter(op: "has_substring", value: ["%tagged"])
+        }
+    }
+}"#,
+    arguments: {},
+)

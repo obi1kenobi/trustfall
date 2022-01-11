@@ -1,0 +1,16 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 8, max: 10) {
+        value @output
+
+        multiple(max: 4) {
+            mult: value @output @filter(op: ">", value: ["$num"])
+        }
+    }
+}"#,
+    arguments: {
+        "num": Int64(25)
+    },
+)

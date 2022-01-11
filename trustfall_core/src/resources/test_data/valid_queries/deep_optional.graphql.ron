@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 6) {
+        predecessor {
+            top_: predecessor {
+                value @output
+
+                bottom_: predecessor @optional {
+                    value @output
+
+                    mult_: multiple(max: 3) {
+                        value @output
+                    }
+                }
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

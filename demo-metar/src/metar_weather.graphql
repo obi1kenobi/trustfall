@@ -1,0 +1,60 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(
+    """Name of the filter operation to perform."""
+    op: String!
+    """List of string operands for the operator."""
+    value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """Name to apply to the given property field."""
+    name: String
+) on FIELD
+directive @output(
+    """What to designate the output field generated from this property field."""
+    name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
+
+type RootSchemaQuery {
+    MetarReport: [MetarReport]
+    LatestMetarReportForAirport(airport_code: String!): MetarReport
+}
+
+type MetarReport {
+    stationId: String!           # for airport stations, the 4-letter ICAO airport code: KBOS for Boston Logan
+    rawReport: String!
+    observationTime: DateTime!
+
+    latitude: Float
+    longitude: Float
+
+    windSpeedKts: Int             # in knots
+    windDirection: Int            # in degrees
+    windGustsKts: Int             # in knots
+
+    temperature: Float            # in degrees C
+    dewpoint: Float               # in degrees C
+
+    visibilityUnlimited: Boolean  # corresponds to visibility 9999
+    visibilityMinimal: Boolean    # corresponds to visibility 0000
+    visibilityStatuteMi: Int      # in statute miles (the "usual" miles, not nautical miles)
+
+    altimeterInHg: Float          # in inches of mercury
+    seaLevelPressureMb: Float     # in milibars
+
+    cloudCover: [MetarCloudCover!]
+}
+
+type MetarCloudCover {
+    skyCover: String!             # standard codes: SKC, CLR, FEW, SCT, BKN, OVC
+    baseAltitude: Int             # in feet above ground level (ft AGL)
+}

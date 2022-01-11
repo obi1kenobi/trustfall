@@ -1,0 +1,17 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 10, max: 20) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold {
+                prime: value @output
+            }
+        }
+
+    }
+}"#,
+    arguments: {},
+)

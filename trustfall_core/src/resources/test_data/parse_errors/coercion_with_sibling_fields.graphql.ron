@@ -1,0 +1,17 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 10) {
+        value @output
+
+        successor {
+            succ: name @output
+            ... on Prime {
+                prime: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

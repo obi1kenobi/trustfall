@@ -1,0 +1,32 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 1, max: 3) {
+        start: value @output
+
+        multiple(max: 3) {
+            mult: value @output
+
+            primeFactor {
+                value @filter(op: "=", value: ["$prime"])
+
+                predecessor {
+                    predecessor {
+                        predecessor @optional {
+                            value @tag(name: "predecessor")
+                        }
+                    }
+                }
+            }
+        }
+
+        successor {
+            succ: value @output @filter(op: "<", value: ["%predecessor"])
+        }
+    }
+}"#,
+    arguments: {
+        "prime": Int64(2),
+    },
+)

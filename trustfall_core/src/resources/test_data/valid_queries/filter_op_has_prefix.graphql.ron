@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 4, max: 14) {
+        name @output @filter(op: "has_prefix", value: ["$prefix"])
+    }
+}"#,
+    arguments: {
+        "prefix": String("four")
+    },
+)

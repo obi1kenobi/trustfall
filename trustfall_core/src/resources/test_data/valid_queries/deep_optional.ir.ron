@@ -1,0 +1,82 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: Some(EdgeParameters({
+      "max": Int64(6),
+      "min": Int64(0),
+    })),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+        ),
+        Vid(2): IRVertex(
+          vid: Vid(2),
+          type_name: "Number",
+        ),
+        Vid(3): IRVertex(
+          vid: Vid(3),
+          type_name: "Number",
+        ),
+        Vid(4): IRVertex(
+          vid: Vid(4),
+          type_name: "Number",
+        ),
+        Vid(5): IRVertex(
+          vid: Vid(5),
+          type_name: "Composite",
+        ),
+      },
+      edges: {
+        Eid(1): IREdge(
+          eid: Eid(1),
+          from_vid: Vid(1),
+          to_vid: Vid(2),
+          edge_name: "predecessor",
+        ),
+        Eid(2): IREdge(
+          eid: Eid(2),
+          from_vid: Vid(2),
+          to_vid: Vid(3),
+          edge_name: "predecessor",
+        ),
+        Eid(3): IREdge(
+          eid: Eid(3),
+          from_vid: Vid(3),
+          to_vid: Vid(4),
+          edge_name: "predecessor",
+          optional: true,
+        ),
+        Eid(4): IREdge(
+          eid: Eid(4),
+          from_vid: Vid(4),
+          to_vid: Vid(5),
+          edge_name: "multiple",
+          parameters: Some(EdgeParameters({
+            "max": Int64(3),
+          })),
+        ),
+      },
+      outputs: {
+        "top_bottom_mult_value": ContextField(
+          vertex_id: Vid(5),
+          field_name: "value",
+          field_type: "Int",
+        ),
+        "top_bottom_value": ContextField(
+          vertex_id: Vid(4),
+          field_name: "value",
+          field_type: "Int",
+        ),
+        "top_value": ContextField(
+          vertex_id: Vid(3),
+          field_name: "value",
+          field_type: "Int",
+        ),
+      },
+    ),
+  ),
+))

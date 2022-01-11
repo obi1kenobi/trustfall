@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 12, max: 16) {
+        name @output @filter(op: "one_of", value: ["$options"])
+    }
+}"#,
+    arguments: {
+        "options": List([
+            String("fourteen"),
+            String("fifteen"),
+        ])
+    },
+)

@@ -1,0 +1,13 @@
+Err(InvalidTagName("name with-various $%^&# chars!", [
+  ' ',
+  '-',
+  '$',
+  '%',
+  '^',
+  '&',
+  '#',
+  '!',
+], Pos(
+  line: 4,
+  column: 25,
+)))

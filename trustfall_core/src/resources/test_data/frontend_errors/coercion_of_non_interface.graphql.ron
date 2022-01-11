@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        ... on Composite {
+            name @output
+        }
+    }
+}"#,
+    arguments: {},
+)

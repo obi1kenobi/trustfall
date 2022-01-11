@@ -1,0 +1,8 @@
+Err(MultipleOutputsWithSameName(DuplicatedNamesConflict(
+  duplicates: {
+    "name": [
+      ("Directory", "name"),
+      ("Directory", "name"),
+    ],
+  },
+)))

@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        one: value @tag @output
+
+        successor {
+            value @output(name: "successor") @filter(op: ">", value: ["%one"])
+        }
+    }
+}"#,
+    arguments: {},
+)

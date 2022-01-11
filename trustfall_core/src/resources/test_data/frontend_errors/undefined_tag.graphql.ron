@@ -1,0 +1,10 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        name @output @filter(op: "=", value: ["%undefined_tag_name"])
+    }
+}"#,
+    arguments: {},
+)

@@ -1,0 +1,18 @@
+InputQuery (
+    query: r#"
+{
+    LatestStory(max: 100) {
+        title @output
+        url @filter(op: "is_not_null") @output
+        score @output
+
+        byUser {
+            submitter: id @output
+            submitter_karma: karma @filter(op: ">=", value: ["$min_karma"]) @output
+        }
+    }
+}"#,
+    args: {
+        "min_karma": Uint64(10000),
+    },
+)
