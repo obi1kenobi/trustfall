@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "trustfall_core",
+    "filetests_proc_macro",
+    "pytrustfall",
+    "demo-hackernews",
+    "demo-metar",
+    "demo-feeds",
+]
