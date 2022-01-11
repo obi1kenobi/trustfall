@@ -1,6 +1,9 @@
 use std::{iter, sync::Arc};
 
-use trustfall_core::{interpreter::{DataContext, InterpretedQuery, Adapter}, ir::{EdgeParameters, Eid, FieldValue, Vid}};
+use trustfall_core::{
+    interpreter::{Adapter, DataContext, InterpretedQuery},
+    ir::{EdgeParameters, Eid, FieldValue, Vid},
+};
 
 use crate::metar::{MetarCloudCover, MetarReport};
 
@@ -11,9 +14,7 @@ pub(crate) struct MetarAdapter<'a> {
 
 impl<'a> MetarAdapter<'a> {
     pub(crate) fn new(data: &'a [MetarReport]) -> Self {
-        Self {
-            data,
-        }
+        Self { data }
     }
 }
 
@@ -43,11 +44,11 @@ macro_rules! non_float_field {
                 Some(token) => match token {
                     $variant(m) => m.$field.clone().into(),
                     _ => unreachable!(),
-                }
+                },
             };
             (ctx, value)
         }))
-    }
+    };
 }
 
 macro_rules! float_field {
@@ -58,7 +59,7 @@ macro_rules! float_field {
                 Some(token) => match token {
                     $variant(m) => m.$field.clone().try_into().unwrap(),
                     _ => unreachable!(),
-                }
+                },
             };
             (ctx, value)
         }))
@@ -76,15 +77,24 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::DataToken> + 'a> {
         match edge.as_ref() {
-            "MetarReport" => {
-                Box::new(self.data.iter().map(|x| x.into()))
-            }
+            "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
             "LatestMetarReportForAirport" => {
-                let station_code = match parameters.as_ref().unwrap().0.get("airport_code").unwrap().clone() {
+                let station_code = match parameters
+                    .as_ref()
+                    .unwrap()
+                    .0
+                    .get("airport_code")
+                    .unwrap()
+                    .clone()
+                {
                     FieldValue::String(s) => s,
                     _ => unreachable!(),
                 };
-                let iter = self.data.iter().filter(move |&x| x.station_id == station_code).map(|x| x.into());
+                let iter = self
+                    .data
+                    .iter()
+                    .filter(move |&x| x.station_id == station_code)
+                    .map(|x| x.into());
                 Box::new(iter)
             }
             _ => unreachable!(),
@@ -105,19 +115,37 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                     // TODO: implement __typename
                     "stationId" => non_float_field!(data_contexts, Token::MetarReport, station_id),
                     "rawReport" => non_float_field!(data_contexts, Token::MetarReport, raw_report),
-                    "observationTime" => non_float_field!(data_contexts, Token::MetarReport, observation_time),
+                    "observationTime" => {
+                        non_float_field!(data_contexts, Token::MetarReport, observation_time)
+                    }
                     "latitude" => float_field!(data_contexts, Token::MetarReport, latitude),
                     "longitude" => float_field!(data_contexts, Token::MetarReport, longitude),
-                    "windSpeedKts" => non_float_field!(data_contexts, Token::MetarReport, wind_speed_kts),
-                    "windDirection" => non_float_field!(data_contexts, Token::MetarReport, wind_direction),
-                    "windGustsKts" => non_float_field!(data_contexts, Token::MetarReport, wind_gusts_kts),
+                    "windSpeedKts" => {
+                        non_float_field!(data_contexts, Token::MetarReport, wind_speed_kts)
+                    }
+                    "windDirection" => {
+                        non_float_field!(data_contexts, Token::MetarReport, wind_direction)
+                    }
+                    "windGustsKts" => {
+                        non_float_field!(data_contexts, Token::MetarReport, wind_gusts_kts)
+                    }
                     "temperature" => float_field!(data_contexts, Token::MetarReport, temperature),
                     "dewpoint" => float_field!(data_contexts, Token::MetarReport, dewpoint),
-                    "visibilityUnlimited" => non_float_field!(data_contexts, Token::MetarReport, visibility_unlimited),
-                    "visibilityMinimal" => non_float_field!(data_contexts, Token::MetarReport, visibility_minimal),
-                    "visibilityStatuteMi" => float_field!(data_contexts, Token::MetarReport, visibility_statute_mi),
-                    "altimeterInHg" => float_field!(data_contexts, Token::MetarReport, altimeter_in_hg),
-                    "seaLevelPressureMb" => float_field!(data_contexts, Token::MetarReport, sea_level_pressure_mb),
+                    "visibilityUnlimited" => {
+                        non_float_field!(data_contexts, Token::MetarReport, visibility_unlimited)
+                    }
+                    "visibilityMinimal" => {
+                        non_float_field!(data_contexts, Token::MetarReport, visibility_minimal)
+                    }
+                    "visibilityStatuteMi" => {
+                        float_field!(data_contexts, Token::MetarReport, visibility_statute_mi)
+                    }
+                    "altimeterInHg" => {
+                        float_field!(data_contexts, Token::MetarReport, altimeter_in_hg)
+                    }
+                    "seaLevelPressureMb" => {
+                        float_field!(data_contexts, Token::MetarReport, sea_level_pressure_mb)
+                    }
                     unknown_field_name => unreachable!(unknown_field_name),
                 }
             }
@@ -125,7 +153,9 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                 match field_name.as_ref() {
                     // TODO: implement __typename
                     "skyCover" => non_float_field!(data_contexts, Token::CloudCover, sky_cover),
-                    "baseAltitude" => non_float_field!(data_contexts, Token::CloudCover, base_altitude),
+                    "baseAltitude" => {
+                        non_float_field!(data_contexts, Token::CloudCover, base_altitude)
+                    }
                     unknown_field_name => unreachable!(unknown_field_name),
                 }
             }
@@ -156,17 +186,16 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                 assert!(parameters.is_none());
 
                 Box::new(data_contexts.map(|ctx| {
-                    let neighbors: Box<dyn Iterator<Item = Self::DataToken> + 'a> = match &ctx.current_token {
-                        Some(token) => {
-                            match token {
+                    let neighbors: Box<dyn Iterator<Item = Self::DataToken> + 'a> =
+                        match &ctx.current_token {
+                            Some(token) => match token {
                                 &Token::MetarReport(metar) => {
                                     Box::new(metar.cloud_cover.iter().map(|c| c.into()))
-                                },
+                                }
                                 _ => unreachable!(),
-                            }
-                        },
-                        None => Box::new(iter::empty()),
-                    };
+                            },
+                            None => Box::new(iter::empty()),
+                        };
                     (ctx, neighbors)
                 }))
             }

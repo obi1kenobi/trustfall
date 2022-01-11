@@ -249,7 +249,6 @@ macro_rules! project_neighbors {
     };
 }
 
-
 #[macro_export]
 macro_rules! project_neighbors2_match_arm {
     // token field is same as edge name, so this is just reading the next variant
@@ -275,7 +274,6 @@ macro_rules! project_neighbors2_match_arm {
         $crate::neighbor_stub!($ctxs, $lt, $token_variant $(| $other_variant)*, $token, $impl)
     };
 }
-
 
 // TODO: figure out whether we want both this macro and the other neighbors macro, or just one
 #[macro_export]

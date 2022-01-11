@@ -137,7 +137,7 @@ pub(crate) struct MetarReport {
 
     pub(crate) altimeter_in_hg: Option<f64>,
     pub(crate) sea_level_pressure_mb: Option<f64>,
-    pub(crate) wx_string: Option<String>,  // TODO: do better here, this is where all the weather symbols are
+    pub(crate) wx_string: Option<String>, // TODO: do better here, this is where all the weather symbols are
 
     pub(crate) cloud_cover: Vec<MetarCloudCover>,
 }
@@ -181,7 +181,7 @@ impl From<CsvMetarReport> for MetarReport {
         let visibility_statute_mi = match visibility {
             Visibility::StatuteMiles(visibility_mi) => Some(visibility_mi),
             Visibility::Minimal | Visibility::Unlimited => None,
-            Visibility::Unknown => csv_metar.visibility_statute_mi
+            Visibility::Unknown => csv_metar.visibility_statute_mi,
         };
         let (visibility_unlimited, visibility_minimal) = match visibility {
             Visibility::StatuteMiles(_) => (Some(false), Some(false)),
@@ -216,7 +216,8 @@ static METAR_STATION_AND_DATE_PATTERN: &str = r"[A-Z]{4} \d{6}Z ";
 static METAR_AUTO_OPTIONAL_MARKER_PATTERN: &str = r"(?:AUTO )?";
 
 //                                     |   direction   |intensity|    gusts    |    units    | unknown |
-static METAR_WIND_PATTERN: &str = r"(?:(?:VRB|[0-9/]{3})[0-9/]{2}(?:G[0-9/]{2})(?:MPS|KPH|KT))|(?://///) ";
+static METAR_WIND_PATTERN: &str =
+    r"(?:(?:VRB|[0-9/]{3})[0-9/]{2}(?:G[0-9/]{2})(?:MPS|KPH|KT))|(?://///) ";
 
 // see Surface Wind: http://www.bom.gov.au/aviation/data/education/metar-speci.pdf
 static METAR_WIND_VARIABILITY_PATTERN: &str = r"(?:[0-9/]{3}V[0-9/]{3} )?";
@@ -225,15 +226,17 @@ static METAR_WIND_VARIABILITY_PATTERN: &str = r"(?:[0-9/]{3}V[0-9/]{3} )?";
 static METAR_VISIBILITY_PATTERN: &str = r"(?:[0-9]{4}|CAVOK|(?:[0-9/ ]+SM)) ";
 
 lazy_static! {
-    static ref METAR_VISIBILITY_CAPTURE_PATTERN: String =
-        METAR_STATION_AND_DATE_PATTERN.to_owned() +
-        METAR_AUTO_OPTIONAL_MARKER_PATTERN +
-        "(?:" + METAR_WIND_PATTERN + ")?" +
-        METAR_WIND_VARIABILITY_PATTERN +
-        "(" + METAR_VISIBILITY_PATTERN + ")";
-    static ref METAR_VISIBILITY_CAPTURE_RE: Regex = Regex::new(
-        &METAR_VISIBILITY_CAPTURE_PATTERN
-    ).unwrap();
+    static ref METAR_VISIBILITY_CAPTURE_PATTERN: String = METAR_STATION_AND_DATE_PATTERN.to_owned()
+        + METAR_AUTO_OPTIONAL_MARKER_PATTERN
+        + "(?:"
+        + METAR_WIND_PATTERN
+        + ")?"
+        + METAR_WIND_VARIABILITY_PATTERN
+        + "("
+        + METAR_VISIBILITY_PATTERN
+        + ")";
+    static ref METAR_VISIBILITY_CAPTURE_RE: Regex =
+        Regex::new(&METAR_VISIBILITY_CAPTURE_PATTERN).unwrap();
 }
 
 fn get_visibility(raw_metar: &str) -> Visibility {
@@ -265,7 +268,10 @@ fn get_visibility(raw_metar: &str) -> Visibility {
                     Visibility::StatuteMiles(integer_mi)
                 }
             }
-            visibility_meters if visibility_meters.len() == 4 && visibility_meters.chars().all(|c| c.is_digit(10)) => {
+            visibility_meters
+                if visibility_meters.len() == 4
+                    && visibility_meters.chars().all(|c| c.is_digit(10)) =>
+            {
                 let meters_per_mile: f64 = 1609.34;
                 let visibility_meters: f64 = visibility_meters.parse::<u32>().unwrap().into();
                 Visibility::StatuteMiles(visibility_meters / meters_per_mile)
@@ -280,7 +286,8 @@ fn get_visibility(raw_metar: &str) -> Visibility {
     }
 }
 
-enum Visibility {      // examples of each:
+enum Visibility {
+    // examples of each:
     StatuteMiles(f64), // 5SM
     Unlimited,         // 9999
     Minimal,           // 0000

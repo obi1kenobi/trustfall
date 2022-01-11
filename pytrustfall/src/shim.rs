@@ -69,8 +69,10 @@ fn to_query_arguments(src: &PyAny) -> PyResult<Arc<HashMap<Arc<str>, FieldValue>
             crate::errors::QueryArgumentsError::new_err(
                 format!(
                     "Encountered argument(s) with unexpected types that could not be converted \
-                    into a representation usable by the query engine: {:?}", unrepresentable_args
-                ).into_py(py)
+                    into a representation usable by the query engine: {:?}",
+                    unrepresentable_args
+                )
+                .into_py(py),
             )
         }))
     }
@@ -263,11 +265,7 @@ impl Adapter<'static> for AdapterShim {
                 .call_method(
                     py,
                     "project_property",
-                    (
-                        contexts,
-                        current_type_name.as_ref(),
-                        field_name.as_ref(),
-                    ),
+                    (contexts, current_type_name.as_ref(), field_name.as_ref()),
                     None,
                 )
                 .unwrap();
@@ -415,7 +413,8 @@ impl Iterator for PythonProjectPropertyIterator {
                             .call_method(py, "__getitem__", (1i64,), None)
                             .unwrap()
                             .as_ref(py),
-                    ).unwrap();
+                    )
+                    .unwrap();
 
                     Some((context.0, value))
                 }

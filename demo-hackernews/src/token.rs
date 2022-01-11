@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use hn_api::types::{Story, Comment, User, Item, Job};
+use hn_api::types::{Comment, Item, Job, Story, User};
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -28,7 +28,7 @@ impl Token {
             Token::Item(i) => match &**i {
                 Item::Story(s) => Some(s),
                 _ => None,
-            }
+            },
             _ => None,
         }
     }
@@ -39,7 +39,7 @@ impl Token {
             Token::Item(i) => match &**i {
                 Item::Job(s) => Some(s),
                 _ => None,
-            }
+            },
             _ => None,
         }
     }
@@ -50,7 +50,7 @@ impl Token {
             Token::Item(i) => match &**i {
                 Item::Comment(s) => Some(s),
                 _ => None,
-            }
+            },
             _ => None,
         }
     }

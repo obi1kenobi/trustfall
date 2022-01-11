@@ -112,9 +112,7 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
             let root_selection_set = &root_node.selection_set.node;
             let root_items = &root_selection_set.items;
             if root_items.len() != 1 {
-                return Err(ParseError::MultipleQueryRoots(
-                    root_items[1].pos,
-                ));
+                return Err(ParseError::MultipleQueryRoots(root_items[1].pos));
             }
 
             let root_node = root_items.first().unwrap();
@@ -225,9 +223,7 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
                 ));
             }
             Selection::InlineFragment(_) => {
-                return Err(ParseError::NestedTypeCoercion(
-                    selection.pos,
-                ));
+                return Err(ParseError::NestedTypeCoercion(selection.pos));
             }
             Selection::Field(f) => {
                 let edge = make_field_connection(f)?;

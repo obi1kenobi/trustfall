@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use feed_rs::model::{Content, Entry, Feed, FeedType, Image, Link, Text};
 use trustfall_core::{
-    interpreter::{DataContext, InterpretedQuery, Adapter},
+    interpreter::{Adapter, DataContext, InterpretedQuery},
     ir::{EdgeParameters, Eid, FieldValue, Vid},
     project_neighbors, project_property,
 };
@@ -28,8 +28,7 @@ pub(crate) enum Token<'a> {
     FeedContent(&'a Content),
 }
 
-impl<'a> Adapter<'a> for FeedAdapter<'a>
-{
+impl<'a> Adapter<'a> for FeedAdapter<'a> {
     type DataToken = Token<'a>;
 
     fn get_starting_tokens(

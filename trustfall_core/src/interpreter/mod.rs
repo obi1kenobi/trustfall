@@ -7,12 +7,12 @@ use crate::ir::{indexed::IndexedQuery, EdgeParameters, Eid, FieldValue, Vid};
 
 use self::error::QueryArgumentsError;
 
+pub mod error;
 pub mod execution;
 mod filtering;
 pub mod macros;
 pub mod replay;
 pub mod trace;
-pub mod error;
 
 #[derive(Debug, Clone)]
 pub struct DataContext<DataToken: Clone + Debug> {
@@ -233,32 +233,46 @@ impl InterpretedQuery {
         indexed_query: Arc<IndexedQuery>,
         arguments: Arc<HashMap<Arc<str>, FieldValue>>,
     ) -> Result<Self, QueryArgumentsError> {
-        let missing_arguments = indexed_query.required_arguments.keys().map(|x| x.as_ref()).filter(|arg| !arguments.contains_key(*arg)).collect_vec();
-        let unused_arguments = arguments.keys().map(|x| x.as_ref()).filter(|arg| !indexed_query.required_arguments.contains_key(*arg)).collect_vec();
+        let missing_arguments = indexed_query
+            .required_arguments
+            .keys()
+            .map(|x| x.as_ref())
+            .filter(|arg| !arguments.contains_key(*arg))
+            .collect_vec();
+        let unused_arguments = arguments
+            .keys()
+            .map(|x| x.as_ref())
+            .filter(|arg| !indexed_query.required_arguments.contains_key(*arg))
+            .collect_vec();
 
         // TODO: Ensure provided arguments have valid types.
 
         match (missing_arguments.is_empty(), unused_arguments.is_empty()) {
-            (true, true) => {
-                Ok(Self {
-                    indexed_query,
-                    arguments,
-                })
-            }
-            (true, false) => {
-                Err(QueryArgumentsError::UnusedArgument(unused_arguments.into_iter().map(|x| x.to_owned()).collect()))
-            }
-            (false, true) => {
-                Err(QueryArgumentsError::MissingArgument(missing_arguments.into_iter().map(|x| x.to_owned()).collect()))
-            }
-            (false, false) => {
-                Err(
-                    vec![
-                        QueryArgumentsError::MissingArgument(missing_arguments.into_iter().map(|x| x.to_owned()).collect()),
-                        QueryArgumentsError::UnusedArgument(unused_arguments.into_iter().map(|x| x.to_owned()).collect()),
-                    ].into()
-                )
-            }
+            (true, true) => Ok(Self {
+                indexed_query,
+                arguments,
+            }),
+            (true, false) => Err(QueryArgumentsError::UnusedArgument(
+                unused_arguments.into_iter().map(|x| x.to_owned()).collect(),
+            )),
+            (false, true) => Err(QueryArgumentsError::MissingArgument(
+                missing_arguments
+                    .into_iter()
+                    .map(|x| x.to_owned())
+                    .collect(),
+            )),
+            (false, false) => Err(vec![
+                QueryArgumentsError::MissingArgument(
+                    missing_arguments
+                        .into_iter()
+                        .map(|x| x.to_owned())
+                        .collect(),
+                ),
+                QueryArgumentsError::UnusedArgument(
+                    unused_arguments.into_iter().map(|x| x.to_owned()).collect(),
+                ),
+            ]
+            .into()),
         }
     }
 }

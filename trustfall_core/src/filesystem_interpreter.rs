@@ -347,11 +347,11 @@ impl Adapter<'static> for FilesystemInterpreter {
         edge_hint: Eid,
     ) -> Box<
         dyn Iterator<
-                Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken>>,
-                ),
-            >,
+            Item = (
+                DataContext<Self::DataToken>,
+                Box<dyn Iterator<Item = Self::DataToken>>,
+            ),
+        >,
     > {
         match (current_type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {

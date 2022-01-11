@@ -23,7 +23,8 @@ mod adapter;
 mod metar;
 
 lazy_static! {
-    static ref SCHEMA: Schema = Schema::parse(fs::read_to_string("./src/metar_weather.graphql").unwrap()).unwrap();
+    static ref SCHEMA: Schema =
+        Schema::parse(fs::read_to_string("./src/metar_weather.graphql").unwrap()).unwrap();
 }
 
 const METAR_DOC_URL: &str =

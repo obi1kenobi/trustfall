@@ -1,12 +1,18 @@
-use pyo3::{create_exception, Python, types::PyModule, PyResult};
-
+use pyo3::{create_exception, types::PyModule, PyResult, Python};
 
 create_exception!(pytrustfall, ParseError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, ValidationError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, FrontendError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, InvalidIRQueryError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, QueryArgumentsError, pyo3::exceptions::PyException);
-
+create_exception!(
+    pytrustfall,
+    InvalidIRQueryError,
+    pyo3::exceptions::PyException
+);
+create_exception!(
+    pytrustfall,
+    QueryArgumentsError,
+    pyo3::exceptions::PyException
+);
 
 pub(crate) fn register(py: Python, m: &PyModule) -> PyResult<()> {
     m.add("ParseError", py.get_type::<ParseError>())?;

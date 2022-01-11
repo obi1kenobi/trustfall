@@ -5,7 +5,7 @@ pub mod indexed;
 use std::{collections::BTreeMap, convert::TryFrom, fmt, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::types::Type;
-use async_graphql_value::{ConstValue, Value, Number};
+use async_graphql_value::{ConstValue, Number, Value};
 use chrono::{DateTime, Utc};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -35,7 +35,7 @@ pub enum FieldValue {
     // This is because we want to prioritize the standard Integer GraphQL type over our custom u64,
     // and prioritize exact integers over lossy floats.
     Null,
-    Int64(i64),   // AKA Integer
+    Int64(i64), // AKA Integer
     Uint64(u64),
     Float64(f64), // AKA Float, and also not allowed to be NaN
     String(String),
@@ -56,7 +56,7 @@ pub enum TransparentValue {
     // This is because we want to prioritize the standard Integer GraphQL type over our custom u64,
     // and prioritize exact integers over lossy floats.
     Null,
-    Int64(i64),   // AKA Integer
+    Int64(i64), // AKA Integer
     Uint64(u64),
     Float64(f64), // AKA Float, and also not allowed to be NaN
     String(String),
@@ -87,13 +87,13 @@ impl FieldValue {
         match self {
             FieldValue::Uint64(u) => (*u).try_into().ok(),
             FieldValue::Int64(i) => Some(*i),
-            FieldValue::Null |
-            FieldValue::Float64(_) |
-            FieldValue::String(_) |
-            FieldValue::Boolean(_) |
-            FieldValue::DateTimeUtc(_) |
-            FieldValue::List(_) |
-            FieldValue::Enum(_) => None,
+            FieldValue::Null
+            | FieldValue::Float64(_)
+            | FieldValue::String(_)
+            | FieldValue::Boolean(_)
+            | FieldValue::DateTimeUtc(_)
+            | FieldValue::List(_)
+            | FieldValue::Enum(_) => None,
         }
     }
 
@@ -101,13 +101,13 @@ impl FieldValue {
         match self {
             FieldValue::Uint64(u) => Some(*u),
             FieldValue::Int64(i) => (*i).try_into().ok(),
-            FieldValue::Null |
-            FieldValue::Float64(_) |
-            FieldValue::String(_) |
-            FieldValue::Boolean(_) |
-            FieldValue::DateTimeUtc(_) |
-            FieldValue::List(_) |
-            FieldValue::Enum(_) => None,
+            FieldValue::Null
+            | FieldValue::Float64(_)
+            | FieldValue::String(_)
+            | FieldValue::Boolean(_)
+            | FieldValue::DateTimeUtc(_)
+            | FieldValue::List(_)
+            | FieldValue::Enum(_) => None,
         }
     }
 }
@@ -664,7 +664,6 @@ where
     deserializer.deserialize_str(TypeDeserializer)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::FieldValue;
@@ -677,7 +676,12 @@ mod tests {
     fn serialize_then_deserialize_enum() {
         let value = FieldValue::Enum("foo".to_string());
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
+        assert_eq!(
+            value,
+            deserialized,
+            "Serialized as: {}",
+            ron::to_string(&value).unwrap()
+        );
     }
 
     #[test]
@@ -688,27 +692,47 @@ mod tests {
             FieldValue::String("foo".into()),
         ]);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
+        assert_eq!(
+            value,
+            deserialized,
+            "Serialized as: {}",
+            ron::to_string(&value).unwrap()
+        );
     }
 
     #[test]
     fn serialize_then_deserialize_float() {
         let value = FieldValue::Float64(1.0);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
+        assert_eq!(
+            value,
+            deserialized,
+            "Serialized as: {}",
+            ron::to_string(&value).unwrap()
+        );
     }
 
     #[test]
     fn serialize_then_deserialize_i64() {
         let value = FieldValue::Int64(-123);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
+        assert_eq!(
+            value,
+            deserialized,
+            "Serialized as: {}",
+            ron::to_string(&value).unwrap()
+        );
     }
 
     #[test]
     fn serialize_then_deserialize_u64() {
         let value = FieldValue::Uint64((i64::MAX as u64) + 1);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
+        assert_eq!(
+            value,
+            deserialized,
+            "Serialized as: {}",
+            ron::to_string(&value).unwrap()
+        );
     }
 }

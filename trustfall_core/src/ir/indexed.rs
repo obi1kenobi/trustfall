@@ -4,8 +4,8 @@ use async_graphql_parser::types::{BaseType, Type};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    serde_type_deserializer, serde_type_serializer, Eid, IREdge, IRFold, IRQuery, IRQueryComponent,
-    Vid, Argument,
+    serde_type_deserializer, serde_type_serializer, Argument, Eid, IREdge, IRFold, IRQuery,
+    IRQueryComponent, Vid,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,8 +113,8 @@ fn add_data_from_component(
                     // TODO: Once we track the inferred types of required arguments,
                     //       make sure the inferred types match up. Figure out null/non-null types.
                     required_arguments.insert(vref.variable_name.clone(), ());
-                },
-                Some(Argument::Tag(..)) | None => {},
+                }
+                Some(Argument::Tag(..)) | None => {}
             }
         }
     }
@@ -206,7 +206,14 @@ fn add_data_from_component(
             return Err(InvalidIRQueryError::GetBetterVariant(14));
         }
 
-        add_data_from_component(vids, eids, required_arguments, outputs, &fold.component, new_fold_depth)?;
+        add_data_from_component(
+            vids,
+            eids,
+            required_arguments,
+            outputs,
+            &fold.component,
+            new_fold_depth,
+        )?;
     }
 
     Ok(())

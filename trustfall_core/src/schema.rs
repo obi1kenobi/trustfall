@@ -1,10 +1,16 @@
 #![allow(dead_code)]
-use std::{collections::{HashMap, HashSet}, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
-use async_graphql_parser::{types::{
-    DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition, ServiceDocument,
-    TypeDefinition, TypeKind, TypeSystemDefinition,
-}, parse_schema};
+use async_graphql_parser::{
+    parse_schema,
+    types::{
+        DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition, ServiceDocument,
+        TypeDefinition, TypeKind, TypeSystemDefinition,
+    },
+};
 
 pub use ::async_graphql_parser::Error;
 
@@ -35,8 +41,7 @@ impl Schema {
 
     pub fn new(doc: ServiceDocument) -> Self {
         let mut schema: Option<SchemaDefinition> = None;
-        let mut directives: HashMap<Arc<str>, DirectiveDefinition> =
-            Default::default();
+        let mut directives: HashMap<Arc<str>, DirectiveDefinition> = Default::default();
         let mut scalars: HashMap<Arc<str>, TypeDefinition> = Default::default();
 
         // The schema is mostly type definitions, except for one schema definition, and
@@ -77,7 +82,9 @@ impl Schema {
                             scalars.try_insert(type_name.clone(), node.clone()).unwrap();
                         }
                         TypeKind::Object(_) | TypeKind::Interface(_) => {
-                            vertex_types.try_insert(type_name.clone(), node.clone()).unwrap();
+                            vertex_types
+                                .try_insert(type_name.clone(), node.clone())
+                                .unwrap();
                         }
                         TypeKind::Enum(_) => unimplemented!(),
                         TypeKind::Union(_) => unimplemented!(),

@@ -60,7 +60,10 @@ fn validate_field<'a>(
         } else {
             // Only interface types may be coerced into other types. This is not an interface.
             return Err(FrontendError::ValidationError(
-                ValidationError::CannotCoerceNonInterfaceType(pre_coercion_type_name.to_string(), coerced.to_string()),
+                ValidationError::CannotCoerceNonInterfaceType(
+                    pre_coercion_type_name.to_string(),
+                    coerced.to_string(),
+                ),
             ));
         }
 

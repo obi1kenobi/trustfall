@@ -931,18 +931,18 @@ fn post_process_recursive_expansion<'schema, 'query, DataToken: Clone + Debug + 
 #[cfg(test)]
 mod tests {
     use std::{
+        collections::HashMap,
         fs,
         path::{Path, PathBuf},
-        sync::Arc, collections::HashMap,
+        sync::Arc,
     };
 
     use filetests_proc_macro::parameterize;
 
     use crate::{
-        interpreter::{
-            error::QueryArgumentsError, InterpretedQuery,
-        },
-        util::TestIRQueryResult, ir::{FieldValue, indexed::IndexedQuery},
+        interpreter::{error::QueryArgumentsError, InterpretedQuery},
+        ir::{indexed::IndexedQuery, FieldValue},
+        util::TestIRQueryResult,
     };
 
     #[parameterize("trustfall_core/src/resources/test_data/execution_errors")]

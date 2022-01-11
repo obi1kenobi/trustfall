@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
-use syn::{ItemFn, LitStr, parse_macro_input};
+use syn::{parse_macro_input, ItemFn, LitStr};
 
 use std::path::PathBuf;
 
@@ -12,7 +12,7 @@ use walkdir::WalkDir;
 #[proc_macro_attribute]
 pub fn parameterize(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut result = TokenStream::new();
-    result.extend(item.clone());  // emit the function itself
+    result.extend(item.clone()); // emit the function itself
 
     let path_literal = parse_macro_input!(attr as LitStr);
     let path = path_literal.value();

@@ -1,7 +1,7 @@
-use pyo3::{Python, types::PyModule, PyResult, pymodule};
+use pyo3::{pymodule, types::PyModule, PyResult, Python};
 
-pub mod shim;
 pub mod errors;
+pub mod shim;
 
 #[pymodule]
 fn pytrustfall(py: Python, m: &PyModule) -> PyResult<()> {

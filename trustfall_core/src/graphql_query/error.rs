@@ -31,7 +31,8 @@ pub enum ParseError {
 
     #[error(
         "Input contains multiple root vertices, which is not supported. \
-        Please make sure that only a single field inside the outer-most curly braces is expanded.")]
+        Please make sure that only a single field inside the outer-most curly braces is expanded."
+    )]
     MultipleQueryRoots(Pos),
 
     #[error("Found {0} instead of a root vertex, which is not supported.")]

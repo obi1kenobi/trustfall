@@ -21,8 +21,8 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRFold, IRQuery,
-        IRQueryComponent, IRVertex, LocalField, Operation, VariableRef, Vid, indexed::IndexedQuery,
+        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge,
+        IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, VariableRef, Vid,
     },
     schema::{Schema, BUILTIN_SCALARS},
     util::TryCollectUniqueKey,
@@ -69,7 +69,8 @@ fn get_field_name_and_type_from_schema<'a>(
         let field_name = &defined_field.node.name.node;
         let field_raw_type = &defined_field.node.ty.node;
         if field_name.as_ref() == field_node.name.as_ref() {
-            let pre_coercion_type_name: Arc<str> = get_underlying_named_type(field_raw_type).to_string().into();
+            let pre_coercion_type_name: Arc<str> =
+                get_underlying_named_type(field_raw_type).to_string().into();
             let post_coercion_type_name = if let Some(coerced_to) = &field_node.coerced_to {
                 coerced_to.clone()
             } else {
@@ -601,8 +602,12 @@ where
     let defined_fields = get_vertex_field_definitions(schema, post_coercion_type.as_ref());
 
     for (connection, subfield) in &current_field.connections {
-        let (subfield_name, subfield_pre_coercion_type, subfield_post_coercion_type, subfield_raw_type) =
-            get_field_name_and_type_from_schema(defined_fields, subfield);
+        let (
+            subfield_name,
+            subfield_pre_coercion_type,
+            subfield_post_coercion_type,
+            subfield_raw_type,
+        ) = get_field_name_and_type_from_schema(defined_fields, subfield);
 
         if schema
             .vertex_types
@@ -672,7 +677,9 @@ where
                 )?;
             }
         } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
-            || schema.scalars.contains_key(subfield_post_coercion_type.as_ref())
+            || schema
+                .scalars
+                .contains_key(subfield_post_coercion_type.as_ref())
         {
             let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
             let key = (current_vid, subfield_name.clone());

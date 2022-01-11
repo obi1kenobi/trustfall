@@ -228,7 +228,10 @@ impl Adapter<'static> for HackerNewsAdapter {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
                             Ok(Some(user)) => Box::new(std::iter::once(user.into())),
                             Err(e) => {
-                                eprintln!("API error while fetching story {} author \"{}\": {}", story.id, author, e);
+                                eprintln!(
+                                    "API error while fetching story {} author \"{}\": {}",
+                                    story.id, author, e
+                                );
                                 Box::new(std::iter::empty())
                             }
                         }
@@ -246,22 +249,26 @@ impl Adapter<'static> for HackerNewsAdapter {
                         let comment_ids = story.kids.clone().unwrap_or_default();
                         let story_id = story.id;
 
-                        let neighbors_iter = comment_ids.into_iter().filter_map(move |comment_id| {
-                            match CLIENT.get_item(comment_id) {
-                                Ok(None) => None,
-                                Ok(Some(item)) => {
-                                    if let Item::Comment(comment) = item {
-                                        Some(comment.into())
-                                    } else {
-                                        unreachable!()
+                        let neighbors_iter =
+                            comment_ids.into_iter().filter_map(move |comment_id| {
+                                match CLIENT.get_item(comment_id) {
+                                    Ok(None) => None,
+                                    Ok(Some(item)) => {
+                                        if let Item::Comment(comment) = item {
+                                            Some(comment.into())
+                                        } else {
+                                            unreachable!()
+                                        }
+                                    }
+                                    Err(e) => {
+                                        eprintln!(
+                                            "API error while fetching story {} comment {}: {}",
+                                            story_id, comment_id, e
+                                        );
+                                        None
                                     }
                                 }
-                                Err(e) => {
-                                    eprintln!("API error while fetching story {} comment {}: {}", story_id, comment_id, e);
-                                    None
-                                }
-                            }
-                        });
+                            });
 
                         Box::new(neighbors_iter)
                     }
@@ -280,7 +287,10 @@ impl Adapter<'static> for HackerNewsAdapter {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
                             Ok(Some(user)) => Box::new(std::iter::once(user.into())),
                             Err(e) => {
-                                eprintln!("API error while fetching comment {} author \"{}\": {}", comment.id, author, e);
+                                eprintln!(
+                                    "API error while fetching comment {} author \"{}\": {}",
+                                    comment.id, author, e
+                                );
                                 Box::new(std::iter::empty())
                             }
                         }
@@ -309,7 +319,10 @@ impl Adapter<'static> for HackerNewsAdapter {
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("API error while fetching comment {} reply {}: {}", comment_id, reply_id, e);
+                                    eprintln!(
+                                        "API error while fetching comment {} reply {}: {}",
+                                        comment_id, reply_id, e
+                                    );
                                     None
                                 }
                             }

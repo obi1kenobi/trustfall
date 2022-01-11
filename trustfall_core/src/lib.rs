@@ -14,5 +14,5 @@ pub mod frontend;
 pub mod graphql_query;
 pub mod interpreter;
 pub mod ir;
-pub mod schema;
 mod numbers_interpreter;
+pub mod schema;

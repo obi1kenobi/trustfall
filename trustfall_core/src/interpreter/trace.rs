@@ -1,4 +1,12 @@
-use std::{cell::RefCell, collections::{BTreeMap, HashMap}, fmt::Debug, marker::PhantomData, num::NonZeroUsize, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+    marker::PhantomData,
+    num::NonZeroUsize,
+    rc::Rc,
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -201,8 +209,7 @@ where
     }
 }
 
-impl<'token, DataToken, AdapterT> Adapter<'token>
-    for AdapterTap<'token, DataToken, AdapterT>
+impl<'token, DataToken, AdapterT> Adapter<'token> for AdapterTap<'token, DataToken, AdapterT>
 where
     AdapterT: Adapter<'token, DataToken = DataToken>,
     DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'token,
@@ -380,8 +387,8 @@ where
         Box::new(
             make_iter_with_end_action(inner_iter, move || {
                 tracer_ref_4
-                .borrow_mut()
-                .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
+                    .borrow_mut()
+                    .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
             .map(move |(context, neighbor_iter)| {
                 let mut trace = tracer_ref_5.borrow_mut();
