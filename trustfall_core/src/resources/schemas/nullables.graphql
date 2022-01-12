@@ -1,0 +1,39 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    MainType: MainType
+    NonNullMainType: MainType!
+    List: [MainType]
+    NonNullList: [MainType]!
+    NonNullListAndType: [MainType!]!
+}
+
+type MainType {
+    integer: Int
+    nonNullInteger: Int!
+    float: Float
+    nonNullFloat: Float!
+    string: String
+    nonNullString: String!
+    bool: Boolean
+    nonNullBool: Boolean!
+
+    intList: [Int]
+    nonNullIntList: [Int!]
+    intNonNullList: [Int]!
+    nonNullIntAndList: [Int!]!
+
+    neighbor: MainType
+    nonNullNeighbor: MainType!
+    neighborList: [MainType]
+    neighborNonNullList: [MainType]!
+    nonNullNeighborAndList: [MainType!]!
+}

@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "nullables",
+    query: r#"
+{
+    MainType {
+        nonNullInteger @tag(name: "my_tag") @output
+
+        string @filter(op: "=", value: ["%my_tag"])
+    }
+}"#,
+    arguments: {},
+)

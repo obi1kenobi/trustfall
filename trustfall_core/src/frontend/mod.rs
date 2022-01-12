@@ -179,13 +179,13 @@ fn make_filter_expr(
         field_type: property_type.clone(),
     };
 
-    filter_directive.operation.try_map(
+    let filter_operation = filter_directive.operation.try_map(
         move |_| Ok(left),
         |arg| {
             Ok(match arg {
                 OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
                     variable_name: var_name.clone(),
-                    variable_type: property_type.clone(),
+                    variable_type: property_type.clone(), // TODO: this is wrong, infer better
                 }),
                 OperatorArgument::TagRef(tag_name) => {
                     let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
@@ -196,13 +196,25 @@ fn make_filter_expr(
                     })?;
 
                     if defined_tag.vertex_id > current_vertex_vid {
-                        return Err("Filter cannot use tag defined later than its use".into());
+                        return Err(FrontendError::OtherError(
+                            "Filter cannot use tag defined later than its use".into(),
+                        ));
                     }
                     Argument::Tag(defined_tag.clone())
                 }
             })
         },
-    )
+    )?;
+
+    // Get the tag name, if one was used.
+    // The tag name is used to improve the diagnostics raised in case of bad query input.
+    let maybe_tag_name = match filter_directive.operation.right() {
+        Some(OperatorArgument::TagRef(tag_name)) => Some(tag_name.as_ref()),
+        _ => None,
+    };
+    filter_operation.operand_types_valid(maybe_tag_name)?;
+
+    Ok(filter_operation)
 }
 
 pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, FrontendError> {
@@ -779,6 +791,10 @@ mod tests {
             parse_schema(fs::read_to_string("src/resources/schemas/numbers.graphql").unwrap())
                 .unwrap()
         );
+        static ref NULLABLES_SCHEMA: Schema = Schema::new(
+            parse_schema(fs::read_to_string("src/resources/schemas/nullables.graphql").unwrap())
+                .unwrap()
+        );
     }
 
     #[test]
@@ -787,6 +803,7 @@ mod tests {
         // If that succeeds, even very cursory checks will suffice.
         assert!(FILESYSTEM_SCHEMA.vertex_types.len() > 3);
         assert!(!NUMBERS_SCHEMA.vertex_types.is_empty());
+        assert!(!NULLABLES_SCHEMA.vertex_types.is_empty());
     }
 
     #[parameterize("trustfall_core/src/resources/test_data/frontend_errors")]
@@ -818,6 +835,7 @@ mod tests {
         let schema: &Schema = match test_query.schema_name.as_str() {
             "filesystem" => &FILESYSTEM_SCHEMA,
             "numbers" => &NUMBERS_SCHEMA,
+            "nullables" => &NULLABLES_SCHEMA,
             _ => unimplemented!("unrecognized schema name: {:?}", test_query.schema_name),
         };
 
