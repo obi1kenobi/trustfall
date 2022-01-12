@@ -110,6 +110,13 @@ impl FieldValue {
             | FieldValue::Enum(_) => None,
         }
     }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            FieldValue::String(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
 }
 
 impl PartialEq for FieldValue {

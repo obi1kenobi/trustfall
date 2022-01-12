@@ -84,18 +84,35 @@ pub(super) fn contains(left: &FieldValue, right: &FieldValue) -> bool {
     one_of(right, left)
 }
 
+/// Implement checking a value against a regex pattern.
+///
+/// This function should be used when checking a regex filter that uses a tag in the filter,
+/// since it will recompile the regex for each check, and this is slow. For regex checks against
+/// a runtime parameter, the optimized variant of this function should be called,
+/// with a precompiled regex pattern matching the runtime parameter value.
 #[inline(always)]
-pub(super) fn regex_matches(left: &FieldValue, right: &FieldValue) -> bool {
+pub(super) fn regex_matches_slow_path(left: &FieldValue, right: &FieldValue) -> bool {
     match (left, right) {
         (FieldValue::String(l), FieldValue::String(r)) => {
-            // TODO: Figure out a way to not have to rebuild the regex on every match attempt.
-            // TODO: Validate that the provided string is a real regex before this point.
-            //       We should reject invalid regex-typed inputs long before we begin executing.
-            Regex::new(r).unwrap().is_match(l)
+            // Bad regex values can happen in ways that can't be prevented,
+            // for example: when using a tag argument and the tagged value isn't a valid regex.
+            // In such cases, we declare that the regex doesn't match.
+            Regex::new(r)
+                .map(|pattern| pattern.is_match(l))
+                .unwrap_or(false)
         }
         (FieldValue::Null, FieldValue::Null)
         | (FieldValue::Null, FieldValue::String(_))
         | (FieldValue::String(_), FieldValue::Null) => false,
         _ => unreachable!("{:?} {:?}", left, right),
+    }
+}
+
+#[inline(always)]
+pub(super) fn regex_matches_optimized(left: &FieldValue, regex: &Regex) -> bool {
+    match left {
+        FieldValue::String(l) => regex.is_match(l),
+        FieldValue::Null => false,
+        _ => unreachable!("{:?}", left),
     }
 }

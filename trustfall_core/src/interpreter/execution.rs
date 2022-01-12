@@ -7,11 +7,14 @@ use std::{
     sync::Arc,
 };
 
+use regex::Regex;
+
 use crate::{
     interpreter::{
         filtering::{
             contains, equals, greater_than, greater_than_or_equal, has_prefix, has_substring,
-            has_suffix, less_than, less_than_or_equal, one_of, regex_matches,
+            has_suffix, less_than, less_than_or_equal, one_of, regex_matches_optimized,
+            regex_matches_slow_path,
         },
         ValueOrVec,
     },
@@ -485,12 +488,46 @@ fn apply_filter<'query, DataToken: Clone + Debug + 'query>(
         Operation::NotHasSuffix(_, right) => {
             implement_negated_filter!(expression_iterator, right, has_suffix)
         }
-        Operation::RegexMatches(_, right) => {
-            implement_filter!(expression_iterator, right, regex_matches)
-        }
-        Operation::NotRegexMatches(_, right) => {
-            implement_negated_filter!(expression_iterator, right, regex_matches)
-        }
+        Operation::RegexMatches(_, right) => match &right {
+            Argument::Tag(_) => {
+                implement_filter!(expression_iterator, right, regex_matches_slow_path)
+            }
+            Argument::Variable(var) => {
+                let variable_value = &query.arguments[var.variable_name.as_ref()];
+                let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
+
+                Box::new(expression_iterator.filter_map(move |mut context| {
+                    let _ = context.values.pop().unwrap();
+                    let left_value = context.values.pop().unwrap();
+
+                    if regex_matches_optimized(&left_value, &pattern) {
+                        Some(context)
+                    } else {
+                        None
+                    }
+                }))
+            }
+        },
+        Operation::NotRegexMatches(_, right) => match &right {
+            Argument::Tag(_) => {
+                implement_negated_filter!(expression_iterator, right, regex_matches_slow_path)
+            }
+            Argument::Variable(var) => {
+                let variable_value = &query.arguments[var.variable_name.as_ref()];
+                let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
+
+                Box::new(expression_iterator.filter_map(move |mut context| {
+                    let _ = context.values.pop().unwrap();
+                    let left_value = context.values.pop().unwrap();
+
+                    if !regex_matches_optimized(&left_value, &pattern) {
+                        Some(context)
+                    } else {
+                        None
+                    }
+                }))
+            }
+        },
     }
 }
 
