@@ -39,14 +39,8 @@ jobs:
       - name: Upload builds
         uses: actions/upload-artifact@v2
         with:
-          retention-days: 5
-          path: |
-            trustfall_core/target/
-            filetests_proc_macro/target/
-            pytrustfall/target/
-            demo-hackernews/target/
-            demo-metar/target/
-            demo-feeds/target/
+          retention-days: 3
+          path: target/
 
   lint:
     name: Check lint and rustfmt
