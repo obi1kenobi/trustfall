@@ -1,0 +1,60 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "nullables",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "MainType",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "MainType",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "nonNullBool",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "nonNullBool",
+          output: [
+            OutputDirective(),
+          ],
+          tag: [
+            TagDirective(
+              name: Some("my_tag"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "bool",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "bool",
+          filter: [
+            FilterDirective(
+              operation: LessThan((), TagRef("my_tag")),
+            ),
+          ],
+        )),
+      ],
+    ),
+  ),
+))
