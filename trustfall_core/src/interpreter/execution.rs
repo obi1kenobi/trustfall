@@ -422,7 +422,14 @@ fn apply_filter<'query, DataToken: Clone + Debug + 'query>(
                     field_name: context_field.field_name.clone(),
                     field_type: context_field.field_type.clone(),
                 };
-                compute_local_field(adapter_ref, query, component, current_vid, &local_equivalent_field, field_iterator)
+                compute_local_field(
+                    adapter_ref,
+                    query,
+                    component,
+                    current_vid,
+                    &local_equivalent_field,
+                    field_iterator,
+                )
             } else {
                 compute_context_field(adapter_ref, query, component, context_field, field_iterator)
             }

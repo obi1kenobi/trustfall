@@ -51,9 +51,7 @@ pub enum FrontendError {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FilterTypeError {
-    #[error(
-        "Multiple filter-related type errors: {0}"
-    )]
+    #[error("Multiple filter-related type errors: {0}")]
     MultipleErrors(DisplayVec<FilterTypeError>),
 
     #[error(

@@ -29,7 +29,7 @@ use crate::{
 };
 
 use self::{
-    error::{DuplicatedNamesConflict, FrontendError, ValidationError, FilterTypeError},
+    error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
     util::get_underlying_named_type,
     validation::validate_query_against_schema,
 };
@@ -165,7 +165,11 @@ fn make_edge_parameters(
     }
 }
 
-fn infer_variable_type(property_name: &str, property_type: &Type, operation: &Operation<(), OperatorArgument>) -> Result<Type, FilterTypeError> {
+fn infer_variable_type(
+    property_name: &str,
+    property_type: &Type,
+    operation: &Operation<(), OperatorArgument>,
+) -> Result<Type, FilterTypeError> {
     match operation {
         Operation::Equals(..) | Operation::NotEquals(..) => {
             // Direct equality comparison.
@@ -259,7 +263,11 @@ fn make_filter_expr(
             Ok(match arg {
                 OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
                     variable_name: var_name.clone(),
-                    variable_type: infer_variable_type(property_name.as_ref(), property_type, &filter_directive.operation)?,
+                    variable_type: infer_variable_type(
+                        property_name.as_ref(),
+                        property_type,
+                        &filter_directive.operation,
+                    )?,
                 }),
                 OperatorArgument::TagRef(tag_name) => {
                     let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
