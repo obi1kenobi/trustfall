@@ -212,8 +212,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(1),
       "successor": Int64(2),
+      "value": Int64(1),
     },
   ],
 )

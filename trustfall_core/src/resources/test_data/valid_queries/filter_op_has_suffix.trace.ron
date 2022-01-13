@@ -575,7 +575,7 @@ TestInterpreterOutputTrace(
                 field_type: "String",
               ), Variable(VariableRef(
                 variable_name: "suffix",
-                variable_type: "String",
+                variable_type: "String!",
               ))),
             ],
           ),

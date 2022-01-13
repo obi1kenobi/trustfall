@@ -481,7 +481,7 @@ TestInterpreterOutputTrace(
                 field_type: "String",
               ), Variable(VariableRef(
                 variable_name: "prefix",
-                variable_type: "String",
+                variable_type: "String!",
               ))),
             ],
           ),

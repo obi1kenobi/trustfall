@@ -997,13 +997,13 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
-              2,
-              5,
-            ]))),
             Vid(2): Some(Composite(CompositeNumber(30, [
               2,
               3,
+              5,
+            ]))),
+            Vid(1): Some(Composite(CompositeNumber(10, [
+              2,
               5,
             ]))),
           },
@@ -1019,13 +1019,13 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
-              2,
-              5,
-            ]))),
             Vid(2): Some(Composite(CompositeNumber(30, [
               2,
               3,
+              5,
+            ]))),
+            Vid(1): Some(Composite(CompositeNumber(10, [
+              2,
               5,
             ]))),
           },
@@ -1040,13 +1040,13 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
-              2,
-              5,
-            ]))),
             Vid(2): Some(Composite(CompositeNumber(30, [
               2,
               3,
+              5,
+            ]))),
+            Vid(1): Some(Composite(CompositeNumber(10, [
+              2,
               5,
             ]))),
           },
@@ -1064,13 +1064,13 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
-              2,
-              5,
-            ]))),
             Vid(2): Some(Composite(CompositeNumber(30, [
               2,
               3,
+              5,
+            ]))),
+            Vid(1): Some(Composite(CompositeNumber(10, [
+              2,
               5,
             ]))),
           },
@@ -1143,11 +1143,11 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
+            Vid(2): Some(Composite(CompositeNumber(40, [
               2,
               5,
             ]))),
-            Vid(2): Some(Composite(CompositeNumber(40, [
+            Vid(1): Some(Composite(CompositeNumber(10, [
               2,
               5,
             ]))),
@@ -1163,11 +1163,11 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
+            Vid(2): Some(Composite(CompositeNumber(40, [
               2,
               5,
             ]))),
-            Vid(2): Some(Composite(CompositeNumber(40, [
+            Vid(1): Some(Composite(CompositeNumber(10, [
               2,
               5,
             ]))),
@@ -1183,11 +1183,11 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
+            Vid(2): Some(Composite(CompositeNumber(40, [
               2,
               5,
             ]))),
-            Vid(2): Some(Composite(CompositeNumber(40, [
+            Vid(1): Some(Composite(CompositeNumber(10, [
               2,
               5,
             ]))),
@@ -1206,11 +1206,11 @@ TestInterpreterOutputTrace(
             5,
           ]))),
           tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
+            Vid(2): Some(Composite(CompositeNumber(40, [
               2,
               5,
             ]))),
-            Vid(2): Some(Composite(CompositeNumber(40, [
+            Vid(1): Some(Composite(CompositeNumber(10, [
               2,
               5,
             ]))),
@@ -1313,7 +1313,7 @@ TestInterpreterOutputTrace(
                 field_type: "Int",
               ), Variable(VariableRef(
                 variable_name: "num",
-                variable_type: "Int",
+                variable_type: "Int!",
               ))),
             ],
           ),
@@ -1357,8 +1357,8 @@ TestInterpreterOutputTrace(
       "value": Int64(8),
     },
     {
-      "mult": Int64(27),
       "value": Int64(9),
+      "mult": Int64(27),
     },
     {
       "mult": Int64(36),

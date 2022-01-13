@@ -212,8 +212,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "zero": Int64(0),
       "succ_value": Int64(1),
+      "zero": Int64(0),
     },
   ],
 )

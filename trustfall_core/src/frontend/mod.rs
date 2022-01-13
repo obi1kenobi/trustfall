@@ -8,7 +8,7 @@ use std::{
 };
 
 use async_graphql_parser::{
-    types::{ExecutableDocument, FieldDefinition, Type, TypeDefinition, TypeKind},
+    types::{BaseType, ExecutableDocument, FieldDefinition, Type, TypeDefinition, TypeKind},
     Positioned,
 };
 use async_graphql_value::Name;
@@ -29,7 +29,7 @@ use crate::{
 };
 
 use self::{
-    error::{DuplicatedNamesConflict, FrontendError, ValidationError},
+    error::{DuplicatedNamesConflict, FrontendError, ValidationError, FilterTypeError},
     util::get_underlying_named_type,
     validation::validate_query_against_schema,
 };
@@ -165,6 +165,80 @@ fn make_edge_parameters(
     }
 }
 
+fn infer_variable_type(property_name: &str, property_type: &Type, operation: &Operation<(), OperatorArgument>) -> Result<Type, FilterTypeError> {
+    match operation {
+        Operation::Equals(..) | Operation::NotEquals(..) => {
+            // Direct equality comparison.
+            // If the field is nullable, then the input should be nullable too
+            // so that the null valued fields can be matched.
+            Ok(property_type.clone())
+        }
+        Operation::LessThan(..)
+        | Operation::LessThanOrEqual(..)
+        | Operation::GreaterThan(..)
+        | Operation::GreaterThanOrEqual(..) => {
+            // The null value isn't orderable relative to non-null values of its type.
+            // Use a type that is structurally the same but non-null at the top level.
+            //
+            // Why only the top level? Consider a comparison against type [[Int]].
+            // Using a "null" valued variable doesn't make sense as a comparison.
+            // However, [[1], [2], null] is a valid value to use in the comparison, since
+            // there are definitely values that it is smaller than or bigger than.
+            Ok(Type {
+                base: property_type.base.clone(),
+                nullable: false,
+            })
+        }
+        Operation::Contains(..) | Operation::NotContains(..) => {
+            // To be able to check whether the property's value contains the operand,
+            // the property needs to be a list. If it's not a list, this is a bad filter.
+            let inner_type = match &property_type.base {
+                BaseType::Named(_) => {
+                    return Err(FilterTypeError::ListFilterOperationOnNonListField(
+                        operation.operation_name().to_string(),
+                        property_name.to_string(),
+                        property_type.to_string(),
+                    ))
+                }
+                BaseType::List(inner) => inner.as_ref(),
+            };
+
+            // We're trying to see if a list of element contains our element, so its type
+            // is whatever is inside the list -- nullable or not.
+            Ok(inner_type.clone())
+        }
+        Operation::OneOf(..) | Operation::NotOneOf(..) => {
+            // Whatever the property's type is, the argument must be a non-nullable list of
+            // the same type, so that the elements of that list may be checked for equality
+            // against that property's value.
+            Ok(Type {
+                base: BaseType::List(Box::new(property_type.clone())),
+                nullable: false,
+            })
+        }
+        Operation::HasPrefix(..)
+        | Operation::NotHasPrefix(..)
+        | Operation::HasSuffix(..)
+        | Operation::NotHasSuffix(..)
+        | Operation::HasSubstring(..)
+        | Operation::NotHasSubstring(..)
+        | Operation::RegexMatches(..)
+        | Operation::NotRegexMatches(..) => {
+            // Filtering operations involving strings only take non-nullable strings as inputs.
+            Ok(Type {
+                base: BaseType::Named(Name::new("String")),
+                nullable: false,
+            })
+        }
+        Operation::IsNull(..) | Operation::IsNotNull(..) => {
+            // These are unary operations, there's no place where a variable can be used.
+            // There's nothing to be inferred, and this function must never be called
+            // for such operations.
+            unreachable!()
+        }
+    }
+}
+
 fn make_filter_expr(
     schema: &Schema,
     tags: &BTreeMap<Arc<str>, ContextField>,
@@ -185,7 +259,7 @@ fn make_filter_expr(
             Ok(match arg {
                 OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
                     variable_name: var_name.clone(),
-                    variable_type: property_type.clone(), // TODO: this is wrong, infer better
+                    variable_type: infer_variable_type(property_name.as_ref(), property_type, &filter_directive.operation)?,
                 }),
                 OperatorArgument::TagRef(tag_name) => {
                     let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {

@@ -255,7 +255,7 @@ TestInterpreterOutputTrace(
                 field_type: "String",
               ), Variable(VariableRef(
                 variable_name: "substr",
-                variable_type: "String",
+                variable_type: "String!",
               ))),
             ],
           ),

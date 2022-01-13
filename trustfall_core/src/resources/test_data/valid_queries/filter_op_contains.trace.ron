@@ -378,7 +378,7 @@ TestInterpreterOutputTrace(
                 field_type: "[String]",
               ), Variable(VariableRef(
                 variable_name: "vowel",
-                variable_type: "[String]",
+                variable_type: "String",
               ))),
             ],
           ),

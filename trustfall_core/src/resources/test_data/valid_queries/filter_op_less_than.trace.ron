@@ -168,7 +168,7 @@ TestInterpreterOutputTrace(
                 field_type: "Int",
               ), Variable(VariableRef(
                 variable_name: "num",
-                variable_type: "Int",
+                variable_type: "Int!",
               ))),
             ],
           ),

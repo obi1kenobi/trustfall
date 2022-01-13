@@ -10,6 +10,10 @@ find ./src/resources/test_data/frontend_errors -name '*.graphql.ron' | \
     xargs -n 1 \
     sh -c 'cargo run parse $0 >"$(dirname $0)/$(basename $0 | cut -d'.' -f1).graphql-parsed.ron"'
 
+find ./src/resources/test_data/execution_errors -name '*.graphql.ron' | \
+    xargs -n 1 \
+    sh -c 'cargo run parse $0 >"$(dirname $0)/$(basename $0 | cut -d'.' -f1).graphql-parsed.ron"'
+
 find ./src/resources/test_data/valid_queries -name '*.graphql.ron' | \
     xargs -n 1 \
     sh -c 'cargo run parse $0 >"$(dirname $0)/$(basename $0 | cut -d'.' -f1).graphql-parsed.ron"'
