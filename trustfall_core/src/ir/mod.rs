@@ -4,10 +4,12 @@ pub mod indexed;
 
 use std::{collections::BTreeMap, convert::TryFrom, fmt, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
-use async_graphql_parser::types::Type;
+use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::{ConstValue, Number, Value};
 use chrono::{DateTime, Utc};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::frontend::error::FilterTypeError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Vid(pub(crate) NonZeroUsize); // vertex ID
@@ -458,6 +460,15 @@ pub enum Argument {
     Variable(VariableRef),
 }
 
+impl Argument {
+    pub(crate) fn as_tag(&self) -> Option<&ContextField> {
+        match self {
+            Argument::Tag(t) => Some(t),
+            Argument::Variable(_) => None,
+        }
+    }
+}
+
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation<LeftT, RightT>
@@ -541,6 +552,31 @@ where
         }
     }
 
+    pub(crate) fn operation_name(&self) -> &'static str {
+        match self {
+            Operation::IsNull(..) => "is_null",
+            Operation::IsNotNull(..) => "is_not_null",
+            Operation::Equals(..) => "=",
+            Operation::NotEquals(..) => "!=",
+            Operation::LessThan(..) => "<",
+            Operation::LessThanOrEqual(..) => "<=",
+            Operation::GreaterThan(..) => ">",
+            Operation::GreaterThanOrEqual(..) => ">=",
+            Operation::Contains(..) => "contains",
+            Operation::NotContains(..) => "not_contains",
+            Operation::OneOf(..) => "one_of",
+            Operation::NotOneOf(..) => "not_one_of",
+            Operation::HasPrefix(..) => "has_prefix",
+            Operation::NotHasPrefix(..) => "not_has_prefix",
+            Operation::HasSuffix(..) => "has_suffix",
+            Operation::NotHasSuffix(..) => "not_has_suffix",
+            Operation::HasSubstring(..) => "has_substring",
+            Operation::NotHasSubstring(..) => "not_has_substring",
+            Operation::RegexMatches(..) => "regex",
+            Operation::NotRegexMatches(..) => "not_regex",
+        }
+    }
+
     pub(crate) fn try_map<LeftF, LeftOutT, RightF, RightOutT, Err>(
         &self,
         map_left: LeftF,
@@ -606,6 +642,264 @@ where
                 Operation::NotRegexMatches(map_left(left)?, map_right(right)?)
             }
         })
+    }
+}
+
+impl Operation<LocalField, Argument> {
+    pub(crate) fn operand_types_valid(
+        &self,
+        tag_name: Option<&str>,
+    ) -> Result<(), FilterTypeError> {
+        let left = self.left();
+        let right = self.right();
+        let left_type = &left.field_type;
+        let right_type = right.map(|arg| match arg {
+            Argument::Tag(tag) => &tag.field_type,
+            Argument::Variable(var) => &var.variable_type,
+        });
+
+        // Check the left and right operands match the operator's needs individually.
+        // For example:
+        // - Check that nullability filters aren't applied to fields that are already non-nullable.
+        // - Check that string-like filters aren't used with non-string operands.
+        //
+        // Also check that the left and right operands have the appropriate relationship with
+        // each other when considering the operand they are used with. For example:
+        // - Check that filtering with "=" happens between equal types, ignoring nullability.
+        // - Check that filtering with "contains" happens with a left-hand type that is a
+        //   (maybe non-nullable) list of a maybe-nullable version of the right-hand type.
+        match self {
+            Operation::IsNull(_) | Operation::IsNotNull(_) => {
+                // Checking non-nullable types for null or non-null is pointless.
+                if left_type.nullable {
+                    Ok(())
+                } else {
+                    Err(FilterTypeError::NonNullableTypeFilteredForNullability(
+                        self.operation_name().to_owned(),
+                        left.field_name.to_string(),
+                        left.field_type.to_string(),
+                        matches!(self, Operation::IsNotNull(..)),
+                    ))
+                }
+            }
+            Operation::Equals(_, _) | Operation::NotEquals(_, _) => {
+                // Individually, any operands are valid for equality operations.
+                //
+                // For the operands relative to each other, nullability doesn't matter,
+                // but the rest of the type must be the same.
+                let right_type = right_type.unwrap();
+                if are_base_types_equal_ignoring_nullability(&left_type.base, &right_type.base) {
+                    Ok(())
+                } else {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
+
+                    Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left_type.to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name.to_string(),
+                        tag.field_type.to_string(),
+                    ))
+                }
+            }
+            Operation::LessThan(_, _)
+            | Operation::LessThanOrEqual(_, _)
+            | Operation::GreaterThan(_, _)
+            | Operation::GreaterThanOrEqual(_, _) => {
+                // Individually, the operands' types must be non-nullable or list, recursively,
+                // versions of orderable types.
+                let right_type = right_type.unwrap();
+
+                let mut errors = vec![];
+                if !is_base_type_orderable(&left_type.base) {
+                    errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left_type.to_string(),
+                    ));
+                }
+
+                if !is_base_type_orderable(&right_type.base) {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
+
+                    errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableTag(
+                        self.operation_name().to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name.to_string(),
+                        tag.field_type.to_string(),
+                    ));
+                }
+
+                // For the operands relative to each other, nullability doesn't matter,
+                // but the types must be equal to each other.
+                if !are_base_types_equal_ignoring_nullability(&left_type.base, &right_type.base) {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
+
+                    errors.push(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left_type.to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name.to_string(),
+                        tag.field_type.to_string(),
+                    ));
+                }
+
+                if errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(errors.into())
+                }
+            }
+            Operation::Contains(_, _) | Operation::NotContains(_, _) => {
+                // The left-hand operand needs to be a list, ignoring nullability.
+                // The right-hand operand may be anything, if considered individually.
+                let inner_type = match &left_type.base {
+                    BaseType::List(ty) => Ok(ty),
+                    BaseType::Named(_) => Err(FilterTypeError::ListFilterOperationOnNonListField(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left.field_type.to_string(),
+                    )),
+                }?;
+
+                let right_type = right_type.unwrap();
+
+                // However, the type inside the left-hand list must be equal,
+                // ignoring nullability, to the type of the right-hand operand.
+                if are_base_types_equal_ignoring_nullability(&inner_type.base, &right_type.base) {
+                    Ok(())
+                } else {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
+
+                    Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left_type.to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name.to_string(),
+                        tag.field_type.to_string(),
+                    ))
+                }
+            }
+            Operation::OneOf(_, _) | Operation::NotOneOf(_, _) => {
+                // The right-hand operand needs to be a list, ignoring nullability.
+                // The left-hand operand may be anything, if considered individually.
+                let right_type = right_type.unwrap();
+                let inner_type = match &right_type.base {
+                    BaseType::List(ty) => Ok(ty),
+                    BaseType::Named(_) => {
+                        // The right argument must be a tag at this point. If it is not a tag
+                        // and the second .unwrap() below panics, then our type inference
+                        // has inferred an incorrect type for the variable in the argument.
+                        let tag = right.unwrap().as_tag().unwrap();
+
+                        Err(FilterTypeError::ListFilterOperationOnNonListTag(
+                            self.operation_name().to_string(),
+                            tag_name.unwrap().to_string(),
+                            tag.field_name.to_string(),
+                            tag.field_type.to_string(),
+                        ))
+                    }
+                }?;
+
+                // However, the type inside the right-hand list must be equal,
+                // ignoring nullability, to the type of the left-hand operand.
+                if are_base_types_equal_ignoring_nullability(&left_type.base, &inner_type.base) {
+                    Ok(())
+                } else {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
+
+                    Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left_type.to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name.to_string(),
+                        tag.field_type.to_string(),
+                    ))
+                }
+            }
+            Operation::HasPrefix(_, _)
+            | Operation::NotHasPrefix(_, _)
+            | Operation::HasSuffix(_, _)
+            | Operation::NotHasSuffix(_, _)
+            | Operation::HasSubstring(_, _)
+            | Operation::NotHasSubstring(_, _)
+            | Operation::RegexMatches(_, _)
+            | Operation::NotRegexMatches(_, _) => {
+                let mut errors = vec![];
+
+                // Both operands need to be strings, ignoring nullability.
+                match &left_type.base {
+                    BaseType::Named(ty) if ty == "String" => {}
+                    _ => {
+                        errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
+                            self.operation_name().to_string(),
+                            left.field_name.to_string(),
+                            left_type.to_string(),
+                        ));
+                    }
+                };
+
+                match &right_type.unwrap().base {
+                    BaseType::Named(ty) if ty == "String" => {}
+                    _ => {
+                        // The right argument must be a tag at this point. If it is not a tag
+                        // and the second .unwrap() below panics, then our type inference
+                        // has inferred an incorrect type for the variable in the argument.
+                        let tag = right.unwrap().as_tag().unwrap();
+                        errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
+                            self.operation_name().to_string(),
+                            tag_name.unwrap().to_string(),
+                            tag.field_name.to_string(),
+                            tag.field_type.to_string(),
+                        ));
+                    }
+                }
+
+                if errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(errors.into())
+                }
+            }
+        }
+    }
+}
+
+fn are_base_types_equal_ignoring_nullability(left: &BaseType, right: &BaseType) -> bool {
+    match (left, right) {
+        (BaseType::Named(l), BaseType::Named(r)) => l == r,
+        (BaseType::List(l), BaseType::List(r)) => {
+            are_base_types_equal_ignoring_nullability(&l.base, &r.base)
+        }
+        (BaseType::Named(_), BaseType::List(_)) | (BaseType::List(_), BaseType::Named(_)) => false,
+    }
+}
+
+fn is_base_type_orderable(operand_type: &BaseType) -> bool {
+    match operand_type {
+        BaseType::Named(name) => {
+            name == "Int" || name == "Float" || name == "String" || name == "DateTime"
+        }
+        BaseType::List(l) => is_base_type_orderable(&l.base),
     }
 }
 

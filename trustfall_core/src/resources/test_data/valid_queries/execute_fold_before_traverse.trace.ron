@@ -112,15 +112,21 @@ TestInterpreterOutputTrace(
       Opid(18): TraceOp(
         opid: Opid(18),
         parent_opid: Some(Opid(15)),
-        content: YieldFrom(ProjectNeighborsInner(0, Prime(PrimeNumber(4)))),
+        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(4, [
+          2,
+        ])))),
       ),
       Opid(19): TraceOp(
         opid: Opid(19),
         parent_opid: Some(Opid(16)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(4))),
+          current_token: Some(Composite(CompositeNumber(4, [
+            2,
+          ]))),
           tokens: {
-            Vid(3): Some(Prime(PrimeNumber(4))),
+            Vid(3): Some(Composite(CompositeNumber(4, [
+              2,
+            ]))),
           },
         )),
       ),
@@ -128,9 +134,13 @@ TestInterpreterOutputTrace(
         opid: Opid(20),
         parent_opid: Some(Opid(16)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(4))),
+          current_token: Some(Composite(CompositeNumber(4, [
+            2,
+          ]))),
           tokens: {
-            Vid(3): Some(Prime(PrimeNumber(4))),
+            Vid(3): Some(Composite(CompositeNumber(4, [
+              2,
+            ]))),
           },
         ), Int64(4))),
       ),
@@ -244,8 +254,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(4): Some(Prime(PrimeNumber(3))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
@@ -262,8 +272,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(4): Some(Prime(PrimeNumber(3))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {

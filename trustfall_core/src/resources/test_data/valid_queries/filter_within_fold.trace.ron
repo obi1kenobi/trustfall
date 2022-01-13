@@ -65,13 +65,17 @@ TestInterpreterOutputTrace(
       Opid(11): TraceOp(
         opid: Opid(11),
         parent_opid: Some(Opid(6)),
-        content: YieldFrom(ProjectNeighborsInner(0, Prime(PrimeNumber(4)))),
+        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(4, [
+          2,
+        ])))),
       ),
       Opid(12): TraceOp(
         opid: Opid(12),
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(4))),
+          current_token: Some(Composite(CompositeNumber(4, [
+            2,
+          ]))),
           tokens: {},
         )),
       ),
@@ -79,7 +83,9 @@ TestInterpreterOutputTrace(
         opid: Opid(13),
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(4))),
+          current_token: Some(Composite(CompositeNumber(4, [
+            2,
+          ]))),
           tokens: {},
         ), Int64(4))),
       ),
@@ -163,13 +169,17 @@ TestInterpreterOutputTrace(
       Opid(22): TraceOp(
         opid: Opid(22),
         parent_opid: Some(Opid(6)),
-        content: YieldFrom(ProjectNeighborsInner(2, Prime(PrimeNumber(8)))),
+        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(8, [
+          2,
+        ])))),
       ),
       Opid(23): TraceOp(
         opid: Opid(23),
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(8))),
+          current_token: Some(Composite(CompositeNumber(8, [
+            2,
+          ]))),
           tokens: {},
         )),
       ),
@@ -177,7 +187,9 @@ TestInterpreterOutputTrace(
         opid: Opid(24),
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(8))),
+          current_token: Some(Composite(CompositeNumber(8, [
+            2,
+          ]))),
           tokens: {},
         ), Int64(8))),
       ),
@@ -185,9 +197,13 @@ TestInterpreterOutputTrace(
         opid: Opid(25),
         parent_opid: Some(Opid(8)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(8))),
+          current_token: Some(Composite(CompositeNumber(8, [
+            2,
+          ]))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(8))),
+            Vid(2): Some(Composite(CompositeNumber(8, [
+              2,
+            ]))),
           },
         )),
       ),
@@ -195,9 +211,13 @@ TestInterpreterOutputTrace(
         opid: Opid(26),
         parent_opid: Some(Opid(8)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(8))),
+          current_token: Some(Composite(CompositeNumber(8, [
+            2,
+          ]))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(8))),
+            Vid(2): Some(Composite(CompositeNumber(8, [
+              2,
+            ]))),
           },
         ), String("eight"))),
       ),
@@ -288,7 +308,7 @@ TestInterpreterOutputTrace(
                       field_type: "Int",
                     ), Variable(VariableRef(
                       variable_name: "bound",
-                      variable_type: "Int",
+                      variable_type: "Int!",
                     ))),
                   ],
                 ),

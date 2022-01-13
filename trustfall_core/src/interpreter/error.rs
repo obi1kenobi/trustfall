@@ -1,6 +1,6 @@
-use std::fmt::Display;
-
 use serde::{Deserialize, Serialize};
+
+use crate::util::DisplayVec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum QueryArgumentsError {
@@ -16,21 +16,11 @@ pub enum QueryArgumentsError {
 
 impl From<Vec<QueryArgumentsError>> for QueryArgumentsError {
     fn from(v: Vec<QueryArgumentsError>) -> Self {
-        Self::MultipleErrors(DisplayVec(v))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct DisplayVec<T>(pub Vec<T>);
-
-impl<T: Display> Display for DisplayVec<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "[")?;
-
-        for item in &self.0 {
-            writeln!(f, "  {};", item)?;
+        assert!(!v.is_empty());
+        if v.len() == 1 {
+            v.into_iter().next().unwrap()
+        } else {
+            Self::MultipleErrors(DisplayVec(v))
         }
-
-        write!(f, "]")
     }
 }

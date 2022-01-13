@@ -173,8 +173,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
       ),
@@ -184,8 +184,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), Int64(2))),
       ),
@@ -195,8 +195,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             Int64(2),
@@ -209,8 +209,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             Int64(2),
@@ -365,16 +365,22 @@ TestInterpreterOutputTrace(
       Opid(47): TraceOp(
         opid: Opid(47),
         parent_opid: Some(Opid(46)),
-        content: YieldFrom(ProjectNeighborsInner(0, Prime(PrimeNumber(4)))),
+        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(4, [
+          2,
+        ])))),
       ),
       Opid(48): TraceOp(
         opid: Opid(48),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(4))),
+          current_token: Some(Composite(CompositeNumber(4, [
+            2,
+          ]))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(3))),
-            Vid(2): Some(Prime(PrimeNumber(4))),
+            Vid(2): Some(Composite(CompositeNumber(4, [
+              2,
+            ]))),
           },
         )),
       ),
@@ -382,10 +388,14 @@ TestInterpreterOutputTrace(
         opid: Opid(49),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(4))),
+          current_token: Some(Composite(CompositeNumber(4, [
+            2,
+          ]))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(3))),
-            Vid(2): Some(Prime(PrimeNumber(4))),
+            Vid(2): Some(Composite(CompositeNumber(4, [
+              2,
+            ]))),
           },
         ), Int64(4))),
       ),
@@ -396,7 +406,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(3))),
-            Vid(2): Some(Prime(PrimeNumber(4))),
+            Vid(2): Some(Composite(CompositeNumber(4, [
+              2,
+            ]))),
           },
           values: [
             Int64(4),
@@ -410,7 +422,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(3))),
-            Vid(2): Some(Prime(PrimeNumber(4))),
+            Vid(2): Some(Composite(CompositeNumber(4, [
+              2,
+            ]))),
           },
           values: [
             Int64(4),
@@ -520,12 +534,12 @@ TestInterpreterOutputTrace(
       "value": Int64(0),
     },
     {
-      "successor": Int64(2),
       "value": Int64(1),
+      "successor": Int64(2),
     },
     {
-      "value": Int64(2),
       "successor": Int64(3),
+      "value": Int64(2),
     },
     {
       "value": Int64(3),

@@ -1,0 +1,10 @@
+TestGraphQLQuery (
+    schema_name: "nullables",
+    query: r#"
+{
+    MainType {
+        nonNullString @filter(op: "is_not_null") @output
+    }
+}"#,
+    arguments: {},
+)

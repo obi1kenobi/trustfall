@@ -1,0 +1,20 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+
+    // The @tag comes after the @filter that uses it, and it's in a different scope,
+    // so this is an error. To work, this query must be rewritten to switch the places
+    // of the @tag and the @filter.
+    query: r#"
+{
+    One {
+        name @filter(op: "=", value: ["%my_tag"]) @output
+
+        successor {
+            predecessor {
+                name @tag(name: "my_tag")
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
