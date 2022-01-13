@@ -713,45 +713,52 @@ impl Operation<LocalField, Argument> {
                 // Individually, the operands' types must be non-nullable or list, recursively,
                 // versions of orderable types.
                 let right_type = right_type.unwrap();
+
+                let mut errors = vec![];
                 if !is_base_type_orderable(&left_type.base) {
-                    Err(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
+                    errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
                         self.operation_name().to_string(),
                         left.field_name.to_string(),
                         left_type.to_string(),
-                    ))
-                } else if !is_base_type_orderable(&right_type.base) {
+                    ));
+                }
+
+                if !is_base_type_orderable(&right_type.base) {
                     // The right argument must be a tag at this point. If it is not a tag
                     // and the second .unwrap() below panics, then our type inference
                     // has inferred an incorrect type for the variable in the argument.
                     let tag = right.unwrap().as_tag().unwrap();
 
-                    Err(FilterTypeError::OrderingFilterOperationOnNonOrderableTag(
+                    errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableTag(
                         self.operation_name().to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name.to_string(),
                         tag.field_type.to_string(),
-                    ))
-                } else {
-                    // For the operands relative to each other, nullability doesn't matter,
-                    // but the types must be equal to each other.
-                    if are_base_types_equal_ignoring_nullability(&left_type.base, &right_type.base)
-                    {
-                        Ok(())
-                    } else {
-                        // The right argument must be a tag at this point. If it is not a tag
-                        // and the second .unwrap() below panics, then our type inference
-                        // has inferred an incorrect type for the variable in the argument.
-                        let tag = right.unwrap().as_tag().unwrap();
+                    ));
+                }
 
-                        Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
-                            self.operation_name().to_string(),
-                            left.field_name.to_string(),
-                            left_type.to_string(),
-                            tag_name.unwrap().to_string(),
-                            tag.field_name.to_string(),
-                            tag.field_type.to_string(),
-                        ))
-                    }
+                // For the operands relative to each other, nullability doesn't matter,
+                // but the types must be equal to each other.
+                if !are_base_types_equal_ignoring_nullability(&left_type.base, &right_type.base) {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
+
+                    errors.push(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                        self.operation_name().to_string(),
+                        left.field_name.to_string(),
+                        left_type.to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name.to_string(),
+                        tag.field_type.to_string(),
+                    ));
+                }
+
+                if errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(errors.into())
                 }
             }
             Operation::Contains(_, _) | Operation::NotContains(_, _) => {
@@ -837,34 +844,43 @@ impl Operation<LocalField, Argument> {
             | Operation::NotHasSubstring(_, _)
             | Operation::RegexMatches(_, _)
             | Operation::NotRegexMatches(_, _) => {
+                let mut errors = vec![];
+
                 // Both operands need to be strings, ignoring nullability.
                 match &left_type.base {
-                    BaseType::Named(ty) if ty == "String" => Ok(()),
-                    _ => Err(FilterTypeError::StringFilterOperationOnNonStringField(
-                        self.operation_name().to_string(),
-                        left.field_name.to_string(),
-                        left_type.to_string(),
-                    )),
-                }?;
+                    BaseType::Named(ty) if ty == "String" => {}
+                    _ => {
+                        errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
+                            self.operation_name().to_string(),
+                            left.field_name.to_string(),
+                            left_type.to_string(),
+                        ));
+                    }
+                };
+
                 match &right_type.unwrap().base {
-                    BaseType::Named(ty) if ty == "String" => Ok(()),
+                    BaseType::Named(ty) if ty == "String" => {}
                     _ => {
                         // The right argument must be a tag at this point. If it is not a tag
                         // and the second .unwrap() below panics, then our type inference
                         // has inferred an incorrect type for the variable in the argument.
                         let tag = right.unwrap().as_tag().unwrap();
-                        Err(FilterTypeError::StringFilterOperationOnNonStringTag(
+                        errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
                             self.operation_name().to_string(),
                             tag_name.unwrap().to_string(),
                             tag.field_name.to_string(),
                             tag.field_type.to_string(),
-                        ))
+                        ));
                     }
                 }
-            }
-        }?;
 
-        Ok(())
+                if errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(errors.into())
+                }
+            }
+        }
     }
 }
 
