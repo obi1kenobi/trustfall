@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::util::DisplayVec;
+
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FrontendError {
@@ -10,6 +12,13 @@ pub enum FrontendError {
 
     #[error("Filter on property name \"{0}\" uses undefined tag: %{1}")]
     UndefinedTagInFilter(String, String),
+
+    #[error(
+        "Filter on property name \"{0}\" uses tag \"{1}\" which is not yet defined at that point \
+        in the query. Please reorder the query components so that the @tag directive \
+        comes before all uses of its tagged value."
+    )]
+    TagUsedBeforeDefinition(String, String),
 
     #[error("Multiple fields are being output under the same name: {0:?}")]
     MultipleOutputsWithSameName(DuplicatedNamesConflict),
@@ -42,6 +51,11 @@ pub enum FrontendError {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FilterTypeError {
+    #[error(
+        "Multiple filter-related type errors: {0}"
+    )]
+    MultipleErrors(DisplayVec<FilterTypeError>),
+
     #[error(
         "Filter operation \"{0}\" unexpectedly used on non-nullable field \"{1}\" of type \"{2}\". \
         The filter's result would always be {3}. Please rewrite the query to avoid this filter."
@@ -89,6 +103,17 @@ pub enum FilterTypeError {
         operation \"{0}\" which requires a list type."
     )]
     ListFilterOperationOnNonListTag(String, String, String, String),
+}
+
+impl From<Vec<FilterTypeError>> for FilterTypeError {
+    fn from(v: Vec<FilterTypeError>) -> Self {
+        assert!(!v.is_empty());
+        if v.len() == 1 {
+            v.into_iter().next().unwrap()
+        } else {
+            Self::MultipleErrors(DisplayVec(v))
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

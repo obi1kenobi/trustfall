@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+
+    // The @tag comes after the @filter that uses it,
+    // but they are within the same scope so that's not an error.
+    query: r#"
+{
+    One {
+        vowelsInName @filter(op: "contains", value: ["%name"])
+
+        name @tag @output
+    }
+}"#,
+    arguments: {},
+)

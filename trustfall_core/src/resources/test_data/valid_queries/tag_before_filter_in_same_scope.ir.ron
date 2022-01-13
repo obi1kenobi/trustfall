@@ -1,0 +1,32 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "One",
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+          filters: [
+            Contains(LocalField(
+              field_name: "vowelsInName",
+              field_type: "[String]",
+            ), Tag(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            ))),
+          ],
+        ),
+      },
+      outputs: {
+        "name": ContextField(
+          vertex_id: Vid(1),
+          field_name: "name",
+          field_type: "String",
+        ),
+      },
+    ),
+  ),
+))

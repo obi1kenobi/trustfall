@@ -336,14 +336,31 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     Box::new(folded_iterator)
 }
 
+/// Check whether a tagged value that is being used in a filter originates from
+/// a scope that is optional and missing, and therefore the filter should pass.
+///
+/// A small subtlety is important here: it's possible that the tagged value is *local* to
+/// the scope being filtered. In that case, the context *will not* yet have a token associated
+/// with the vertex ID of the tag's ContextField. However, in such cases, the tagged value
+/// is *never* optional relative to the current scope, so we can safely return `false`.
+#[inline(always)]
+fn is_tag_optional_and_missing<'query, DataToken: Clone + Debug + 'query>(
+    context: &DataContext<DataToken>,
+    tagged_field: &ContextField,
+) -> bool {
+    // Some(None) means "there's a value associated with that Vid, and it's None".
+    // None would mean that the tagged value is local, i.e. nothing is associated with that Vid yet.
+    // Some(Some(token)) would mean that a vertex was found and associated with that Vid.
+    matches!(context.tokens.get(&tagged_field.vertex_id), Some(None))
+}
+
 macro_rules! implement_filter {
     ( $iter: ident, $right: ident, $func: ident ) => {
         Box::new($iter.filter_map(move |mut context| {
             let right_value = context.values.pop().unwrap();
             let left_value = context.values.pop().unwrap();
             if let Argument::Tag(field) = &$right {
-                let tag_optional_and_missing = context.tokens[&field.vertex_id].is_none();
-                if tag_optional_and_missing {
+                if is_tag_optional_and_missing(&context, field) {
                     return Some(context);
                 }
             }
@@ -363,8 +380,7 @@ macro_rules! implement_negated_filter {
             let right_value = context.values.pop().unwrap();
             let left_value = context.values.pop().unwrap();
             if let Argument::Tag(field) = &$right {
-                let tag_optional_and_missing = context.tokens[&field.vertex_id].is_none();
-                if tag_optional_and_missing {
+                if is_tag_optional_and_missing(&context, field) {
                     return Some(context);
                 }
             }
@@ -398,7 +414,18 @@ fn apply_filter<'query, DataToken: Clone + Debug + 'query>(
 
     let expression_iterator = match filter.right() {
         Some(Argument::Tag(context_field)) => {
-            compute_context_field(adapter_ref, query, component, context_field, field_iterator)
+            if context_field.vertex_id == current_vid {
+                // This tag is from the vertex we're currently filtering. That means the field
+                // whose value we want to get is actually local, so there's no need to compute it
+                // using the more expensive approach we use for non-local fields.
+                let local_equivalent_field = LocalField {
+                    field_name: context_field.field_name.clone(),
+                    field_type: context_field.field_type.clone(),
+                };
+                compute_local_field(adapter_ref, query, component, current_vid, &local_equivalent_field, field_iterator)
+            } else {
+                compute_context_field(adapter_ref, query, component, context_field, field_iterator)
+            }
         }
         Some(Argument::Variable(var)) => {
             let right_value = query.arguments[var.variable_name.as_ref()].to_owned();

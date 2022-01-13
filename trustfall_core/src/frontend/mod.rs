@@ -196,8 +196,9 @@ fn make_filter_expr(
                     })?;
 
                     if defined_tag.vertex_id > current_vertex_vid {
-                        return Err(FrontendError::OtherError(
-                            "Filter cannot use tag defined later than its use".into(),
+                        return Err(FrontendError::TagUsedBeforeDefinition(
+                            property_name.as_ref().to_owned(),
+                            tag_name.to_string(),
                         ));
                     }
                     Argument::Tag(defined_tag.clone())

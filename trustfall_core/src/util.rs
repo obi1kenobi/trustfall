@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::Arc;
 
@@ -11,6 +11,21 @@ use crate::{
     interpreter::trace::Trace,
     ir::{FieldValue, IRQuery},
 };
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct DisplayVec<T>(pub Vec<T>);
+
+impl<T: Display> Display for DisplayVec<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "[")?;
+
+        for item in &self.0 {
+            writeln!(f, "  {};", item)?;
+        }
+
+        write!(f, "]")
+    }
+}
 
 pub(crate) trait TryCollectUniqueKey<K, V>: Iterator<Item = (K, V)>
 where
