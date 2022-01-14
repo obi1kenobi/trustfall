@@ -1140,16 +1140,16 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
+      "prime": List([]),
       "value": Int64(0),
-      "prime": List([]),
     },
     {
+      "prime": List([]),
       "value": Int64(1),
-      "prime": List([]),
     },
     {
-      "prime": List([]),
       "value": Int64(2),
+      "prime": List([]),
     },
     {
       "value": Int64(3),
@@ -1168,10 +1168,10 @@ TestInterpreterOutputTrace(
       "prime": List([]),
     },
     {
+      "value": Int64(6),
       "prime": List([
         Int64(5),
       ]),
-      "value": Int64(6),
     },
   ],
 )

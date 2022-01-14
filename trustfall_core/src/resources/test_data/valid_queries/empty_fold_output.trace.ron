@@ -188,8 +188,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(0),
       "mult": List([]),
+      "value": Int64(0),
     },
   ],
 )

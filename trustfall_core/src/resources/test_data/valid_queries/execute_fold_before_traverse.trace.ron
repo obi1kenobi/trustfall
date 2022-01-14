@@ -254,8 +254,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
-            Vid(4): Some(Prime(PrimeNumber(3))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(4): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
@@ -272,8 +272,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
-            Vid(4): Some(Prime(PrimeNumber(3))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(4): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {

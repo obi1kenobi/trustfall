@@ -21,8 +21,9 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge,
-        IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, VariableRef, Vid,
+        indexed::IndexedQuery, types::intersect_types, Argument, ContextField, EdgeParameters, Eid,
+        FieldValue, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation,
+        VariableRef, Vid,
     },
     schema::{Schema, BUILTIN_SCALARS},
     util::TryCollectUniqueKey,
@@ -326,7 +327,7 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
     )?;
 
     let mut output_prefixes = Default::default();
-    let root_component = make_query_component(
+    let mut root_component = make_query_component(
         schema,
         query,
         &mut vid_maker,
@@ -339,11 +340,60 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         &query.root_field,
     )?;
 
+    let mut variables: BTreeMap<Arc<str>, Type> = Default::default();
+    if let Err(v) = fill_in_query_variables(&mut variables, &root_component) {
+        let e: FilterTypeError = v.into();
+        return Err(e.into());
+    }
+
     Ok(IRQuery {
         root_name: root_field_name.as_ref().to_owned().into(),
         root_parameters,
         root_component: root_component.into(),
+        variables,
     })
+}
+
+fn fill_in_query_variables(
+    variables: &mut BTreeMap<Arc<str>, Type>,
+    component: &IRQueryComponent,
+) -> Result<(), Vec<FilterTypeError>> {
+    let mut errors: Vec<FilterTypeError> = vec![];
+
+    for vertex in component.vertices.values() {
+        for filter in &vertex.filters {
+            if let Some(Argument::Variable(vref)) = filter.right() {
+                let existing_type = variables
+                    .entry(vref.variable_name.clone())
+                    .or_insert_with(|| vref.variable_type.clone());
+
+                match intersect_types(existing_type, &vref.variable_type) {
+                    Some(intersection) => {
+                        *existing_type = intersection;
+                    }
+                    None => {
+                        errors.push(FilterTypeError::IncompatibleVariableTypeRequirements(
+                            vref.variable_name.to_string(),
+                            existing_type.to_string(),
+                            vref.variable_type.to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    for inner_component in component.folds.values().map(|f| f.component.as_ref()) {
+        if let Err(e) = fill_in_query_variables(variables, inner_component) {
+            errors.extend(e.into_iter());
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

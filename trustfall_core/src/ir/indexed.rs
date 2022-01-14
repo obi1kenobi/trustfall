@@ -3,10 +3,7 @@ use std::{collections::BTreeMap, convert::TryFrom, ptr, sync::Arc};
 use async_graphql_parser::types::{BaseType, Type};
 use serde::{Deserialize, Serialize};
 
-use super::{
-    serde_type_deserializer, serde_type_serializer, Argument, Eid, IREdge, IRFold, IRQuery,
-    IRQueryComponent, Vid,
-};
+use super::{types::is_subtype, Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedQuery {
@@ -16,10 +13,6 @@ pub struct IndexedQuery {
 
     pub eids: BTreeMap<Eid, EdgeKind>,
 
-    // TODO: Record the expected type of arguments. How should null/non-null be handled when
-    //       the argument isn't the same type as the field being filtered?
-    pub required_arguments: BTreeMap<Arc<str>, ()>,
-
     pub outputs: BTreeMap<Arc<str>, Output>,
 }
 
@@ -27,8 +20,8 @@ pub struct IndexedQuery {
 pub struct Output {
     pub name: Arc<str>,
 
-    #[serde(serialize_with = "serde_type_serializer")]
-    #[serde(deserialize_with = "serde_type_deserializer")]
+    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
+    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub value_type: Type,
 
     pub vid: Vid,
@@ -66,14 +59,13 @@ impl TryFrom<IRQuery> for IndexedQuery {
         // TODO: most of the above
         let mut vids = Default::default();
         let mut eids = Default::default();
-        let mut required_arguments = Default::default();
         let mut outputs = Default::default();
 
         add_data_from_component(
             &mut vids,
             &mut eids,
-            &mut required_arguments,
             &mut outputs,
+            &ir_query.variables,
             &ir_query.root_component,
             0,
         )?;
@@ -82,7 +74,6 @@ impl TryFrom<IRQuery> for IndexedQuery {
             ir_query,
             vids,
             eids,
-            required_arguments,
             outputs,
         })
     }
@@ -91,8 +82,8 @@ impl TryFrom<IRQuery> for IndexedQuery {
 fn add_data_from_component(
     vids: &mut BTreeMap<Vid, Arc<IRQueryComponent>>,
     eids: &mut BTreeMap<Eid, EdgeKind>,
-    required_arguments: &mut BTreeMap<Arc<str>, ()>,
     outputs: &mut BTreeMap<Arc<str>, Output>,
+    variables: &BTreeMap<Arc<str>, Type>,
     component: &Arc<IRQueryComponent>,
     fold_depth: usize,
 ) -> Result<(), InvalidIRQueryError> {
@@ -110,9 +101,26 @@ fn add_data_from_component(
         for filter in &vertex.filters {
             match filter.right() {
                 Some(Argument::Variable(vref)) => {
-                    // TODO: Once we track the inferred types of required arguments,
-                    //       make sure the inferred types match up. Figure out null/non-null types.
-                    required_arguments.insert(vref.variable_name.clone(), ());
+                    match variables.get(&vref.variable_name) {
+                        Some(var_type) => {
+                            // The variable type at top level must be a subtype of (or same type as)
+                            // the type recorded at the point of use of the variable. It can be
+                            // a subtype if another point of use has narrowed the type:
+                            // for example, if the other point of use requires it to be non-null
+                            // but this point of use allows a nullable value.
+                            //
+                            // If the variable type at top level is not a subtype of the type here,
+                            // this query is not valid.
+                            if !is_subtype(var_type, &vref.variable_type) {
+                                return Err(InvalidIRQueryError::GetBetterVariant(-2));
+                            }
+                        }
+                        None => {
+                            // This variable is used in the query but never recorded at
+                            // the top level of the query. This query is invalid.
+                            return Err(InvalidIRQueryError::GetBetterVariant(-3));
+                        }
+                    }
                 }
                 Some(Argument::Tag(..)) | None => {}
             }
@@ -209,8 +217,8 @@ fn add_data_from_component(
         add_data_from_component(
             vids,
             eids,
-            required_arguments,
             outputs,
+            variables,
             &fold.component,
             new_fold_depth,
         )?;

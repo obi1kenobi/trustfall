@@ -1553,11 +1553,6 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
-            (Eid(1), "value"): [
-              Value(Int64(6)),
-              Value(Int64(12)),
-              Value(Int64(18)),
-            ],
             (Eid(2), "mult"): [
               Vec([
                 Value(Int64(6)),
@@ -1574,6 +1569,11 @@ TestInterpreterOutputTrace(
                 Value(Int64(36)),
                 Value(Int64(54)),
               ]),
+            ],
+            (Eid(1), "value"): [
+              Value(Int64(6)),
+              Value(Int64(12)),
+              Value(Int64(18)),
             ],
           },
         )),
@@ -1593,11 +1593,6 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
-            (Eid(1), "value"): [
-              Value(Int64(6)),
-              Value(Int64(12)),
-              Value(Int64(18)),
-            ],
             (Eid(2), "mult"): [
               Vec([
                 Value(Int64(6)),
@@ -1614,6 +1609,11 @@ TestInterpreterOutputTrace(
                 Value(Int64(36)),
                 Value(Int64(54)),
               ]),
+            ],
+            (Eid(1), "value"): [
+              Value(Int64(6)),
+              Value(Int64(12)),
+              Value(Int64(18)),
             ],
           },
         ), Int64(6))),
@@ -2392,10 +2392,6 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": List([
-        Int64(10),
-        Int64(15),
-      ]),
       "base": Int64(5),
       "mult": List([
         List([
@@ -2409,8 +2405,17 @@ TestInterpreterOutputTrace(
           Int64(45),
         ]),
       ]),
+      "value": List([
+        Int64(10),
+        Int64(15),
+      ]),
     },
     {
+      "value": List([
+        Int64(6),
+        Int64(12),
+        Int64(18),
+      ]),
       "mult": List([
         List([
           Int64(6),
@@ -2429,18 +2434,8 @@ TestInterpreterOutputTrace(
         ]),
       ]),
       "base": Int64(6),
-      "value": List([
-        Int64(6),
-        Int64(12),
-        Int64(18),
-      ]),
     },
     {
-      "base": Int64(7),
-      "value": List([
-        Int64(14),
-        Int64(21),
-      ]),
       "mult": List([
         List([
           Int64(14),
@@ -2452,6 +2447,11 @@ TestInterpreterOutputTrace(
           Int64(42),
           Int64(63),
         ]),
+      ]),
+      "base": Int64(7),
+      "value": List([
+        Int64(14),
+        Int64(21),
       ]),
     },
   ],

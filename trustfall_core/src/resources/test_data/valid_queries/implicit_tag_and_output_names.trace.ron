@@ -145,8 +145,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
       ),
@@ -156,8 +156,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), Int64(2))),
       ),
@@ -167,8 +167,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             Int64(2),
@@ -181,8 +181,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             Int64(2),
@@ -324,8 +324,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(1),
       "successor_value": Int64(2),
+      "value": Int64(1),
     },
   ],
 )

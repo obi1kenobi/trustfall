@@ -494,6 +494,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "prefix": "String!",
+      },
     ),
     arguments: {
       "prefix": String("four"),

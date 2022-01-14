@@ -1174,11 +1174,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
-            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
+            Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
       ),
@@ -1191,11 +1191,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
-            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
+            Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), Int64(6))),
       ),
@@ -2073,6 +2073,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "bound": "Int",
+      },
     ),
     arguments: {
       "bound": Int64(6),

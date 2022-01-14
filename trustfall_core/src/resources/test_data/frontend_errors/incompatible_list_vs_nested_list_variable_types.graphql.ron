@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    schema_name: "nullables",
+    query: r#"
+{
+    MainType {
+        nonNullInteger @output @filter(op: "one_of", value: ["$arg"])
+        nonNullIntAndList @filter(op: "one_of", value: ["$arg"])
+    }
+}"#,
+    arguments: {
+        "arg": Null
+    },
+)

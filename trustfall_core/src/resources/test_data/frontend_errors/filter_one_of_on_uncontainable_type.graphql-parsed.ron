@@ -1,0 +1,60 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "nullables",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "MainType",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "MainType",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "intList",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "intList",
+          output: [
+            OutputDirective(),
+          ],
+          tag: [
+            TagDirective(
+              name: Some("my_tag"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "string",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "string",
+          filter: [
+            FilterDirective(
+              operation: OneOf((), TagRef("my_tag")),
+            ),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

@@ -51,6 +51,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "num": "Int!",
+    },
   ),
   arguments: {
     "num": Int64(25),

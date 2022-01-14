@@ -117,6 +117,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "prime": "Int",
+    },
   ),
   arguments: {
     "prime": Int64(2),

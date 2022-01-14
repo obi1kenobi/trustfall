@@ -31,6 +31,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "options": "[String]!",
+    },
   ),
   arguments: {
     "options": List([

@@ -1,15 +1,19 @@
 #![allow(dead_code)]
 
 pub mod indexed;
+pub mod serialization;
+pub mod types;
 
-use std::{collections::BTreeMap, convert::TryFrom, fmt, fmt::Debug, num::NonZeroUsize, sync::Arc};
+use std::{collections::BTreeMap, convert::TryFrom, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::{ConstValue, Number, Value};
 use chrono::{DateTime, Utc};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::frontend::error::FilterTypeError;
+
+use self::types::{are_base_types_equal_ignoring_nullability, is_base_type_orderable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Vid(pub(crate) NonZeroUsize); // vertex ID
@@ -399,6 +403,14 @@ pub struct IRQuery {
     pub root_parameters: Option<Arc<EdgeParameters>>,
 
     pub root_component: Arc<IRQueryComponent>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        serialize_with = "crate::ir::serialization::serde_variables_serializer",
+        deserialize_with = "crate::ir::serialization::serde_variables_deserializer"
+    )]
+    pub variables: BTreeMap<Arc<str>, Type>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -884,33 +896,14 @@ impl Operation<LocalField, Argument> {
     }
 }
 
-fn are_base_types_equal_ignoring_nullability(left: &BaseType, right: &BaseType) -> bool {
-    match (left, right) {
-        (BaseType::Named(l), BaseType::Named(r)) => l == r,
-        (BaseType::List(l), BaseType::List(r)) => {
-            are_base_types_equal_ignoring_nullability(&l.base, &r.base)
-        }
-        (BaseType::Named(_), BaseType::List(_)) | (BaseType::List(_), BaseType::Named(_)) => false,
-    }
-}
-
-fn is_base_type_orderable(operand_type: &BaseType) -> bool {
-    match operand_type {
-        BaseType::Named(name) => {
-            name == "Int" || name == "Float" || name == "String" || name == "DateTime"
-        }
-        BaseType::List(l) => is_base_type_orderable(&l.base),
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContextField {
     pub vertex_id: Vid,
 
     pub field_name: Arc<str>,
 
-    #[serde(serialize_with = "serde_type_serializer")]
-    #[serde(deserialize_with = "serde_type_deserializer")]
+    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
+    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub field_type: Type,
 }
 
@@ -918,8 +911,8 @@ pub struct ContextField {
 pub struct LocalField {
     pub field_name: Arc<str>,
 
-    #[serde(serialize_with = "serde_type_serializer")]
-    #[serde(deserialize_with = "serde_type_deserializer")]
+    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
+    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub field_type: Type,
 }
 
@@ -927,42 +920,9 @@ pub struct LocalField {
 pub struct VariableRef {
     pub variable_name: Arc<str>,
 
-    #[serde(serialize_with = "serde_type_serializer")]
-    #[serde(deserialize_with = "serde_type_deserializer")]
+    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
+    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub variable_type: Type,
-}
-
-pub(crate) fn serde_type_serializer<S>(value: &Type, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    value.to_string().serialize(serializer)
-}
-
-pub(crate) fn serde_type_deserializer<'de, D>(deserializer: D) -> Result<Type, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct TypeDeserializer;
-
-    impl<'de> Visitor<'de> for TypeDeserializer {
-        type Value = Type;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("GraphQL type")
-        }
-
-        fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            let ty =
-                Type::new(s).ok_or_else(|| serde::de::Error::custom("not a valid GraphQL type"))?;
-            Ok(ty)
-        }
-    }
-
-    deserializer.deserialize_str(TypeDeserializer)
 }
 
 #[cfg(test)]

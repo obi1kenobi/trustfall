@@ -42,6 +42,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "min_value": "Int!",
+    },
   ),
   arguments: {
     "min_value": Int64(5),

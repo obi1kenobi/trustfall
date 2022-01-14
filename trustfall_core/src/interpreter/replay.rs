@@ -519,32 +519,44 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     use crate::{
-        filesystem_interpreter::FilesystemToken, interpreter::replay::assert_interpreted_results,
-        numbers_interpreter::NumbersToken, util::TestInterpreterOutputTrace,
+        filesystem_interpreter::FilesystemToken,
+        interpreter::replay::assert_interpreted_results,
+        numbers_interpreter::NumbersToken,
+        util::{TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace},
     };
 
-    fn check_trace<Token>(test_data: TestInterpreterOutputTrace<Token>)
+    fn check_trace<Token>(expected_ir: TestIRQuery, test_data: TestInterpreterOutputTrace<Token>)
     where
         Token: Debug + Clone + PartialEq + Eq + Serialize,
         for<'de> Token: Deserialize<'de>,
     {
+        // Ensure that the trace file's IR hasn't drifted away from the IR file of the same name.
+        assert_eq!(expected_ir.ir_query, test_data.trace.ir_query);
+        assert_eq!(expected_ir.arguments, test_data.trace.arguments);
+
         assert_interpreted_results(&test_data.trace, &test_data.results, true);
     }
 
-    fn check_filesystem_trace(input_data: &str) {
+    fn check_filesystem_trace(expected_ir: TestIRQuery, input_data: &str) {
         if let Ok(test_data) =
             ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(input_data)
         {
+            assert_eq!(expected_ir.schema_name, "filesystem");
             assert_eq!(test_data.schema_name, "filesystem");
-            check_trace(test_data);
+            check_trace(expected_ir, test_data);
+        } else {
+            unreachable!()
         }
     }
 
-    fn check_numbers_trace(input_data: &str) {
+    fn check_numbers_trace(expected_ir: TestIRQuery, input_data: &str) {
         if let Ok(test_data) = ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(input_data)
         {
+            assert_eq!(expected_ir.schema_name, "numbers");
             assert_eq!(test_data.schema_name, "numbers");
-            check_trace(test_data);
+            check_trace(expected_ir, test_data);
+        } else {
+            unreachable!()
         }
     }
 
@@ -555,9 +567,16 @@ mod tests {
 
         let input_data = fs::read_to_string(input_path).unwrap();
 
-        let trace_checkers = [check_filesystem_trace, check_numbers_trace];
-        for checker in trace_checkers {
-            checker(input_data.as_str());
+        let mut check_path = PathBuf::from(base);
+        check_path.push(format!("{}.ir.ron", stem));
+        let check_data = fs::read_to_string(check_path).unwrap();
+        let expected_ir: TestIRQueryResult = ron::from_str(&check_data).unwrap();
+        let expected_ir = expected_ir.unwrap();
+
+        match expected_ir.schema_name.as_str() {
+            "filesystem" => check_filesystem_trace(expected_ir, input_data.as_str()),
+            "numbers" => check_numbers_trace(expected_ir, input_data.as_str()),
+            _ => unreachable!("{}", expected_ir.schema_name),
         }
     }
 }

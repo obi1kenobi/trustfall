@@ -1,0 +1,4 @@
+Err(FilterTypeError(MultipleErrors(DisplayVec([
+  OrderingFilterOperationOnNonOrderableField("<", "bool", "Boolean"),
+  OrderingFilterOperationOnNonOrderableTag("<", "my_tag", "nonNullBool", "Boolean!"),
+]))))
