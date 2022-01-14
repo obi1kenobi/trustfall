@@ -15,9 +15,77 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - lint
-      - tests
+      - rust-tests
+      - python-tests
     steps:
       - run: exit 0
+
+  python-tests:
+    name: Python tests and maturin build
+    runs-on: ubuntu-latest
+    needs:
+      - rust-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          profile: minimal
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up python
+        id: setup-python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: pytrustfall/.venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd pytrustfall
+          poetry install --no-interaction --no-root
+
+      - name: maturin build and test
+        run: |
+          cd pytrustfall
+          source .venv/bin/activate
+          maturin develop
+          pytest
+          maturin build --interpreter python -o target/wheels/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: pytrustfall-wheels
+          path: pytrustfall/target/wheels/
+          retention-days: 7
 
   lint:
     name: Check lint and rustfmt
@@ -56,7 +124,7 @@ jobs:
           command: fmt
           args: -- --check
 
-  tests:
+  rust-tests:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
