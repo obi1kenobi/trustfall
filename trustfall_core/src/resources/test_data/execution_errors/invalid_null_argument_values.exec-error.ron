@@ -1,0 +1,4 @@
+MultipleErrors(DisplayVec([
+  ArgumentTypeError("numbers", "[Int]!", Null),
+  ArgumentTypeError("substr", "String!", Null),
+]))

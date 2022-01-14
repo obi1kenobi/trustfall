@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 10) {
+        name @filter(op: "has_substring", value: ["$substr"])
+        value @output @filter(op: "=", value: ["$num"]) @filter(op: "<", value: ["$max"])
+    }
+}"#,
+    arguments: {
+        "substr": Int64(4),
+        "num": String("four"),
+        "min": Int64(0),
+    },
+)

@@ -1,9 +1,12 @@
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
+use async_graphql_parser::types::Type;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{indexed::IndexedQuery, EdgeParameters, Eid, FieldValue, Vid};
+use crate::ir::{
+    indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldValue, Vid,
+};
 
 use self::error::QueryArgumentsError;
 
@@ -233,48 +236,73 @@ impl InterpretedQuery {
         indexed_query: Arc<IndexedQuery>,
         arguments: Arc<HashMap<Arc<str>, FieldValue>>,
     ) -> Result<Self, QueryArgumentsError> {
-        let missing_arguments = indexed_query
-            .ir_query
-            .variables
-            .keys()
-            .map(|x| x.as_ref())
-            .filter(|arg| !arguments.contains_key(*arg))
-            .collect_vec();
+        let mut errors = vec![];
+
+        let mut missing_arguments = vec![];
+        for (variable_name, variable_type) in &indexed_query.ir_query.variables {
+            match arguments.get(variable_name) {
+                Some(argument_value) => {
+                    // Ensure the provided argument value is valid for the variable's inferred type.
+                    if let Err(e) = validate_argument_type(
+                        variable_name.as_ref(),
+                        variable_type,
+                        argument_value,
+                    ) {
+                        errors.push(e);
+                    }
+                }
+                None => {
+                    missing_arguments.push(variable_name.as_ref());
+                }
+            }
+        }
+        if !missing_arguments.is_empty() {
+            errors.push(QueryArgumentsError::MissingArguments(
+                missing_arguments
+                    .into_iter()
+                    .map(|x| x.to_string())
+                    .collect(),
+            ));
+        }
+
         let unused_arguments = arguments
             .keys()
             .map(|x| x.as_ref())
             .filter(|arg| !indexed_query.ir_query.variables.contains_key(*arg))
             .collect_vec();
+        if !unused_arguments.is_empty() {
+            errors.push(QueryArgumentsError::UnusedArguments(
+                unused_arguments
+                    .into_iter()
+                    .map(|x| x.to_string())
+                    .collect(),
+            ));
+        }
 
-        // TODO: Ensure provided arguments have valid types.
-
-        match (missing_arguments.is_empty(), unused_arguments.is_empty()) {
-            (true, true) => Ok(Self {
+        if errors.is_empty() {
+            Ok(Self {
                 indexed_query,
                 arguments,
-            }),
-            (true, false) => Err(QueryArgumentsError::UnusedArgument(
-                unused_arguments.into_iter().map(|x| x.to_owned()).collect(),
-            )),
-            (false, true) => Err(QueryArgumentsError::MissingArgument(
-                missing_arguments
-                    .into_iter()
-                    .map(|x| x.to_owned())
-                    .collect(),
-            )),
-            (false, false) => Err(vec![
-                QueryArgumentsError::MissingArgument(
-                    missing_arguments
-                        .into_iter()
-                        .map(|x| x.to_owned())
-                        .collect(),
-                ),
-                QueryArgumentsError::UnusedArgument(
-                    unused_arguments.into_iter().map(|x| x.to_owned()).collect(),
-                ),
-            ]
-            .into()),
+            })
+        } else {
+            Err(errors.into())
         }
+    }
+}
+
+fn validate_argument_type(
+    variable_name: &str,
+    variable_type: &Type,
+    argument_value: &FieldValue,
+) -> Result<(), QueryArgumentsError> {
+    if is_argument_type_valid(variable_type, argument_value) {
+        Ok(())
+    } else {
+        Err(QueryArgumentsError::ArgumentTypeError(
+            variable_name.to_string(),
+            variable_type.to_string(),
+            argument_value.to_owned(),
+        ))
     }
 }
 

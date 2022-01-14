@@ -1,5 +1,7 @@
 use async_graphql_parser::types::{BaseType, Type};
 
+use super::FieldValue;
+
 pub(crate) fn are_base_types_equal_ignoring_nullability(left: &BaseType, right: &BaseType) -> bool {
     match (left, right) {
         (BaseType::Named(l), BaseType::Named(r)) => l == r,
@@ -73,5 +75,305 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
             })
         }
         (BaseType::Named(_), BaseType::List(_)) | (BaseType::List(_), BaseType::Named(_)) => None,
+    }
+}
+
+/// Check if the given argument value is valid for the specified variable type.
+///
+/// In particular, mixed integer types in a list are considered valid for types like `[Int]`.
+/// ```rust
+/// use async_graphql_parser::types::Type;
+/// use trustfall_core::ir::{FieldValue, types::is_argument_type_valid};
+///
+/// let variable_type = Type::new("[Int]").unwrap();
+/// let argument_value = FieldValue::List(vec![
+///     FieldValue::Int64(-1),
+///     FieldValue::Uint64(1),
+///     FieldValue::Null,
+/// ]);
+/// assert!(is_argument_type_valid(&variable_type, &argument_value));
+/// ```
+pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue) -> bool {
+    match argument_value {
+        FieldValue::Null => {
+            // This is a valid value only if this layer is nullable.
+            variable_type.nullable
+        }
+        FieldValue::Int64(_) | FieldValue::Uint64(_) => {
+            // This is a valid value only if the type is Int, ignoring nullability.
+            matches!(&variable_type.base, BaseType::Named(n) if n == "Int")
+        }
+        FieldValue::Float64(_) => {
+            // This is a valid value only if the type is Float, ignoring nullability.
+            matches!(&variable_type.base, BaseType::Named(n) if n == "Float")
+        }
+        FieldValue::String(_) => {
+            // This is a valid value only if the type is String, ignoring nullability.
+            matches!(&variable_type.base, BaseType::Named(n) if n == "String")
+        }
+        FieldValue::Boolean(_) => {
+            // This is a valid value only if the type is Boolean, ignoring nullability.
+            matches!(&variable_type.base, BaseType::Named(n) if n == "Boolean")
+        }
+        FieldValue::DateTimeUtc(_) => {
+            // This is a valid value only if the type is DateTime, ignoring nullability.
+            matches!(&variable_type.base, BaseType::Named(n) if n == "DateTime")
+        }
+        FieldValue::List(nested_values) => {
+            // This is a valid value only if the type is a list, and all the inner elements
+            // are valid instances of the type inside the list.
+            match &variable_type.base {
+                BaseType::List(inner) => nested_values
+                    .iter()
+                    .all(|value| is_argument_type_valid(inner.as_ref(), value)),
+                BaseType::Named(_) => false,
+            }
+        }
+        FieldValue::Enum(_) => todo!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use async_graphql_parser::types::Type;
+    use itertools::Itertools;
+
+    use crate::ir::{types::is_argument_type_valid, FieldValue};
+
+    #[test]
+    fn null_values_are_only_valid_for_nullable_types() {
+        let nullable_types = vec![
+            Type::new("Int").unwrap(),
+            Type::new("String").unwrap(),
+            Type::new("Boolean").unwrap(),
+            Type::new("[Int!]").unwrap(),
+            Type::new("[[Int!]!]").unwrap(),
+        ];
+        let non_nullable_types = nullable_types
+            .iter()
+            .map(|t| Type {
+                base: t.base.clone(),
+                nullable: false,
+            })
+            .collect_vec();
+
+        for nullable_type in &nullable_types {
+            assert!(
+                is_argument_type_valid(nullable_type, &FieldValue::Null),
+                "{}",
+                nullable_type
+            );
+        }
+        for non_nullable_type in &non_nullable_types {
+            assert!(
+                !is_argument_type_valid(non_nullable_type, &FieldValue::Null),
+                "{}",
+                non_nullable_type
+            );
+        }
+    }
+
+    #[test]
+    fn int_values_are_valid_only_for_int_type_regardless_of_nullability() {
+        let matching_types = vec![Type::new("Int").unwrap(), Type::new("Int!").unwrap()];
+        let non_matching_types = vec![
+            Type::new("String").unwrap(),
+            Type::new("[Int!]").unwrap(),
+            Type::new("[Int!]!").unwrap(),
+            Type::new("[[Int!]!]").unwrap(),
+        ];
+        let values = vec![
+            FieldValue::Int64(-42),
+            FieldValue::Int64(0),
+            FieldValue::Uint64(0),
+            FieldValue::Uint64((i64::MAX as u64) + 1),
+        ];
+
+        for value in &values {
+            for matching_type in &matching_types {
+                assert!(
+                    is_argument_type_valid(matching_type, value),
+                    "{} {:?}",
+                    matching_type,
+                    value
+                );
+            }
+            for non_matching_type in &non_matching_types {
+                assert!(
+                    !is_argument_type_valid(non_matching_type, value),
+                    "{} {:?}",
+                    non_matching_type,
+                    value
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn string_values_are_valid_only_for_string_type_regardless_of_nullability() {
+        let matching_types = vec![Type::new("String").unwrap(), Type::new("String!").unwrap()];
+        let non_matching_types = vec![
+            Type::new("Int").unwrap(),
+            Type::new("[String!]").unwrap(),
+            Type::new("[String!]!").unwrap(),
+            Type::new("[[String!]!]").unwrap(),
+        ];
+        let values = vec![
+            FieldValue::String("".to_string()), // empty string is not the same value as null
+            FieldValue::String("test string".to_string()),
+        ];
+
+        for value in &values {
+            for matching_type in &matching_types {
+                assert!(
+                    is_argument_type_valid(matching_type, value),
+                    "{} {:?}",
+                    matching_type,
+                    value
+                );
+            }
+            for non_matching_type in &non_matching_types {
+                assert!(
+                    !is_argument_type_valid(non_matching_type, value),
+                    "{} {:?}",
+                    non_matching_type,
+                    value
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn boolean_values_are_valid_only_for_boolean_type_regardless_of_nullability() {
+        let matching_types = vec![
+            Type::new("Boolean").unwrap(),
+            Type::new("Boolean!").unwrap(),
+        ];
+        let non_matching_types = vec![
+            Type::new("Int").unwrap(),
+            Type::new("[Boolean!]").unwrap(),
+            Type::new("[Boolean!]!").unwrap(),
+            Type::new("[[Boolean!]!]").unwrap(),
+        ];
+        let values = vec![FieldValue::Boolean(false), FieldValue::Boolean(true)];
+
+        for value in &values {
+            for matching_type in &matching_types {
+                assert!(
+                    is_argument_type_valid(matching_type, value),
+                    "{} {:?}",
+                    matching_type,
+                    value
+                );
+            }
+            for non_matching_type in &non_matching_types {
+                assert!(
+                    !is_argument_type_valid(non_matching_type, value),
+                    "{} {:?}",
+                    non_matching_type,
+                    value
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn list_types_correctly_check_contents_of_list() {
+        let non_nullable_contents_matching_types =
+            vec![Type::new("[Int!]").unwrap(), Type::new("[Int!]!").unwrap()];
+        let nullable_contents_matching_types =
+            vec![Type::new("[Int]").unwrap(), Type::new("[Int]!").unwrap()];
+        let non_matching_types = vec![
+            Type::new("Int").unwrap(),
+            Type::new("Int!").unwrap(),
+            Type::new("[String!]").unwrap(),
+            Type::new("[String!]!").unwrap(),
+            Type::new("[[String!]!]").unwrap(),
+        ];
+        let non_nullable_values = vec![
+            FieldValue::List((1..3).map(FieldValue::Int64).collect_vec()),
+            FieldValue::List((1..3).map(FieldValue::Uint64).collect_vec()),
+            FieldValue::List(vec![
+                // Integer-typed but non-homogeneous FieldValue entries are okay.
+                FieldValue::Int64(-42),
+                FieldValue::Uint64(64),
+            ]),
+        ];
+        let nullable_values = vec![
+            FieldValue::List(vec![
+                FieldValue::Int64(1),
+                FieldValue::Null,
+                FieldValue::Int64(2),
+            ]),
+            FieldValue::List(vec![FieldValue::Null, FieldValue::Uint64(42)]),
+            FieldValue::List(vec![
+                // Integer-typed but non-homogeneous FieldValue entries are okay.
+                FieldValue::Int64(-1),
+                FieldValue::Uint64(1),
+                FieldValue::Null,
+            ]),
+        ];
+
+        for value in &non_nullable_values {
+            // Values without nulls match both the nullable and the non-nullable types.
+            for matching_type in &nullable_contents_matching_types {
+                assert!(
+                    is_argument_type_valid(matching_type, value),
+                    "{} {:?}",
+                    matching_type,
+                    value
+                );
+            }
+            for matching_type in &non_nullable_contents_matching_types {
+                assert!(
+                    is_argument_type_valid(matching_type, value),
+                    "{} {:?}",
+                    matching_type,
+                    value
+                );
+            }
+
+            // Regardless of nulls, these types don't match.
+            for non_matching_type in &non_matching_types {
+                assert!(
+                    !is_argument_type_valid(non_matching_type, value),
+                    "{} {:?}",
+                    non_matching_type,
+                    value
+                );
+            }
+        }
+
+        for value in &nullable_values {
+            // Nullable values match only the nullable types.
+            for matching_type in &nullable_contents_matching_types {
+                assert!(
+                    is_argument_type_valid(matching_type, value),
+                    "{} {:?}",
+                    matching_type,
+                    value
+                );
+            }
+
+            // The nullable values don't match the non-nullable types.
+            for non_matching_type in &non_nullable_contents_matching_types {
+                assert!(
+                    !is_argument_type_valid(non_matching_type, value),
+                    "{} {:?}",
+                    non_matching_type,
+                    value
+                );
+            }
+
+            // Regardless of nulls, these types don't match.
+            for non_matching_type in &non_matching_types {
+                assert!(
+                    !is_argument_type_valid(non_matching_type, value),
+                    "{} {:?}",
+                    non_matching_type,
+                    value
+                );
+            }
+        }
     }
 }
