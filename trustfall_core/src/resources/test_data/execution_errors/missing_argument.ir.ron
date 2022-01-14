@@ -31,5 +31,8 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "substr": "String!",
+    },
   ),
 ))

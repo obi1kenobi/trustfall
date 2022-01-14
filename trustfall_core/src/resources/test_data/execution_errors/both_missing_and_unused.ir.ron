@@ -31,6 +31,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "substr": "String!",
+    },
   ),
   arguments: {
     "unused": Int64(42),

@@ -1825,10 +1825,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
-            Vid(1): Some(Prime(PrimeNumber(5))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
+            Vid(1): Some(Prime(PrimeNumber(5))),
           },
         )),
       ),
@@ -1840,10 +1840,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
-            Vid(1): Some(Prime(PrimeNumber(5))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
+            Vid(1): Some(Prime(PrimeNumber(5))),
           },
         ), Int64(8))),
       ),
@@ -1987,6 +1987,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "bound": "Int!",
+      },
     ),
     arguments: {
       "bound": Int64(7),

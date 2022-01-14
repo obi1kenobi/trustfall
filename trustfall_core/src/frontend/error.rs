@@ -55,6 +55,13 @@ pub enum FilterTypeError {
     MultipleErrors(DisplayVec<FilterTypeError>),
 
     #[error(
+        "Variable \"{0}\" is used in multiple places in the query that require values of \
+        incompatible types \"{1}\" and \"{2}\". Please split up the uses that require different \
+        types into separate variables."
+    )]
+    IncompatibleVariableTypeRequirements(String, String, String),
+
+    #[error(
         "Filter operation \"{0}\" unexpectedly used on non-nullable field \"{1}\" of type \"{2}\". \
         The filter's result would always be {3}. Please rewrite the query to avoid this filter."
     )]

@@ -1627,25 +1627,25 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(10),
       "prime": List([
         Int64(2),
         Int64(5),
       ]),
+      "value": Int64(10),
     },
     {
-      "value": Int64(12),
       "prime": List([
         Int64(2),
         Int64(3),
       ]),
+      "value": Int64(12),
     },
     {
+      "value": Int64(14),
       "prime": List([
         Int64(2),
         Int64(7),
       ]),
-      "value": Int64(14),
     },
     {
       "value": Int64(15),
@@ -1655,24 +1655,24 @@ TestInterpreterOutputTrace(
       ]),
     },
     {
-      "value": Int64(16),
       "prime": List([
         Int64(2),
       ]),
+      "value": Int64(16),
     },
     {
+      "value": Int64(18),
       "prime": List([
         Int64(2),
         Int64(3),
       ]),
-      "value": Int64(18),
     },
     {
-      "value": Int64(20),
       "prime": List([
         Int64(2),
         Int64(5),
       ]),
+      "value": Int64(20),
     },
   ],
 )

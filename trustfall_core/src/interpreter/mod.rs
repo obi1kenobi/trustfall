@@ -234,7 +234,8 @@ impl InterpretedQuery {
         arguments: Arc<HashMap<Arc<str>, FieldValue>>,
     ) -> Result<Self, QueryArgumentsError> {
         let missing_arguments = indexed_query
-            .required_arguments
+            .ir_query
+            .variables
             .keys()
             .map(|x| x.as_ref())
             .filter(|arg| !arguments.contains_key(*arg))
@@ -242,7 +243,7 @@ impl InterpretedQuery {
         let unused_arguments = arguments
             .keys()
             .map(|x| x.as_ref())
-            .filter(|arg| !indexed_query.required_arguments.contains_key(*arg))
+            .filter(|arg| !indexed_query.ir_query.variables.contains_key(*arg))
             .collect_vec();
 
         // TODO: Ensure provided arguments have valid types.

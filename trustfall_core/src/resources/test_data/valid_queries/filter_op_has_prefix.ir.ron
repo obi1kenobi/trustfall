@@ -31,6 +31,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "prefix": "String!",
+    },
   ),
   arguments: {
     "prefix": String("four"),

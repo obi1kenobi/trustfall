@@ -321,6 +321,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "pattern": "String!",
+      },
     ),
     arguments: {
       "pattern": String("f.+teen"),

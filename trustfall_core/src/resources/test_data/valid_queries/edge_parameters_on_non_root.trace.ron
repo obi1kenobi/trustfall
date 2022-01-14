@@ -349,11 +349,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
       ),
@@ -366,11 +366,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), Int64(6))),
       ),
@@ -380,11 +380,11 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
           values: [
             Int64(6),
@@ -397,11 +397,11 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
           values: [
             Int64(6),
@@ -433,10 +433,10 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
       ),
@@ -448,10 +448,10 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), Int64(9))),
       ),
@@ -461,10 +461,10 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
           values: [
             Int64(9),
@@ -477,10 +477,10 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(3))),
           },
           values: [
             Int64(9),
@@ -597,8 +597,8 @@ TestInterpreterOutputTrace(
       "value": Int64(2),
     },
     {
-      "multiple": Int64(6),
       "value": Int64(3),
+      "multiple": Int64(6),
     },
     {
       "multiple": Int64(9),

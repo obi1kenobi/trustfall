@@ -83,8 +83,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -94,8 +94,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(1))),
       ),
@@ -105,8 +105,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(1),
@@ -119,8 +119,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(1),
@@ -133,8 +133,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(1),
@@ -148,8 +148,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Neither(NeitherNumber(1))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(1),

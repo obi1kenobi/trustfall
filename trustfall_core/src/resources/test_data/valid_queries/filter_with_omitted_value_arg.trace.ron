@@ -1789,8 +1789,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(5),
       "name": String("five"),
+      "value": Int64(5),
     },
     {
       "name": String("six"),
@@ -1801,52 +1801,52 @@ TestInterpreterOutputTrace(
       "value": Int64(7),
     },
     {
-      "value": Int64(8),
       "name": String("eight"),
+      "value": Int64(8),
     },
     {
-      "value": Int64(9),
       "name": String("nine"),
+      "value": Int64(9),
     },
     {
       "value": Int64(10),
       "name": String("ten"),
     },
     {
-      "name": String("eleven"),
       "value": Int64(11),
+      "name": String("eleven"),
     },
     {
       "name": String("twelve"),
       "value": Int64(12),
     },
     {
-      "name": String("thirteen"),
       "value": Int64(13),
+      "name": String("thirteen"),
     },
     {
       "value": Int64(14),
       "name": String("fourteen"),
     },
     {
-      "name": String("fifteen"),
       "value": Int64(15),
+      "name": String("fifteen"),
     },
     {
       "name": String("sixteen"),
       "value": Int64(16),
     },
     {
-      "value": Int64(17),
       "name": String("seventeen"),
+      "value": Int64(17),
     },
     {
       "value": Int64(18),
       "name": String("eighteen"),
     },
     {
-      "name": String("nineteen"),
       "value": Int64(19),
+      "name": String("nineteen"),
     },
     {
       "name": String("twenty"),

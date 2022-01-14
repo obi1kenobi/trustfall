@@ -181,6 +181,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "num": "Int!",
+      },
     ),
     arguments: {
       "num": Int64(8),

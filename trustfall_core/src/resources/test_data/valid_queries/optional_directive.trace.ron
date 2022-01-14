@@ -168,8 +168,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: None,
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): None,
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
       ),
@@ -179,8 +179,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: None,
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): None,
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), Null)),
       ),
@@ -190,8 +190,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): None,
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             Null,
@@ -204,8 +204,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): None,
+            Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             Null,
@@ -1035,24 +1035,24 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "mult": Null,
       "value": Int64(0),
+      "mult": Null,
     },
     {
       "mult": Null,
       "value": Int64(1),
     },
     {
+      "value": Int64(2),
       "mult": Int64(4),
-      "value": Int64(2),
     },
     {
       "mult": Int64(6),
       "value": Int64(2),
     },
     {
+      "mult": Int64(6),
       "value": Int64(3),
-      "mult": Int64(6),
     },
     {
       "mult": Int64(9),
@@ -1063,8 +1063,8 @@ TestInterpreterOutputTrace(
       "value": Int64(4),
     },
     {
-      "value": Int64(4),
       "mult": Int64(8),
+      "value": Int64(4),
     },
     {
       "mult": Int64(12),

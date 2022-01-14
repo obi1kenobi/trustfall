@@ -73,8 +73,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): Some(Neither(NeitherNumber(1))),
           },
         )),
       ),
@@ -84,8 +84,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
-            Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): Some(Neither(NeitherNumber(1))),
           },
         ), String("one"))),
       ),
@@ -95,8 +95,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(0))),
           tokens: {
-            Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): Some(Neither(NeitherNumber(1))),
           },
           values: [
             String("one"),
@@ -109,8 +109,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(0))),
           tokens: {
-            Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): Some(Neither(NeitherNumber(1))),
           },
           values: [
             String("one"),
@@ -212,8 +212,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "succ_is_named": String("one"),
       "zero": Int64(0),
+      "succ_is_named": String("one"),
     },
   ],
 )

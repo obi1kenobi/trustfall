@@ -47,6 +47,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "bound": "Int!",
+    },
   ),
   arguments: {
     "bound": Int64(5),

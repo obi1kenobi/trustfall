@@ -213,6 +213,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "value": "Int",
+      },
     ),
     arguments: {
       "value": Int64(3),

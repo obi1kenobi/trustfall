@@ -396,6 +396,9 @@ TestInterpreterOutputTrace(
           ),
         },
       ),
+      variables: {
+        "vowel": "String",
+      },
     ),
     arguments: {
       "vowel": String("i"),
@@ -410,11 +413,11 @@ TestInterpreterOutputTrace(
       "value": Int64(8),
     },
     {
-      "value": Int64(9),
       "vowelsInName": List([
         String("i"),
         String("e"),
       ]),
+      "value": Int64(9),
     },
   ],
 )

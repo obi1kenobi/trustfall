@@ -1,0 +1,63 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "nullables",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "MainType",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "MainType",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "nonNullInteger",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "nonNullInteger",
+          filter: [
+            FilterDirective(
+              operation: OneOf((), VariableRef("arg")),
+            ),
+          ],
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "nonNullIntAndList",
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "nonNullIntAndList",
+          filter: [
+            FilterDirective(
+              operation: OneOf((), VariableRef("arg")),
+            ),
+          ],
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "arg": Null,
+  },
+))

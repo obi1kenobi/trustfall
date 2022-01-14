@@ -36,6 +36,9 @@ Ok(TestIRQuery(
         ),
       },
     ),
+    variables: {
+      "vowel": "String",
+    },
   ),
   arguments: {
     "vowel": String("i"),
