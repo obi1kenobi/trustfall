@@ -1,0 +1,52 @@
+Ok(TestIRQuery(
+  schema_name: "nullables",
+  ir_query: IRQuery(
+    root_name: "MainType",
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "MainType",
+          filters: [
+            Equals(LocalField(
+              field_name: "nonNullIntList",
+              field_type: "[Int!]",
+            ), Variable(VariableRef(
+              variable_name: "arg",
+              variable_type: "[Int!]",
+            ))),
+            Equals(LocalField(
+              field_name: "intNonNullList",
+              field_type: "[Int]!",
+            ), Variable(VariableRef(
+              variable_name: "arg",
+              variable_type: "[Int]!",
+            ))),
+          ],
+        ),
+      },
+      outputs: {
+        "intNonNullList": ContextField(
+          vertex_id: Vid(1),
+          field_name: "intNonNullList",
+          field_type: "[Int]!",
+        ),
+        "nonNullIntList": ContextField(
+          vertex_id: Vid(1),
+          field_name: "nonNullIntList",
+          field_type: "[Int!]",
+        ),
+      },
+    ),
+    variables: {
+      "arg": "[Int!]!",
+    },
+  ),
+  arguments: {
+    "arg": List([
+      Int64(1),
+      Null,
+    ]),
+  },
+))

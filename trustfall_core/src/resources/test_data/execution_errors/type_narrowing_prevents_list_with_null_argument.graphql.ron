@@ -1,0 +1,20 @@
+TestGraphQLQuery (
+    schema_name: "nullables",
+
+    // In this query, the "arg" variable is compared for equality against
+    // both [Int!] and [Int]! values. In order for both filters to be possible to satisfy,
+    // the "arg" variable must have a type of [Int!]!. We call this "type narrowing".
+    query: r#"
+{
+    MainType {
+        nonNullIntList @filter(op: "=", value: ["$arg"]) @output
+        intNonNullList @filter(op: "=", value: ["$arg"]) @output
+    }
+}"#,
+    arguments: {
+        "arg": List([
+            Int64(1),
+            Null
+        ]),
+    },
+)

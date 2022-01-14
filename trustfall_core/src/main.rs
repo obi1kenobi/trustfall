@@ -12,6 +12,7 @@ mod frontend;
 mod graphql_query;
 mod interpreter;
 mod ir;
+mod nullables_interpreter;
 mod numbers_interpreter;
 mod schema;
 mod util;
@@ -33,6 +34,7 @@ use crate::{
         trace::{AdapterTap, Trace},
         Adapter,
     },
+    nullables_interpreter::NullablesAdapter,
     numbers_interpreter::NumbersAdapter,
     schema::Schema,
     util::{
@@ -165,6 +167,10 @@ fn trace(path: &str) {
         }
         "numbers" => {
             let adapter = NumbersAdapter;
+            trace_with_adapter(adapter, test_query);
+        }
+        "nullables" => {
+            let adapter = NullablesAdapter;
             trace_with_adapter(adapter, test_query);
         }
         _ => unreachable!("Unknown schema name: {}", test_query.schema_name),
