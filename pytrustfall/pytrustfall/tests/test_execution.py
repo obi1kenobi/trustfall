@@ -172,6 +172,22 @@ class ExecutionTests(unittest.TestCase):
 
         self.assertRaises(QueryArgumentsError, execute_query, NumbersAdapter(), SCHEMA, query, args)
 
+    def test_none_value_for_non_nullable_argument_error(self) -> None:
+        query = dedent(
+            """\
+            {
+                Number(max: 4) {
+                    value @output @filter(op: "=", value: ["$num"])
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {
+            "num": None,
+        }
+
+        self.assertRaises(QueryArgumentsError, execute_query, NumbersAdapter(), SCHEMA, query, args)
+
     def test_unrepresentable_field_value(self) -> None:
         query = dedent(
             """\

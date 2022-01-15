@@ -14,7 +14,7 @@ type RootSchemaQuery {
 
 type Number {
     name: String
-    value: Int
+    value: Int!
 
     predecessor: Number
     successor: Number!
