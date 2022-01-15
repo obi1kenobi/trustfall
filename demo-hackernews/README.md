@@ -31,6 +31,7 @@ already provided by the iterator-style execution model.
 
 ## Table of Contents
 - [Components](#components)
+- [Installing Rust nightly](#installing-rust-nightly)
 - [Running queries](#running-queries)
    - [Query syntax refresher](#query-syntax-refresher)
 - [Examples](#examples)
@@ -59,6 +60,17 @@ The project consists of the following components:
       represented `interface Animal`, `can_coerce_to_type` may be used to check whether the `Token`
       is actually of `type Dog implements Animal`.
 - `main.rs` is a simple CLI app that can execute query files in `ron` format.
+
+## Installing Rust nightly
+
+This demo requires the nightly version of the Rust compiler. To install Rust nightly, follow the
+[instructions in the Rust book for your operating system](https://rust-lang.github.io/rustup/installation/index.html).
+
+After you have Rust nightly installed locally, `cd` to the root directory of the repository
+then run `rustup override set nightly` to ensure nightly Rust is the default for this project.
+
+To confirm everything is set up correctly, run `cargo check` and, after compiling for a while,
+it should find no errors.
 
 ## Running queries
 
