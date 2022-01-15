@@ -178,6 +178,25 @@ fn make_field_value_from_ref(value: &PyAny) -> Result<FieldValue, ()> {
         Ok(FieldValue::Float64(inner))
     } else if let Ok(inner) = value.extract::<String>() {
         Ok(FieldValue::String(inner))
+    } else if let Ok(inner) = value.extract::<Vec<&PyAny>>() {
+        let converted_values = inner
+            .iter()
+            .copied()
+            .map(make_field_value_from_ref)
+            .try_fold(vec![], |mut acc, item| {
+                if let Ok(value) = item {
+                    acc.push(value);
+                    Some(acc)
+                } else {
+                    None
+                }
+            });
+
+        if let Some(inner_values) = converted_values {
+            Ok(FieldValue::List(inner_values))
+        } else {
+            Err(())
+        }
     } else {
         Err(())
     }

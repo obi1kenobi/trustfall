@@ -54,6 +54,30 @@ class ExecutionTests(unittest.TestCase):
         actual_result = list(execute_query(NumbersAdapter(), SCHEMA, query, args))
         self.assertEqual(expected_result, actual_result)
 
+    def test_query_with_list_typed_input(self) -> None:
+        query = dedent(
+            """\
+            {
+                Number(max: 10) {
+                    value @output @filter(op: "one_of", value: ["$numbers"])
+                    name @output
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {
+            "numbers": [1, 3, 4, 5],
+        }
+
+        expected_result = [
+            {"name": "one", "value": 1},
+            {"name": "three", "value": 3},
+            {"name": "four", "value": 4},
+            {"name": "five", "value": 5},
+        ]
+        actual_result = list(execute_query(NumbersAdapter(), SCHEMA, query, args))
+        self.assertEqual(expected_result, actual_result)
+
     def test_nested_query(self) -> None:
         query = dedent(
             """\
@@ -128,6 +152,22 @@ class ExecutionTests(unittest.TestCase):
         )
         args: Dict[str, Any] = {
             "not_used": 42,
+        }
+
+        self.assertRaises(QueryArgumentsError, execute_query, NumbersAdapter(), SCHEMA, query, args)
+
+    def test_wrong_argument_type_error(self) -> None:
+        query = dedent(
+            """\
+            {
+                Number(max: 4) {
+                    value @output @filter(op: ">", value: ["$num"])
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {
+            "num": "text instead of a number",
         }
 
         self.assertRaises(QueryArgumentsError, execute_query, NumbersAdapter(), SCHEMA, query, args)
