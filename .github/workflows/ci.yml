@@ -84,7 +84,7 @@ jobs:
       - id: branch-info
         run: |
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
-          echo "::set-output name=BRANCH_NAME::$(git rev-parse --abbrev-ref HEAD)"
+          echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
           echo "::set-output name=TAG_NAME::$(.github/workflows/get_prerelease_name.sh)"
 
       - name: Upload artifact
