@@ -97,7 +97,7 @@ jobs:
 
       - name: Make a new prerelease
         uses: ncipollo/release-action@v1
-        if: steps.branch-info.outputs.BRANCH_NAME == "main"
+        if: steps.branch-info.outputs.BRANCH_NAME == 'main'
         with:
           artifacts: "pytrustfall/target/wheels/*.whl,pytrustfall/target/wheels/*.tar.gz"
           commit: ${{ steps.branch-info.outputs.COMMIT }}
