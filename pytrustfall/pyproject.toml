@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "demo-py"
-version = "0.1.0"
+name = "pytrustfall"
+version = "0.0.0"  # Cargo.toml is authoritative, not this
 description = "Python bindings for trustfall."
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 
