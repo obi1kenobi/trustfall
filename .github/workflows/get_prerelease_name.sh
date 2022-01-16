@@ -12,6 +12,8 @@ if [["$CURRENT_BRANCH" != 'main']]; then
     exit 0
 fi
 
+pip install toml
+
 LONG_HASH="$(git rev-parse HEAD)"
 SHORT_HASH="$(git rev-parse --short HEAD)"
 PYTHON_PACKAGE_VERSION="$(python -c 'import toml; print(toml.load("Cargo.toml")["package"]["version"])')"
