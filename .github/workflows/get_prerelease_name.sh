@@ -12,7 +12,7 @@ if [[ "$CURRENT_BRANCH" != 'main' ]]; then
     exit 0
 fi
 
-pip install toml
+pip install toml 1>&2
 
 LONG_HASH="$(git rev-parse HEAD)"
 SHORT_HASH="$(git rev-parse --short HEAD)"
