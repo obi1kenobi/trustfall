@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
-        if: steps.branch-info.outputs.BRANCH_NAME == "main"
+        if: steps.branch-info.outputs.BRANCH_NAME == 'main'
         with:
           name: pytrustfall-wheels
           path: pytrustfall/target/wheels/
