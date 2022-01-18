@@ -86,18 +86,19 @@ jobs:
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
           echo "::set-output name=TAG_NAME::$(.github/workflows/get_prerelease_name.sh)"
+          echo "::set-output name=PYTHON_BINDINGS_CHANGED::$(.github/workflows/python_bindings_changed.sh)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
-        if: steps.branch-info.outputs.BRANCH_NAME == 'main'
+        if: steps.branch-info.outputs.PYTHON_BINDINGS_CHANGED != 0
         with:
           name: pytrustfall-wheels
           path: pytrustfall/target/wheels/
-          retention-days: 7
+          retention-days: 1
 
       - name: Make a new prerelease
         uses: ncipollo/release-action@v1
-        if: steps.branch-info.outputs.BRANCH_NAME == 'main'
+        if: steps.branch-info.outputs.BRANCH_NAME == 'main' && steps.branch-info.outputs.PYTHON_BINDINGS_CHANGED != 0
         with:
           artifacts: "pytrustfall/target/wheels/*.whl,pytrustfall/target/wheels/*.tar.gz"
           commit: ${{ steps.branch-info.outputs.COMMIT }}
