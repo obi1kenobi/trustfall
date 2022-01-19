@@ -318,6 +318,33 @@ impl Adapter<'static> for NumbersAdapter {
 
                 (ctx, neighbors)
             })),
+            ("divisor", "Composite") => Box::new(data_contexts.map(move |ctx| {
+                let neighbors: Box<dyn Iterator<Item = NumbersToken>> = match &ctx.current_token {
+                    None => Box::new(std::iter::empty()),
+                    Some(NumbersToken::Composite(token)) => {
+                        let value = token.0;
+                        if value <= 0 {
+                            Box::new(std::iter::empty())
+                        } else {
+                            Box::new(
+                                (1..value)
+                                    .filter_map(|maybe_divisor| {
+                                        if maybe_divisor % value == 0 {
+                                            Some(make_number_token(&mut primes, maybe_divisor))
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .collect_vec()
+                                    .into_iter(),
+                            )
+                        }
+                    }
+                    _ => unreachable!("divisor Composite {:?}", ctx.current_token),
+                };
+
+                (ctx, neighbors)
+            })),
             _ => {
                 unreachable!(
                     "Unexpected edge {} on vertex type {}",

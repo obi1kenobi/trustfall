@@ -199,6 +199,10 @@ impl Schema {
     pub(crate) fn query_type_name(&self) -> &str {
         self.schema.query.as_ref().unwrap().node.as_ref()
     }
+
+    pub(crate) fn vertex_type_implements(&self, vertex_type: &str) -> &[Positioned<Name>] {
+        get_vertex_type_implements(&self.vertex_types[vertex_type])
+    }
 }
 
 fn check_fields_required_by_interface_implementations(

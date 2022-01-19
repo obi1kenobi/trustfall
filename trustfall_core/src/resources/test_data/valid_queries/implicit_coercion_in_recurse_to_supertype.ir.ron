@@ -3,28 +3,20 @@ Ok(TestIRQuery(
   ir_query: IRQuery(
     root_name: "Number",
     root_parameters: Some(EdgeParameters({
-      "max": Int64(5),
-      "min": Int64(0),
+      "max": Int64(12),
+      "min": Int64(8),
     })),
     root_component: IRQueryComponent(
       root: Vid(1),
       vertices: {
         Vid(1): IRVertex(
           vid: Vid(1),
-          type_name: "Number",
+          type_name: "Composite",
+          coerced_from_type: Some("Number"),
         ),
         Vid(2): IRVertex(
           vid: Vid(2),
           type_name: "Number",
-          filters: [
-            Equals(LocalField(
-              field_name: "value",
-              field_type: "Int",
-            ), Variable(VariableRef(
-              variable_name: "bound",
-              variable_type: "Int",
-            ))),
-          ],
         ),
       },
       edges: {
@@ -32,14 +24,19 @@ Ok(TestIRQuery(
           eid: Eid(1),
           from_vid: Vid(1),
           to_vid: Vid(2),
-          edge_name: "successor",
+          edge_name: "divisor",
           recursive: Some(Recursive(
-            depth: 3,
-            coerce_to: None,
+            depth: 2,
+            coerce_to: "Composite"
           )),
         ),
       },
       outputs: {
+        "base": ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        ),
         "value": ContextField(
           vertex_id: Vid(2),
           field_name: "value",
@@ -47,11 +44,5 @@ Ok(TestIRQuery(
         ),
       },
     ),
-    variables: {
-      "bound": "Int",
-    },
   ),
-  arguments: {
-    "bound": Int64(6),
-  },
 ))

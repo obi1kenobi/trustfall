@@ -23,7 +23,7 @@ use crate::{
     ir::{
         indexed::IndexedQuery, types::intersect_types, Argument, ContextField, EdgeParameters, Eid,
         FieldValue, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation,
-        VariableRef, Vid,
+        VariableRef, Vid, Recursive,
     },
     schema::{Schema, BUILTIN_SCALARS},
     util::TryCollectUniqueKey,
@@ -546,7 +546,12 @@ where
         let parameters = make_edge_parameters(edge_definition, &field_connection.arguments)?;
 
         let optional = field_connection.optional.is_some();
-        let recursive = field_connection.recurse.as_ref().map(|d| d.depth);
+        let recursive = field_connection.recurse.as_ref().map(|d| {
+            let coerce_to = None;
+
+            // TODO: FIXME, this isn't always supposed to be None.
+            Recursive::new(d.depth, coerce_to)
+        });
 
         ir_edges.insert(
             *eid,

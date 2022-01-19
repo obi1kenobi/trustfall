@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    num::NonZeroUsize,
     rc::Rc,
     sync::Arc,
 };
@@ -20,7 +19,7 @@ use crate::{
     },
     ir::{
         indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge,
-        IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
+        IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid, Recursive,
     },
 };
 
@@ -703,7 +702,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     edge: &IREdge,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    if let Some(depth) = edge.recursive {
+    if let Some(recursive) = &edge.recursive {
         expand_recursive_edge(
             adapter,
             query,
@@ -713,7 +712,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
             edge.eid,
             &edge.edge_name,
             &edge.parameters,
-            depth,
+            recursive,
             iterator,
         )
     } else {
@@ -797,7 +796,7 @@ fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &Option<Arc<EdgeParameters>>,
-    depth: NonZeroUsize,
+    recursive: &Recursive,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expanding_from_vid = expanding_from.vid;
@@ -811,7 +810,7 @@ fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
             context.activate_token(&expanding_from_vid)
         }));
 
-    let max_depth = usize::from(depth);
+    let max_depth = usize::from(recursive.depth);
     for _ in 1..=max_depth {
         recursion_iterator = perform_one_recursive_edge_expansion(
             adapter.clone(),

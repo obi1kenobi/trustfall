@@ -427,7 +427,7 @@ pub struct IREdge {
     pub optional: bool,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recursive: Option<NonZeroUsize>,
+    pub recursive: Option<Recursive>,
 }
 
 fn default_optional() -> bool {
@@ -436,6 +436,23 @@ fn default_optional() -> bool {
 
 fn is_false(b: &bool) -> bool {
     !b
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Recursive {
+    pub depth: NonZeroUsize,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coerce_to: Option<Arc<str>>,
+}
+
+impl Recursive {
+    pub fn new(depth: NonZeroUsize, coerce_to: Option<Arc<str>>) -> Self {
+        Self {
+            depth,
+            coerce_to,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

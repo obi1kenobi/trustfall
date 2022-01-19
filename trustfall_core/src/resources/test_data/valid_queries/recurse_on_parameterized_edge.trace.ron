@@ -1745,7 +1745,10 @@ TestInterpreterOutputTrace(
             parameters: Some(EdgeParameters({
               "max": Int64(3),
             })),
-            recursive: Some(3),
+            recursive: Some(Recursive(
+              depth: 3,
+              coerce_to: None,
+            )),
           ),
         },
         outputs: {

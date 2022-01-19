@@ -47,7 +47,8 @@ type Composite implements Number & Named {
     predecessor: Number
     successor: Number!
     multiple(max: Int!): [Composite!]
-    primeFactor: [Prime!]
+    divisor: [Number!]!
+    primeFactor: [Prime!]!
 }
 
 type Letter implements Named {
