@@ -54,6 +54,13 @@ impl Token {
             _ => None,
         }
     }
+
+    pub fn as_user(&self) -> Option<&User> {
+        match self {
+            Token::User(u) => Some(u.as_ref()),
+            _ => None,
+        }
+    }
 }
 
 impl From<Item> for Token {

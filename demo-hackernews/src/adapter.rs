@@ -61,6 +61,24 @@ impl HackerNewsAdapter {
 
         Box::new(iterator)
     }
+
+    fn user(&self, username: &str) -> Box<dyn Iterator<Item = Token>> {
+        match CLIENT.get_user(username) {
+            Ok(Some(user)) => {
+                // Found a user by that name.
+                let token = Token::from(user);
+                Box::new(std::iter::once(token))
+            },
+            Ok(None) => {
+                // The request succeeded but did not find a user by that name.
+                Box::new(std::iter::empty())
+            }
+            Err(e) => {
+                eprintln!("Got an error while getting user profile for user {}: {}", username, e);
+                Box::new(std::iter::empty())
+            }
+        }
+    }
 }
 
 macro_rules! impl_item_property {
@@ -74,6 +92,8 @@ macro_rules! impl_item_property {
                         (&s.$attr).into()
                     } else if let Some(j) = t.as_job() {
                         (&j.$attr).into()
+                    } else if let Some(c) = t.as_comment() {
+                        (&c.$attr).into()
                     } else {
                         unreachable!()
                     }
@@ -89,12 +109,12 @@ macro_rules! impl_item_property {
 }
 
 macro_rules! impl_property {
-    ($data_contexts:ident, $token_type:path, $attr:ident) => {
+    ($data_contexts:ident, $conversion:ident, $attr:ident) => {
         Box::new($data_contexts.map(|ctx| {
-            let token = ctx.current_token.as_ref();
+            let token = ctx.current_token.as_ref().map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
-                Some($token_type(t)) => (&t.$attr).into(),
+                Some(t) => (&t.$attr).into(),
 
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
@@ -104,12 +124,12 @@ macro_rules! impl_property {
         }))
     };
 
-    ($data_contexts:ident, $token_type:path, $var:ident, $b:block) => {
+    ($data_contexts:ident, $conversion:ident, $var:ident, $b:block) => {
         Box::new($data_contexts.map(|ctx| {
-            let token = ctx.current_token.as_ref();
+            let token = ctx.current_token.as_ref().map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
-                Some($token_type($var)) => $b,
+                Some($var) => $b,
 
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
@@ -150,6 +170,10 @@ impl Adapter<'static> for HackerNewsAdapter {
                     .map(|v| v.as_u64().unwrap() as usize);
                 self.latest_stories(max)
             }
+            "User" => {
+                let username_value = parameters.as_ref().unwrap().0.get("name").unwrap();
+                self.user(username_value.as_str().unwrap())
+            }
             _ => unreachable!(),
         }
     }
@@ -164,23 +188,26 @@ impl Adapter<'static> for HackerNewsAdapter {
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
         match (current_type_name.as_ref(), field_name.as_ref()) {
             // properties on Item and its implementers
-            ("Item" | "Story" | "Job", "id") => impl_item_property!(data_contexts, id),
-            ("Item" | "Story" | "Job", "score") => impl_item_property!(data_contexts, score),
-            ("Item" | "Story" | "Job", "title") => impl_item_property!(data_contexts, title),
-            ("Item" | "Story" | "Job", "unixTime") => impl_item_property!(data_contexts, time),
-            ("Item" | "Story" | "Job", "url") => impl_item_property!(data_contexts, url),
+            ("Item" | "Story" | "Job" | "Comment", "id") => impl_item_property!(data_contexts, id),
+            ("Item" | "Story" | "Job" | "Comment", "unixTime") => impl_item_property!(data_contexts, time),
+
+            // properties on Job
+            ("Job", "score") => impl_property!(data_contexts, as_job, score),
+            ("Job", "title") => impl_property!(data_contexts, as_job, title),
+            ("Job", "url") => impl_property!(data_contexts, as_job, url),
 
             // properties on Story
-            ("Story", "byUsername") => impl_property!(data_contexts, Token::Story, by),
-            ("Story", "text") => impl_property!(data_contexts, Token::Story, text),
-            ("Story", "commentsCount") => impl_property!(data_contexts, Token::Story, descendants),
+            ("Story", "byUsername") => impl_property!(data_contexts, as_story, by),
+            ("Story", "text") => impl_property!(data_contexts, as_story, text),
+            ("Story", "commentsCount") => impl_property!(data_contexts, as_story, descendants),
+            ("Story", "score") => impl_property!(data_contexts, as_story, score),
+            ("Story", "title") => impl_property!(data_contexts, as_story, title),
+            ("Story", "url") => impl_property!(data_contexts, as_story, url),
 
             // properties on Comment
-            ("Comment", "byUsername") => impl_property!(data_contexts, Token::Comment, by),
-            ("Comment", "id") => impl_property!(data_contexts, Token::Comment, id),
-            ("Comment", "text") => impl_property!(data_contexts, Token::Comment, text),
-            ("Comment", "unixTime") => impl_property!(data_contexts, Token::Comment, time),
-            ("Comment", "childCount") => impl_property!(data_contexts, Token::Comment, comment, {
+            ("Comment", "byUsername") => impl_property!(data_contexts, as_comment, by),
+            ("Comment", "text") => impl_property!(data_contexts, as_comment, text),
+            ("Comment", "childCount") => impl_property!(data_contexts, as_comment, comment, {
                 comment
                     .kids
                     .as_ref()
@@ -190,11 +217,11 @@ impl Adapter<'static> for HackerNewsAdapter {
             }),
 
             // properties on User
-            ("User", "id") => impl_property!(data_contexts, Token::User, id),
-            ("User", "karma") => impl_property!(data_contexts, Token::User, karma),
-            ("User", "about") => impl_property!(data_contexts, Token::User, about),
-            ("User", "unixCreatedAt") => impl_property!(data_contexts, Token::User, created),
-            ("User", "delay") => impl_property!(data_contexts, Token::User, delay),
+            ("User", "id") => impl_property!(data_contexts, as_user, id),
+            ("User", "karma") => impl_property!(data_contexts, as_user, karma),
+            ("User", "about") => impl_property!(data_contexts, as_user, about),
+            ("User", "unixCreatedAt") => impl_property!(data_contexts, as_user, created),
+            ("User", "delay") => impl_property!(data_contexts, as_user, delay),
             _ => unreachable!(),
         }
     }
@@ -299,6 +326,38 @@ impl Adapter<'static> for HackerNewsAdapter {
 
                 (ctx, neighbors)
             })),
+            ("Comment", "parent") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        // TODO: this is a bug: missing implicit coercion in @recurse to supertype;
+                        //       when the bug is fixed, the "else" case will be unreachable
+                        if let Some(comment) = token.as_comment() {
+                            let comment_id = comment.id;
+                            let parent_id = comment.parent;
+
+                            match CLIENT.get_item(parent_id) {
+                                Ok(None) => Box::new(std::iter::empty()),
+                                Ok(Some(item)) => {
+                                Box::new(std::iter::once(item.into()))
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "API error while fetching comment {} parent {}: {}",
+                                        comment_id, parent_id, e
+                                    );
+                                    Box::new(std::iter::empty())
+                                }
+                            }
+                        } else {
+                            Box::new(std::iter::empty())
+                        }
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
             ("Comment", "reply") => Box::new(data_contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
                 let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
@@ -322,6 +381,34 @@ impl Adapter<'static> for HackerNewsAdapter {
                                     eprintln!(
                                         "API error while fetching comment {} reply {}: {}",
                                         comment_id, reply_id, e
+                                    );
+                                    None
+                                }
+                            }
+                        }))
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
+            ("User", "submitted") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        let user = token.as_user().unwrap();
+                        let submitted_ids = user.submitted.clone();
+
+                        Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
+                            match CLIENT.get_item(submission_id) {
+                                Ok(None) => None,
+                                Ok(Some(item)) => {
+                                    Some(item.into())
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "API error while fetching submitted item {}: {}",
+                                        submission_id, e
                                     );
                                     None
                                 }
@@ -357,6 +444,7 @@ impl Adapter<'static> for HackerNewsAdapter {
             let can_coerce = match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
                 ("Item", "Job") => token.as_job().is_some(),
                 ("Item", "Story") => token.as_story().is_some(),
+                ("Item", "Comment") => token.as_comment().is_some(),
                 _ => unreachable!(),
             };
 

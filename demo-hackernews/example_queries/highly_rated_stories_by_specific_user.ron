@@ -1,0 +1,22 @@
+InputQuery (
+    query: r#"
+{
+    User(name: "obi1kenobi") {
+        karma @output
+
+        submitted {
+            ... on Story {
+                score @output @filter(op: ">=", value: ["$min_score"])
+                title @output
+                unixTime @output
+                url @output
+                text @output
+                commentsCount @output
+            }
+        }
+    }
+}"#,
+    args: {
+        "min_score": Uint64(300),
+    },
+)

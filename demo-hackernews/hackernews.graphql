@@ -28,38 +28,36 @@ type RootSchemaQuery {
     FrontPage: [Item!]!
     Top(max: Int): [Item!]!
     LatestStory(max: Int): [Story!]!
+    User(name: String!): User
 }
 
 interface Item {
     id: Int!
-    score: Int!
-    title: String!
     unixTime: Int!
-    url: String
 }
 
 type Job implements Item {
     # properties from Item
     id: Int!
-    score: Int!
-    title: String!
     unixTime: Int!
 
-    # own properties -- type refined to be non-nullable
+    # own properties
+    title: String!
+    score: Int!
     url: String!
 }
 
 type Story implements Item {
     # properties from Item
     id: Int!
-    score: Int!
-    title: String!
     unixTime: Int!
-    url: String
 
     # own properties
     byUsername: String!
+    score: Int!
     text: String
+    title: String!
+    url: String
     commentsCount: Int!
 
     # edges
@@ -67,17 +65,20 @@ type Story implements Item {
     comment: [Comment!]
 }
 
-type Comment {
+type Comment implements Item {
     # properties from Item
-    byUsername: String!
     id: Int!
-    text: String!
     unixTime: Int!
+
+    # own properties
+    text: String!
+    byUsername: String!
     childCount: Int!
 
     # edges
     byUser: User!
     reply: [Comment!]
+    parent: [Item!]!  # either a parent comment or the story being commented on
 }
 
 type User {
@@ -86,4 +87,9 @@ type User {
     about: String
     unixCreatedAt: Int!
     delay: Int
+
+    # The HackerNews API treats submissions of comments and stories the same way.
+    # The way to get only a user's submitted stories is to use this edge then
+    # apply a type coercion on the `Item` vertex on edge endpoint: `... on Story`
+    submitted: [Item!]
 }

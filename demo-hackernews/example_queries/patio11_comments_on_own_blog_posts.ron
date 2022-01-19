@@ -1,0 +1,30 @@
+InputQuery (
+    query: r#"
+{
+    User(name: "patio11") {
+        submitted {
+            ... on Comment {
+                text @output
+                comment_at: unixTime @output
+
+                parent @recurse(depth: 10) {
+                    ... on Story {
+                        url @filter(op: "regex", value: ["$url_pattern"]) @output
+                        title @output
+                        score @output
+                        submitted_at: unixTime @output
+
+                        submitter_: byUser {
+                            id @output
+                            karma @output
+                        }
+                    }
+                }
+            }
+        }
+    }
+}"#,
+    args: {
+        "url_pattern": String("http[s]?://[a-z0-9_\\-.]*kalzumeus\\.com/"),
+    },
+)
