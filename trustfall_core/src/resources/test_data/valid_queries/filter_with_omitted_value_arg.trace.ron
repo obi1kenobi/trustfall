@@ -10,17 +10,17 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "name")),
+        content: Call(ProjectProperty(Vid(1), "Number", "name")),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "name")),
+        content: Call(ProjectProperty(Vid(1), "Number", "name")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
@@ -1809,28 +1809,28 @@ TestInterpreterOutputTrace(
       "value": Int64(9),
     },
     {
-      "value": Int64(10),
       "name": String("ten"),
+      "value": Int64(10),
     },
     {
-      "value": Int64(11),
       "name": String("eleven"),
+      "value": Int64(11),
     },
     {
       "name": String("twelve"),
       "value": Int64(12),
     },
     {
-      "value": Int64(13),
       "name": String("thirteen"),
+      "value": Int64(13),
     },
     {
-      "value": Int64(14),
       "name": String("fourteen"),
+      "value": Int64(14),
     },
     {
-      "value": Int64(15),
       "name": String("fifteen"),
+      "value": Int64(15),
     },
     {
       "name": String("sixteen"),
@@ -1841,12 +1841,12 @@ TestInterpreterOutputTrace(
       "value": Int64(17),
     },
     {
-      "value": Int64(18),
       "name": String("eighteen"),
+      "value": Int64(18),
     },
     {
-      "value": Int64(19),
       "name": String("nineteen"),
+      "value": Int64(19),
     },
     {
       "name": String("twenty"),

@@ -2,7 +2,7 @@
 
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     fs,
     rc::Rc,
     sync::Arc,
@@ -44,11 +44,11 @@ impl Schema {
     }
 }
 
-fn to_query_arguments(src: &PyAny) -> PyResult<Arc<HashMap<Arc<str>, FieldValue>>> {
-    let args = src.extract::<HashMap<String, &PyAny>>()?;
+fn to_query_arguments(src: &PyAny) -> PyResult<Arc<BTreeMap<Arc<str>, FieldValue>>> {
+    let args = src.extract::<BTreeMap<String, &PyAny>>()?;
 
     let mut unrepresentable_args = vec![];
-    let mut converted_args = HashMap::with_capacity(args.len());
+    let mut converted_args = BTreeMap::new();
 
     for (arg_name, arg_value) in args {
         match make_field_value_from_ref(arg_value) {
@@ -83,7 +83,7 @@ pub fn interpret_query(
     adapter: AdapterShim,
     schema: &Schema,
     query: &str,
-    #[pyo3(from_py_with = "to_query_arguments")] arguments: Arc<HashMap<Arc<str>, FieldValue>>,
+    #[pyo3(from_py_with = "to_query_arguments")] arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
 ) -> PyResult<ResultIterator> {
     let wrapped_adapter = Rc::new(RefCell::new(adapter));
 
@@ -104,7 +104,7 @@ pub fn interpret_query(
             crate::errors::QueryArgumentsError::new_err(format!("{}", err).into_py(py))
         })
     })?;
-    let owned_iter: Box<dyn Iterator<Item = HashMap<String, Py<PyAny>>>> =
+    let owned_iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>> =
         Box::new(execution.map(|res| {
             res.into_iter()
                 .map(|(k, v)| {
@@ -121,7 +121,7 @@ pub fn interpret_query(
 
 #[pyclass(unsendable)]
 pub struct ResultIterator {
-    iter: Box<dyn Iterator<Item = HashMap<String, Py<PyAny>>>>,
+    iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>>,
 }
 
 #[pyproto]
@@ -130,7 +130,7 @@ impl PyIterProtocol for ResultIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<HashMap<String, Py<PyAny>>> {
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<BTreeMap<String, Py<PyAny>>> {
         slf.iter.next()
     }
 }

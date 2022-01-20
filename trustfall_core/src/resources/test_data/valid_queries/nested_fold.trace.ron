@@ -10,12 +10,12 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
@@ -55,12 +55,12 @@ TestInterpreterOutputTrace(
       Opid(9): TraceOp(
         opid: Opid(9),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), Eid(2))),
+        content: Call(ProjectNeighbors(Vid(2), "Composite", Eid(2))),
       ),
       Opid(10): TraceOp(
         opid: Opid(10),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
       ),
       Opid(11): TraceOp(
         opid: Opid(11),
@@ -115,7 +115,7 @@ TestInterpreterOutputTrace(
       Opid(16): TraceOp(
         opid: Opid(16),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(17): TraceOp(
         opid: Opid(17),
@@ -376,7 +376,7 @@ TestInterpreterOutputTrace(
       Opid(40): TraceOp(
         opid: Opid(40),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(41): TraceOp(
         opid: Opid(41),
@@ -628,6 +628,10 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(5))),
           },
           folded_values: {
+            (Eid(1), "value"): [
+              Value(Int64(10)),
+              Value(Int64(15)),
+            ],
             (Eid(2), "mult"): [
               Vec([
                 Value(Int64(10)),
@@ -639,10 +643,6 @@ TestInterpreterOutputTrace(
                 Value(Int64(30)),
                 Value(Int64(45)),
               ]),
-            ],
-            (Eid(1), "value"): [
-              Value(Int64(10)),
-              Value(Int64(15)),
             ],
           },
         )),
@@ -656,6 +656,10 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(5))),
           },
           folded_values: {
+            (Eid(1), "value"): [
+              Value(Int64(10)),
+              Value(Int64(15)),
+            ],
             (Eid(2), "mult"): [
               Vec([
                 Value(Int64(10)),
@@ -667,10 +671,6 @@ TestInterpreterOutputTrace(
                 Value(Int64(30)),
                 Value(Int64(45)),
               ]),
-            ],
-            (Eid(1), "value"): [
-              Value(Int64(10)),
-              Value(Int64(15)),
             ],
           },
         ), Int64(5))),
@@ -728,12 +728,12 @@ TestInterpreterOutputTrace(
       Opid(73): TraceOp(
         opid: Opid(73),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), Eid(2))),
+        content: Call(ProjectNeighbors(Vid(2), "Composite", Eid(2))),
       ),
       Opid(74): TraceOp(
         opid: Opid(74),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
       ),
       Opid(75): TraceOp(
         opid: Opid(75),
@@ -788,7 +788,7 @@ TestInterpreterOutputTrace(
       Opid(80): TraceOp(
         opid: Opid(80),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(81): TraceOp(
         opid: Opid(81),
@@ -1044,7 +1044,7 @@ TestInterpreterOutputTrace(
       Opid(104): TraceOp(
         opid: Opid(104),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(105): TraceOp(
         opid: Opid(105),
@@ -1300,7 +1300,7 @@ TestInterpreterOutputTrace(
       Opid(128): TraceOp(
         opid: Opid(128),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(129): TraceOp(
         opid: Opid(129),
@@ -1553,6 +1553,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
+            (Eid(1), "value"): [
+              Value(Int64(6)),
+              Value(Int64(12)),
+              Value(Int64(18)),
+            ],
             (Eid(2), "mult"): [
               Vec([
                 Value(Int64(6)),
@@ -1569,11 +1574,6 @@ TestInterpreterOutputTrace(
                 Value(Int64(36)),
                 Value(Int64(54)),
               ]),
-            ],
-            (Eid(1), "value"): [
-              Value(Int64(6)),
-              Value(Int64(12)),
-              Value(Int64(18)),
             ],
           },
         )),
@@ -1593,6 +1593,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
+            (Eid(1), "value"): [
+              Value(Int64(6)),
+              Value(Int64(12)),
+              Value(Int64(18)),
+            ],
             (Eid(2), "mult"): [
               Vec([
                 Value(Int64(6)),
@@ -1609,11 +1614,6 @@ TestInterpreterOutputTrace(
                 Value(Int64(36)),
                 Value(Int64(54)),
               ]),
-            ],
-            (Eid(1), "value"): [
-              Value(Int64(6)),
-              Value(Int64(12)),
-              Value(Int64(18)),
             ],
           },
         ), Int64(6))),
@@ -1656,12 +1656,12 @@ TestInterpreterOutputTrace(
       Opid(161): TraceOp(
         opid: Opid(161),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), Eid(2))),
+        content: Call(ProjectNeighbors(Vid(2), "Composite", Eid(2))),
       ),
       Opid(162): TraceOp(
         opid: Opid(162),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
       ),
       Opid(163): TraceOp(
         opid: Opid(163),
@@ -1716,7 +1716,7 @@ TestInterpreterOutputTrace(
       Opid(168): TraceOp(
         opid: Opid(168),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(169): TraceOp(
         opid: Opid(169),
@@ -1977,7 +1977,7 @@ TestInterpreterOutputTrace(
       Opid(192): TraceOp(
         opid: Opid(192),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(193): TraceOp(
         opid: Opid(193),
@@ -2411,11 +2411,7 @@ TestInterpreterOutputTrace(
       ]),
     },
     {
-      "value": List([
-        Int64(6),
-        Int64(12),
-        Int64(18),
-      ]),
+      "base": Int64(6),
       "mult": List([
         List([
           Int64(6),
@@ -2433,9 +2429,14 @@ TestInterpreterOutputTrace(
           Int64(54),
         ]),
       ]),
-      "base": Int64(6),
+      "value": List([
+        Int64(6),
+        Int64(12),
+        Int64(18),
+      ]),
     },
     {
+      "base": Int64(7),
       "mult": List([
         List([
           Int64(14),
@@ -2448,7 +2449,6 @@ TestInterpreterOutputTrace(
           Int64(63),
         ]),
       ]),
-      "base": Int64(7),
       "value": List([
         Int64(14),
         Int64(21),

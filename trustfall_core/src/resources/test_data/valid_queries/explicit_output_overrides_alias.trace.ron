@@ -10,22 +10,22 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "name")),
+        content: Call(ProjectProperty(Vid(2), "Number", "name")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Number", "value")),
       ),
       Opid(6): TraceOp(
         opid: Opid(6),
@@ -272,9 +272,9 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "two": Int64(2),
       "one": Int64(1),
       "succ_name": String("two"),
+      "two": Int64(2),
     },
   ],
 )

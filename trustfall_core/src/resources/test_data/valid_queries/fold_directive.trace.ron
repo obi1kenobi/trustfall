@@ -10,7 +10,7 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Prime", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
@@ -45,7 +45,7 @@ TestInterpreterOutputTrace(
       Opid(7): TraceOp(
         opid: Opid(7),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
       ),
       Opid(8): TraceOp(
         opid: Opid(8),

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
@@ -46,7 +46,7 @@ snow_in,vert_vis_ft,metar_type,elevation_m";
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<HashMap<Arc<str>, FieldValue>>,
+    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
 }
 
 fn read_metar_data() -> Vec<MetarReport> {

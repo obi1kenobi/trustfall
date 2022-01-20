@@ -72,7 +72,7 @@ where
             return Err(duplicate_map);
         }
 
-        Ok(map.drain().collect())
+        Ok(map.into_iter().collect())
     }
 }
 
@@ -89,8 +89,8 @@ pub(crate) struct TestGraphQLQuery {
 
     pub(crate) query: String,
 
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub(crate) arguments: HashMap<String, FieldValue>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) arguments: BTreeMap<String, FieldValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,8 +99,8 @@ pub(crate) struct TestParsedGraphQLQuery {
 
     pub(crate) query: Query,
 
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub(crate) arguments: HashMap<String, FieldValue>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) arguments: BTreeMap<String, FieldValue>,
 }
 
 #[allow(dead_code)]
@@ -112,8 +112,8 @@ pub(crate) struct TestIRQuery {
 
     pub(crate) ir_query: IRQuery,
 
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub(crate) arguments: HashMap<String, FieldValue>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) arguments: BTreeMap<String, FieldValue>,
 }
 
 #[allow(dead_code)]
@@ -130,5 +130,5 @@ where
 
     pub(crate) trace: Trace<DataToken>,
 
-    pub(crate) results: Vec<HashMap<Arc<str>, FieldValue>>,
+    pub(crate) results: Vec<BTreeMap<Arc<str>, FieldValue>>,
 }

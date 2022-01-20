@@ -10,37 +10,37 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), Eid(2))),
+        content: Call(ProjectNeighbors(Vid(2), "Number", Eid(2))),
       ),
       Opid(6): TraceOp(
         opid: Opid(6),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
       ),
       Opid(7): TraceOp(
         opid: Opid(7),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(8): TraceOp(
         opid: Opid(8),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Number", "value")),
       ),
       Opid(9): TraceOp(
         opid: Opid(9),
@@ -3967,39 +3967,39 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(4),
       "base": Int64(4),
       "mult": Int64(4),
-    },
-    {
       "value": Int64(4),
-      "mult": Int64(8),
-      "base": Int64(4),
     },
     {
+      "base": Int64(4),
+      "mult": Int64(8),
+      "value": Int64(4),
+    },
+    {
+      "base": Int64(4),
       "mult": Int64(12),
       "value": Int64(4),
-      "base": Int64(4),
     },
     {
+      "base": Int64(4),
       "mult": Int64(10),
       "value": Int64(5),
-      "base": Int64(4),
     },
     {
       "base": Int64(4),
-      "value": Int64(5),
       "mult": Int64(15),
+      "value": Int64(5),
     },
     {
-      "mult": Int64(6),
       "base": Int64(4),
+      "mult": Int64(6),
       "value": Int64(6),
     },
     {
-      "value": Int64(6),
       "base": Int64(4),
       "mult": Int64(12),
+      "value": Int64(6),
     },
     {
       "base": Int64(4),
@@ -4007,14 +4007,14 @@ TestInterpreterOutputTrace(
       "value": Int64(6),
     },
     {
+      "base": Int64(4),
       "mult": Int64(14),
       "value": Int64(7),
-      "base": Int64(4),
     },
     {
-      "value": Int64(7),
-      "mult": Int64(21),
       "base": Int64(4),
+      "mult": Int64(21),
+      "value": Int64(7),
     },
     {
       "base": Int64(5),
@@ -4022,19 +4022,19 @@ TestInterpreterOutputTrace(
       "value": Int64(5),
     },
     {
-      "mult": Int64(15),
       "base": Int64(5),
+      "mult": Int64(15),
       "value": Int64(5),
     },
     {
+      "base": Int64(5),
       "mult": Int64(6),
       "value": Int64(6),
-      "base": Int64(5),
     },
     {
+      "base": Int64(5),
       "mult": Int64(12),
       "value": Int64(6),
-      "base": Int64(5),
     },
     {
       "base": Int64(5),
@@ -4043,28 +4043,28 @@ TestInterpreterOutputTrace(
     },
     {
       "base": Int64(5),
-      "value": Int64(7),
       "mult": Int64(14),
+      "value": Int64(7),
     },
     {
-      "value": Int64(7),
       "base": Int64(5),
       "mult": Int64(21),
+      "value": Int64(7),
     },
     {
+      "base": Int64(5),
       "mult": Int64(8),
       "value": Int64(8),
-      "base": Int64(5),
     },
     {
       "base": Int64(5),
-      "value": Int64(8),
       "mult": Int64(16),
+      "value": Int64(8),
     },
     {
-      "value": Int64(8),
       "base": Int64(5),
       "mult": Int64(24),
+      "value": Int64(8),
     },
   ],
 )

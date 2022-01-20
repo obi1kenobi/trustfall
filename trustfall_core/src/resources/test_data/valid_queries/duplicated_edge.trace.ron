@@ -10,22 +10,22 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(2))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(2))),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Number", "value")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Number", "value")),
       ),
       Opid(6): TraceOp(
         opid: Opid(6),
@@ -83,8 +83,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(0))),
           tokens: {
-            Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): Some(Neither(NeitherNumber(1))),
           },
         )),
       ),
@@ -94,8 +94,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           current_token: Some(Neither(NeitherNumber(0))),
           tokens: {
-            Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): Some(Neither(NeitherNumber(1))),
           },
         ))),
       ),
@@ -110,9 +110,9 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(3): Some(Neither(NeitherNumber(1))),
-            Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
       ),
@@ -122,9 +122,9 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(3): Some(Neither(NeitherNumber(1))),
-            Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ), Int64(1))),
       ),
@@ -134,9 +134,9 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(3): Some(Neither(NeitherNumber(1))),
-            Vid(1): Some(Neither(NeitherNumber(0))),
           },
           values: [
             Int64(1),
@@ -149,9 +149,9 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Neither(NeitherNumber(1))),
             Vid(3): Some(Neither(NeitherNumber(1))),
-            Vid(1): Some(Neither(NeitherNumber(0))),
           },
           values: [
             Int64(1),
@@ -283,8 +283,8 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "one2": Int64(1),
       "one": Int64(1),
+      "one2": Int64(1),
     },
   ],
 )

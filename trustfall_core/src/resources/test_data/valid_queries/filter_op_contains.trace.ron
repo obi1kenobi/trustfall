@@ -10,17 +10,17 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "vowelsInName")),
+        content: Call(ProjectProperty(Vid(1), "Number", "vowelsInName")),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "vowelsInName")),
+        content: Call(ProjectProperty(Vid(1), "Number", "vowelsInName")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
@@ -406,18 +406,18 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
+      "value": Int64(8),
       "vowelsInName": List([
         String("e"),
         String("i"),
       ]),
-      "value": Int64(8),
     },
     {
+      "value": Int64(9),
       "vowelsInName": List([
         String("i"),
         String("e"),
       ]),
-      "value": Int64(9),
     },
   ],
 )

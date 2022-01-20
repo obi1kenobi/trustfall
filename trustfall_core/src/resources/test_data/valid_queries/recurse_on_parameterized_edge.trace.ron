@@ -10,22 +10,22 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Prime", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Prime", Eid(1))),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Prime", Eid(1))),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
       ),
       Opid(6): TraceOp(
         opid: Opid(6),
@@ -217,8 +217,8 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Prime(PrimeNumber(2))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -228,8 +228,8 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
-            Vid(2): Some(Prime(PrimeNumber(2))),
             Vid(1): Some(Prime(PrimeNumber(2))),
+            Vid(2): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(2))),
       ),
@@ -246,10 +246,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -261,10 +261,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(4))),
       ),
@@ -281,10 +281,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -296,10 +296,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(4))),
       ),
@@ -316,10 +316,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -331,10 +331,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(4))),
       ),
@@ -358,10 +358,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -373,10 +373,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(8))),
       ),
@@ -402,11 +402,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -419,11 +419,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(12))),
       ),
@@ -488,10 +488,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -503,10 +503,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(8))),
       ),
@@ -523,10 +523,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -538,10 +538,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(8))),
       ),
@@ -565,10 +565,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(16, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -580,10 +580,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(16, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(16))),
       ),
@@ -609,11 +609,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(24, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -626,11 +626,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(24, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(24))),
       ),
@@ -700,11 +700,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -717,11 +717,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(12))),
       ),
@@ -739,11 +739,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -756,11 +756,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(12))),
       ),
@@ -786,11 +786,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(24, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -803,11 +803,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(24, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(24))),
       ),
@@ -833,11 +833,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(36, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -850,11 +850,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(36, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(36))),
       ),
@@ -996,11 +996,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1013,11 +1013,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(6))),
       ),
@@ -1035,11 +1035,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1052,11 +1052,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(6))),
       ),
@@ -1074,11 +1074,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1091,11 +1091,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(6))),
       ),
@@ -1121,11 +1121,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1138,11 +1138,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(12))),
       ),
@@ -1168,11 +1168,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(18, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1185,11 +1185,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(18, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(18))),
       ),
@@ -1259,11 +1259,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1276,11 +1276,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(12))),
       ),
@@ -1298,11 +1298,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1315,11 +1315,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(12, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(12))),
       ),
@@ -1345,11 +1345,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(24, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1362,11 +1362,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(24, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(24))),
       ),
@@ -1392,11 +1392,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(36, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1409,11 +1409,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(36, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(36))),
       ),
@@ -1483,11 +1483,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(18, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1500,11 +1500,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(18, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(18))),
       ),
@@ -1522,11 +1522,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(18, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1539,11 +1539,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(18, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(18))),
       ),
@@ -1569,11 +1569,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(36, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1586,11 +1586,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(36, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(36))),
       ),
@@ -1616,11 +1616,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(54, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -1633,11 +1633,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(54, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(54))),
       ),

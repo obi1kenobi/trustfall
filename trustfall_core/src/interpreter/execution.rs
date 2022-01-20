@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     fmt::Debug,
     num::NonZeroUsize,
     rc::Rc,
@@ -30,8 +30,8 @@ use super::{error::QueryArgumentsError, Adapter, DataContext, InterpretedQuery};
 pub fn interpret_ir<'query, DataToken>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     indexed_query: Arc<IndexedQuery>,
-    arguments: Arc<HashMap<Arc<str>, FieldValue>>,
-) -> Result<Box<dyn Iterator<Item = HashMap<Arc<str>, FieldValue>> + 'query>, QueryArgumentsError>
+    arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
+) -> Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>, QueryArgumentsError>
 where
     DataToken: Clone + Debug + 'query,
 {
@@ -124,7 +124,7 @@ where
         context
     }));
 
-    let mut visited_vids: HashSet<Vid> = hashset! {component_root_vid};
+    let mut visited_vids: BTreeSet<Vid> = btreeset! {component_root_vid};
 
     let mut edge_iter = component.edges.values();
     let mut fold_iter = component.folds.values();
@@ -185,7 +185,7 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
     adapter: &RefCell<impl Adapter<'query, DataToken = DataToken>>,
     query: &InterpretedQuery,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-) -> Box<dyn Iterator<Item = HashMap<Arc<str>, FieldValue>> + 'query> {
+) -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
     let ir_query = &query.indexed_query.ir_query;
     let mut output_names: Vec<Arc<str>> = ir_query.root_component.outputs.keys().cloned().collect();
     output_names.sort_unstable(); // to ensure deterministic project_property() ordering
@@ -220,13 +220,13 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
     Box::new(output_iterator.map(move |mut context| {
         assert!(context.values.len() == output_names.len());
 
-        let mut output: HashMap<Arc<str>, FieldValue> = output_names
+        let mut output: BTreeMap<Arc<str>, FieldValue> = output_names
             .iter()
             .cloned()
             .zip(context.values.drain(..))
             .collect();
 
-        for ((_, output_name), output_value) in context.folded_values.drain() {
+        for ((_, output_name), output_value) in context.folded_values {
             let existing = output.insert(output_name, output_value.into());
             assert!(existing.is_none());
         }
@@ -304,12 +304,12 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             }));
         }
 
-        let mut folded_values: HashMap<(Eid, Arc<str>), Vec<ValueOrVec>> = output_names
+        let mut folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), Vec::new()))
             .collect();
         for mut folded_context in output_iterator {
-            for (key, values) in folded_context.folded_values.drain() {
+            for (key, values) in folded_context.folded_values {
                 folded_values
                     .entry(key)
                     .or_default()
@@ -1002,7 +1002,7 @@ fn post_process_recursive_expansion<'schema, 'query, DataToken: Clone + Debug + 
 #[cfg(test)]
 mod tests {
     use std::{
-        collections::HashMap,
+        collections::BTreeMap,
         fs,
         path::{Path, PathBuf},
         sync::Arc,
@@ -1029,7 +1029,7 @@ mod tests {
         let test_query: TestIRQueryResult = ron::from_str(&input_data).unwrap();
         let test_query = test_query.unwrap();
 
-        let arguments: HashMap<Arc<str>, FieldValue> = test_query
+        let arguments: BTreeMap<Arc<str>, FieldValue> = test_query
             .arguments
             .into_iter()
             .map(|(k, v)| (Arc::from(k), v))

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::HashMap,
+    collections::BTreeMap,
     env,
     fs::{self, File},
     io::{BufWriter, Write},
@@ -36,7 +36,7 @@ lazy_static! {
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<HashMap<Arc<str>, FieldValue>>,
+    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
 }
 
 fn refresh_data() {

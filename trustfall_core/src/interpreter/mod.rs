@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
 use async_graphql_parser::types::Type;
 use itertools::Itertools;
@@ -20,10 +20,10 @@ pub mod trace;
 #[derive(Debug, Clone)]
 pub struct DataContext<DataToken: Clone + Debug> {
     pub current_token: Option<DataToken>,
-    tokens: HashMap<Vid, Option<DataToken>>,
+    tokens: BTreeMap<Vid, Option<DataToken>>,
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<DataToken>>,
-    folded_values: HashMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
+    folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
 }
 
@@ -50,7 +50,7 @@ where
     for<'d> DataToken: Deserialize<'d>,
 {
     current_token: Option<DataToken>,
-    tokens: HashMap<Vid, Option<DataToken>>,
+    tokens: BTreeMap<Vid, Option<DataToken>>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     values: Vec<FieldValue>,
@@ -58,8 +58,8 @@ where
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     suspended_tokens: Vec<Option<DataToken>>,
 
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    folded_values: HashMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     piggyback: Option<Vec<DataContext<DataToken>>>,
@@ -103,9 +103,9 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
     fn new(token: Option<DataToken>) -> DataContext<DataToken> {
         DataContext {
             current_token: token,
-            tokens: HashMap::new(),
-            values: Vec::new(),
-            suspended_tokens: Vec::new(),
+            tokens: Default::default(),
+            values: Default::default(),
+            suspended_tokens: Default::default(),
             folded_values: Default::default(),
             piggyback: None,
         }
@@ -227,14 +227,14 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterpretedQuery {
     pub indexed_query: Arc<IndexedQuery>,
-    pub arguments: Arc<HashMap<Arc<str>, FieldValue>>,
+    pub arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
 }
 
 impl InterpretedQuery {
     #[inline]
     pub fn from_query_and_arguments(
         indexed_query: Arc<IndexedQuery>,
-        arguments: Arc<HashMap<Arc<str>, FieldValue>>,
+        arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
     ) -> Result<Self, QueryArgumentsError> {
         let mut errors = vec![];
 

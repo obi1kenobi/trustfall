@@ -18,7 +18,7 @@ mod schema;
 mod util;
 
 use std::{
-    cell::RefCell, collections::HashMap, convert::TryInto, env, fmt::Debug, fs, rc::Rc, sync::Arc,
+    cell::RefCell, collections::BTreeMap, convert::TryInto, env, fmt::Debug, fs, rc::Rc, sync::Arc,
 };
 
 use async_graphql_parser::{parse_query, parse_schema};
@@ -119,7 +119,7 @@ where
     for<'de> AdapterT::DataToken: Deserialize<'de>,
 {
     let query = Arc::new(test_query.ir_query.clone().try_into().unwrap());
-    let arguments: Arc<HashMap<_, _>> = Arc::new(
+    let arguments: Arc<BTreeMap<_, _>> = Arc::new(
         test_query
             .arguments
             .iter()

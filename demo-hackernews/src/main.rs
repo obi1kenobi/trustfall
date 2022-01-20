@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -27,7 +27,7 @@ lazy_static! {
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<HashMap<Arc<str>, FieldValue>>,
+    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
 }
 
 fn execute_query(path: &str) {
@@ -41,7 +41,7 @@ fn execute_query(path: &str) {
 
     for data_item in interpret_ir(adapter, query, arguments).unwrap() {
         // Use the value variant with an untagged enum serialization, to make the printout cleaner.
-        let data_item: HashMap<Arc<str>, TransparentValue> =
+        let data_item: BTreeMap<Arc<str>, TransparentValue> =
             data_item.into_iter().map(|(k, v)| (k, v.into())).collect();
 
         println!("\n{}", serde_json::to_string_pretty(&data_item).unwrap());

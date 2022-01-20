@@ -10,22 +10,22 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), Eid(2))),
+        content: Call(ProjectNeighbors(Vid(2), "Number", Eid(2))),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), Eid(3))),
+        content: Call(ProjectNeighbors(Vid(2), "Number", Eid(3))),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(4), "value")),
+        content: Call(ProjectProperty(Vid(4), "Number", "value")),
       ),
       Opid(6): TraceOp(
         opid: Opid(6),
@@ -102,7 +102,7 @@ TestInterpreterOutputTrace(
       Opid(16): TraceOp(
         opid: Opid(16),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "value")),
+        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
       ),
       Opid(17): TraceOp(
         opid: Opid(17),
@@ -255,8 +255,8 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(1))),
-            Vid(4): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(4): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
             (Eid(2), "mult"): [
@@ -273,8 +273,8 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(1))),
-            Vid(4): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(2))),
+            Vid(4): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
             (Eid(2), "mult"): [
@@ -431,11 +431,11 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "succ": Int64(3),
       "mult": List([
         Int64(4),
         Int64(6),
       ]),
+      "succ": Int64(3),
     },
   ],
 )

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     fmt::Debug,
     marker::PhantomData,
     num::NonZeroUsize,
@@ -31,8 +31,8 @@ where
 
     pub ir_query: IRQuery,
 
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub(crate) arguments: HashMap<String, FieldValue>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) arguments: BTreeMap<String, FieldValue>,
 }
 
 impl<DataToken> Trace<DataToken>
@@ -41,7 +41,7 @@ where
     for<'de2> DataToken: Deserialize<'de2>,
 {
     #[allow(dead_code)]
-    pub fn new(ir_query: IRQuery, arguments: HashMap<String, FieldValue>) -> Self {
+    pub fn new(ir_query: IRQuery, arguments: BTreeMap<String, FieldValue>) -> Self {
         Self {
             ops: Default::default(),
             ir_query,
@@ -96,8 +96,8 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FunctionCall {
     GetStartingTokens(Vid),                   // vertex ID
-    ProjectProperty(Vid, Arc<str>),           // vertex ID + name of the property
-    ProjectNeighbors(Vid, Eid),               // vertex ID + edge ID
+    ProjectProperty(Vid, Arc<str>, Arc<str>), // vertex ID + type name + name of the property
+    ProjectNeighbors(Vid, Arc<str>, Eid),     // vertex ID + type name + edge ID
     CanCoerceToType(Vid, Arc<str>, Arc<str>), // vertex ID + current type + coerced-to type
 }
 
@@ -265,6 +265,7 @@ where
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectProperty(
                 vertex_hint,
+                current_type_name.clone(),
                 field_name.clone(),
             )),
             None,
@@ -344,7 +345,7 @@ where
     > {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::ProjectNeighbors(vertex_hint, edge_hint)),
+            TraceOpContent::Call(FunctionCall::ProjectNeighbors(vertex_hint, current_type_name.clone(), edge_hint)),
             None,
         );
         drop(trace);

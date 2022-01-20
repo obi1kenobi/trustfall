@@ -15,12 +15,12 @@ TestInterpreterOutputTrace(
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Composite", Eid(1))),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Composite", "value")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
@@ -102,7 +102,7 @@ TestInterpreterOutputTrace(
       Opid(13): TraceOp(
         opid: Opid(13),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(14): TraceOp(
         opid: Opid(14),
@@ -334,7 +334,7 @@ TestInterpreterOutputTrace(
       Opid(40): TraceOp(
         opid: Opid(40),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(41): TraceOp(
         opid: Opid(41),
@@ -566,7 +566,7 @@ TestInterpreterOutputTrace(
       Opid(67): TraceOp(
         opid: Opid(67),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(68): TraceOp(
         opid: Opid(68),
@@ -772,7 +772,7 @@ TestInterpreterOutputTrace(
       Opid(90): TraceOp(
         opid: Opid(90),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(91): TraceOp(
         opid: Opid(91),
@@ -971,7 +971,7 @@ TestInterpreterOutputTrace(
       Opid(113): TraceOp(
         opid: Opid(113),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(114): TraceOp(
         opid: Opid(114),
@@ -1167,7 +1167,7 @@ TestInterpreterOutputTrace(
       Opid(136): TraceOp(
         opid: Opid(136),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(137): TraceOp(
         opid: Opid(137),
@@ -1399,7 +1399,7 @@ TestInterpreterOutputTrace(
       Opid(163): TraceOp(
         opid: Opid(163),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Prime", "value")),
       ),
       Opid(164): TraceOp(
         opid: Opid(164),
@@ -1641,18 +1641,18 @@ TestInterpreterOutputTrace(
       "value": Int64(12),
     },
     {
-      "value": Int64(14),
       "prime": List([
         Int64(2),
         Int64(7),
       ]),
+      "value": Int64(14),
     },
     {
-      "value": Int64(15),
       "prime": List([
         Int64(3),
         Int64(5),
       ]),
+      "value": Int64(15),
     },
     {
       "prime": List([
@@ -1661,11 +1661,11 @@ TestInterpreterOutputTrace(
       "value": Int64(16),
     },
     {
-      "value": Int64(18),
       "prime": List([
         Int64(2),
         Int64(3),
       ]),
+      "value": Int64(18),
     },
     {
       "prime": List([

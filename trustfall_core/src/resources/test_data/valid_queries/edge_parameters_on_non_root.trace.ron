@@ -10,17 +10,17 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), Eid(1))),
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "value")),
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "value")),
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
@@ -147,10 +147,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -162,10 +162,10 @@ TestInterpreterOutputTrace(
             2,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(4))),
       ),
@@ -175,10 +175,10 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(4),
@@ -191,10 +191,10 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(4),
@@ -228,11 +228,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
       ),
@@ -245,11 +245,11 @@ TestInterpreterOutputTrace(
             3,
           ]))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), Int64(6))),
       ),
@@ -259,11 +259,11 @@ TestInterpreterOutputTrace(
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(6),
@@ -276,11 +276,11 @@ TestInterpreterOutputTrace(
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Composite(CompositeNumber(6, [
               2,
               3,
             ]))),
-            Vid(1): Some(Prime(PrimeNumber(2))),
           },
           values: [
             Int64(6),
@@ -589,16 +589,16 @@ TestInterpreterOutputTrace(
   ),
   results: [
     {
-      "value": Int64(2),
       "multiple": Int64(4),
+      "value": Int64(2),
     },
     {
       "multiple": Int64(6),
       "value": Int64(2),
     },
     {
-      "value": Int64(3),
       "multiple": Int64(6),
+      "value": Int64(3),
     },
     {
       "multiple": Int64(9),

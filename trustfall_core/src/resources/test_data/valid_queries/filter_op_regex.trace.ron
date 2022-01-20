@@ -10,12 +10,12 @@ TestInterpreterOutputTrace(
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "name")),
+        content: Call(ProjectProperty(Vid(1), "Number", "name")),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "name")),
+        content: Call(ProjectProperty(Vid(1), "Number", "name")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{btree_map, HashMap, VecDeque},
+    collections::{btree_map, VecDeque, BTreeMap},
     convert::TryInto,
     fmt::Debug,
     marker::PhantomData,
@@ -383,10 +383,11 @@ where
             .expect("Expected a project_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, property)) =
+        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, type_name, property)) =
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
+            assert_eq!(*type_name, current_type_name);
             assert_eq!(*property, field_name);
 
             Box::new(TraceReaderProjectPropertiesIter {
@@ -422,9 +423,10 @@ where
             .expect("Expected a project_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, eid)) = trace_op.content {
-            assert_eq!(vid, vertex_hint);
-            assert_eq!(eid, edge_hint);
+        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, type_name, eid)) = &trace_op.content {
+            assert_eq!(vid, &vertex_hint);
+            assert_eq!(type_name, &current_type_name);
+            assert_eq!(eid, &edge_hint);
 
             Box::new(TraceReaderProjectNeighborsIter {
                 parent_opid: *root_opid,
@@ -471,7 +473,7 @@ where
 #[allow(dead_code)]
 pub fn assert_interpreted_results<'query, 'trace, DataToken>(
     trace: &Trace<DataToken>,
-    expected_results: &[HashMap<Arc<str>, FieldValue>],
+    expected_results: &[BTreeMap<Arc<str>, FieldValue>],
     complete: bool,
 ) where
     DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
