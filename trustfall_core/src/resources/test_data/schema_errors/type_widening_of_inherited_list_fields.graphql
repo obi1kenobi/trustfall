@@ -1,0 +1,36 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Base: Base
+    Derived: Derived
+}
+
+interface Base {
+    nullableList1: [Int!]
+    nullableList2: [Int!]
+    nonNullableList1: [Int]!
+    nonNullableList2: [Int]!
+    bothNonNullableList1: [Int!]!
+    bothNonNullableList2: [Int!]!
+    bothNonNullableList3: [Int!]!
+}
+
+type Derived implements Base {
+    # All of the fields below lack at least one non-nullable type modifier
+    # when compared to the interface from where these fields originate.
+    nullableList1: [Int]
+    nullableList2: [Int]!
+    nonNullableList1: [Int]
+    nonNullableList2: [Int!]
+    bothNonNullableList1: [Int]!
+    bothNonNullableList2: [Int!]
+    bothNonNullableList3: [Int]
+}

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, BTreeMap},
     sync::Arc,
 };
 
@@ -13,6 +13,9 @@ use async_graphql_parser::{
 };
 
 pub use ::async_graphql_parser::Error;
+use serde::{Deserialize, Serialize};
+
+pub mod error;
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -22,6 +25,13 @@ pub struct Schema {
     pub(crate) scalars: HashMap<Arc<str>, TypeDefinition>,
     pub(crate) vertex_types: HashMap<Arc<str>, TypeDefinition>,
     pub(crate) fields: HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
+    pub(crate) field_origins: BTreeMap<(Arc<str>, Arc<str>), FieldOrigin>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum FieldOrigin {
+    SingleAncestor(Arc<str>),  // the name of the parent (super) type that first defined this field
+    MultipleAncestors(Vec<Arc<str>>),
 }
 
 lazy_static! {
