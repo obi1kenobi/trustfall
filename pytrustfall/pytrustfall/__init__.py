@@ -13,5 +13,9 @@ from .pytrustfall import Schema
 # - QueryArgumentsError, if the query by itself is fine but cannot be executed together with
 #   the provided arguments.
 from .pytrustfall import (
-    FrontendError, InvalidIRQueryError, ParseError, QueryArgumentsError, ValidationError
+    FrontendError,
+    InvalidIRQueryError,
+    ParseError,
+    QueryArgumentsError,
+    ValidationError,
 )

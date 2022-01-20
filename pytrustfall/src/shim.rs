@@ -12,7 +12,7 @@ use trustfall_core::{
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
-use crate::errors::{QueryArgumentsError, InvalidSchemaError};
+use crate::errors::{InvalidSchemaError, QueryArgumentsError};
 
 pub(crate) fn register(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Schema>()?;
@@ -32,16 +32,13 @@ pub struct Schema {
 impl Schema {
     #[new]
     pub fn new(schema_text: &str) -> PyResult<Self> {
-        let inner = trustfall_core::schema::Schema::parse(schema_text)
-            .map_err(|e| {
-                Python::with_gil(|py| {
-                    crate::errors::InvalidSchemaError::new_err(format!("{}", e).into_py(py))
-                })
-            })?;
+        let inner = trustfall_core::schema::Schema::parse(schema_text).map_err(|e| {
+            Python::with_gil(|py| {
+                crate::errors::InvalidSchemaError::new_err(format!("{}", e).into_py(py))
+            })
+        })?;
 
-        Ok(Self {
-            inner
-        })
+        Ok(Self { inner })
     }
 }
 
