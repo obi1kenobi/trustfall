@@ -1,0 +1,24 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Base: Base
+    Derived: Derived
+}
+
+interface Base {
+    integer: Int!
+    maybeMissing: String
+}
+
+type Derived implements Base {
+    integer: Int!
+    # The "maybeMissing" field is not here but is required by "implements Base", hence the error.
+}

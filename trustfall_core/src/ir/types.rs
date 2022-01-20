@@ -22,9 +22,9 @@ pub(crate) fn is_base_type_orderable(operand_type: &BaseType) -> bool {
 }
 
 pub(crate) fn is_subtype(parent_type: &Type, maybe_subtype: &Type) -> bool {
-    // If the parent type is nullable, all its subtypes are be nullable as well.
+    // If the parent type is non-nullable, all its subtypes must be non-nullable as well.
     // If the parent type is nullable, it can have both nullable and non-nullable subtypes.
-    if parent_type.nullable && !maybe_subtype.nullable {
+    if !parent_type.nullable && maybe_subtype.nullable {
         return false;
     }
 

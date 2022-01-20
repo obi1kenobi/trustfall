@@ -24,6 +24,7 @@ use std::{
 use async_graphql_parser::{parse_query, parse_schema};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use trustfall_core::schema::error::InvalidSchemaError;
 
 use crate::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemToken},
@@ -47,7 +48,7 @@ fn get_schema_by_name(schema_name: &str) -> Schema {
     let schema_text =
         fs::read_to_string(format!("src/resources/schemas/{}.graphql", schema_name,)).unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
-    Schema::new(schema_document)
+    Schema::new(schema_document).unwrap()
 }
 
 fn serialize_to_ron<S: Serialize>(s: &S) -> String {
@@ -202,11 +203,27 @@ fn reserialize(path: &str) {
                 ron::from_str(&input_data).unwrap();
             serialize_to_ron(&test_trace)
         }
+        Some((_, "schema-error")) => {
+            let schema_error: InvalidSchemaError = ron::from_str(&input_data).unwrap();
+            serialize_to_ron(&schema_error)
+        }
         Some((_, ext)) => unreachable!(ext),
         None => unreachable!(path),
     };
 
     println!("{}", output_data);
+}
+
+fn schema_error(path: &str) {
+    let schema_text = fs::read_to_string(path).unwrap();
+
+    let result = Schema::parse(schema_text);
+    match result {
+        Err(e) => {
+            println!("{}", serialize_to_ron(&e))
+        }
+        Ok(_) => unreachable!("{}", path),
+    }
 }
 
 fn corpus_graphql(path: &str, schema_name: &str) {
@@ -259,6 +276,13 @@ fn main() {
             Some(path) => {
                 assert!(reversed_args.is_empty());
                 trace(path)
+            }
+        },
+        Some("schema_error") => match reversed_args.pop() {
+            None => panic!("No filename provided"),
+            Some(path) => {
+                assert!(reversed_args.is_empty());
+                schema_error(path)
             }
         },
         Some("reserialize") => match reversed_args.pop() {

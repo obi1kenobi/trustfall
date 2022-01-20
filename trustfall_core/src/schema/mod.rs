@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::{
-    collections::{HashMap, HashSet, BTreeMap},
+    collections::{btree_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    ops::Add,
     sync::Arc,
 };
 
@@ -10,10 +11,17 @@ use async_graphql_parser::{
         DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition, ServiceDocument,
         TypeDefinition, TypeKind, TypeSystemDefinition,
     },
+    Positioned,
 };
 
 pub use ::async_graphql_parser::Error;
+use async_graphql_value::Name;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+
+use crate::ir::types::is_subtype;
+
+use self::error::InvalidSchemaError;
 
 pub mod error;
 
@@ -30,8 +38,35 @@ pub struct Schema {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum FieldOrigin {
-    SingleAncestor(Arc<str>),  // the name of the parent (super) type that first defined this field
-    MultipleAncestors(Vec<Arc<str>>),
+    SingleAncestor(Arc<str>), // the name of the parent (super) type that first defined this field
+    MultipleAncestors(BTreeSet<Arc<str>>),
+}
+
+impl Add for &FieldOrigin {
+    type Output = FieldOrigin;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (FieldOrigin::SingleAncestor(l), FieldOrigin::SingleAncestor(r)) => {
+                if l == r {
+                    self.clone()
+                } else {
+                    FieldOrigin::MultipleAncestors(btreeset![l.clone(), r.clone()])
+                }
+            }
+            (FieldOrigin::SingleAncestor(single), FieldOrigin::MultipleAncestors(multi))
+            | (FieldOrigin::MultipleAncestors(multi), FieldOrigin::SingleAncestor(single)) => {
+                let mut new_set = multi.clone();
+                new_set.insert(single.clone());
+                FieldOrigin::MultipleAncestors(new_set)
+            }
+            (FieldOrigin::MultipleAncestors(l_set), FieldOrigin::MultipleAncestors(r_set)) => {
+                let mut new_set = l_set.clone();
+                new_set.extend(r_set.iter().cloned());
+                FieldOrigin::MultipleAncestors(new_set)
+            }
+        }
+    }
 }
 
 lazy_static! {
@@ -45,11 +80,12 @@ lazy_static! {
 }
 
 impl Schema {
-    pub fn parse(input: impl AsRef<str>) -> Result<Self, Error> {
-        parse_schema(input).map(Schema::new)
+    pub fn parse(input: impl AsRef<str>) -> Result<Self, InvalidSchemaError> {
+        let doc = parse_schema(input)?;
+        Self::new(doc)
     }
 
-    pub fn new(doc: ServiceDocument) -> Self {
+    pub fn new(doc: ServiceDocument) -> Result<Self, InvalidSchemaError> {
         let mut schema: Option<SchemaDefinition> = None;
         let mut directives: HashMap<Arc<str>, DirectiveDefinition> = Default::default();
         let mut scalars: HashMap<Arc<str>, TypeDefinition> = Default::default();
@@ -136,17 +172,270 @@ impl Schema {
             _ => unreachable!(),
         };
 
-        Self {
+        let field_origins = get_field_origins(&vertex_types)?;
+
+        check_field_type_narrowing(&vertex_types, &fields)?;
+        check_fields_required_by_interface_implementations(&vertex_types, &fields)?;
+
+        Ok(Self {
             schema,
             query_type,
             directives,
             scalars,
             vertex_types,
             fields,
-        }
+            field_origins,
+        })
     }
 
     pub(crate) fn query_type_name(&self) -> &str {
         self.schema.query.as_ref().unwrap().node.as_ref()
+    }
+}
+
+fn check_fields_required_by_interface_implementations(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+    fields: &HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
+) -> Result<(), InvalidSchemaError> {
+    let mut errors: Vec<InvalidSchemaError> = vec![];
+
+    for (type_name, type_defn) in vertex_types {
+        let implementations = get_vertex_type_implements(type_defn);
+
+        for implementation in implementations {
+            let implementation = implementation.node.as_ref();
+
+            let implementation_fields = get_vertex_type_fields(&vertex_types[implementation]);
+            for field in implementation_fields {
+                let field_name = field.node.name.node.as_ref();
+
+                // If the current type does not contain the implemented interface's field,
+                // that's an error.
+                if !fields.contains_key(&(type_name.clone(), Arc::from(field_name))) {
+                    errors.push(InvalidSchemaError::MissingRequiredField(
+                        type_name.to_string(),
+                        implementation.to_string(),
+                        field_name.to_string(),
+                        field.node.ty.node.to_string(),
+                    ))
+                }
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.into())
+    }
+}
+
+fn check_field_type_narrowing(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+    fields: &HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
+) -> Result<(), InvalidSchemaError> {
+    let mut errors: Vec<InvalidSchemaError> = vec![];
+
+    for (type_name, type_defn) in vertex_types {
+        let implementations = get_vertex_type_implements(type_defn);
+        let type_fields = get_vertex_type_fields(type_defn);
+
+        for field in type_fields {
+            let field_name = field.node.name.node.as_ref();
+            let field_type = &field.node.ty.node;
+
+            for implementation in implementations {
+                let implementation = implementation.node.as_ref();
+
+                // The parent type might not contain this field. But if it does,
+                // ensure that the parent field's type is a supertype of the current field's type.
+                if let Some(parent_field) =
+                    fields.get(&(Arc::from(implementation), Arc::from(field_name)))
+                {
+                    let parent_field_type = &parent_field.ty.node;
+                    if !is_subtype(parent_field_type, field_type) {
+                        errors.push(InvalidSchemaError::InvalidTypeWideningOfInheritedField(
+                            field_name.to_string(),
+                            type_name.to_string(),
+                            implementation.to_string(),
+                            field_type.to_string(),
+                            parent_field_type.to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.into())
+    }
+}
+
+fn get_vertex_type_fields(vertex: &TypeDefinition) -> &[Positioned<FieldDefinition>] {
+    match &vertex.kind {
+        TypeKind::Object(obj) => &obj.fields,
+        TypeKind::Interface(iface) => &iface.fields,
+        _ => unreachable!(),
+    }
+}
+
+fn get_vertex_type_implements(vertex: &TypeDefinition) -> &[Positioned<Name>] {
+    match &vertex.kind {
+        TypeKind::Object(obj) => &obj.implements,
+        TypeKind::Interface(iface) => &iface.implements,
+        _ => unreachable!(),
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn get_field_origins(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+) -> Result<BTreeMap<(Arc<str>, Arc<str>), FieldOrigin>, InvalidSchemaError> {
+    let mut field_origins: BTreeMap<(Arc<str>, Arc<str>), FieldOrigin> = Default::default();
+    let mut queue = VecDeque::new();
+
+    // for each type, which types have yet to have their field origins resolved first
+    let mut required_resolutions: BTreeMap<&str, BTreeSet<&str>> = vertex_types
+        .iter()
+        .map(|(name, defn)| {
+            let resolutions: BTreeSet<&str> = get_vertex_type_implements(defn)
+                .iter()
+                .map(|x| x.node.as_ref())
+                .collect();
+            if resolutions.is_empty() {
+                queue.push_back(name);
+            }
+            (name.as_ref(), resolutions)
+        })
+        .collect();
+
+    // for each type, which types does it enable resolution of
+    let resolvers: BTreeMap<&str, BTreeSet<Arc<str>>> = vertex_types
+        .iter()
+        .flat_map(|(name, defn)| {
+            get_vertex_type_implements(defn)
+                .iter()
+                .map(|x| (x.node.as_ref(), Arc::from(name.as_ref())))
+        })
+        .fold(Default::default(), |mut acc, (interface, implementer)| {
+            match acc.entry(interface) {
+                Entry::Vacant(v) => {
+                    v.insert(btreeset![implementer]);
+                }
+                Entry::Occupied(occ) => {
+                    occ.into_mut().insert(implementer);
+                }
+            }
+            acc
+        });
+
+    while let Some(type_name) = queue.pop_front() {
+        let defn = &vertex_types[type_name];
+        let implements = get_vertex_type_implements(defn);
+        let fields = get_vertex_type_fields(defn);
+
+        let mut implemented_fields: BTreeMap<&str, FieldOrigin> = Default::default();
+        for implemented_interface in implements {
+            let implemented_interface = implemented_interface.node.as_ref();
+            let parent_fields = get_vertex_type_fields(&vertex_types[implemented_interface]);
+            for field in parent_fields {
+                let parent_field_origin = &field_origins[&(
+                    Arc::from(implemented_interface),
+                    Arc::from(field.node.name.node.as_ref()),
+                )];
+
+                implemented_fields
+                    .entry(field.node.name.node.as_ref())
+                    .and_modify(|origin| *origin = (origin as &FieldOrigin) + parent_field_origin)
+                    .or_insert_with(|| parent_field_origin.clone());
+            }
+        }
+
+        for field in fields {
+            let field = &field.node;
+            let field_name = &field.name.node;
+
+            let origin = implemented_fields
+                .remove(field_name.as_ref())
+                .unwrap_or_else(|| FieldOrigin::SingleAncestor(type_name.clone()));
+            field_origins
+                .try_insert((type_name.clone(), Arc::from(field_name.as_ref())), origin)
+                .unwrap();
+        }
+
+        if let Some(next_types) = resolvers.get(type_name.as_ref()) {
+            for next_type in next_types.iter() {
+                let remaining = required_resolutions.get_mut(next_type.as_ref()).unwrap();
+                if remaining.remove(type_name.as_ref()) && remaining.is_empty() {
+                    queue.push_back(next_type);
+                }
+            }
+        }
+    }
+
+    for (required, mut remaining) in required_resolutions.into_iter() {
+        if !remaining.is_empty() {
+            remaining.insert(required);
+            let circular_implementations =
+                remaining.into_iter().map(|x| x.to_string()).collect_vec();
+            return Err(InvalidSchemaError::CircularImplementsRelationships(
+                circular_implementations,
+            ));
+        }
+    }
+
+    Ok(field_origins)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+    };
+
+    use async_graphql_parser::parse_schema;
+    use filetests_proc_macro::parameterize;
+
+    use super::{error::InvalidSchemaError, Schema};
+
+    #[parameterize("trustfall_core/src/resources/test_data/schema_errors", "*.graphql")]
+    fn schema_errors(base: &Path, stem: &str) {
+        let mut input_path = PathBuf::from(base);
+        input_path.push(format!("{}.graphql", stem));
+
+        let input_data = fs::read_to_string(input_path).unwrap();
+
+        let mut error_path = PathBuf::from(base);
+        error_path.push(format!("{}.schema-error.ron", stem));
+        let error_data = fs::read_to_string(error_path).unwrap();
+        let expected_error: InvalidSchemaError = ron::from_str(&error_data).unwrap();
+
+        let schema_doc = parse_schema(input_data).unwrap();
+
+        match Schema::new(schema_doc) {
+            Err(e) => {
+                assert_eq!(e, expected_error);
+            }
+            Ok(_) => panic!("Expected an error but got valid schema."),
+        }
+    }
+
+    #[parameterize("trustfall_core/src/resources/test_data/valid_schemas", "*.graphql")]
+    fn valid_schemas(base: &Path, stem: &str) {
+        let mut input_path = PathBuf::from(base);
+        input_path.push(format!("{}.graphql", stem));
+
+        let input_data = fs::read_to_string(input_path).unwrap();
+
+        match Schema::parse(input_data) {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("{}", e);
+            }
+        }
     }
 }

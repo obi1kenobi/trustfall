@@ -1,0 +1,22 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Base: Base
+    Derived: Derived
+}
+
+interface Base {
+    integer: Int!
+}
+
+type Derived implements Base {
+    integer: String!  # In the implemented interface, this field has a completely different type.
+}

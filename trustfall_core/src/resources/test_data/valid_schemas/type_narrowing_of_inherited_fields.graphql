@@ -15,9 +15,9 @@ type RootSchemaQuery {
 
 interface Base {
     integer: Int
-    nullableList1: [Int]
-    nullableList2: [Int]
-    nullableList3: [Int]
+    fullyNullableList1: [Int]
+    fullyNullableList2: [Int]
+    fullyNullableList3: [Int]
     nonNullableElements: [Int!]
     nonNullableList: [Int]!
 }
