@@ -105,7 +105,7 @@ The former query includes in its results all directories that contain only non-t
 
 The latter query does not include such directories in its results: the optional `out_Directory_ContainsFile` edge exists for such directories, but points to non-text files which get filtered out by the subsequent `@filter`.
 
-### Parameterized edges marked `@optional`
+### Parameterized edges marked `@recurse`
 
 Consider the following two hypothetical filesystem queries:
 ```graphql
