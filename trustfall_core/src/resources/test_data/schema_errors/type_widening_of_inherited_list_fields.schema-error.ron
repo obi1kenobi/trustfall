@@ -1,0 +1,9 @@
+MultipleErrors(DisplayVec([
+  InvalidTypeWideningOfInheritedField("nullableList1", "Derived", "Base", "[Int]", "[Int!]"),
+  InvalidTypeWideningOfInheritedField("nullableList2", "Derived", "Base", "[Int]!", "[Int!]"),
+  InvalidTypeWideningOfInheritedField("nonNullableList1", "Derived", "Base", "[Int]", "[Int]!"),
+  InvalidTypeWideningOfInheritedField("nonNullableList2", "Derived", "Base", "[Int!]", "[Int]!"),
+  InvalidTypeWideningOfInheritedField("bothNonNullableList1", "Derived", "Base", "[Int]!", "[Int!]!"),
+  InvalidTypeWideningOfInheritedField("bothNonNullableList2", "Derived", "Base", "[Int!]", "[Int!]!"),
+  InvalidTypeWideningOfInheritedField("bothNonNullableList3", "Derived", "Base", "[Int]", "[Int!]!"),
+]))

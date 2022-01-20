@@ -1,0 +1,4 @@
+MultipleErrors(DisplayVec([
+  InvalidTypeWideningOfInheritedField("foo", "Derived", "Base", "Int", "Int!"),
+  MissingRequiredField("Derived", "Base", "bar", "String"),
+]))

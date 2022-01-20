@@ -4,11 +4,21 @@ from .. import Adapter, DataContext
 
 
 _NUMBER_NAMES = [
-    "zero", "one", "two", "three", "four",
-    "five", "six", "seven", "eight", "nine", "ten",
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
 ]
 
 Token = int
+
 
 class NumbersAdapter(Adapter[Token]):
     def get_starting_tokens(

@@ -111,7 +111,7 @@ fn add_data_from_component(
                             //
                             // If the variable type at top level is not a subtype of the type here,
                             // this query is not valid.
-                            if !is_subtype(var_type, &vref.variable_type) {
+                            if !is_subtype(&vref.variable_type, var_type) {
                                 return Err(InvalidIRQueryError::GetBetterVariant(-2));
                             }
                         }

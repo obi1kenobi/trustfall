@@ -919,15 +919,18 @@ mod tests {
         static ref FILESYSTEM_SCHEMA: Schema = Schema::new(
             parse_schema(fs::read_to_string("src/resources/schemas/filesystem.graphql").unwrap())
                 .unwrap()
-        );
+        )
+        .unwrap();
         static ref NUMBERS_SCHEMA: Schema = Schema::new(
             parse_schema(fs::read_to_string("src/resources/schemas/numbers.graphql").unwrap())
                 .unwrap()
-        );
+        )
+        .unwrap();
         static ref NULLABLES_SCHEMA: Schema = Schema::new(
             parse_schema(fs::read_to_string("src/resources/schemas/nullables.graphql").unwrap())
                 .unwrap()
-        );
+        )
+        .unwrap();
     }
 
     #[test]
