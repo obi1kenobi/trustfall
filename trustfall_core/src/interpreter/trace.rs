@@ -1,11 +1,6 @@
 use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    fmt::Debug,
-    marker::PhantomData,
-    num::NonZeroUsize,
-    rc::Rc,
-    sync::Arc,
+    cell::RefCell, collections::BTreeMap, fmt::Debug, marker::PhantomData, num::NonZeroUsize,
+    rc::Rc, sync::Arc,
 };
 
 use serde::{Deserialize, Serialize};
@@ -345,7 +340,11 @@ where
     > {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::ProjectNeighbors(vertex_hint, current_type_name.clone(), edge_hint)),
+            TraceOpContent::Call(FunctionCall::ProjectNeighbors(
+                vertex_hint,
+                current_type_name.clone(),
+                edge_hint,
+            )),
             None,
         );
         drop(trace);

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{btree_map, VecDeque, BTreeMap},
+    collections::{btree_map, BTreeMap, VecDeque},
     convert::TryInto,
     fmt::Debug,
     marker::PhantomData,
@@ -423,7 +423,9 @@ where
             .expect("Expected a project_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, type_name, eid)) = &trace_op.content {
+        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, type_name, eid)) =
+            &trace_op.content
+        {
             assert_eq!(vid, &vertex_hint);
             assert_eq!(type_name, &current_type_name);
             assert_eq!(eid, &edge_hint);

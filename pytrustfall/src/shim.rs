@@ -1,12 +1,6 @@
 #![allow(unused_imports)]
 
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    fs,
-    rc::Rc,
-    sync::Arc,
-};
+use std::{cell::RefCell, collections::BTreeMap, fs, rc::Rc, sync::Arc};
 
 use pyo3::{
     exceptions::PyStopIteration, prelude::*, types::PyTuple, wrap_pyfunction, PyIterProtocol,
