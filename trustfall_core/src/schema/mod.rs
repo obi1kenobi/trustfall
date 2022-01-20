@@ -174,18 +174,26 @@ impl Schema {
 
         let field_origins = get_field_origins(&vertex_types)?;
 
-        check_field_type_narrowing(&vertex_types, &fields)?;
-        check_fields_required_by_interface_implementations(&vertex_types, &fields)?;
-
-        Ok(Self {
-            schema,
-            query_type,
-            directives,
-            scalars,
-            vertex_types,
-            fields,
-            field_origins,
-        })
+        let mut errors = vec![];
+        if let Err(e) = check_field_type_narrowing(&vertex_types, &fields) {
+            errors.extend(e.into_iter());
+        }
+        if let Err(e) = check_fields_required_by_interface_implementations(&vertex_types, &fields) {
+            errors.extend(e.into_iter());
+        }
+        if errors.is_empty() {
+            Ok(Self {
+                schema,
+                query_type,
+                directives,
+                scalars,
+                vertex_types,
+                fields,
+                field_origins,
+            })
+        } else {
+            Err(errors.into())
+        }
     }
 
     pub(crate) fn query_type_name(&self) -> &str {
@@ -196,7 +204,7 @@ impl Schema {
 fn check_fields_required_by_interface_implementations(
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
     fields: &HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
-) -> Result<(), InvalidSchemaError> {
+) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
     for (type_name, type_defn) in vertex_types {
@@ -226,14 +234,14 @@ fn check_fields_required_by_interface_implementations(
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(errors.into())
+        Err(errors)
     }
 }
 
 fn check_field_type_narrowing(
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
     fields: &HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
-) -> Result<(), InvalidSchemaError> {
+) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
     for (type_name, type_defn) in vertex_types {
@@ -270,7 +278,7 @@ fn check_field_type_narrowing(
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(errors.into())
+        Err(errors)
     }
 }
 
