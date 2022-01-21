@@ -34,6 +34,17 @@ pub enum InvalidSchemaError {
         which is required by that interface."
     )]
     MissingRequiredField(String, String, String, String),
+
+    // This may or may not be supported in the future.
+    //
+    // If supported, it will only be supported as an explicit opt-in,
+    // e.g. via an explicit directive on each type where a new ambiguity appears.
+    #[error(
+        "Type \"{0}\" defines field \"{1}\" of type {2}, but its origin is ambiguous because \
+        multiple unrelated interfaces implemented by type \"{0}\" all define their own fields \
+        by that name: {3:?}"
+    )]
+    AmbiguousFieldOrigin(String, String, String, Vec<String>),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {

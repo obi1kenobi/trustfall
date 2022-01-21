@@ -1,0 +1,4 @@
+AmbiguousFieldOrigin("Derived", "field", "String", [
+  "A",
+  "B",
+])

@@ -1,0 +1,32 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Base: Base
+    Derived: Derived
+}
+
+interface Base {
+    field: String
+
+    theEdge: [Derived!]!
+}
+
+type Derived implements Base {
+    field: String
+
+    # The parent field is an edge to Derived, whereas this is an edge to its supertype.
+    # This is a widening of the parent's field type, and will cause an error.
+    theEdge: [Base!]!
+}
+
+type Other {
+    otherField: Int
+}
