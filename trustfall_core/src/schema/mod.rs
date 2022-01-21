@@ -8,8 +8,8 @@ use std::{
 use async_graphql_parser::{
     parse_schema,
     types::{
-        DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition, ServiceDocument,
-        TypeDefinition, TypeKind, TypeSystemDefinition,
+        BaseType, DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition,
+        ServiceDocument, Type, TypeDefinition, TypeKind, TypeSystemDefinition,
     },
     Positioned,
 };
@@ -18,8 +18,6 @@ pub use ::async_graphql_parser::Error;
 use async_graphql_value::Name;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-
-use crate::ir::types::is_subtype;
 
 use self::error::InvalidSchemaError;
 
@@ -181,6 +179,9 @@ impl Schema {
         if let Err(e) = check_fields_required_by_interface_implementations(&vertex_types, &fields) {
             errors.extend(e.into_iter());
         }
+        if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
+            errors.extend(e.into_iter());
+        }
         if errors.is_empty() {
             Ok(Self {
                 schema,
@@ -202,6 +203,81 @@ impl Schema {
 
     pub(crate) fn vertex_type_implements(&self, vertex_type: &str) -> &[Positioned<Name>] {
         get_vertex_type_implements(&self.vertex_types[vertex_type])
+    }
+
+    pub(crate) fn is_subtype(&self, parent_type: &Type, maybe_subtype: &Type) -> bool {
+        is_subtype(&self.vertex_types, parent_type, maybe_subtype)
+    }
+}
+
+fn is_subtype(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+    parent_type: &Type,
+    maybe_subtype: &Type,
+) -> bool {
+    // If the parent type is non-nullable, all its subtypes must be non-nullable as well.
+    // If the parent type is nullable, it can have both nullable and non-nullable subtypes.
+    if !parent_type.nullable && maybe_subtype.nullable {
+        return false;
+    }
+
+    match (&parent_type.base, &maybe_subtype.base) {
+        (BaseType::Named(parent), BaseType::Named(subtype)) => {
+            if parent == subtype {
+                // Regardless of whether these types are scalars or vertex types, they are equal.
+                true
+            } else {
+                let parent_vertex = vertex_types.get(parent.as_ref());
+                let maybe_subtype_vertex = vertex_types.get(subtype.as_ref());
+                match (parent_vertex, maybe_subtype_vertex) {
+                    (Some(_), Some(maybe_subtype_vertex)) => {
+                        // We have a subtype relationship if
+                        // the "maybe subtype" implements the parent type.
+                        get_vertex_type_implements(maybe_subtype_vertex)
+                            .iter()
+                            .any(|pos| &pos.node == parent)
+                    }
+                    _ => {
+                        // At least one of the two types isn't a vertex type.
+                        // Two scalars can only have a subtype relationship if they are equal,
+                        // and scalars and vertex types cannot have a subtype relationship at all.
+                        false
+                    }
+                }
+            }
+        }
+        (BaseType::List(parent_type), BaseType::List(maybe_subtype)) => {
+            is_subtype(vertex_types, parent_type, maybe_subtype)
+        }
+        (BaseType::Named(..), BaseType::List(..)) | (BaseType::List(..), BaseType::Named(..)) => {
+            false
+        }
+    }
+}
+
+fn check_ambiguous_field_origins(
+    fields: &HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
+    field_origins: &BTreeMap<(Arc<str>, Arc<str>), FieldOrigin>,
+) -> Result<(), Vec<InvalidSchemaError>> {
+    let mut errors = vec![];
+
+    for (key, origin) in field_origins {
+        let (type_name, field_name) = key;
+        if let FieldOrigin::MultipleAncestors(ancestors) = &origin {
+            let field_type = fields[key].ty.node.to_string();
+            errors.push(InvalidSchemaError::AmbiguousFieldOrigin(
+                type_name.to_string(),
+                field_name.to_string(),
+                field_type,
+                ancestors.iter().map(|x| x.to_string()).collect(),
+            ))
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
     }
 }
 
@@ -265,7 +341,7 @@ fn check_field_type_narrowing(
                     fields.get(&(Arc::from(implementation), Arc::from(field_name)))
                 {
                     let parent_field_type = &parent_field.ty.node;
-                    if !is_subtype(parent_field_type, field_type) {
+                    if !is_subtype(vertex_types, parent_field_type, field_type) {
                         errors.push(InvalidSchemaError::InvalidTypeWideningOfInheritedField(
                             field_name.to_string(),
                             type_name.to_string(),

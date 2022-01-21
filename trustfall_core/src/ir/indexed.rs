@@ -3,7 +3,9 @@ use std::{collections::BTreeMap, convert::TryFrom, ptr, sync::Arc};
 use async_graphql_parser::types::{BaseType, Type};
 use serde::{Deserialize, Serialize};
 
-use super::{types::is_subtype, Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid};
+use super::{
+    types::is_scalar_only_subtype, Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedQuery {
@@ -111,7 +113,7 @@ fn add_data_from_component(
                             //
                             // If the variable type at top level is not a subtype of the type here,
                             // this query is not valid.
-                            if !is_subtype(&vref.variable_type, var_type) {
+                            if !is_scalar_only_subtype(&vref.variable_type, var_type) {
                                 return Err(InvalidIRQueryError::GetBetterVariant(-2));
                             }
                         }
