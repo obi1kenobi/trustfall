@@ -21,7 +21,18 @@ pub(crate) fn is_base_type_orderable(operand_type: &BaseType) -> bool {
     }
 }
 
-pub(crate) fn is_subtype(parent_type: &Type, maybe_subtype: &Type) -> bool {
+/// Check for scalar-only subtyping.
+///
+/// Scalars don't have an inheritance structure, so they are able to be compared without a schema.
+/// Callers of this function must guarantee that the passed types are either scalars or
+/// (potentially multiply-nested) lists of scalars.
+///
+/// This function considers types of different names to always be non-equal and unrelated:
+/// neither is a subtype of the other. So given `interface Base` and `type Derived implements Base`,
+/// that means `is_scalar_only_subtype(Base, Derived) == false`, since this function never sees
+/// the definitions of `Base` and `Derived` as those are part of a schema which this function
+/// never gets.
+pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -> bool {
     // If the parent type is non-nullable, all its subtypes must be non-nullable as well.
     // If the parent type is nullable, it can have both nullable and non-nullable subtypes.
     if !parent_type.nullable && maybe_subtype.nullable {
@@ -31,7 +42,7 @@ pub(crate) fn is_subtype(parent_type: &Type, maybe_subtype: &Type) -> bool {
     match (&parent_type.base, &maybe_subtype.base) {
         (BaseType::Named(parent), BaseType::Named(subtype)) => parent == subtype,
         (BaseType::List(parent_type), BaseType::List(maybe_subtype)) => {
-            is_subtype(parent_type, maybe_subtype)
+            is_scalar_only_subtype(parent_type, maybe_subtype)
         }
         (BaseType::Named(..), BaseType::List(..)) | (BaseType::List(..), BaseType::Named(..)) => {
             false
