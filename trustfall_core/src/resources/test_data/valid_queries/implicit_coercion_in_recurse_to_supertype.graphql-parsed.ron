@@ -6,44 +6,64 @@ Ok(TestParsedGraphQLQuery(
         line: 3,
         column: 5,
       ),
-      name: "Four",
+      name: "Number",
+      arguments: {
+        "max": Int64(12),
+        "min": Int64(10),
+      },
     ),
     root_field: FieldNode(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "Four",
+      name: "Number",
+      coerced_to: Some("Composite"),
       connections: [
         (FieldConnection(
           position: Pos(
-            line: 4,
-            column: 9,
+            line: 5,
+            column: 13,
           ),
-          name: "multiple",
-          arguments: {
-            "max": Int64(2),
-          },
+          name: "value",
+          alias: Some("base"),
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "value",
+          alias: Some("base"),
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 7,
+            column: 13,
+          ),
+          name: "divisor",
           recurse: Some(RecurseDirective(
-            depth: 3,
+            depth: 2,
           )),
         ), FieldNode(
           position: Pos(
-            line: 4,
-            column: 9,
+            line: 7,
+            column: 13,
           ),
-          name: "multiple",
+          name: "divisor",
           connections: [
             (FieldConnection(
               position: Pos(
-                line: 5,
-                column: 13,
+                line: 8,
+                column: 17,
               ),
               name: "value",
             ), FieldNode(
               position: Pos(
-                line: 5,
-                column: 13,
+                line: 8,
+                column: 17,
               ),
               name: "value",
               output: [

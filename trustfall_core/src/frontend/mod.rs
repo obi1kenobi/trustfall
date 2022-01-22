@@ -17,15 +17,15 @@ use smallvec::SmallVec;
 
 use crate::{
     graphql_query::{
-        directives::{FilterDirective, FoldDirective, OperatorArgument},
+        directives::{FilterDirective, FoldDirective, OperatorArgument, RecurseDirective},
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
         indexed::IndexedQuery, types::intersect_types, Argument, ContextField, EdgeParameters, Eid,
         FieldValue, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation,
-        VariableRef, Vid,
+        Recursive, VariableRef, Vid,
     },
-    schema::{Schema, BUILTIN_SCALARS},
+    schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::TryCollectUniqueKey,
 };
 
@@ -546,7 +546,19 @@ where
         let parameters = make_edge_parameters(edge_definition, &field_connection.arguments)?;
 
         let optional = field_connection.optional.is_some();
-        let recursive = field_connection.recurse.as_ref().map(|d| d.depth);
+        let recursive = match field_connection.recurse.as_ref() {
+            None => None,
+            Some(d) => {
+                let coerce_to = get_recurse_implicit_coercion(
+                    schema,
+                    &ir_vertices[from_vid],
+                    edge_definition,
+                    d,
+                )?;
+
+                Some(Recursive::new(d.depth, coerce_to))
+            }
+        };
 
         ir_edges.insert(
             *eid,
@@ -633,6 +645,139 @@ where
         folds,
         outputs,
     })
+}
+
+/// Four possible cases exist for the relationship between the `from_vid` vertex type
+/// and the destination type of the edge as defined on the field representing it.
+/// Let's the `from_vid` vertex type be S for "source,"
+/// let the recursed edge's field name be `e` for "edge,"
+/// and let the vertex type within the S.e field be called D for "destination.""
+/// 1. The two types S and D are completely unrelated.
+/// 2. S is a strict supertype of D.
+/// 3. S is equal to D.
+/// 4. S is a strict subtype of D.
+///
+/// Cases 1. and 2. return Err: recursion starts at depth = 0, so the `from_vid` vertex
+/// must be assigned to the D-typed scope within the S.e field, which is a type error
+/// due to the incompatible types of S and D.
+///
+/// Case 3 is Ok and is straightforward.
+///
+/// Case 4 may be Ok and may be Err, and if Ok it *may* require an implicit coercion.
+/// If D has a D.e field, two sub-cases are possible:
+/// 4a. D has a D.e field pointing to a vertex type of D. (Due to schema validity,
+///     D.e cannot point to a subtype of D since S.e must be an equal or narrower type
+///     than D.e.)
+///     This case is Ok and does not require an implicit coercion: the desired edge
+///     exists at all types encountered in the recursion.
+/// 4b. D has a D.e field, but it points to a vertex type that is a supertype of D.
+///     This would require another implicit coercion after expanding D.e
+///     (i.e. when recursing from depth = 2+) and may require more coercions
+///     deeper still since the depth = 1 point of view is analogous to case 4 as a whole.
+///     This case is currently not supported and will produce Err, but may become
+///     supported in the future.
+///     (Note that D.e cannot point to a completely unrelated type, since S is a subtype
+///      of D and therefore S.e must be an equal or narrower type than D.e or else
+///      the schema is not valid.)
+///
+/// If D does not have a D.e field, two more sub-cases are possible:
+/// 4c. D does not have a D.e field, but the S.e field has an unambiguous origin type:
+///     there's exactly one type X, subtype of D and either supertype of or equal to S,
+///     which defines X.e and from which S.e is derived. Again, due to schema validity,
+///     S.e must be an equal or narrower type than X.e, so the vertex type within X.e
+///     must be either equal to or a supertype of D, the vertex type of S.e.
+///     - If a supertype of D, this currently returns Err and is not supported because
+///       of the same reason as case 4b. It may be supported in the future.
+///     - If X.e has a vertex type equal to D, this returns Ok and requires
+///       an implicit coercion to X when recursing from depth = 1+.
+/// 4d. D does not have a D.e field, and the S.e field has an ambiguous origin type:
+///     there are at least two interfaces X and Y, where neither implements the other,
+///     such that S implements both of them, and both the X.e and Y.e fields are defined.
+///     In this case, it's not clear whether the implicit coercion should coerce
+///     to X or to Y, so this is an Err.
+fn get_recurse_implicit_coercion(
+    schema: &Schema,
+    from_vertex: &IRVertex,
+    edge_definition: &FieldDefinition,
+    d: &RecurseDirective,
+) -> Result<Option<Arc<str>>, FrontendError> {
+    let source_type = &from_vertex.type_name;
+    let destination_type = get_underlying_named_type(&edge_definition.ty.node).as_ref();
+
+    if !schema.is_named_type_subtype(destination_type, source_type) {
+        // Case 1 or 2, Err() in both cases.
+        // For the sake of a better error, we'll check which it is.
+        if !schema.is_named_type_subtype(source_type, destination_type) {
+            // Case 1, types are unrelated. Recursion on this edge is nonsensical.
+            return Err(FrontendError::RecursingNonRecursableEdge(
+                edge_definition.name.node.to_string(),
+                source_type.to_string(),
+                destination_type.to_string(),
+            ));
+        } else {
+            // Case 2, the destination type is a subtype of the source type.
+            // The vertex where the recursion starts might not "fit" in the depth = 0 recursion,
+            // but the user could explicitly use a type coercion to coerce the starting vertex
+            // into the destination type to make it work.
+            return Err(FrontendError::RecursionToSubtype(
+                edge_definition.name.node.to_string(),
+                source_type.to_string(),
+                destination_type.to_string(),
+            ));
+        }
+    }
+
+    if source_type.as_ref() == destination_type {
+        // Case 3, Ok() and no coercion required.
+        return Ok(None);
+    }
+
+    // Case 4, check whether the destination type also has an edge by that name.
+    let edge_name: Arc<str> = Arc::from(edge_definition.name.node.as_ref());
+    let destination_edge = schema
+        .fields
+        .get(&(Arc::from(destination_type), edge_name.clone()));
+    match destination_edge {
+        Some(destination_edge) => {
+            // The destination type has that edge too.
+            let edge_type = get_underlying_named_type(&destination_edge.ty.node).as_ref();
+            if edge_type == destination_type {
+                // Case 4a, Ok() and no coercion required.
+                Ok(None)
+            } else {
+                // Case 4b, Err() because it's not supported yet.
+                Err(FrontendError::EdgeRecursionNeedingMultipleCoercions(
+                    edge_name.to_string(),
+                ))
+            }
+        }
+        None => {
+            // The destination type doesn't have that edge. Try to find a unique implicit coercion
+            // to a type that does have that edge so we can make the recursion work.
+            let edge_origin = &schema.field_origins[&(source_type.clone(), edge_name.clone())];
+            match edge_origin {
+                FieldOrigin::SingleAncestor(ancestor) => {
+                    // Case 4c, check the ancestor type's edge field type for two more sub-cases.
+                    let ancestor_edge = &schema.fields[&(ancestor.clone(), edge_name.clone())];
+                    let edge_type = get_underlying_named_type(&ancestor_edge.ty.node).as_ref();
+                    if edge_type == destination_type {
+                        // A single implicit coercion to the ancestor type will work here.
+                        Ok(Some(ancestor.clone()))
+                    } else {
+                        Err(FrontendError::EdgeRecursionNeedingMultipleCoercions(
+                            edge_name.to_string(),
+                        ))
+                    }
+                }
+                FieldOrigin::MultipleAncestors(multiple) => {
+                    // Case 4d, Err() because we can't figure out which implicit coercion to use.
+                    Err(FrontendError::AmbiguousOriginEdgeRecursion(
+                        edge_name.to_string(),
+                    ))
+                }
+            }
+        }
+    }
 }
 
 #[allow(clippy::type_complexity)]
@@ -906,7 +1051,6 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use async_graphql_parser::parse_schema;
     use filetests_proc_macro::parameterize;
 
     use crate::{
@@ -916,21 +1060,18 @@ mod tests {
     };
 
     lazy_static! {
-        static ref FILESYSTEM_SCHEMA: Schema = Schema::new(
-            parse_schema(fs::read_to_string("src/resources/schemas/filesystem.graphql").unwrap())
-                .unwrap()
-        )
-        .unwrap();
-        static ref NUMBERS_SCHEMA: Schema = Schema::new(
-            parse_schema(fs::read_to_string("src/resources/schemas/numbers.graphql").unwrap())
-                .unwrap()
-        )
-        .unwrap();
-        static ref NULLABLES_SCHEMA: Schema = Schema::new(
-            parse_schema(fs::read_to_string("src/resources/schemas/nullables.graphql").unwrap())
-                .unwrap()
-        )
-        .unwrap();
+        static ref FILESYSTEM_SCHEMA: Schema =
+            Schema::parse(fs::read_to_string("src/resources/schemas/filesystem.graphql").unwrap())
+                .unwrap();
+        static ref NUMBERS_SCHEMA: Schema =
+            Schema::parse(fs::read_to_string("src/resources/schemas/numbers.graphql").unwrap())
+                .unwrap();
+        static ref NULLABLES_SCHEMA: Schema =
+            Schema::parse(fs::read_to_string("src/resources/schemas/nullables.graphql").unwrap())
+                .unwrap();
+        static ref RECURSES_SCHEMA: Schema =
+            Schema::parse(fs::read_to_string("src/resources/schemas/recurses.graphql").unwrap())
+                .unwrap();
     }
 
     #[test]
@@ -940,6 +1081,7 @@ mod tests {
         assert!(FILESYSTEM_SCHEMA.vertex_types.len() > 3);
         assert!(!NUMBERS_SCHEMA.vertex_types.is_empty());
         assert!(!NULLABLES_SCHEMA.vertex_types.is_empty());
+        assert!(!RECURSES_SCHEMA.vertex_types.is_empty());
     }
 
     #[parameterize("trustfall_core/src/resources/test_data/frontend_errors")]
@@ -972,6 +1114,7 @@ mod tests {
             "filesystem" => &FILESYSTEM_SCHEMA,
             "numbers" => &NUMBERS_SCHEMA,
             "nullables" => &NULLABLES_SCHEMA,
+            "recurses" => &RECURSES_SCHEMA,
             _ => unimplemented!("unrecognized schema name: {:?}", test_query.schema_name),
         };
 

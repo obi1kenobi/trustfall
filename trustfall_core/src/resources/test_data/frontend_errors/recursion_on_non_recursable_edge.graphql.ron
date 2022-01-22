@@ -1,0 +1,16 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 10) {
+        ... on Composite {
+            value @output
+
+            primeFactor @recurse(depth: 3) {
+                inner: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

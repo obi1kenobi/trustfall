@@ -1,13 +1,13 @@
 Ok(TestIRQuery(
   schema_name: "numbers",
   ir_query: IRQuery(
-    root_name: "Two",
+    root_name: "Four",
     root_component: IRQueryComponent(
       root: Vid(1),
       vertices: {
         Vid(1): IRVertex(
           vid: Vid(1),
-          type_name: "Prime",
+          type_name: "Composite",
         ),
         Vid(2): IRVertex(
           vid: Vid(2),
@@ -21,9 +21,11 @@ Ok(TestIRQuery(
           to_vid: Vid(2),
           edge_name: "multiple",
           parameters: Some(EdgeParameters({
-            "max": Int64(3),
+            "max": Int64(2),
           })),
-          recursive: Some(3),
+          recursive: Some(Recursive(
+            depth: 3,
+          )),
         ),
       },
       outputs: {

@@ -1,51 +1,66 @@
 Ok(TestParsedGraphQLQuery(
-  schema_name: "numbers",
+  schema_name: "recurses",
   query: Query(
     root_connection: FieldConnection(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "Four",
+      name: "FinalDerived",
     ),
     root_field: FieldNode(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "Four",
+      name: "FinalDerived",
       connections: [
         (FieldConnection(
           position: Pos(
             line: 4,
             column: 9,
           ),
-          name: "multiple",
-          arguments: {
-            "max": Int64(2),
-          },
-          recurse: Some(RecurseDirective(
-            depth: 3,
-          )),
+          name: "field",
         ), FieldNode(
           position: Pos(
             line: 4,
             column: 9,
           ),
-          name: "multiple",
+          name: "field",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "secondEdge",
+          recurse: Some(RecurseDirective(
+            depth: 3,
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "secondEdge",
           connections: [
             (FieldConnection(
               position: Pos(
-                line: 5,
+                line: 7,
                 column: 13,
               ),
-              name: "value",
+              name: "field",
+              alias: Some("deeper"),
             ), FieldNode(
               position: Pos(
-                line: 5,
+                line: 7,
                 column: 13,
               ),
-              name: "value",
+              name: "field",
+              alias: Some("deeper"),
               output: [
                 OutputDirective(),
               ],

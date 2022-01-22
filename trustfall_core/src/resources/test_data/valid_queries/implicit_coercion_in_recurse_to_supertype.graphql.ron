@@ -1,0 +1,25 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+
+    // Here, the edge `divisor` on the `Composite` type points to `Composite`'s supertype, `Number`.
+    // The recursion's depth of 2 means that the following paths will be covered in the recursion:
+    // - Composite, i.e. no edge expansion so depth 0
+    // - Composite --divisor-> Number, i.e. one edge expansion so depth 1
+    // - Composite --divisor-> Composite --divisor-> Number, i.e. two edge expansions so depth 2.
+    //   Importantly, in this last case, the intermediate vertex between the starting `Composite`
+    //   vertex and the final `Number` vertex gets implicitly coerced from `Number` to `Composite`,
+    //   because the `divisor` edge is only defined for `Composite` and not for `Number`.
+    query: r#"
+{
+    Number(min: 10, max: 12) {
+        ... on Composite {
+            base: value @output
+
+            divisor @recurse(depth: 2) {
+                value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

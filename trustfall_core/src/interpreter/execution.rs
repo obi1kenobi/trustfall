@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    num::NonZeroUsize,
     rc::Rc,
     sync::Arc,
 };
@@ -20,7 +19,7 @@ use crate::{
     },
     ir::{
         indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge,
-        IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
+        IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Recursive, Vid,
     },
 };
 
@@ -703,7 +702,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     edge: &IREdge,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    if let Some(depth) = edge.recursive {
+    if let Some(recursive) = &edge.recursive {
         expand_recursive_edge(
             adapter,
             query,
@@ -713,7 +712,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
             edge.eid,
             &edge.edge_name,
             &edge.parameters,
-            depth,
+            recursive,
             iterator,
         )
     } else {
@@ -797,7 +796,7 @@ fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &Option<Arc<EdgeParameters>>,
-    depth: NonZeroUsize,
+    recursive: &Recursive,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expanding_from_vid = expanding_from.vid;
@@ -811,12 +810,54 @@ fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
             context.activate_token(&expanding_from_vid)
         }));
 
-    let max_depth = usize::from(depth);
-    for _ in 1..=max_depth {
+    let max_depth = usize::from(recursive.depth);
+    recursion_iterator = perform_one_recursive_edge_expansion(
+        adapter.clone(),
+        query,
+        component,
+        expanding_from.type_name.clone(),
+        expanding_from,
+        expanding_to,
+        edge_id,
+        edge_name,
+        edge_parameters,
+        recursion_iterator,
+    );
+
+    let edge_endpoint_type = expanding_to
+        .coerced_from_type
+        .as_ref()
+        .unwrap_or(&expanding_to.type_name);
+    let recursing_from = recursive.coerce_to.as_ref().unwrap_or(edge_endpoint_type);
+
+    for _ in 2..=max_depth {
+        if let Some(coerce_to) = recursive.coerce_to.as_ref() {
+            let mut adapter_ref = adapter.borrow_mut();
+            let coercion_iter = adapter_ref.can_coerce_to_type(
+                recursion_iterator,
+                edge_endpoint_type.clone(),
+                coerce_to.clone(),
+                query.clone(),
+                expanding_from_vid,
+            );
+
+            // This coercion is unusual since it doesn't discard elements that can't be coerced.
+            // This is because we still want to produce those elements, and we simply want to
+            // not continue recursing deeper through them since they don't have the edge we need.
+            recursion_iterator = Box::new(coercion_iter.map(|(ctx, can_coerce)| {
+                if can_coerce {
+                    ctx
+                } else {
+                    ctx.ensure_suspended()
+                }
+            }));
+        }
+
         recursion_iterator = perform_one_recursive_edge_expansion(
             adapter.clone(),
             query,
             component,
+            recursing_from.clone(),
             expanding_from,
             expanding_to,
             edge_id,
@@ -834,6 +875,7 @@ fn perform_one_recursive_edge_expansion<'schema, 'query, DataToken: Clone + Debu
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     _component: &IRQueryComponent,
+    expanding_from_type: Arc<str>,
     expanding_from: &IRVertex,
     _expanding_to: &IRVertex,
     edge_id: Eid,
@@ -841,14 +883,10 @@ fn perform_one_recursive_edge_expansion<'schema, 'query, DataToken: Clone + Debu
     edge_parameters: &Option<Arc<EdgeParameters>>,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    // TODO: For situations where B is a subtype of A, and the recursive edge is defined as B->B,
-    //       this current_type_name will continue to say the type is A at all depth levels,
-    //       even though at all levels past the first, the type is actually B. Is this a problem?
-    let current_type_name = &expanding_from.type_name;
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.project_neighbors(
         iterator,
-        current_type_name.clone(),
+        expanding_from_type,
         edge_name.clone(),
         edge_parameters.clone(),
         query.clone(),

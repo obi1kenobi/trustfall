@@ -3933,7 +3933,10 @@ TestInterpreterOutputTrace(
             from_vid: Vid(1),
             to_vid: Vid(2),
             edge_name: "successor",
-            recursive: Some(3),
+            recursive: Some(Recursive(
+              depth: 3,
+              coerce_to: None,
+            )),
           ),
           Eid(2): IREdge(
             eid: Eid(2),

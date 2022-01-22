@@ -1,0 +1,40 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Base: Base
+    Derived: Derived
+    DeeperDerived: DeeperDerived
+    FinalDerived: FinalDerived
+}
+
+interface Base {
+    field: Int
+}
+
+interface Derived implements Base {
+    field: Int
+
+    firstEdge: Base
+}
+
+interface DeeperDerived implements Base & Derived {
+    field: Int
+
+    firstEdge: Derived
+    secondEdge: Base
+}
+
+type FinalDerived implements Base & Derived & DeeperDerived {
+    field: Int
+
+    firstEdge: Derived
+    secondEdge: Derived
+}
