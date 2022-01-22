@@ -342,25 +342,20 @@ impl Adapter<'static> for HackerNewsAdapter {
                 let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
-                        // TODO: this is a bug: missing implicit coercion in @recurse to supertype;
-                        //       when the bug is fixed, the "else" case will be unreachable
-                        if let Some(comment) = token.as_comment() {
-                            let comment_id = comment.id;
-                            let parent_id = comment.parent;
+                        let comment = token.as_comment().unwrap();
+                        let comment_id = comment.id;
+                        let parent_id = comment.parent;
 
-                            match CLIENT.get_item(parent_id) {
-                                Ok(None) => Box::new(std::iter::empty()),
-                                Ok(Some(item)) => Box::new(std::iter::once(item.into())),
-                                Err(e) => {
-                                    eprintln!(
-                                        "API error while fetching comment {} parent {}: {}",
-                                        comment_id, parent_id, e
-                                    );
-                                    Box::new(std::iter::empty())
-                                }
+                        match CLIENT.get_item(parent_id) {
+                            Ok(None) => Box::new(std::iter::empty()),
+                            Ok(Some(item)) => Box::new(std::iter::once(item.into())),
+                            Err(e) => {
+                                eprintln!(
+                                    "API error while fetching comment {} parent {}: {}",
+                                    comment_id, parent_id, e
+                                );
+                                Box::new(std::iter::empty())
                             }
-                        } else {
-                            Box::new(std::iter::empty())
                         }
                     }
                 };
