@@ -448,10 +448,7 @@ pub struct Recursive {
 
 impl Recursive {
     pub fn new(depth: NonZeroUsize, coerce_to: Option<Arc<str>>) -> Self {
-        Self {
-            depth,
-            coerce_to,
-        }
+        Self { depth, coerce_to }
     }
 }
 

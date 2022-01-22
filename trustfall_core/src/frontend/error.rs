@@ -41,6 +41,33 @@ pub enum FrontendError {
     #[error("Missing required edge parameter {0} on edge {1}")]
     MissingRequiredEdgeParameter(String, String),
 
+    #[error(
+        "Invalid use of @recurse on edge \"{0}\". That edge cannot be recursed since it connects \
+        two unrelated vertex types: {1} {2}"
+    )]
+    RecursingNonRecursableEdge(String, String, String),
+
+    #[error(
+        "Invalid use of @recurse on edge \"{0}\" in its current location. \
+        The edge is currently recursed starting from a vertex of type {1} and points to \
+        a vertex of type {2}, which is a subtype of {1}. Recursion to a subtype is not allowed \
+        since the starting vertex might not match that type. To ensure the starting vertex matches \
+        the edge's destination type, you could use a type coercion like: ... on {2}"
+    )]
+    RecursionToSubtype(String, String, String),
+
+    // This error type may or may not be reachable in practice.
+    // At the time of writing, schemas containing fields with ambiguous origin are disallowed,
+    // though they may be allowed in the future. If they are allowed, then this error is reachable.
+    #[error("Edge {0} has an ambiguous origin, and cannot be used for recursion.")]
+    AmbiguousOriginEdgeRecursion(String),
+
+    #[error(
+        "Edge \"{0}\" is used for recursion that requires multiple implicit coercions, \
+        which is currently not supported."
+    )]
+    EdgeRecursionNeedingMultipleCoercions(String),
+
     #[error("The query failed to validate against the schema.")]
     ValidationError(#[from] ValidationError),
 

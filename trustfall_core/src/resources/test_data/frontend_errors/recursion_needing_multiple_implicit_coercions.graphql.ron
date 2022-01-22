@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "recurses",
+    query: r#"
+{
+    DeeperDerived {
+        field @output
+
+        firstEdge @recurse(depth: 3) {
+            deeper: field @output
+        }
+    }
+}"#,
+    arguments: {},
+)

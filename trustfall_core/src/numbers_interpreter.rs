@@ -329,7 +329,7 @@ impl Adapter<'static> for NumbersAdapter {
                             Box::new(
                                 (1..value)
                                     .filter_map(|maybe_divisor| {
-                                        if maybe_divisor % value == 0 {
+                                        if value % maybe_divisor == 0 {
                                             Some(make_number_token(&mut primes, maybe_divisor))
                                         } else {
                                             None

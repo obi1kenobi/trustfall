@@ -68,13 +68,16 @@ impl HackerNewsAdapter {
                 // Found a user by that name.
                 let token = Token::from(user);
                 Box::new(std::iter::once(token))
-            },
+            }
             Ok(None) => {
                 // The request succeeded but did not find a user by that name.
                 Box::new(std::iter::empty())
             }
             Err(e) => {
-                eprintln!("Got an error while getting user profile for user {}: {}", username, e);
+                eprintln!(
+                    "Got an error while getting user profile for user {}: {}",
+                    username, e
+                );
                 Box::new(std::iter::empty())
             }
         }
@@ -111,7 +114,10 @@ macro_rules! impl_item_property {
 macro_rules! impl_property {
     ($data_contexts:ident, $conversion:ident, $attr:ident) => {
         Box::new($data_contexts.map(|ctx| {
-            let token = ctx.current_token.as_ref().map(|token| token.$conversion().unwrap());
+            let token = ctx
+                .current_token
+                .as_ref()
+                .map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
                 Some(t) => (&t.$attr).into(),
@@ -126,7 +132,10 @@ macro_rules! impl_property {
 
     ($data_contexts:ident, $conversion:ident, $var:ident, $b:block) => {
         Box::new($data_contexts.map(|ctx| {
-            let token = ctx.current_token.as_ref().map(|token| token.$conversion().unwrap());
+            let token = ctx
+                .current_token
+                .as_ref()
+                .map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
                 Some($var) => $b,
@@ -189,7 +198,9 @@ impl Adapter<'static> for HackerNewsAdapter {
         match (current_type_name.as_ref(), field_name.as_ref()) {
             // properties on Item and its implementers
             ("Item" | "Story" | "Job" | "Comment", "id") => impl_item_property!(data_contexts, id),
-            ("Item" | "Story" | "Job" | "Comment", "unixTime") => impl_item_property!(data_contexts, time),
+            ("Item" | "Story" | "Job" | "Comment", "unixTime") => {
+                impl_item_property!(data_contexts, time)
+            }
 
             // properties on Job
             ("Job", "score") => impl_property!(data_contexts, as_job, score),
@@ -339,9 +350,7 @@ impl Adapter<'static> for HackerNewsAdapter {
 
                             match CLIENT.get_item(parent_id) {
                                 Ok(None) => Box::new(std::iter::empty()),
-                                Ok(Some(item)) => {
-                                Box::new(std::iter::once(item.into()))
-                                }
+                                Ok(Some(item)) => Box::new(std::iter::once(item.into())),
                                 Err(e) => {
                                     eprintln!(
                                         "API error while fetching comment {} parent {}: {}",
@@ -402,9 +411,7 @@ impl Adapter<'static> for HackerNewsAdapter {
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
                             match CLIENT.get_item(submission_id) {
                                 Ok(None) => None,
-                                Ok(Some(item)) => {
-                                    Some(item.into())
-                                }
+                                Ok(Some(item)) => Some(item.into()),
                                 Err(e) => {
                                     eprintln!(
                                         "API error while fetching submitted item {}: {}",

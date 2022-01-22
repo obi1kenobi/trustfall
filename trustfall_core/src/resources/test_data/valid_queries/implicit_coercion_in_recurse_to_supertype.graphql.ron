@@ -11,7 +11,7 @@ TestGraphQLQuery (
     //   because the `divisor` edge is only defined for `Composite` and not for `Number`.
     query: r#"
 {
-    Number(min: 8, max: 12) {
+    Number(min: 10, max: 12) {
         ... on Composite {
             base: value @output
 

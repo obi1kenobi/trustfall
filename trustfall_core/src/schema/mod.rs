@@ -208,6 +208,41 @@ impl Schema {
     pub(crate) fn is_subtype(&self, parent_type: &Type, maybe_subtype: &Type) -> bool {
         is_subtype(&self.vertex_types, parent_type, maybe_subtype)
     }
+
+    pub(crate) fn is_named_type_subtype(&self, parent_type: &str, maybe_subtype: &str) -> bool {
+        is_named_type_subtype(&self.vertex_types, parent_type, maybe_subtype)
+    }
+}
+
+fn is_named_type_subtype(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+    parent_type: &str,
+    maybe_subtype: &str,
+) -> bool {
+    let parent_is_vertex = vertex_types.contains_key(parent_type);
+    let maybe_sub = vertex_types.get(maybe_subtype);
+
+    match (parent_is_vertex, maybe_sub) {
+        (false, None) => {
+            // The types could both be scalars, which have no inheritance hierarchy.
+            // Any type is a subtype of itself, so we check equality.
+            parent_type == maybe_subtype
+        }
+        (true, Some(maybe_subtype_vertex)) => {
+            // Both types are vertex types. We have a subtype relationship if
+            // - the two types are actually the same type, or if
+            // - the "maybe subtype" implements the parent type.
+            parent_type == maybe_subtype
+                || get_vertex_type_implements(maybe_subtype_vertex)
+                    .iter()
+                    .any(|pos| pos.node.as_ref() == parent_type)
+        }
+        _ => {
+            // One type is a vertex type, the other should be a scalar.
+            // No subtype relationship is possible between them.
+            false
+        }
+    }
 }
 
 fn is_subtype(
@@ -223,28 +258,7 @@ fn is_subtype(
 
     match (&parent_type.base, &maybe_subtype.base) {
         (BaseType::Named(parent), BaseType::Named(subtype)) => {
-            if parent == subtype {
-                // Regardless of whether these types are scalars or vertex types, they are equal.
-                true
-            } else {
-                let parent_vertex = vertex_types.get(parent.as_ref());
-                let maybe_subtype_vertex = vertex_types.get(subtype.as_ref());
-                match (parent_vertex, maybe_subtype_vertex) {
-                    (Some(_), Some(maybe_subtype_vertex)) => {
-                        // We have a subtype relationship if
-                        // the "maybe subtype" implements the parent type.
-                        get_vertex_type_implements(maybe_subtype_vertex)
-                            .iter()
-                            .any(|pos| &pos.node == parent)
-                    }
-                    _ => {
-                        // At least one of the two types isn't a vertex type.
-                        // Two scalars can only have a subtype relationship if they are equal,
-                        // and scalars and vertex types cannot have a subtype relationship at all.
-                        false
-                    }
-                }
-            }
+            is_named_type_subtype(vertex_types, parent.as_ref(), subtype.as_ref())
         }
         (BaseType::List(parent_type), BaseType::List(maybe_subtype)) => {
             is_subtype(vertex_types, parent_type, maybe_subtype)
