@@ -6,14 +6,14 @@ Ok(TestParsedGraphQLQuery(
         line: 3,
         column: 5,
       ),
-      name: "Two",
+      name: "Four",
     ),
     root_field: FieldNode(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "Two",
+      name: "Four",
       connections: [
         (FieldConnection(
           position: Pos(
@@ -22,7 +22,7 @@ Ok(TestParsedGraphQLQuery(
           ),
           name: "multiple",
           arguments: {
-            "max": Int64(3),
+            "max": Int64(2),
           },
           recurse: Some(RecurseDirective(
             depth: 3,

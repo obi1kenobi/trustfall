@@ -13,6 +13,7 @@ type RootSchemaQuery {
     Zero: Number!
     One: Number!
     Two: Prime!
+    Four: Composite!
 }
 
 interface Named {

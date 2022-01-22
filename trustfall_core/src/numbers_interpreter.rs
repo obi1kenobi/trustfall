@@ -153,6 +153,7 @@ impl Adapter<'static> for NumbersAdapter {
             "Zero" => Box::new(std::iter::once(make_number_token(&mut primes, 0))),
             "One" => Box::new(std::iter::once(make_number_token(&mut primes, 1))),
             "Two" => Box::new(std::iter::once(make_number_token(&mut primes, 2))),
+            "Four" => Box::new(std::iter::once(make_number_token(&mut primes, 4))),
             "Number" => {
                 let parameters = &parameters.unwrap().0;
                 let min_value = parameters.get("min").and_then(FieldValue::as_i64).unwrap();
