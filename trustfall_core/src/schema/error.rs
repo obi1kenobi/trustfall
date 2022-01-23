@@ -35,16 +35,23 @@ pub enum InvalidSchemaError {
     )]
     MissingRequiredField(String, String, String, String),
 
-    // This may or may not be supported in the future.
-    //
-    // If supported, it will only be supported as an explicit opt-in,
-    // e.g. via an explicit directive on each type where a new ambiguity appears.
+    /// This may or may not be supported in the future.
+    ///
+    /// If supported, it will only be supported as an explicit opt-in,
+    /// e.g. via an explicit directive on each type where a new ambiguity appears.
     #[error(
         "Type \"{0}\" defines field \"{1}\" of type {2}, but its origin is ambiguous because \
         multiple unrelated interfaces implemented by type \"{0}\" all define their own fields \
         by that name: {3:?}"
     )]
     AmbiguousFieldOrigin(String, String, String, Vec<String>),
+
+    #[error(
+        "Type \"{0}\" defines edge \"{1}\" of type {2}, which is not allowed. Edge types must be \
+        vertex or list of vertex types, with optional nullability. Vertex types in two or more \
+        nested lists are not supported."
+    )]
+    InvalidEdgeType(String, String, String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {

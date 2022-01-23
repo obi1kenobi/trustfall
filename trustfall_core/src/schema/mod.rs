@@ -182,6 +182,9 @@ impl Schema {
         if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
             errors.extend(e.into_iter());
         }
+        if let Err(e) = check_edge_types(&vertex_types) {
+            errors.extend(e.into_iter());
+        }
         if errors.is_empty() {
             Ok(Self {
                 schema,
@@ -211,6 +214,41 @@ impl Schema {
 
     pub(crate) fn is_named_type_subtype(&self, parent_type: &str, maybe_subtype: &str) -> bool {
         is_named_type_subtype(&self.vertex_types, parent_type, maybe_subtype)
+    }
+}
+
+fn check_edge_types(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+) -> Result<(), Vec<InvalidSchemaError>> {
+    let mut errors: Vec<InvalidSchemaError> = vec![];
+
+    for (type_name, type_defn) in vertex_types {
+        let type_fields = get_vertex_type_fields(type_defn);
+
+        for defn in type_fields {
+            let field_defn = &defn.node;
+
+            let field_type = &field_defn.ty.node;
+            match &field_type.base {
+                BaseType::Named(_) => {}
+                BaseType::List(inner) => match &inner.base {
+                    BaseType::Named(_) => {}
+                    BaseType::List(_) => {
+                        errors.push(InvalidSchemaError::InvalidEdgeType(
+                            type_name.to_string(),
+                            field_defn.name.node.to_string(),
+                            field_type.to_string(),
+                        ));
+                    }
+                },
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
     }
 }
 
