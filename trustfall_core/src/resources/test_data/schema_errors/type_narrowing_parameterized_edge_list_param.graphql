@@ -1,0 +1,34 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Base: Base
+    Derived: Derived
+}
+
+interface Base {
+    field: String
+
+    theEdge(param: [Int]): Base!
+    theSecondEdge(param: [Int]): Base!
+    theThirdEdge(param: [Int]): Base!
+}
+
+type Derived implements Base {
+    field: String
+
+    # The parent field requires a nullable list of nullable Int parameter,
+    # whereas the fields here make some or all of those components non-nullable.
+    # Such narrowing of the parameter type causes widening of the field type
+    # (due to contravariance), and is therefore an error.
+    theEdge(param: [Int!]): Base!
+    theSecondEdge(param: [Int!]): Base!
+    theThirdEdge(param: [Int!]!): Base!
+}

@@ -1,0 +1,1 @@
+InvalidTypeNarrowingOfInheritedFieldParameter("theEdge", "Derived", "Base", "param", "Int!", "Int")

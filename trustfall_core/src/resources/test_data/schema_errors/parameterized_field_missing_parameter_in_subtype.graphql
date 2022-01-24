@@ -16,13 +16,14 @@ type RootSchemaQuery {
 interface Base {
     field: String
 
-    theEdge: [Derived!]!
+    theEdge(param: Int): Base!
 }
 
 type Derived implements Base {
     field: String
 
-    # The parent field is an edge to Derived, whereas this is an edge to its supertype.
-    # This is a widening of the parent's field type, and will cause an error.
-    theEdge: [Base!]!
+    # The parent field requires a nullable Int parameter,
+    # whereas this field doesn't take any parameters.
+    # This mismatch is an error.
+    theEdge: Base!
 }

@@ -19,6 +19,8 @@ use async_graphql_value::Name;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
+use crate::ir::types::is_scalar_only_subtype;
+
 use self::error::InvalidSchemaError;
 
 pub mod error;
@@ -383,6 +385,12 @@ fn check_field_type_narrowing(
         for field in type_fields {
             let field_name = field.node.name.node.as_ref();
             let field_type = &field.node.ty.node;
+            let field_parameters: BTreeMap<_, _> = field
+                .node
+                .arguments
+                .iter()
+                .map(|arg| (arg.node.name.node.as_ref(), &arg.node.ty.node))
+                .collect();
 
             for implementation in implementations {
                 let implementation = implementation.node.as_ref();
@@ -401,6 +409,70 @@ fn check_field_type_narrowing(
                             field_type.to_string(),
                             parent_field_type.to_string(),
                         ));
+                    }
+
+                    let parent_field_parameters: BTreeMap<_, _> = parent_field
+                        .arguments
+                        .iter()
+                        .map(|arg| (arg.node.name.node.as_ref(), &arg.node.ty.node))
+                        .collect();
+
+                    // Check for field parameters that the parent type requires but
+                    // the child type does not accept.
+                    let missing_parameters = parent_field_parameters
+                        .keys()
+                        .copied()
+                        .filter(|name| !field_parameters.contains_key(*name))
+                        .collect_vec();
+                    if !missing_parameters.is_empty() {
+                        errors.push(InvalidSchemaError::InheritedFieldMissingParameters(
+                            field_name.to_owned(),
+                            type_name.to_string(),
+                            implementation.to_owned(),
+                            missing_parameters
+                                .into_iter()
+                                .map(ToOwned::to_owned)
+                                .collect_vec(),
+                        ));
+                    }
+
+                    // Check for field parameters that the parent type does not accept,
+                    // but the child type defines anyway.
+                    let unexpected_parameters = field_parameters
+                        .keys()
+                        .copied()
+                        .filter(|name| !parent_field_parameters.contains_key(*name))
+                        .collect_vec();
+                    if !unexpected_parameters.is_empty() {
+                        errors.push(InvalidSchemaError::InheritedFieldUnexpectedParameters(
+                            field_name.to_owned(),
+                            type_name.to_string(),
+                            implementation.to_owned(),
+                            unexpected_parameters
+                                .into_iter()
+                                .map(ToOwned::to_owned)
+                                .collect_vec(),
+                        ));
+                    }
+
+                    // Check that all field parameters defined by the child have types
+                    // that are legal widenings of the corresponding field parameter's type
+                    // on the parent type. Field parameters are contravariant, hence widenings.
+                    for (&field_parameter, &field_type) in &field_parameters {
+                        if let Some(&parent_field_type) =
+                            parent_field_parameters.get(field_parameter)
+                        {
+                            if !is_scalar_only_subtype(field_type, parent_field_type) {
+                                errors.push(InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
+                                    field_name.to_owned(),
+                                    type_name.to_string(),
+                                    implementation.to_owned(),
+                                    field_parameter.to_string(),
+                                    field_type.to_string(),
+                                    parent_field_type.to_string(),
+                                ));
+                            }
+                        }
                     }
                 }
             }

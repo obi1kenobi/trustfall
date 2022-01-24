@@ -24,6 +24,26 @@ pub enum InvalidSchemaError {
     InvalidTypeWideningOfInheritedField(String, String, String, String, String),
 
     #[error(
+        "Field \"{0}\" on type \"{1}\" comes from the implementation of interface \"{2}\" \
+        but the field's {3} parameter type {4} is not compatible with the {5} type required \
+        by that interface. The expected type for this field parameter is the {5} type required by \
+        the interface, optionally with non-null constraints removed if any are present."
+    )]
+    InvalidTypeNarrowingOfInheritedFieldParameter(String, String, String, String, String, String),
+
+    #[error(
+        "Field \"{0}\" on type \"{1}\" is missing parameter(s) that are required by \
+        the implementation of interface \"{2}\" for this type: {3:?}"
+    )]
+    InheritedFieldMissingParameters(String, String, String, Vec<String>),
+
+    #[error(
+        "Field \"{0}\" on type \"{1}\" contains parameter(s) that are unexpected for \
+        the implementation of interface \"{2}\" for this type: {3:?}"
+    )]
+    InheritedFieldUnexpectedParameters(String, String, String, Vec<String>),
+
+    #[error(
         "The following types have a circular implementation relationship, \
         which is not allowed: {0:?}"
     )]
