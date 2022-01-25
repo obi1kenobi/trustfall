@@ -86,6 +86,12 @@ pub enum InvalidSchemaError {
         edge fields; property fields are not allowed on the root query type."
     )]
     PropertyFieldOnRootQueryType(String, String, String),
+
+    #[error(
+        "Type \"{0}\" defines edge \"{1}\" of type {2}, but that type refers to \
+        the root query type of this schema, which is not supported."
+    )]
+    EdgePointsToRootQueryType(String, String, String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {

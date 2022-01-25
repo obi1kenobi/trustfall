@@ -184,10 +184,12 @@ impl Schema {
         if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
             errors.extend(e.into_iter());
         }
-        if let Err(e) = check_property_and_edge_invariants(&vertex_types) {
+        if let Err(e) = check_property_and_edge_invariants(query_type_definition, &vertex_types) {
             errors.extend(e.into_iter());
         }
-        if let Err(e) = check_root_query_type_invariants(query_type_definition, &query_type, &vertex_types) {
+        if let Err(e) =
+            check_root_query_type_invariants(query_type_definition, &query_type, &vertex_types)
+        {
             errors.extend(e.into_iter());
         }
         if errors.is_empty() {
@@ -253,6 +255,7 @@ fn check_root_query_type_invariants(
 }
 
 fn check_property_and_edge_invariants(
+    query_type_definition: &TypeDefinition,
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
@@ -281,18 +284,27 @@ fn check_property_and_edge_invariants(
                 }
             } else if vertex_types.contains_key(base_named_type) {
                 // We're looking at an edge field.
-                match &field_type.base {
-                    BaseType::Named(_) => {}
-                    BaseType::List(inner) => match &inner.base {
+                if base_named_type == query_type_definition.name.node.as_ref() {
+                    // This edge points to the root query type. That's not supported.
+                    errors.push(InvalidSchemaError::EdgePointsToRootQueryType(
+                        type_name.to_string(),
+                        field_defn.name.node.to_string(),
+                        field_type.to_string(),
+                    ));
+                } else {
+                    match &field_type.base {
                         BaseType::Named(_) => {}
-                        BaseType::List(_) => {
-                            errors.push(InvalidSchemaError::InvalidEdgeType(
-                                type_name.to_string(),
-                                field_defn.name.node.to_string(),
-                                field_type.to_string(),
-                            ));
-                        }
-                    },
+                        BaseType::List(inner) => match &inner.base {
+                            BaseType::Named(_) => {}
+                            BaseType::List(_) => {
+                                errors.push(InvalidSchemaError::InvalidEdgeType(
+                                    type_name.to_string(),
+                                    field_defn.name.node.to_string(),
+                                    field_type.to_string(),
+                                ));
+                            }
+                        },
+                    }
                 }
             } else {
                 // Somehow the base named type is neither a vertex nor a scalar,
