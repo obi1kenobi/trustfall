@@ -19,7 +19,7 @@ use async_graphql_value::Name;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::types::is_scalar_only_subtype;
+use crate::ir::types::{is_scalar_only_subtype, get_base_named_type};
 
 use self::error::InvalidSchemaError;
 
@@ -184,7 +184,7 @@ impl Schema {
         if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
             errors.extend(e.into_iter());
         }
-        if let Err(e) = check_edge_types(&vertex_types) {
+        if let Err(e) = check_property_and_edge_invariants(&vertex_types) {
             errors.extend(e.into_iter());
         }
         if errors.is_empty() {
@@ -219,7 +219,7 @@ impl Schema {
     }
 }
 
-fn check_edge_types(
+fn check_property_and_edge_invariants(
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
@@ -229,20 +229,34 @@ fn check_edge_types(
 
         for defn in type_fields {
             let field_defn = &defn.node;
-
             let field_type = &field_defn.ty.node;
-            match &field_type.base {
-                BaseType::Named(_) => {}
-                BaseType::List(inner) => match &inner.base {
+
+            let base_named_type = get_base_named_type(field_type);
+            if BUILTIN_SCALARS.contains(base_named_type) {
+                // We're looking at a property field.
+                if !field_defn.arguments.is_empty() {
+                    errors.push(InvalidSchemaError::PropertyFieldWithParameters(
+                        type_name.to_string(),
+                        field_defn.name.node.to_string(),
+                        field_type.to_string(),
+                        field_defn.arguments.iter().map(|x| x.node.name.node.to_string()).collect(),
+                    ));
+                }
+            } else {
+                // We're looking at an edge field.
+                match &field_type.base {
                     BaseType::Named(_) => {}
-                    BaseType::List(_) => {
-                        errors.push(InvalidSchemaError::InvalidEdgeType(
-                            type_name.to_string(),
-                            field_defn.name.node.to_string(),
-                            field_type.to_string(),
-                        ));
-                    }
-                },
+                    BaseType::List(inner) => match &inner.base {
+                        BaseType::Named(_) => {}
+                        BaseType::List(_) => {
+                            errors.push(InvalidSchemaError::InvalidEdgeType(
+                                type_name.to_string(),
+                                field_defn.name.node.to_string(),
+                                field_type.to_string(),
+                            ));
+                        }
+                    },
+                }
             }
         }
     }

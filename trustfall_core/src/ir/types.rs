@@ -21,6 +21,13 @@ pub(crate) fn is_base_type_orderable(operand_type: &BaseType) -> bool {
     }
 }
 
+pub(crate) fn get_base_named_type(ty: &Type) -> &str {
+    match &ty.base {
+        BaseType::Named(n) => n.as_ref(),
+        BaseType::List(l) => get_base_named_type(l.as_ref()),
+    }
+}
+
 /// Check for scalar-only subtyping.
 ///
 /// Scalars don't have an inheritance structure, so they are able to be compared without a schema.

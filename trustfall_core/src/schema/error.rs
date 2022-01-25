@@ -67,6 +67,13 @@ pub enum InvalidSchemaError {
     AmbiguousFieldOrigin(String, String, String, Vec<String>),
 
     #[error(
+        "Type \"{0}\" defines field \"{1}\" which is determined to be a property field because \
+        of its type {2}. Property fields cannot take parameters, but this field takes parameters: \
+        {3:?}"
+    )]
+    PropertyFieldWithParameters(String, String, String, Vec<String>),
+
+    #[error(
         "Type \"{0}\" defines edge \"{1}\" of type {2}, which is not allowed. Edge types must be \
         vertex or list of vertex types, with optional nullability. Vertex types in two or more \
         nested lists are not supported."
