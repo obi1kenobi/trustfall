@@ -352,6 +352,8 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         ))
     });
 
+    let mut errors: Vec<FrontendError> = vec![];
+
     let (root_field_name, root_field_pre_coercion_type, root_field_post_coercion_type, _) =
         get_field_name_and_type_from_schema(&schema.query_type.fields, &query.root_field);
     let starting_vid = vid_maker.next().unwrap();
@@ -359,7 +361,7 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
     let root_parameters = make_edge_parameters(
         get_edge_definition_from_schema(schema, schema.query_type_name(), root_field_name.as_ref()),
         &query.root_connection.arguments,
-    )?;
+    );
 
     let mut output_prefixes = Default::default();
     let mut root_component = make_query_component(
@@ -373,20 +375,35 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         root_field_pre_coercion_type,
         root_field_post_coercion_type,
         &query.root_field,
-    )?;
+    );
 
+    if let Err(e) = &root_parameters {
+        errors.push(e.clone());
+    }
+
+    let root_component = match root_component {
+        Ok(r) => r,
+        Err(e) => {
+            errors.push(e);
+            return Err(errors.into());
+        }
+    };
     let mut variables: BTreeMap<Arc<str>, Type> = Default::default();
     if let Err(v) = fill_in_query_variables(&mut variables, &root_component) {
         let e: FilterTypeError = v.into();
-        return Err(e.into());
+        errors.push(e.into());
     }
 
-    Ok(IRQuery {
-        root_name: root_field_name.as_ref().to_owned().into(),
-        root_parameters,
-        root_component: root_component.into(),
-        variables,
-    })
+    if errors.is_empty() {
+        Ok(IRQuery {
+            root_name: root_field_name.as_ref().to_owned().into(),
+            root_parameters: root_parameters.unwrap(),
+            root_component: root_component.into(),
+            variables,
+        })
+    } else {
+        Err(errors.into())
+    }
 }
 
 fn fill_in_query_variables(

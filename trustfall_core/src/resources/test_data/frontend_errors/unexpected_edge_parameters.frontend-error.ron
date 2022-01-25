@@ -1,1 +1,4 @@
-Err(UnexpectedEdgeParameter("nonexistent", "Number"))
+Err(MultipleErrors(DisplayVec([
+  UnexpectedEdgeParameter("nonexistent", "Number"),
+  UnexpectedEdgeParameter("other", "multiple"),
+])))

@@ -1,1 +1,4 @@
-Err(InvalidEdgeParameterType("max", "Number", "Int!", String("foo")))
+Err(MultipleErrors(DisplayVec([
+  InvalidEdgeParameterType("max", "Number", "Int!", String("foo")),
+  InvalidEdgeParameterType("max", "multiple", "Int!", Float64(12.34)),
+])))
