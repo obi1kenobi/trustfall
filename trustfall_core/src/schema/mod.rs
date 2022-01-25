@@ -19,6 +19,8 @@ use async_graphql_value::Name;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
+use crate::ir::types::is_scalar_only_subtype;
+
 use self::error::InvalidSchemaError;
 
 pub mod error;
@@ -182,6 +184,9 @@ impl Schema {
         if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
             errors.extend(e.into_iter());
         }
+        if let Err(e) = check_edge_types(&vertex_types) {
+            errors.extend(e.into_iter());
+        }
         if errors.is_empty() {
             Ok(Self {
                 schema,
@@ -211,6 +216,41 @@ impl Schema {
 
     pub(crate) fn is_named_type_subtype(&self, parent_type: &str, maybe_subtype: &str) -> bool {
         is_named_type_subtype(&self.vertex_types, parent_type, maybe_subtype)
+    }
+}
+
+fn check_edge_types(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+) -> Result<(), Vec<InvalidSchemaError>> {
+    let mut errors: Vec<InvalidSchemaError> = vec![];
+
+    for (type_name, type_defn) in vertex_types {
+        let type_fields = get_vertex_type_fields(type_defn);
+
+        for defn in type_fields {
+            let field_defn = &defn.node;
+
+            let field_type = &field_defn.ty.node;
+            match &field_type.base {
+                BaseType::Named(_) => {}
+                BaseType::List(inner) => match &inner.base {
+                    BaseType::Named(_) => {}
+                    BaseType::List(_) => {
+                        errors.push(InvalidSchemaError::InvalidEdgeType(
+                            type_name.to_string(),
+                            field_defn.name.node.to_string(),
+                            field_type.to_string(),
+                        ));
+                    }
+                },
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
     }
 }
 
@@ -345,6 +385,12 @@ fn check_field_type_narrowing(
         for field in type_fields {
             let field_name = field.node.name.node.as_ref();
             let field_type = &field.node.ty.node;
+            let field_parameters: BTreeMap<_, _> = field
+                .node
+                .arguments
+                .iter()
+                .map(|arg| (arg.node.name.node.as_ref(), &arg.node.ty.node))
+                .collect();
 
             for implementation in implementations {
                 let implementation = implementation.node.as_ref();
@@ -363,6 +409,70 @@ fn check_field_type_narrowing(
                             field_type.to_string(),
                             parent_field_type.to_string(),
                         ));
+                    }
+
+                    let parent_field_parameters: BTreeMap<_, _> = parent_field
+                        .arguments
+                        .iter()
+                        .map(|arg| (arg.node.name.node.as_ref(), &arg.node.ty.node))
+                        .collect();
+
+                    // Check for field parameters that the parent type requires but
+                    // the child type does not accept.
+                    let missing_parameters = parent_field_parameters
+                        .keys()
+                        .copied()
+                        .filter(|name| !field_parameters.contains_key(*name))
+                        .collect_vec();
+                    if !missing_parameters.is_empty() {
+                        errors.push(InvalidSchemaError::InheritedFieldMissingParameters(
+                            field_name.to_owned(),
+                            type_name.to_string(),
+                            implementation.to_owned(),
+                            missing_parameters
+                                .into_iter()
+                                .map(ToOwned::to_owned)
+                                .collect_vec(),
+                        ));
+                    }
+
+                    // Check for field parameters that the parent type does not accept,
+                    // but the child type defines anyway.
+                    let unexpected_parameters = field_parameters
+                        .keys()
+                        .copied()
+                        .filter(|name| !parent_field_parameters.contains_key(*name))
+                        .collect_vec();
+                    if !unexpected_parameters.is_empty() {
+                        errors.push(InvalidSchemaError::InheritedFieldUnexpectedParameters(
+                            field_name.to_owned(),
+                            type_name.to_string(),
+                            implementation.to_owned(),
+                            unexpected_parameters
+                                .into_iter()
+                                .map(ToOwned::to_owned)
+                                .collect_vec(),
+                        ));
+                    }
+
+                    // Check that all field parameters defined by the child have types
+                    // that are legal widenings of the corresponding field parameter's type
+                    // on the parent type. Field parameters are contravariant, hence widenings.
+                    for (&field_parameter, &field_type) in &field_parameters {
+                        if let Some(&parent_field_type) =
+                            parent_field_parameters.get(field_parameter)
+                        {
+                            if !is_scalar_only_subtype(field_type, parent_field_type) {
+                                errors.push(InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
+                                    field_name.to_owned(),
+                                    type_name.to_string(),
+                                    implementation.to_owned(),
+                                    field_parameter.to_string(),
+                                    field_type.to_string(),
+                                    parent_field_type.to_string(),
+                                ));
+                            }
+                        }
                     }
                 }
             }

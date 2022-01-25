@@ -1,0 +1,3 @@
+InheritedFieldMissingParameters("theEdge", "Derived", "Base", [
+  "param",
+])

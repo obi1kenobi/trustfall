@@ -9,20 +9,9 @@ directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
 
 type RootSchemaQuery {
-    Base: Base
-    Derived: Derived
+    Base: [[[Base]]]
 }
 
-interface Base {
+type Base {
     field: String
-
-    theEdge: [Derived!]!
-}
-
-type Derived implements Base {
-    field: String
-
-    # The parent field is an edge to Derived, whereas this is an edge to its supertype.
-    # This is a widening of the parent's field type, and will cause an error.
-    theEdge: [Base!]!
 }
