@@ -21,9 +21,10 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        indexed::IndexedQuery, types::intersect_types, Argument, ContextField, EdgeParameters, Eid,
-        FieldValue, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation,
-        Recursive, VariableRef, Vid,
+        indexed::IndexedQuery,
+        types::{intersect_types, is_argument_type_valid},
+        Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRFold, IRQuery,
+        IRQueryComponent, IRVertex, LocalField, Operation, Recursive, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::TryCollectUniqueKey,
@@ -132,34 +133,68 @@ fn make_edge_parameters(
     edge_definition: &FieldDefinition,
     specified_arguments: &BTreeMap<Arc<str>, FieldValue>,
 ) -> Result<Option<Arc<EdgeParameters>>, FrontendError> {
+    let mut errors: Vec<FrontendError> = vec![];
+
     let mut edge_arguments: BTreeMap<Arc<str>, FieldValue> = BTreeMap::new();
     for arg in &edge_definition.arguments {
         let arg_name = arg.node.name.node.as_ref();
-        let variable_value = specified_arguments
-            .get(arg_name)
-            .cloned()
-            .or_else(|| {
-                arg.node
-                    .default_value
-                    .as_ref()
-                    .map(|v| FieldValue::try_from(&v.node).unwrap())
-            })
-            .ok_or_else(|| {
-                FrontendError::MissingRequiredEdgeParameter(
+        let specified_value = match specified_arguments.get(arg_name) {
+            None => {
+                // Argument value was not specified, try to use a default if there is one.
+                arg.node.default_value.as_ref().map(|v| {
+                    let value = FieldValue::try_from(&v.node).unwrap();
+
+                    // The default value must be a valid type for the parameter,
+                    // otherwise the schema itself is invalid.
+                    assert!(is_argument_type_valid(&arg.node.ty.node, &value));
+
+                    value
+                })
+            }
+            Some(value) => {
+                // Type-check the supplied value against the schema.
+                if !is_argument_type_valid(&arg.node.ty.node, value) {
+                    errors.push(FrontendError::InvalidEdgeParameterType(
+                        arg_name.to_string(),
+                        edge_definition.name.node.to_string(),
+                        arg.node.ty.to_string(),
+                        value.clone(),
+                    ));
+                }
+                Some(value.clone())
+            }
+        };
+
+        match specified_value {
+            None => {
+                errors.push(FrontendError::MissingRequiredEdgeParameter(
                     arg_name.to_string(),
                     edge_definition.name.node.to_string(),
-                )
-            })?;
-
-        edge_arguments
-            .try_insert(arg_name.to_owned().into(), variable_value)
-            .unwrap(); // Duplicates should have been caught at parse time.
+                ));
+            }
+            Some(value) => {
+                edge_arguments
+                    .try_insert(arg_name.to_owned().into(), value)
+                    .unwrap(); // Duplicates should have been caught at parse time.
+            }
+        }
     }
 
-    // TODO: add edge parameter type validation
-    // TODO: add check that all supplied parameter types are actually supported by the schema,
-    //       currently unrecognized args are just going to be ignored.
-    if edge_arguments.is_empty() {
+    // Check whether any of the supplied parameters aren't expected by the schema.
+    for specified_argument_name in specified_arguments.keys() {
+        if !edge_arguments.contains_key(specified_argument_name) {
+            // This edge parameter isn't defined expected in the schema,
+            // and it's an error to supply it.
+            errors.push(FrontendError::UnexpectedEdgeParameter(
+                specified_argument_name.to_string(),
+                edge_definition.name.node.to_string(),
+            ))
+        }
+    }
+
+    if !errors.is_empty() {
+        Err(errors.into())
+    } else if edge_arguments.is_empty() {
         Ok(None)
     } else {
         Ok(Some(Arc::new(EdgeParameters(edge_arguments))))
