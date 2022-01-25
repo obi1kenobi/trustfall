@@ -19,7 +19,7 @@ use async_graphql_value::Name;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::types::{is_scalar_only_subtype, get_base_named_type};
+use crate::ir::types::{get_base_named_type, is_scalar_only_subtype};
 
 use self::error::InvalidSchemaError;
 
@@ -187,6 +187,9 @@ impl Schema {
         if let Err(e) = check_property_and_edge_invariants(&vertex_types) {
             errors.extend(e.into_iter());
         }
+        if let Err(e) = check_root_query_type_invariants(query_type_definition, &query_type, &vertex_types) {
+            errors.extend(e.into_iter());
+        }
         if errors.is_empty() {
             Ok(Self {
                 schema,
@@ -219,6 +222,36 @@ impl Schema {
     }
 }
 
+fn check_root_query_type_invariants(
+    query_type_definition: &TypeDefinition,
+    query_type: &ObjectType,
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+) -> Result<(), Vec<InvalidSchemaError>> {
+    let mut errors: Vec<InvalidSchemaError> = vec![];
+
+    for field_defn in &query_type.fields {
+        let field_type = &field_defn.node.ty.node;
+        let base_named_type = get_base_named_type(field_type);
+        if BUILTIN_SCALARS.contains(base_named_type) {
+            errors.push(InvalidSchemaError::PropertyFieldOnRootQueryType(
+                query_type_definition.name.node.to_string(),
+                field_defn.node.name.node.to_string(),
+                field_type.to_string(),
+            ));
+        } else if !vertex_types.contains_key(base_named_type) {
+            // Somehow the base named type is neither a vertex nor a scalar,
+            // and this field is neither an edge nor a property.
+            unreachable!()
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
 fn check_property_and_edge_invariants(
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<(), Vec<InvalidSchemaError>> {
@@ -239,10 +272,14 @@ fn check_property_and_edge_invariants(
                         type_name.to_string(),
                         field_defn.name.node.to_string(),
                         field_type.to_string(),
-                        field_defn.arguments.iter().map(|x| x.node.name.node.to_string()).collect(),
+                        field_defn
+                            .arguments
+                            .iter()
+                            .map(|x| x.node.name.node.to_string())
+                            .collect(),
                     ));
                 }
-            } else {
+            } else if vertex_types.contains_key(base_named_type) {
                 // We're looking at an edge field.
                 match &field_type.base {
                     BaseType::Named(_) => {}
@@ -257,6 +294,10 @@ fn check_property_and_edge_invariants(
                         }
                     },
                 }
+            } else {
+                // Somehow the base named type is neither a vertex nor a scalar,
+                // and this field is neither an edge nor a property.
+                unreachable!()
             }
         }
     }

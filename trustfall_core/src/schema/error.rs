@@ -79,6 +79,13 @@ pub enum InvalidSchemaError {
         nested lists are not supported."
     )]
     InvalidEdgeType(String, String, String),
+
+    #[error(
+        "The schema's root query type \"{0}\" defines a field \"{1}\" which is determined to \
+        be a property field because of its type {2}. The root query type may only contain \
+        edge fields; property fields are not allowed on the root query type."
+    )]
+    PropertyFieldOnRootQueryType(String, String, String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {
