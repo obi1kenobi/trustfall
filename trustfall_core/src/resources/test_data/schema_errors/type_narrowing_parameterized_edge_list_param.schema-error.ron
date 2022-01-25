@@ -1,5 +1,5 @@
 MultipleErrors(DisplayVec([
   InvalidTypeNarrowingOfInheritedFieldParameter("theEdge", "Derived", "Base", "param", "[Int!]", "[Int]"),
-  InvalidTypeNarrowingOfInheritedFieldParameter("theSecondEdge", "Derived", "Base", "param", "[Int!]", "[Int]"),
+  InvalidTypeNarrowingOfInheritedFieldParameter("theSecondEdge", "Derived", "Base", "param", "[Int]!", "[Int]"),
   InvalidTypeNarrowingOfInheritedFieldParameter("theThirdEdge", "Derived", "Base", "param", "[Int!]!", "[Int]"),
 ]))

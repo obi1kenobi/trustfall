@@ -16,19 +16,18 @@ type RootSchemaQuery {
 interface Base {
     field: String
 
-    theEdge(param: [Int]): Base!
-    theSecondEdge(param: [Int]): Base!
-    theThirdEdge(param: [Int]): Base!
+    theEdge(param: [Int!]!): Base!
+    theSecondEdge(param: [Int!]!): Base!
+    theThirdEdge(param: [Int!]!): Base!
 }
 
 type Derived implements Base {
     field: String
 
-    # The parent field requires a nullable list of nullable Int parameter,
-    # whereas the fields here make some or all of those components non-nullable.
-    # Such narrowing of the parameter type causes widening of the field type
-    # (due to contravariance), and is therefore an error.
+    # The parent fields require a non-nullable lists of non-nullable Int parameters,
+    # whereas the fields here make some or all of those components nullable.
+    # These are all widening conversions, and because of contravariance this is okay.
     theEdge(param: [Int!]): Base!
     theSecondEdge(param: [Int]!): Base!
-    theThirdEdge(param: [Int!]!): Base!
+    theThirdEdge(param: [Int]): Base!
 }
