@@ -37,4 +37,12 @@ type FinalDerived implements Base & Derived & DeeperDerived {
 
     firstEdge: Derived
     secondEdge: Derived
+
+    cyclic: Unrelated
+}
+
+type Unrelated {
+    field: Int
+
+    cyclic: Base
 }

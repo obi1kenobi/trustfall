@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "recurses",
+    query: r#"
+{
+    FinalDerived {
+        field @output
+
+        cyclic @recurse(depth: 3) {
+            deeper: field @output
+        }
+    }
+}"#,
+    arguments: {},
+)
