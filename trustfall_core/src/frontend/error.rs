@@ -90,9 +90,6 @@ pub enum FrontendError {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FilterTypeError {
-    #[error("Multiple filter-related type errors: {0}")]
-    MultipleErrors(DisplayVec<FilterTypeError>),
-
     #[error(
         "Variable \"{0}\" is used in multiple places in the query that require values of \
         incompatible types \"{1}\" and \"{2}\". Please split up the uses that require different \
@@ -147,17 +144,6 @@ pub enum FilterTypeError {
         operation \"{0}\" which requires a list type."
     )]
     ListFilterOperationOnNonListTag(String, String, String, String),
-}
-
-impl From<Vec<FilterTypeError>> for FilterTypeError {
-    fn from(v: Vec<FilterTypeError>) -> Self {
-        assert!(!v.is_empty());
-        if v.len() == 1 {
-            v.into_iter().next().unwrap()
-        } else {
-            Self::MultipleErrors(DisplayVec(v))
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

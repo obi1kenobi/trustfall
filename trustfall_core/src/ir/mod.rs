@@ -675,7 +675,7 @@ impl Operation<LocalField, Argument> {
     pub(crate) fn operand_types_valid(
         &self,
         tag_name: Option<&str>,
-    ) -> Result<(), FilterTypeError> {
+    ) -> Result<(), Vec<FilterTypeError>> {
         let left = self.left();
         let right = self.right();
         let left_type = &left.field_type;
@@ -700,12 +700,14 @@ impl Operation<LocalField, Argument> {
                 if left_type.nullable {
                     Ok(())
                 } else {
-                    Err(FilterTypeError::NonNullableTypeFilteredForNullability(
-                        self.operation_name().to_owned(),
-                        left.field_name.to_string(),
-                        left.field_type.to_string(),
-                        matches!(self, Operation::IsNotNull(..)),
-                    ))
+                    Err(vec![
+                        FilterTypeError::NonNullableTypeFilteredForNullability(
+                            self.operation_name().to_owned(),
+                            left.field_name.to_string(),
+                            left.field_type.to_string(),
+                            matches!(self, Operation::IsNotNull(..)),
+                        ),
+                    ])
                 }
             }
             Operation::Equals(_, _) | Operation::NotEquals(_, _) => {
@@ -722,14 +724,14 @@ impl Operation<LocalField, Argument> {
                     // has inferred an incorrect type for the variable in the argument.
                     let tag = right.unwrap().as_tag().unwrap();
 
-                    Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                    Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name.to_string(),
                         tag.field_type.to_string(),
-                    ))
+                    )])
                 }
             }
             Operation::LessThan(_, _)
@@ -784,7 +786,7 @@ impl Operation<LocalField, Argument> {
                 if errors.is_empty() {
                     Ok(())
                 } else {
-                    Err(errors.into())
+                    Err(errors)
                 }
             }
             Operation::Contains(_, _) | Operation::NotContains(_, _) => {
@@ -792,11 +794,13 @@ impl Operation<LocalField, Argument> {
                 // The right-hand operand may be anything, if considered individually.
                 let inner_type = match &left_type.base {
                     BaseType::List(ty) => Ok(ty),
-                    BaseType::Named(_) => Err(FilterTypeError::ListFilterOperationOnNonListField(
-                        self.operation_name().to_string(),
-                        left.field_name.to_string(),
-                        left.field_type.to_string(),
-                    )),
+                    BaseType::Named(_) => {
+                        Err(vec![FilterTypeError::ListFilterOperationOnNonListField(
+                            self.operation_name().to_string(),
+                            left.field_name.to_string(),
+                            left.field_type.to_string(),
+                        )])
+                    }
                 }?;
 
                 let right_type = right_type.unwrap();
@@ -811,14 +815,14 @@ impl Operation<LocalField, Argument> {
                     // has inferred an incorrect type for the variable in the argument.
                     let tag = right.unwrap().as_tag().unwrap();
 
-                    Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                    Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name.to_string(),
                         tag.field_type.to_string(),
-                    ))
+                    )])
                 }
             }
             Operation::OneOf(_, _) | Operation::NotOneOf(_, _) => {
@@ -833,12 +837,12 @@ impl Operation<LocalField, Argument> {
                         // has inferred an incorrect type for the variable in the argument.
                         let tag = right.unwrap().as_tag().unwrap();
 
-                        Err(FilterTypeError::ListFilterOperationOnNonListTag(
+                        Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
                             self.operation_name().to_string(),
                             tag_name.unwrap().to_string(),
                             tag.field_name.to_string(),
                             tag.field_type.to_string(),
-                        ))
+                        )])
                     }
                 }?;
 
@@ -852,14 +856,14 @@ impl Operation<LocalField, Argument> {
                     // has inferred an incorrect type for the variable in the argument.
                     let tag = right.unwrap().as_tag().unwrap();
 
-                    Err(FilterTypeError::TypeMismatchBetweenTagAndFilter(
+                    Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name.to_string(),
                         tag.field_type.to_string(),
-                    ))
+                    )])
                 }
             }
             Operation::HasPrefix(_, _)
@@ -903,7 +907,7 @@ impl Operation<LocalField, Argument> {
                 if errors.is_empty() {
                     Ok(())
                 } else {
-                    Err(errors.into())
+                    Err(errors)
                 }
             }
         }

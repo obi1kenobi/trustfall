@@ -286,43 +286,46 @@ fn make_filter_expr(
     property_type: &Type,
     property_field: &FieldNode,
     filter_directive: &FilterDirective,
-) -> Result<Operation<LocalField, Argument>, FrontendError> {
+) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
     let left = LocalField {
         field_name: property_name.clone(),
         field_type: property_type.clone(),
     };
 
-    let filter_operation = filter_directive.operation.try_map(
-        move |_| Ok(left),
-        |arg| {
-            Ok(match arg {
-                OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
-                    variable_name: var_name.clone(),
-                    variable_type: infer_variable_type(
-                        property_name.as_ref(),
-                        property_type,
-                        &filter_directive.operation,
-                    )?,
-                }),
-                OperatorArgument::TagRef(tag_name) => {
-                    let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
-                        FrontendError::UndefinedTagInFilter(
-                            property_name.as_ref().to_owned(),
-                            tag_name.to_string(),
-                        )
-                    })?;
+    let filter_operation = filter_directive
+        .operation
+        .try_map(
+            move |_| Ok(left),
+            |arg| {
+                Ok(match arg {
+                    OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
+                        variable_name: var_name.clone(),
+                        variable_type: infer_variable_type(
+                            property_name.as_ref(),
+                            property_type,
+                            &filter_directive.operation,
+                        )?,
+                    }),
+                    OperatorArgument::TagRef(tag_name) => {
+                        let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
+                            FrontendError::UndefinedTagInFilter(
+                                property_name.as_ref().to_owned(),
+                                tag_name.to_string(),
+                            )
+                        })?;
 
-                    if defined_tag.vertex_id > current_vertex_vid {
-                        return Err(FrontendError::TagUsedBeforeDefinition(
-                            property_name.as_ref().to_owned(),
-                            tag_name.to_string(),
-                        ));
+                        if defined_tag.vertex_id > current_vertex_vid {
+                            return Err(FrontendError::TagUsedBeforeDefinition(
+                                property_name.as_ref().to_owned(),
+                                tag_name.to_string(),
+                            ));
+                        }
+                        Argument::Tag(defined_tag.clone())
                     }
-                    Argument::Tag(defined_tag.clone())
-                }
-            })
-        },
-    )?;
+                })
+            },
+        )
+        .map_err(|e| vec![e])?;
 
     // Get the tag name, if one was used.
     // The tag name is used to improve the diagnostics raised in case of bad query input.
@@ -330,9 +333,12 @@ fn make_filter_expr(
         Some(OperatorArgument::TagRef(tag_name)) => Some(tag_name.as_ref()),
         _ => None,
     };
-    filter_operation.operand_types_valid(maybe_tag_name)?;
 
-    Ok(filter_operation)
+    if let Err(e) = filter_operation.operand_types_valid(maybe_tag_name) {
+        Err(e.into_iter().map(|x| x.into()).collect())
+    } else {
+        Ok(filter_operation)
+    }
 }
 
 pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, FrontendError> {
@@ -389,8 +395,7 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
     };
     let mut variables: BTreeMap<Arc<str>, Type> = Default::default();
     if let Err(v) = fill_in_query_variables(&mut variables, &root_component) {
-        let e: FilterTypeError = v.into();
-        errors.push(e.into());
+        errors.extend(v.into_iter().map(|x| x.into()));
     }
 
     if errors.is_empty() {
@@ -936,7 +941,7 @@ fn make_vertex<'schema, 'query>(
                         filters.push(filter_operation);
                     }
                     Err(e) => {
-                        errors.push(e);
+                        errors.extend(e);
                     }
                 }
             }
