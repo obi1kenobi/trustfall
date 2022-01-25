@@ -12,7 +12,6 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_graphql_value::Name;
-use itertools::Itertools;
 use smallvec::SmallVec;
 
 use crate::{
@@ -21,9 +20,10 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        indexed::IndexedQuery, types::intersect_types, Argument, ContextField, EdgeParameters, Eid,
-        FieldValue, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation,
-        Recursive, VariableRef, Vid,
+        indexed::IndexedQuery,
+        types::{intersect_types, is_argument_type_valid},
+        Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRFold, IRQuery,
+        IRQueryComponent, IRVertex, LocalField, Operation, Recursive, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::TryCollectUniqueKey,
@@ -131,35 +131,69 @@ fn get_vertex_field_definitions<'a>(
 fn make_edge_parameters(
     edge_definition: &FieldDefinition,
     specified_arguments: &BTreeMap<Arc<str>, FieldValue>,
-) -> Result<Option<Arc<EdgeParameters>>, FrontendError> {
+) -> Result<Option<Arc<EdgeParameters>>, Vec<FrontendError>> {
+    let mut errors: Vec<FrontendError> = vec![];
+
     let mut edge_arguments: BTreeMap<Arc<str>, FieldValue> = BTreeMap::new();
     for arg in &edge_definition.arguments {
         let arg_name = arg.node.name.node.as_ref();
-        let variable_value = specified_arguments
-            .get(arg_name)
-            .cloned()
-            .or_else(|| {
-                arg.node
-                    .default_value
-                    .as_ref()
-                    .map(|v| FieldValue::try_from(&v.node).unwrap())
-            })
-            .ok_or_else(|| {
-                FrontendError::MissingRequiredEdgeParameter(
+        let specified_value = match specified_arguments.get(arg_name) {
+            None => {
+                // Argument value was not specified, try to use a default if there is one.
+                arg.node.default_value.as_ref().map(|v| {
+                    let value = FieldValue::try_from(&v.node).unwrap();
+
+                    // The default value must be a valid type for the parameter,
+                    // otherwise the schema itself is invalid.
+                    assert!(is_argument_type_valid(&arg.node.ty.node, &value));
+
+                    value
+                })
+            }
+            Some(value) => {
+                // Type-check the supplied value against the schema.
+                if !is_argument_type_valid(&arg.node.ty.node, value) {
+                    errors.push(FrontendError::InvalidEdgeParameterType(
+                        arg_name.to_string(),
+                        edge_definition.name.node.to_string(),
+                        arg.node.ty.to_string(),
+                        value.clone(),
+                    ));
+                }
+                Some(value.clone())
+            }
+        };
+
+        match specified_value {
+            None => {
+                errors.push(FrontendError::MissingRequiredEdgeParameter(
                     arg_name.to_string(),
                     edge_definition.name.node.to_string(),
-                )
-            })?;
-
-        edge_arguments
-            .try_insert(arg_name.to_owned().into(), variable_value)
-            .unwrap(); // Duplicates should have been caught at parse time.
+                ));
+            }
+            Some(value) => {
+                edge_arguments
+                    .try_insert(arg_name.to_owned().into(), value)
+                    .unwrap(); // Duplicates should have been caught at parse time.
+            }
+        }
     }
 
-    // TODO: add edge parameter type validation
-    // TODO: add check that all supplied parameter types are actually supported by the schema,
-    //       currently unrecognized args are just going to be ignored.
-    if edge_arguments.is_empty() {
+    // Check whether any of the supplied parameters aren't expected by the schema.
+    for specified_argument_name in specified_arguments.keys() {
+        if !edge_arguments.contains_key(specified_argument_name) {
+            // This edge parameter isn't defined expected in the schema,
+            // and it's an error to supply it.
+            errors.push(FrontendError::UnexpectedEdgeParameter(
+                specified_argument_name.to_string(),
+                edge_definition.name.node.to_string(),
+            ))
+        }
+    }
+
+    if !errors.is_empty() {
+        Err(errors)
+    } else if edge_arguments.is_empty() {
         Ok(None)
     } else {
         Ok(Some(Arc::new(EdgeParameters(edge_arguments))))
@@ -252,43 +286,46 @@ fn make_filter_expr(
     property_type: &Type,
     property_field: &FieldNode,
     filter_directive: &FilterDirective,
-) -> Result<Operation<LocalField, Argument>, FrontendError> {
+) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
     let left = LocalField {
         field_name: property_name.clone(),
         field_type: property_type.clone(),
     };
 
-    let filter_operation = filter_directive.operation.try_map(
-        move |_| Ok(left),
-        |arg| {
-            Ok(match arg {
-                OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
-                    variable_name: var_name.clone(),
-                    variable_type: infer_variable_type(
-                        property_name.as_ref(),
-                        property_type,
-                        &filter_directive.operation,
-                    )?,
-                }),
-                OperatorArgument::TagRef(tag_name) => {
-                    let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
-                        FrontendError::UndefinedTagInFilter(
-                            property_name.as_ref().to_owned(),
-                            tag_name.to_string(),
-                        )
-                    })?;
+    let filter_operation = filter_directive
+        .operation
+        .try_map(
+            move |_| Ok(left),
+            |arg| {
+                Ok(match arg {
+                    OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
+                        variable_name: var_name.clone(),
+                        variable_type: infer_variable_type(
+                            property_name.as_ref(),
+                            property_type,
+                            &filter_directive.operation,
+                        )?,
+                    }),
+                    OperatorArgument::TagRef(tag_name) => {
+                        let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
+                            FrontendError::UndefinedTagInFilter(
+                                property_name.as_ref().to_owned(),
+                                tag_name.to_string(),
+                            )
+                        })?;
 
-                    if defined_tag.vertex_id > current_vertex_vid {
-                        return Err(FrontendError::TagUsedBeforeDefinition(
-                            property_name.as_ref().to_owned(),
-                            tag_name.to_string(),
-                        ));
+                        if defined_tag.vertex_id > current_vertex_vid {
+                            return Err(FrontendError::TagUsedBeforeDefinition(
+                                property_name.as_ref().to_owned(),
+                                tag_name.to_string(),
+                            ));
+                        }
+                        Argument::Tag(defined_tag.clone())
                     }
-                    Argument::Tag(defined_tag.clone())
-                }
-            })
-        },
-    )?;
+                })
+            },
+        )
+        .map_err(|e| vec![e])?;
 
     // Get the tag name, if one was used.
     // The tag name is used to improve the diagnostics raised in case of bad query input.
@@ -296,9 +333,12 @@ fn make_filter_expr(
         Some(OperatorArgument::TagRef(tag_name)) => Some(tag_name.as_ref()),
         _ => None,
     };
-    filter_operation.operand_types_valid(maybe_tag_name)?;
 
-    Ok(filter_operation)
+    if let Err(e) = filter_operation.operand_types_valid(maybe_tag_name) {
+        Err(e.into_iter().map(|x| x.into()).collect())
+    } else {
+        Ok(filter_operation)
+    }
 }
 
 pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, FrontendError> {
@@ -317,6 +357,8 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         ))
     });
 
+    let mut errors: Vec<FrontendError> = vec![];
+
     let (root_field_name, root_field_pre_coercion_type, root_field_post_coercion_type, _) =
         get_field_name_and_type_from_schema(&schema.query_type.fields, &query.root_field);
     let starting_vid = vid_maker.next().unwrap();
@@ -324,7 +366,7 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
     let root_parameters = make_edge_parameters(
         get_edge_definition_from_schema(schema, schema.query_type_name(), root_field_name.as_ref()),
         &query.root_connection.arguments,
-    )?;
+    );
 
     let mut output_prefixes = Default::default();
     let mut root_component = make_query_component(
@@ -338,20 +380,34 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         root_field_pre_coercion_type,
         root_field_post_coercion_type,
         &query.root_field,
-    )?;
+    );
 
-    let mut variables: BTreeMap<Arc<str>, Type> = Default::default();
-    if let Err(v) = fill_in_query_variables(&mut variables, &root_component) {
-        let e: FilterTypeError = v.into();
-        return Err(e.into());
+    if let Err(e) = &root_parameters {
+        errors.extend(e.iter().cloned());
     }
 
-    Ok(IRQuery {
-        root_name: root_field_name.as_ref().to_owned().into(),
-        root_parameters,
-        root_component: root_component.into(),
-        variables,
-    })
+    let root_component = match root_component {
+        Ok(r) => r,
+        Err(e) => {
+            errors.extend(e);
+            return Err(errors.into());
+        }
+    };
+    let mut variables: BTreeMap<Arc<str>, Type> = Default::default();
+    if let Err(v) = fill_in_query_variables(&mut variables, &root_component) {
+        errors.extend(v.into_iter().map(|x| x.into()));
+    }
+
+    if errors.is_empty() {
+        Ok(IRQuery {
+            root_name: root_field_name.as_ref().to_owned().into(),
+            root_parameters: root_parameters.unwrap(),
+            root_component: root_component.into(),
+            variables,
+        })
+    } else {
+        Err(errors.into())
+    }
 }
 
 fn fill_in_query_variables(
@@ -408,12 +464,14 @@ fn make_query_component<'a, 'schema, 'query, V, E>(
     pre_coercion_type: Arc<str>,
     post_coercion_type: Arc<str>,
     starting_field: &'query FieldNode,
-) -> Result<IRQueryComponent, FrontendError>
+) -> Result<IRQueryComponent, Vec<FrontendError>>
 where
     'schema: 'query,
     V: Iterator<Item = Vid>,
     E: Iterator<Item = Eid>,
 {
+    let mut errors: Vec<FrontendError> = vec![];
+
     // Vid -> (vertex type, node that represents it)
     let mut vertices: BTreeMap<Vid, (Arc<str>, &'query FieldNode)> = Default::default();
 
@@ -432,7 +490,7 @@ where
 
     let mut folds: BTreeMap<Eid, Arc<IRFold>> = Default::default();
 
-    fill_in_vertex_data(
+    if let Err(e) = fill_in_vertex_data(
         schema,
         query,
         vid_maker,
@@ -448,7 +506,9 @@ where
         pre_coercion_type,
         post_coercion_type,
         starting_field,
-    )?;
+    ) {
+        errors.extend(e);
+    }
 
     // TODO: write a test case for tags that aren't used by any filter
     // TODO: write a test case for filter inside fold that uses a tag from outside the fold
@@ -489,8 +549,8 @@ where
             maybe_duplicate_tags.push((tag_name, context_field));
         }
     }
-    let tags: BTreeMap<Arc<str>, ContextField> = maybe_duplicate_tags
-        .drain(..)
+    let tags: BTreeMap<Arc<str>, ContextField> = match maybe_duplicate_tags
+        .into_iter()
         .try_collect_unique()
         .map_err(|field_duplicates| {
             let conflict_info = DuplicatedNamesConflict {
@@ -513,9 +573,15 @@ where
                     .collect(),
             };
             FrontendError::MultipleTagsWithSameName(conflict_info)
-        })?;
+        }) {
+        Ok(t) => t,
+        Err(e) => {
+            errors.push(e);
+            return Err(errors);
+        }
+    };
 
-    let ir_vertices: BTreeMap<Vid, IRVertex> = vertices
+    let vertex_results = vertices
         .iter()
         .map(|(vid, (uncoerced_type_name, field_node))| {
             make_vertex(
@@ -527,11 +593,21 @@ where
                 uncoerced_type_name,
                 field_node,
             )
+        });
+
+    let ir_vertices: BTreeMap<Vid, IRVertex> = vertex_results
+        .filter_map(|res| match res {
+            Ok(v) => Some((v.vid, v)),
+            Err(e) => {
+                errors.extend(e);
+                None
+            }
         })
-        .fold_ok(btreemap! {}, |mut acc, vertex| {
-            acc.try_insert(vertex.vid, vertex).unwrap();
-            acc
-        })?;
+        .try_collect_unique()
+        .unwrap();
+    if !errors.is_empty() {
+        return Err(errors);
+    }
 
     let mut ir_edges: BTreeMap<Eid, Arc<IREdge>> = BTreeMap::new();
     for (eid, (from_vid, to_vid, field_connection)) in edges.iter() {
@@ -543,36 +619,51 @@ where
         );
         let edge_name = edge_definition.name.node.as_ref().to_owned().into();
 
-        let parameters = make_edge_parameters(edge_definition, &field_connection.arguments)?;
+        let parameters_result = make_edge_parameters(edge_definition, &field_connection.arguments);
 
         let optional = field_connection.optional.is_some();
         let recursive = match field_connection.recurse.as_ref() {
             None => None,
             Some(d) => {
-                let coerce_to = get_recurse_implicit_coercion(
+                match get_recurse_implicit_coercion(
                     schema,
                     &ir_vertices[from_vid],
                     edge_definition,
                     d,
-                )?;
-
-                Some(Recursive::new(d.depth, coerce_to))
+                ) {
+                    Ok(coerce_to) => Some(Recursive::new(d.depth, coerce_to)),
+                    Err(e) => {
+                        errors.push(e);
+                        None
+                    }
+                }
             }
         };
 
-        ir_edges.insert(
-            *eid,
-            IREdge {
-                eid: *eid,
-                from_vid: *from_vid,
-                to_vid: *to_vid,
-                edge_name,
-                parameters,
-                optional,
-                recursive,
+        match parameters_result {
+            Ok(parameters) => {
+                ir_edges.insert(
+                    *eid,
+                    IREdge {
+                        eid: *eid,
+                        from_vid: *from_vid,
+                        to_vid: *to_vid,
+                        edge_name,
+                        parameters,
+                        optional,
+                        recursive,
+                    }
+                    .into(),
+                );
             }
-            .into(),
-        );
+            Err(e) => {
+                errors.extend(e);
+            }
+        }
+    }
+
+    if !errors.is_empty() {
+        return Err(errors);
     }
 
     let outputs: BTreeMap<Arc<str>, ContextField> = vertices
@@ -635,7 +726,7 @@ where
                     })
                     .collect(),
             };
-            FrontendError::MultipleOutputsWithSameName(conflict_info)
+            vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
         })?;
 
     Ok(IRQueryComponent {
@@ -792,20 +883,22 @@ fn make_vertex<'schema, 'query>(
     vid: Vid,
     uncoerced_type_name: &Arc<str>,
     field_node: &'query FieldNode,
-) -> Result<IRVertex, FrontendError> {
+) -> Result<IRVertex, Vec<FrontendError>> {
+    let mut errors: Vec<FrontendError> = vec![];
+
     if !field_node.output.is_empty() {
-        return Err(FrontendError::UnsupportedEdgeOutput(
+        errors.push(FrontendError::UnsupportedEdgeOutput(
             field_node.name.as_ref().to_owned(),
         ));
     }
     if let Some(first_filter) = field_node.filter.first() {
         // TODO: If @filter on edges is allowed, tweak this.
-        return Err(FrontendError::UnsupportedEdgeFilter(
+        errors.push(FrontendError::UnsupportedEdgeFilter(
             field_node.name.as_ref().to_owned(),
         ));
     }
 
-    let (type_name, coerced_from_type) = field_node.coerced_to.clone().map_or_else(
+    let (type_name, coerced_from_type) = match field_node.coerced_to.clone().map_or_else(
         || {
             Result::<(Arc<str>, Option<Arc<str>>), FrontendError>::Ok((
                 uncoerced_type_name.clone(),
@@ -820,7 +913,13 @@ fn make_vertex<'schema, 'query>(
                 Some(uncoerced_type_name.clone()),
             ))
         },
-    )?;
+    ) {
+        Ok(x) => x,
+        Err(e) => {
+            errors.push(e);
+            return Err(errors);
+        }
+    };
 
     let mut filters = vec![];
     for property_name in property_names_by_vertex.get(&vid).into_iter().flatten() {
@@ -829,7 +928,7 @@ fn make_vertex<'schema, 'query>(
 
         for property_field in property_fields.iter() {
             for filter_directive in property_field.filter.iter() {
-                let filter_operation = make_filter_expr(
+                match make_filter_expr(
                     schema,
                     tags,
                     vid,
@@ -837,18 +936,28 @@ fn make_vertex<'schema, 'query>(
                     property_type,
                     property_field,
                     filter_directive,
-                )?;
-                filters.push(filter_operation);
+                ) {
+                    Ok(filter_operation) => {
+                        filters.push(filter_operation);
+                    }
+                    Err(e) => {
+                        errors.extend(e);
+                    }
+                }
             }
         }
     }
 
-    Ok(IRVertex {
-        vid,
-        type_name,
-        coerced_from_type,
-        filters,
-    })
+    if errors.is_empty() {
+        Ok(IRVertex {
+            vid,
+            type_name,
+            coerced_from_type,
+            filters,
+        })
+    } else {
+        Err(errors)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -872,12 +981,14 @@ fn fill_in_vertex_data<'schema, 'query, V, E>(
     pre_coercion_type: Arc<str>,
     post_coercion_type: Arc<str>,
     current_field: &'query FieldNode,
-) -> Result<(), FrontendError>
+) -> Result<(), Vec<FrontendError>>
 where
     'schema: 'query,
     V: Iterator<Item = Vid>,
     E: Iterator<Item = Eid>,
 {
+    let mut errors: Vec<FrontendError> = vec![];
+
     vertices
         .try_insert(current_vid, (pre_coercion_type, current_field))
         .unwrap();
@@ -908,13 +1019,13 @@ where
 
             if let Some(FoldDirective {}) = connection.fold {
                 if connection.optional.is_some() {
-                    return Err(FrontendError::UnsupportedDirectiveOnFoldedEdge(
+                    errors.push(FrontendError::UnsupportedDirectiveOnFoldedEdge(
                         subfield.name.to_string(),
                         "@optional".to_owned(),
                     ));
                 }
                 if connection.recurse.is_some() {
-                    return Err(FrontendError::UnsupportedDirectiveOnFoldedEdge(
+                    errors.push(FrontendError::UnsupportedDirectiveOnFoldedEdge(
                         subfield.name.to_string(),
                         "@recurse".to_owned(),
                     ));
@@ -925,30 +1036,41 @@ where
                     post_coercion_type.as_ref(),
                     connection.name.as_ref(),
                 );
-                let edge_parameters = make_edge_parameters(edge_definition, &connection.arguments)?;
-
-                let fold = make_fold(
-                    schema,
-                    query,
-                    vid_maker,
-                    eid_maker,
-                    output_prefixes,
-                    next_eid,
-                    edge_definition.name.node.as_str().to_owned().into(),
-                    edge_parameters,
-                    current_vid,
-                    next_vid,
-                    subfield_pre_coercion_type,
-                    subfield_post_coercion_type,
-                    subfield,
-                )?;
-                folds.insert(next_eid, fold.into());
+                match make_edge_parameters(edge_definition, &connection.arguments) {
+                    Ok(edge_parameters) => {
+                        match make_fold(
+                            schema,
+                            query,
+                            vid_maker,
+                            eid_maker,
+                            output_prefixes,
+                            next_eid,
+                            edge_definition.name.node.as_str().to_owned().into(),
+                            edge_parameters,
+                            current_vid,
+                            next_vid,
+                            subfield_pre_coercion_type,
+                            subfield_post_coercion_type,
+                            subfield,
+                        ) {
+                            Ok(fold) => {
+                                folds.insert(next_eid, fold.into());
+                            }
+                            Err(e) => {
+                                errors.extend(e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        errors.extend(e);
+                    }
+                }
             } else {
                 edges
                     .try_insert(next_eid, (current_vid, next_vid, connection))
                     .expect("Unexpectedly encountered duplicate eid");
 
-                fill_in_vertex_data(
+                if let Err(e) = fill_in_vertex_data(
                     schema,
                     query,
                     vid_maker,
@@ -964,7 +1086,9 @@ where
                     subfield_pre_coercion_type.clone(),
                     subfield_post_coercion_type.clone(),
                     subfield,
-                )?;
+                ) {
+                    errors.extend(e);
+                }
             }
         } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
             || schema
@@ -993,7 +1117,11 @@ where
         }
     }
 
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1011,7 +1139,7 @@ fn make_fold<'a, 'schema, 'query, V, E>(
     starting_pre_coercion_type: Arc<str>,
     starting_post_coercion_type: Arc<str>,
     starting_field: &'query FieldNode,
-) -> Result<IRFold, FrontendError>
+) -> Result<IRFold, Vec<FrontendError>>
 where
     'schema: 'query,
     V: Iterator<Item = Vid>,

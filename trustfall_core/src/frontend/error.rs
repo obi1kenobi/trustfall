@@ -2,11 +2,14 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::DisplayVec;
+use crate::{ir::FieldValue, util::DisplayVec};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FrontendError {
+    #[error("Multiple errors: {0}")]
+    MultipleErrors(DisplayVec<FrontendError>),
+
     #[error("Query failed to parse.")]
     ParseError(#[from] crate::graphql_query::error::ParseError),
 
@@ -40,6 +43,15 @@ pub enum FrontendError {
 
     #[error("Missing required edge parameter {0} on edge {1}")]
     MissingRequiredEdgeParameter(String, String),
+
+    #[error("Unexpected edge parameter {0} on edge {1}")]
+    UnexpectedEdgeParameter(String, String),
+
+    #[error(
+        "Invalid value for edge parameter {0} on edge {1}. \
+        Expected a value of type {2}, but got: {3:?}"
+    )]
+    InvalidEdgeParameterType(String, String, String, FieldValue),
 
     #[error(
         "Invalid use of @recurse on edge \"{0}\". That edge cannot be recursed since it connects \
@@ -78,9 +90,6 @@ pub enum FrontendError {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FilterTypeError {
-    #[error("Multiple filter-related type errors: {0}")]
-    MultipleErrors(DisplayVec<FilterTypeError>),
-
     #[error(
         "Variable \"{0}\" is used in multiple places in the query that require values of \
         incompatible types \"{1}\" and \"{2}\". Please split up the uses that require different \
@@ -137,17 +146,6 @@ pub enum FilterTypeError {
     ListFilterOperationOnNonListTag(String, String, String, String),
 }
 
-impl From<Vec<FilterTypeError>> for FilterTypeError {
-    fn from(v: Vec<FilterTypeError>) -> Self {
-        assert!(!v.is_empty());
-        if v.len() == 1 {
-            v.into_iter().next().unwrap()
-        } else {
-            Self::MultipleErrors(DisplayVec(v))
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DuplicatedNamesConflict {
     // duplicate output name -> vec (type name, field name) being output under that name
@@ -180,6 +178,17 @@ pub enum ValidationError {
 impl From<async_graphql_parser::Error> for FrontendError {
     fn from(e: async_graphql_parser::Error) -> Self {
         Self::ParseError(e.into())
+    }
+}
+
+impl From<Vec<FrontendError>> for FrontendError {
+    fn from(v: Vec<FrontendError>) -> Self {
+        assert!(!v.is_empty());
+        if v.len() == 1 {
+            v.into_iter().next().unwrap()
+        } else {
+            Self::MultipleErrors(DisplayVec(v))
+        }
     }
 }
 

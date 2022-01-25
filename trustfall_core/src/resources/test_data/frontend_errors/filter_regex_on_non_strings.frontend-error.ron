@@ -1,4 +1,4 @@
-Err(FilterTypeError(MultipleErrors(DisplayVec([
-  StringFilterOperationOnNonStringField("regex", "bool", "Boolean"),
-  StringFilterOperationOnNonStringTag("regex", "my_tag", "integer", "Int"),
-]))))
+Err(MultipleErrors(DisplayVec([
+  FilterTypeError(StringFilterOperationOnNonStringField("regex", "bool", "Boolean")),
+  FilterTypeError(StringFilterOperationOnNonStringTag("regex", "my_tag", "integer", "Int")),
+])))

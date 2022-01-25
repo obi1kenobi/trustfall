@@ -1,4 +1,4 @@
-Err(FilterTypeError(MultipleErrors(DisplayVec([
-  OrderingFilterOperationOnNonOrderableTag(">=", "my_tag", "nonNullBool", "Boolean!"),
-  TypeMismatchBetweenTagAndFilter(">=", "integer", "Int", "my_tag", "nonNullBool", "Boolean!"),
-]))))
+Err(MultipleErrors(DisplayVec([
+  FilterTypeError(OrderingFilterOperationOnNonOrderableTag(">=", "my_tag", "nonNullBool", "Boolean!")),
+  FilterTypeError(TypeMismatchBetweenTagAndFilter(">=", "integer", "Int", "my_tag", "nonNullBool", "Boolean!")),
+])))
