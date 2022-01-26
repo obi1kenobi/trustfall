@@ -1,0 +1,17 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Vertex(param: String = 123): Vertex
+}
+
+type Vertex {
+    field: String
+}

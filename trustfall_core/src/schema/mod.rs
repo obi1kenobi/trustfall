@@ -19,7 +19,7 @@ use async_graphql_value::Name;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::types::{get_base_named_type, is_scalar_only_subtype};
+use crate::ir::types::{get_base_named_type, is_argument_type_valid, is_scalar_only_subtype};
 
 use self::error::InvalidSchemaError;
 
@@ -292,6 +292,39 @@ fn check_property_and_edge_invariants(
                         field_type.to_string(),
                     ));
                 } else {
+                    // Check if the parameters this edge accepts (if any) have valid default values.
+                    for param_defn in &field_defn.arguments {
+                        if let Some(value) = &param_defn.node.default_value {
+                            let param_type = &param_defn.node.ty.node;
+                            match (&value.node).try_into() {
+                                Ok(value) => {
+                                    if !is_argument_type_valid(param_type, &value) {
+                                        errors.push(InvalidSchemaError::InvalidDefaultValueForFieldParameter(
+                                            type_name.to_string(),
+                                            field_defn.name.node.to_string(),
+                                            param_defn.node.name.node.to_string(),
+                                            param_type.to_string(),
+                                            format!("{:?}", value),
+                                        ));
+                                    }
+                                }
+                                Err(_) => {
+                                    errors.push(
+                                        InvalidSchemaError::InvalidDefaultValueForFieldParameter(
+                                            type_name.to_string(),
+                                            field_defn.name.node.to_string(),
+                                            param_defn.node.name.node.to_string(),
+                                            param_type.to_string(),
+                                            value.node.to_string(),
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // Check that the edge field doesn't have
+                    // a list-of-list or more nested list type.
                     match &field_type.base {
                         BaseType::Named(_) => {}
                         BaseType::List(inner) => match &inner.base {

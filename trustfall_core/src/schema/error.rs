@@ -44,6 +44,12 @@ pub enum InvalidSchemaError {
     InheritedFieldUnexpectedParameters(String, String, String, Vec<String>),
 
     #[error(
+        "Field \"{0}\" on type \"{1}\" accepts parameter \"{2}\" with type {3}, but gives it \
+        a default value that is not valid for that type: {4}"
+    )]
+    InvalidDefaultValueForFieldParameter(String, String, String, String, String),
+
+    #[error(
         "The following types have a circular implementation relationship, \
         which is not allowed: {0:?}"
     )]
