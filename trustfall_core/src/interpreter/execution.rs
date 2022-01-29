@@ -18,8 +18,9 @@ use crate::{
         ValueOrVec,
     },
     ir::{
-        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge,
-        IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Recursive, Vid,
+        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue,
+        FoldSpecificField, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
+        Recursive, Vid,
     },
 };
 
@@ -234,6 +235,80 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
     }))
 }
 
+/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// a max size that can be statically determined, return that max size so it can
+/// be used for further optimizations. Otherwise, return None.
+fn get_max_fold_count_limit(query: &InterpretedQuery, fold: &IRFold) -> Option<usize> {
+    let mut result: Option<usize> = None;
+
+    for post_fold_filter in fold.post_filters.iter() {
+        let next_limit = match post_fold_filter {
+            Operation::Equals(FoldSpecificField::Count, Argument::Variable(var_ref))
+            | Operation::LessThanOrEqual(FoldSpecificField::Count, Argument::Variable(var_ref)) => {
+                let variable_value = query.arguments[&var_ref.variable_name].as_usize().unwrap();
+                Some(variable_value)
+            }
+            Operation::LessThan(FoldSpecificField::Count, Argument::Variable(var_ref)) => {
+                let variable_value = query.arguments[&var_ref.variable_name].as_usize().unwrap();
+                Some(variable_value.saturating_sub(1))
+            }
+            Operation::OneOf(FoldSpecificField::Count, Argument::Variable(var_ref)) => {
+                match &query.arguments[&var_ref.variable_name] {
+                    FieldValue::List(v) => v.iter().map(|x| x.as_usize().unwrap()).max(),
+                    _ => unreachable!(),
+                }
+            }
+            _ => None,
+        };
+
+        match (result, next_limit) {
+            (None, _) => result = next_limit,
+            (Some(l), Some(r)) if l > r => result = next_limit,
+            _ => {}
+        }
+    }
+
+    result
+}
+
+fn collect_fold_elements<'query, DataToken: Clone + Debug + 'query>(
+    mut iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+    max_fold_count_limit: &Option<usize>,
+) -> Option<Vec<DataContext<DataToken>>> {
+    if let Some(max_fold_count_limit) = max_fold_count_limit {
+        // If this fold has more than `max_fold_count_limit` elements,
+        // it will get filtered out by a post-fold filter.
+        // Pulling elements from `iterator` causes computations and data fetches to happen,
+        // and as an optimization we'd like to stop pulling elements as soon as possible.
+        // If we are able to pull more than `max_fold_count_limit + 1` elements,
+        // we know that this fold is going to get filtered out, so we might as well
+        // stop materializing its elements early.
+        let mut fold_elements = Vec::with_capacity(*max_fold_count_limit);
+
+        let mut stopped_early = false;
+        for _ in 0..*max_fold_count_limit {
+            if let Some(element) = iterator.next() {
+                fold_elements.push(element);
+            } else {
+                stopped_early = true;
+                break;
+            }
+        }
+
+        if !stopped_early && iterator.next().is_some() {
+            // There are more elements than the max size allowed by the filters on this fold.
+            // It's going to get filtered out anyway, so we can avoid materializing the rest.
+            return None;
+        }
+
+        Some(fold_elements)
+    } else {
+        // We weren't able to find any early-termination condition for materializing the fold,
+        // so materialize the whole thing and return it.
+        Some(iterator.collect())
+    }
+}
+
 #[allow(unused_variables)]
 fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
@@ -259,11 +334,16 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     );
     drop(adapter_ref);
 
+    // Values moved into the closure.
     let cloned_adapter = adapter.clone();
     let cloned_query = query.clone();
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
-    let folded_iterator = edge_iterator.map(move |(mut context, neighbors)| {
+    let max_fold_size = get_max_fold_count_limit(query, fold);
+    let fold_post_filters = fold.post_filters.clone();
+    let mut output_names: Vec<Arc<str>> = fold_component.outputs.keys().cloned().collect();
+    output_names.sort_unstable(); // to ensure deterministic project_property() ordering
+    let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let neighbor_contexts = Box::new(neighbors.map(|x| DataContext::new(Some(x))));
 
         let computed_iterator = compute_component(
@@ -273,12 +353,20 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             neighbor_contexts,
         );
 
-        // TODO: apply post-fold filters here
+        let fold_elements = match collect_fold_elements(computed_iterator, &max_fold_size) {
+            None => {
+                // We were able to discard this fold early.
+                return None;
+            }
+            Some(f) => f,
+        };
+        for post_fold_filter in fold_post_filters.iter() {
+            // TODO: apply filters properly
+            // return None;
+        }
 
-        let mut output_names: Vec<Arc<str>> = fold_component.outputs.keys().cloned().collect();
-        output_names.sort_unstable(); // to ensure deterministic project_property() ordering
-
-        let mut output_iterator = computed_iterator;
+        let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
+            Box::new(fold_elements.into_iter());
         for output_name in output_names.iter() {
             let context_field = &fold_component.outputs[output_name.as_ref()];
             let vertex_id = context_field.vertex_id;
@@ -329,7 +417,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 
         context.folded_values = folded_values;
 
-        context
+        Some(context)
     });
 
     Box::new(folded_iterator)

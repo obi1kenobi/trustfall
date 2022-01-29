@@ -54,27 +54,27 @@ TestInterpreterOutputTrace(
       ),
       Opid(9): TraceOp(
         opid: Opid(9),
-        parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
-      ),
-      Opid(10): TraceOp(
-        opid: Opid(10),
-        parent_opid: Some(Opid(9)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(11): TraceOp(
-        opid: Opid(11),
         parent_opid: Some(Opid(8)),
         content: OutputIteratorExhausted,
       ),
+      Opid(10): TraceOp(
+        opid: Opid(10),
+        parent_opid: None,
+        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
+      ),
+      Opid(11): TraceOp(
+        opid: Opid(11),
+        parent_opid: Some(Opid(10)),
+        content: AdvanceInputIterator,
+      ),
       Opid(12): TraceOp(
         opid: Opid(12),
-        parent_opid: Some(Opid(9)),
+        parent_opid: Some(Opid(10)),
         content: InputIteratorExhausted,
       ),
       Opid(13): TraceOp(
         opid: Opid(13),
-        parent_opid: Some(Opid(9)),
+        parent_opid: Some(Opid(10)),
         content: OutputIteratorExhausted,
       ),
       Opid(14): TraceOp(
