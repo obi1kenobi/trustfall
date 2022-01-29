@@ -23,6 +23,7 @@ pub struct DataContext<DataToken: Clone + Debug> {
     tokens: BTreeMap<Vid, Option<DataToken>>,
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<DataToken>>,
+    folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
 }
@@ -59,6 +60,9 @@ where
     suspended_tokens: Vec<Option<DataToken>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
+
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -76,6 +80,7 @@ where
             tokens: context.tokens,
             values: context.values,
             suspended_tokens: context.suspended_tokens,
+            folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
         }
@@ -93,6 +98,7 @@ where
             tokens: context.tokens,
             values: context.values,
             suspended_tokens: context.suspended_tokens,
+            folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
         }
@@ -103,11 +109,12 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
     fn new(token: Option<DataToken>) -> DataContext<DataToken> {
         DataContext {
             current_token: token,
+            piggyback: None,
             tokens: Default::default(),
             values: Default::default(),
             suspended_tokens: Default::default(),
+            folded_contexts: Default::default(),
             folded_values: Default::default(),
-            piggyback: None,
         }
     }
 
@@ -123,6 +130,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             tokens: self.tokens,
             values: self.values,
             suspended_tokens: self.suspended_tokens,
+            folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
         }
@@ -134,6 +142,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             tokens: self.tokens.clone(),
             values: self.values.clone(),
             suspended_tokens: self.suspended_tokens.clone(),
+            folded_contexts: self.folded_contexts.clone(),
             folded_values: self.folded_values.clone(),
             piggyback: None,
         }
@@ -145,6 +154,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             tokens: self.tokens,
             values: self.values,
             suspended_tokens: self.suspended_tokens,
+            folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
         }
@@ -158,6 +168,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
                 tokens: self.tokens,
                 values: self.values,
                 suspended_tokens: self.suspended_tokens,
+                folded_contexts: self.folded_contexts,
                 folded_values: self.folded_values,
                 piggyback: self.piggyback,
             }
@@ -175,6 +186,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
                     tokens: self.tokens,
                     values: self.values,
                     suspended_tokens: self.suspended_tokens,
+                    folded_contexts: self.folded_contexts,
                     folded_values: self.folded_values,
                     piggyback: self.piggyback,
                 }
@@ -190,6 +202,7 @@ impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> 
             && self.tokens == other.tokens
             && self.values == other.values
             && self.suspended_tokens == other.suspended_tokens
+            && self.folded_contexts == other.folded_contexts
             && self.piggyback == other.piggyback
     }
 }
