@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 #[macro_use] mod util;
+pub mod adapter;
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -13,6 +14,7 @@ pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
+// Schema
 make_wasm_bindgen_struct_with_debug_clone!(Schema, trustfall_core::schema::Schema);
 
 // Errors
