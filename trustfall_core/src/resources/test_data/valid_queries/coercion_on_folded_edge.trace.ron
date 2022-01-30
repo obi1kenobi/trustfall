@@ -106,7 +106,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         )),
       ),
@@ -119,7 +119,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         ), Int64(0))),
       ),
@@ -238,7 +238,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         )),
       ),
@@ -251,7 +251,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         ), Int64(1))),
       ),
@@ -370,7 +370,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         )),
       ),
@@ -383,7 +383,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         ), Int64(2))),
       ),
@@ -527,9 +527,9 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
-            (Eid(1), "prime"): [
+            (Eid(1), "prime"): Vec([
               Value(Int64(2)),
-            ],
+            ]),
           },
         )),
       ),
@@ -542,9 +542,9 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
-            (Eid(1), "prime"): [
+            (Eid(1), "prime"): Vec([
               Value(Int64(2)),
-            ],
+            ]),
           },
         ), Int64(3))),
       ),
@@ -702,9 +702,9 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
-            (Eid(1), "prime"): [
+            (Eid(1), "prime"): Vec([
               Value(Int64(3)),
-            ],
+            ]),
           },
         )),
       ),
@@ -721,9 +721,9 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
-            (Eid(1), "prime"): [
+            (Eid(1), "prime"): Vec([
               Value(Int64(3)),
-            ],
+            ]),
           },
         ), Int64(4))),
       ),
@@ -848,7 +848,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(5))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         )),
       ),
@@ -861,7 +861,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(5))),
           },
           folded_values: {
-            (Eid(1), "prime"): [],
+            (Eid(1), "prime"): Vec([]),
           },
         ), Int64(5))),
       ),
@@ -1026,9 +1026,9 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
-            (Eid(1), "prime"): [
+            (Eid(1), "prime"): Vec([
               Value(Int64(5)),
-            ],
+            ]),
           },
         )),
       ),
@@ -1047,9 +1047,9 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_values: {
-            (Eid(1), "prime"): [
+            (Eid(1), "prime"): Vec([
               Value(Int64(5)),
-            ],
+            ]),
           },
         ), Int64(6))),
       ),

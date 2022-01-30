@@ -490,6 +490,9 @@ pub struct IRFold {
 
     pub component: Arc<IRQueryComponent>,
 
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificField>,
+
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub post_filters: Arc<Vec<Operation<FoldSpecificField, Argument>>>,
 }
@@ -497,7 +500,7 @@ pub struct IRFold {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FoldSpecificField {
-    Count, // Represents the number of elements in an IRFold.
+    Count, // Represents the number of elements in an IRFold's component.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

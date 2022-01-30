@@ -153,7 +153,7 @@ where
                 adapter.clone(),
                 query,
                 &component.vertices[&fold.from_vid],
-                fold,
+                fold.clone(),
                 iterator,
             );
 
@@ -319,7 +319,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     expanding_from: &IRVertex,
-    fold: &IRFold,
+    fold: Arc<IRFold>,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expanding_from_vid = expanding_from.vid;
@@ -346,7 +346,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     let cloned_query = query.clone();
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
-    let max_fold_size = get_max_fold_count_limit(query, fold);
+    let max_fold_size = get_max_fold_count_limit(query, fold.as_ref());
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let neighbor_contexts = Box::new(neighbors.map(|x| DataContext::new(Some(x))));
 
@@ -381,7 +381,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             adapter_ref,
             query,
             fold.component.as_ref(),
-            fold,
+            fold.as_ref(),
             expanding_from.vid,
             post_fold_filter,
             post_filtered_iterator,
@@ -394,13 +394,21 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 
     let cloned_adapter = adapter.clone();
     let cloned_query = query.clone();
-    let fold_component = fold.component.clone();
-    let output_iterator = post_filtered_iterator.map(move |mut ctx| {
+    let final_iterator = post_filtered_iterator.map(move |mut ctx| {
         let fold_elements = ctx.folded_contexts.remove(&fold_eid).unwrap();
+
+        // Add any fold-specific field outputs to the context's folded values.
+        for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
+            let value = match fold_specific_field {
+                FoldSpecificField::Count => ValueOrVec::Value(FieldValue::Uint64(fold_elements.len() as u64)),
+            };
+            ctx.folded_values.try_insert((fold_eid, output_name.clone()), value).unwrap();
+        }
+
         let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
             Box::new(fold_elements.into_iter());
         for output_name in output_names.iter() {
-            let context_field = &fold_component.outputs[output_name.as_ref()];
+            let context_field = &fold.component.outputs[output_name.as_ref()];
             let vertex_id = context_field.vertex_id;
             let moved_iterator = Box::new(output_iterator.map(move |context| {
                 let new_token = context.tokens[&vertex_id].clone();
@@ -410,7 +418,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             let mut adapter_ref = cloned_adapter.borrow_mut();
             let field_data_iterator = adapter_ref.project_property(
                 moved_iterator,
-                fold_component.vertices[&vertex_id].type_name.clone(),
+                fold.component.vertices[&vertex_id].type_name.clone(),
                 context_field.field_name.clone(),
                 cloned_query.clone(),
                 vertex_id,
@@ -423,16 +431,18 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             }));
         }
 
-        let mut folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>> = output_names
+        let mut folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec> = output_names
             .iter()
-            .map(|output| ((fold_eid, output.clone()), Vec::new()))
+            .map(|output| ((fold_eid, output.clone()), ValueOrVec::Vec(vec![])))
             .collect();
         for mut folded_context in output_iterator {
-            for (key, values) in folded_context.folded_values {
+            for (key, value) in folded_context.folded_values {
                 folded_values
                     .entry(key)
-                    .or_default()
-                    .push(ValueOrVec::Vec(values));
+                    .or_insert_with(|| ValueOrVec::Vec(vec![]))
+                    .as_mut_vec()
+                    .unwrap()
+                    .push(value);
             }
 
             // We pushed values onto folded_context.values with output names in increasing order
@@ -443,18 +453,23 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 folded_values
                     .get_mut(&(fold_eid, output.clone()))
                     .unwrap()
+                    .as_mut_vec()
+                    .unwrap()
                     .push(ValueOrVec::Value(value));
             }
         }
 
-        // TODO: Having multiple folds in the same query feels like it might cause values here
-        //       to get clobbered and produce invalid results. Test this!
-        ctx.folded_values = folded_values;
+        let prior_folded_values_count = ctx.folded_values.len();
+        let new_folded_values_count = folded_values.len();
+        ctx.folded_values.extend(folded_values.into_iter());
+
+        // Ensure the merged maps had disjoint keys.
+        assert_eq!(ctx.folded_values.len(), prior_folded_values_count + new_folded_values_count);
 
         ctx
     });
 
-    Box::new(output_iterator)
+    Box::new(final_iterator)
 }
 
 /// Check whether a tagged value that is being used in a filter originates from

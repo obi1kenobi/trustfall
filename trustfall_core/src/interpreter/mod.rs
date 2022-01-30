@@ -24,7 +24,7 @@ pub struct DataContext<DataToken: Clone + Debug> {
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<DataToken>>,
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
-    folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
+    folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
 }
 
@@ -32,6 +32,15 @@ pub struct DataContext<DataToken: Clone + Debug> {
 enum ValueOrVec {
     Value(FieldValue),
     Vec(Vec<ValueOrVec>),
+}
+
+impl ValueOrVec {
+    fn as_mut_vec(&mut self) -> Option<&mut Vec<ValueOrVec>> {
+        match self {
+            ValueOrVec::Value(_) => None,
+            ValueOrVec::Vec(v) => Some(v),
+        }
+    }
 }
 
 impl From<ValueOrVec> for FieldValue {
@@ -63,7 +72,7 @@ where
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
+    folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     piggyback: Option<Vec<DataContext<DataToken>>>,

@@ -219,10 +219,10 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
-            (Eid(2), "mult"): [
+            (Eid(2), "mult"): Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ],
+            ]),
           },
         )),
       ),
@@ -236,10 +236,10 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
-            (Eid(2), "mult"): [
+            (Eid(2), "mult"): Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ],
+            ]),
           },
         ))),
       ),
@@ -259,10 +259,10 @@ TestInterpreterOutputTrace(
             Vid(4): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
-            (Eid(2), "mult"): [
+            (Eid(2), "mult"): Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ],
+            ]),
           },
         )),
       ),
@@ -277,10 +277,10 @@ TestInterpreterOutputTrace(
             Vid(4): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
-            (Eid(2), "mult"): [
+            (Eid(2), "mult"): Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ],
+            ]),
           },
         ), Int64(3))),
       ),
