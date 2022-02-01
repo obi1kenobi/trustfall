@@ -1,0 +1,108 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "multiple",
+          arguments: {
+            "max": Int64(2),
+          },
+          fold: Some(FoldDirective()),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "multiple",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("mult"),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("mult"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 9,
+            column: 9,
+          ),
+          name: "divisor",
+          fold: Some(FoldDirective()),
+        ), FieldNode(
+          position: Pos(
+            line: 9,
+            column: 9,
+          ),
+          name: "divisor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 10,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("div"),
+            ), FieldNode(
+              position: Pos(
+                line: 10,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("div"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

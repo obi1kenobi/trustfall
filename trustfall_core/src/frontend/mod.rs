@@ -1158,8 +1158,9 @@ where
         starting_field,
     )?;
 
-    // TODO: properly load fold post-filters
+    // TODO: properly load fold post-filters and fold-specific outputs
     let post_filters = Arc::new(vec![]);
+    let fold_specific_outputs = BTreeMap::new();
 
     Ok(IRFold {
         eid: fold_eid,
@@ -1169,6 +1170,7 @@ where
         parameters: edge_parameters,
         component: component.into(),
         post_filters,
+        fold_specific_outputs,
     })
 }
 

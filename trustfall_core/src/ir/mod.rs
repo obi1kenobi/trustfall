@@ -117,6 +117,20 @@ impl FieldValue {
         }
     }
 
+    pub fn as_usize(&self) -> Option<usize> {
+        match self {
+            FieldValue::Uint64(u) => (*u).try_into().ok(),
+            FieldValue::Int64(i) => (*i).try_into().ok(),
+            FieldValue::Null
+            | FieldValue::Float64(_)
+            | FieldValue::String(_)
+            | FieldValue::Boolean(_)
+            | FieldValue::DateTimeUtc(_)
+            | FieldValue::List(_)
+            | FieldValue::Enum(_) => None,
+        }
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             FieldValue::String(s) => Some(s.as_str()),
@@ -476,8 +490,17 @@ pub struct IRFold {
 
     pub component: Arc<IRQueryComponent>,
 
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificField>,
+
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Arc<Vec<Operation<LocalField, Argument>>>,
+    pub post_filters: Arc<Vec<Operation<FoldSpecificField, Argument>>>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FoldSpecificField {
+    Count, // Represents the number of elements in an IRFold's component.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
