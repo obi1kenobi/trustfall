@@ -217,6 +217,8 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
         }));
     }
 
+    let expected_output_names: BTreeSet<_> = query.indexed_query.outputs.keys().cloned().collect();
+
     Box::new(output_iterator.map(move |mut context| {
         assert!(context.values.len() == output_names.len());
 
@@ -230,6 +232,8 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
             let existing = output.insert(output_name, output_value.into());
             assert!(existing.is_none());
         }
+
+        debug_assert_eq!(expected_output_names, output.keys().cloned().collect());
 
         output
     }))
@@ -400,9 +404,13 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
         // Add any fold-specific field outputs to the context's folded values.
         for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
             let value = match fold_specific_field {
-                FoldSpecificField::Count => ValueOrVec::Value(FieldValue::Uint64(fold_elements.len() as u64)),
+                FoldSpecificField::Count => {
+                    ValueOrVec::Value(FieldValue::Uint64(fold_elements.len() as u64))
+                }
             };
-            ctx.folded_values.try_insert((fold_eid, output_name.clone()), value).unwrap();
+            ctx.folded_values
+                .try_insert((fold_eid, output_name.clone()), value)
+                .unwrap();
         }
 
         let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
@@ -464,7 +472,10 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
         ctx.folded_values.extend(folded_values.into_iter());
 
         // Ensure the merged maps had disjoint keys.
-        assert_eq!(ctx.folded_values.len(), prior_folded_values_count + new_folded_values_count);
+        assert_eq!(
+            ctx.folded_values.len(),
+            prior_folded_values_count + new_folded_values_count
+        );
 
         ctx
     });
