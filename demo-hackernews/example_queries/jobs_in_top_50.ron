@@ -4,7 +4,7 @@ InputQuery (
     Top(max: 50) {
         ... on Job {
             title @output
-            url @filter(op: "is_not_null") @output
+            url @output
             score @output
         }
     }
