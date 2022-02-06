@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
 
@@ -25,6 +27,11 @@ impl ComponentPath {
         }
     }
 
+    #[inline(always)]
+    pub(super) fn len(&self) -> usize {
+        self.path.len()
+    }
+
     pub(super) fn push(&mut self, component_start_vid: Vid) {
         self.path.push(component_start_vid);
     }
@@ -44,5 +51,14 @@ impl ComponentPath {
         } else {
             false
         }
+    }
+}
+
+impl Index<usize> for ComponentPath {
+    type Output = Vid;
+
+    #[inline(always)]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.path[index]
     }
 }

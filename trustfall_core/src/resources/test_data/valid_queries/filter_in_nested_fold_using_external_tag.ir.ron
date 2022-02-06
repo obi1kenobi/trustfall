@@ -47,7 +47,7 @@ Ok(TestIRQuery(
                           field_name: "name",
                           field_type: "String",
                         ), Tag(ContextField(
-                          vertex_id: Vid(2),
+                          vertex_id: Vid(1),
                           field_name: "name",
                           field_type: "String",
                         ))),
@@ -62,13 +62,6 @@ Ok(TestIRQuery(
                     ),
                   },
                 ),
-                imported_tags: [
-                  ContextField(
-                    vertex_id: Vid(2),
-                    field_name: "name",
-                    field_type: "String",
-                  ),
-                ],
               ),
             },
             outputs: {
@@ -79,6 +72,13 @@ Ok(TestIRQuery(
               ),
             },
           ),
+          imported_tags: [
+            ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            ),
+          ],
         ),
       },
     ),

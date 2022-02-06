@@ -490,6 +490,11 @@ pub struct IRFold {
 
     pub component: Arc<IRQueryComponent>,
 
+    /// Tags from the directly-enclosing component whose values are needed
+    /// inside this fold's component or one of its subcomponents.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub imported_tags: Vec<ContextField>,
+
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificField>,
 

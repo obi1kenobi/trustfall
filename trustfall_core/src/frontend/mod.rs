@@ -280,7 +280,7 @@ fn infer_variable_type(
 fn make_filter_expr(
     schema: &Schema,
     component_path: &ComponentPath,
-    tags: &TagHandler,
+    tags: &mut TagHandler,
     current_vertex_vid: Vid,
     property_name: &Arc<str>,
     property_type: &Type,
@@ -307,7 +307,7 @@ fn make_filter_expr(
                         )?,
                     }),
                     OperatorArgument::TagRef(tag_name) => {
-                        let defined_tag = match tags.look_up_tag(
+                        let defined_tag = match tags.reference_tag(
                             tag_name.as_ref(),
                             component_path,
                             current_vertex_vid,
@@ -827,7 +827,7 @@ fn make_vertex<'schema, 'query>(
         (Vid, Arc<str>),
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     >,
-    tags: &TagHandler,
+    tags: &mut TagHandler,
     component_path: &ComponentPath,
     vid: Vid,
     uncoerced_type_name: &Arc<str>,
@@ -1133,6 +1133,8 @@ where
     E: Iterator<Item = Eid>,
 {
     component_path.push(starting_vid);
+    tags.begin_subcomponent(starting_vid);
+
     let component = make_query_component(
         schema,
         query,
@@ -1148,6 +1150,7 @@ where
         starting_field,
     )?;
     component_path.pop(starting_vid);
+    let imported_tags = tags.end_subcomponent(starting_vid);
 
     // TODO: properly load fold post-filters and fold-specific outputs
     let post_filters = Arc::new(vec![]);
@@ -1160,6 +1163,7 @@ where
         edge_name,
         parameters: edge_parameters,
         component: component.into(),
+        imported_tags,
         post_filters,
         fold_specific_outputs,
     })

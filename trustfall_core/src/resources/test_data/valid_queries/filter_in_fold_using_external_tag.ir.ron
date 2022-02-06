@@ -45,6 +45,13 @@ Ok(TestIRQuery(
               ),
             },
           ),
+          imported_tags: [
+            ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            ),
+          ],
         ),
       },
     ),
