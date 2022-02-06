@@ -353,9 +353,6 @@ TestInterpreterOutputTrace(
               Value(Int64(8)),
             ]),
           },
-          imported_tags: {
-            (Vid(2), "name"): String("four"),
-          },
         )),
       ),
       Opid(46): TraceOp(
@@ -374,9 +371,6 @@ TestInterpreterOutputTrace(
             (Eid(2), "second"): Vec([
               Value(Int64(8)),
             ]),
-          },
-          imported_tags: {
-            (Vid(2), "name"): String("four"),
           },
         ), Int64(4))),
       ),

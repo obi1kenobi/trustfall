@@ -377,6 +377,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
     let max_fold_size = get_max_fold_count_limit(query, fold.as_ref());
+    let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
 
@@ -404,6 +405,14 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             .folded_contexts
             .try_insert(fold_eid, fold_elements)
             .unwrap();
+
+        // Remove no-longer-needed imported tags.
+        for imported_tag in &moved_fold.imported_tags {
+            context
+                .imported_tags
+                .remove(&(imported_tag.vertex_id, imported_tag.field_name.clone()))
+                .unwrap();
+        }
 
         Some(context)
     });
