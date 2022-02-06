@@ -26,6 +26,7 @@ pub struct DataContext<DataToken: Clone + Debug> {
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
+    imported_tags: BTreeMap<(Vid, Arc<str>), FieldValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +77,10 @@ where
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     piggyback: Option<Vec<DataContext<DataToken>>>,
+
+    /// Tagged values imported from an ancestor component of the one currently being evaluated.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    imported_tags: BTreeMap<(Vid, Arc<str>), FieldValue>,
 }
 
 impl<DataToken> From<SerializableContext<DataToken>> for DataContext<DataToken>
@@ -92,6 +97,7 @@ where
             folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
+            imported_tags: context.imported_tags,
         }
     }
 }
@@ -110,6 +116,7 @@ where
             folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
+            imported_tags: context.imported_tags,
         }
     }
 }
@@ -124,6 +131,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             suspended_tokens: Default::default(),
             folded_contexts: Default::default(),
             folded_values: Default::default(),
+            imported_tags: Default::default(),
         }
     }
 
@@ -142,6 +150,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
+            imported_tags: self.imported_tags,
         }
     }
 
@@ -154,6 +163,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             folded_contexts: self.folded_contexts.clone(),
             folded_values: self.folded_values.clone(),
             piggyback: None,
+            imported_tags: self.imported_tags.clone(),
         }
     }
 
@@ -166,6 +176,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
+            imported_tags: self.imported_tags,
         }
     }
 
@@ -180,6 +191,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
                 folded_contexts: self.folded_contexts,
                 folded_values: self.folded_values,
                 piggyback: self.piggyback,
+                imported_tags: self.imported_tags,
             }
         } else {
             self
@@ -198,6 +210,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
                     folded_contexts: self.folded_contexts,
                     folded_values: self.folded_values,
                     piggyback: self.piggyback,
+                    imported_tags: self.imported_tags,
                 }
             }
             Some(_) => self,
@@ -213,6 +226,7 @@ impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> 
             && self.suspended_tokens == other.suspended_tokens
             && self.folded_contexts == other.folded_contexts
             && self.piggyback == other.piggyback
+            && self.imported_tags == other.imported_tags
     }
 }
 

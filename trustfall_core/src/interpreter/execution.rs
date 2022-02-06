@@ -153,6 +153,7 @@ where
                 adapter.clone(),
                 query,
                 &component.vertices[&fold.from_vid],
+                component,
                 fold.clone(),
                 iterator,
             );
@@ -323,16 +324,41 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     expanding_from: &IRVertex,
+    parent_component: &IRQueryComponent,
     fold: Arc<IRFold>,
-    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+    mut iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
+    let mut adapter_ref = adapter.borrow_mut();
+
+    // Get any imported tag values needed inside the fold component or one of its subcomponents.
+    for imported_field in fold.imported_tags.iter().cloned() {
+        let activated_vertex_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
+            Box::new(iterator.map(move |x| x.activate_token(&imported_field.vertex_id)));
+
+        let field_vertex = &parent_component.vertices[&imported_field.vertex_id];
+        let current_type_name = &field_vertex.type_name;
+        let context_and_value_iterator = adapter_ref.project_property(
+            activated_vertex_iterator,
+            current_type_name.clone(),
+            imported_field.field_name.clone(),
+            query.clone(),
+            imported_field.vertex_id,
+        );
+
+        iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
+            context.imported_tags.insert(
+                (imported_field.vertex_id, imported_field.field_name.clone()),
+                value,
+            );
+            context
+        }))
+    }
+
+    // Get the initial vertices inside the folded scope.
     let expanding_from_vid = expanding_from.vid;
     let activated_vertex_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
-
-    // Get the initial vertices inside the folded scope.
     let current_type_name = &expanding_from.type_name;
-    let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.project_neighbors(
         activated_vertex_iterator,
         current_type_name.clone(),
@@ -351,8 +377,15 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
     let max_fold_size = get_max_fold_count_limit(query, fold.as_ref());
+    let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
-        let neighbor_contexts = Box::new(neighbors.map(|x| DataContext::new(Some(x))));
+        let imported_tags = context.imported_tags.clone();
+
+        let neighbor_contexts = Box::new(neighbors.map(move |x| {
+            let mut ctx = DataContext::new(Some(x));
+            ctx.imported_tags = imported_tags.clone();
+            ctx
+        }));
 
         let computed_iterator = compute_component(
             cloned_adapter.clone(),
@@ -372,6 +405,14 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             .folded_contexts
             .try_insert(fold_eid, fold_elements)
             .unwrap();
+
+        // Remove no-longer-needed imported tags.
+        for imported_tag in &moved_fold.imported_tags {
+            context
+                .imported_tags
+                .remove(&(imported_tag.vertex_id, imported_tag.field_name.clone()))
+                .unwrap();
+        }
 
         Some(context)
     });
@@ -764,32 +805,46 @@ fn compute_context_field<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let vertex_id = context_field.vertex_id;
-    let moved_iterator = iterator.map(move |mut context| {
-        let current_token = context.current_token.clone();
-        let new_token = context.tokens[&vertex_id].clone();
-        context.suspended_tokens.push(current_token);
-        context.move_to_token(new_token)
-    });
 
-    let current_type_name = &component.vertices[&vertex_id].type_name;
-    let mut adapter_ref = adapter.borrow_mut();
-    let context_and_value_iterator = adapter_ref.project_property(
-        Box::new(moved_iterator),
-        current_type_name.clone(),
-        context_field.field_name.clone(),
-        query.clone(),
-        vertex_id,
-    );
-    drop(adapter_ref);
+    if let Some(vertex) = component.vertices.get(&vertex_id) {
+        let moved_iterator = iterator.map(move |mut context| {
+            let current_token = context.current_token.clone();
+            let new_token = context.tokens[&vertex_id].clone();
+            context.suspended_tokens.push(current_token);
+            context.move_to_token(new_token)
+        });
 
-    Box::new(context_and_value_iterator.map(|(mut context, value)| {
-        context.values.push(value);
+        let current_type_name = &vertex.type_name;
+        let mut adapter_ref = adapter.borrow_mut();
+        let context_and_value_iterator = adapter_ref.project_property(
+            Box::new(moved_iterator),
+            current_type_name.clone(),
+            context_field.field_name.clone(),
+            query.clone(),
+            vertex_id,
+        );
+        drop(adapter_ref);
 
-        // Make sure that the context has the same "current" token
-        // as before evaluating the context field.
-        let old_current_token = context.suspended_tokens.pop().unwrap();
-        context.move_to_token(old_current_token)
-    }))
+        Box::new(context_and_value_iterator.map(|(mut context, value)| {
+            context.values.push(value);
+
+            // Make sure that the context has the same "current" token
+            // as before evaluating the context field.
+            let old_current_token = context.suspended_tokens.pop().unwrap();
+            context.move_to_token(old_current_token)
+        }))
+    } else {
+        // This context field represents an imported tag value from an outer component.
+        // Grab its value from the context itself.
+        let field_name = context_field.field_name.clone();
+        let key = (vertex_id, field_name);
+        Box::new(iterator.map(move |mut context| {
+            let value = context.imported_tags[&key].clone();
+            context.values.push(value);
+
+            context
+        }))
+    }
 }
 
 fn compute_fold_specific_field<'query, DataToken: Clone + Debug + 'query>(

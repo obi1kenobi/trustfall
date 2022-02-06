@@ -1,0 +1,129 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Two",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Two",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "name",
+          tag: [
+            TagDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "multiple",
+          arguments: {
+            "max": Int64(2),
+          },
+          fold: Some(FoldDirective()),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "multiple",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("first"),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("first"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "multiple",
+              arguments: {
+                "max": Int64(2),
+              },
+              fold: Some(FoldDirective()),
+            ), FieldNode(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "multiple",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 10,
+                    column: 17,
+                  ),
+                  name: "name",
+                ), FieldNode(
+                  position: Pos(
+                    line: 10,
+                    column: 17,
+                  ),
+                  name: "name",
+                  filter: [
+                    FilterDirective(
+                      operation: LessThan((), TagRef("name")),
+                    ),
+                  ],
+                )),
+                (FieldConnection(
+                  position: Pos(
+                    line: 11,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("second"),
+                ), FieldNode(
+                  position: Pos(
+                    line: 11,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("second"),
+                  output: [
+                    OutputDirective(),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

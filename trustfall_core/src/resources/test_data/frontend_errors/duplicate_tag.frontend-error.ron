@@ -1,8 +1,1 @@
-Err(MultipleTagsWithSameName(DuplicatedNamesConflict(
-  duplicates: {
-    "tagged": [
-      ("Directory", "name"),
-      ("File", "name"),
-    ],
-  },
-)))
+Err(MultipleTagsWithSameName("tagged"))

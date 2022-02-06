@@ -26,8 +26,8 @@ pub enum FrontendError {
     #[error("Multiple fields are being output under the same name: {0:?}")]
     MultipleOutputsWithSameName(DuplicatedNamesConflict),
 
-    #[error("Multiple fields have @tag directives with the same name: {0:?}")]
-    MultipleTagsWithSameName(DuplicatedNamesConflict),
+    #[error("Multiple fields have @tag directives with the same name: {0}")]
+    MultipleTagsWithSameName(String),
 
     #[error("Incompatible types encountered in @filter.")]
     FilterTypeError(#[from] FilterTypeError),

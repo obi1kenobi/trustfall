@@ -1,10 +1,6 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 use std::{
-    collections::BTreeMap,
-    convert::TryFrom,
-    iter::{self, successors},
-    num::NonZeroUsize,
-    sync::Arc,
+    collections::BTreeMap, convert::TryFrom, iter::successors, num::NonZeroUsize, sync::Arc,
 };
 
 use async_graphql_parser::{
@@ -31,11 +27,13 @@ use crate::{
 
 use self::{
     error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
-    util::get_underlying_named_type,
+    tags::{TagHandler, TagLookupError},
+    util::{get_underlying_named_type, ComponentPath},
     validation::validate_query_against_schema,
 };
 
 pub mod error;
+mod tags;
 mod util;
 mod validation;
 
@@ -278,9 +276,11 @@ fn infer_variable_type(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn make_filter_expr(
     schema: &Schema,
-    tags: &BTreeMap<Arc<str>, ContextField>,
+    component_path: &ComponentPath,
+    tags: &mut TagHandler,
     current_vertex_vid: Vid,
     property_name: &Arc<str>,
     property_type: &Type,
@@ -307,20 +307,30 @@ fn make_filter_expr(
                         )?,
                     }),
                     OperatorArgument::TagRef(tag_name) => {
-                        let defined_tag = tags.get(tag_name.as_ref()).ok_or_else(|| {
-                            FrontendError::UndefinedTagInFilter(
-                                property_name.as_ref().to_owned(),
-                                tag_name.to_string(),
-                            )
-                        })?;
+                        let defined_tag = match tags.reference_tag(
+                            tag_name.as_ref(),
+                            component_path,
+                            current_vertex_vid,
+                        ) {
+                            Ok(defined_tag) => defined_tag,
+                            Err(TagLookupError::UndefinedTag(tag_name)) => {
+                                return Err(FrontendError::UndefinedTagInFilter(
+                                    property_name.as_ref().to_owned(),
+                                    tag_name,
+                                ));
+                            }
+                            Err(TagLookupError::TagDefinedInsideFold(tag_name)) => {
+                                todo!()
+                            }
+                            Err(TagLookupError::TagUsedBeforeDefinition(tag_name)) => {
+                                return Err(FrontendError::TagUsedBeforeDefinition(
+                                    property_name.as_ref().to_owned(),
+                                    tag_name,
+                                ))
+                            }
+                        };
 
-                        if defined_tag.vertex_id > current_vertex_vid {
-                            return Err(FrontendError::TagUsedBeforeDefinition(
-                                property_name.as_ref().to_owned(),
-                                tag_name.to_string(),
-                            ));
-                        }
-                        Argument::Tag(defined_tag.clone())
+                        Argument::Tag(defined_tag.field.clone())
                     }
                 })
             },
@@ -368,6 +378,8 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         &query.root_connection.arguments,
     );
 
+    let mut component_path = ComponentPath::new(starting_vid);
+    let mut tags = Default::default();
     let mut output_prefixes = Default::default();
     let mut root_component = make_query_component(
         schema,
@@ -375,6 +387,8 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         &mut vid_maker,
         &mut eid_maker,
         &mut output_prefixes,
+        &mut component_path,
+        &mut tags,
         None,
         starting_vid,
         root_field_pre_coercion_type,
@@ -459,6 +473,8 @@ fn make_query_component<'a, 'schema, 'query, V, E>(
     vid_maker: &mut V,
     eid_maker: &mut E,
     output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
+    component_path: &mut ComponentPath,
+    tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
     starting_vid: Vid,
     pre_coercion_type: Arc<str>,
@@ -489,7 +505,6 @@ where
     > = Default::default();
 
     let mut folds: BTreeMap<Eid, Arc<IRFold>> = Default::default();
-
     if let Err(e) = fill_in_vertex_data(
         schema,
         query,
@@ -501,6 +516,8 @@ where
         &mut property_names_by_vertex,
         &mut properties,
         output_prefixes,
+        component_path,
+        tags,
         None,
         starting_vid,
         pre_coercion_type,
@@ -510,77 +527,6 @@ where
         errors.extend(e);
     }
 
-    // TODO: write a test case for tags that aren't used by any filter
-    // TODO: write a test case for filter inside fold that uses a tag from outside the fold
-    // TODO: write a test case for filter inside two nested folds that uses tag from the outer fold,
-    //       and another test where it uses a tag from top-level i.e. outside either fold
-    // TODO: tag processing this late is likely to cause bugs when tags are passed into folds, FIXME
-    let mut maybe_duplicate_tags: Vec<(Arc<str>, ContextField)> = Default::default();
-    for vid in vertices.keys() {
-        let tag_iterator = property_names_by_vertex
-            .get(vid)
-            .into_iter()
-            .flatten()
-            .flat_map(|property_name| {
-                let (_, property_type, property_fields) =
-                    properties.get(&(*vid, property_name.clone())).unwrap();
-
-                let name_and_type =
-                    Iterator::zip(iter::repeat(property_name), iter::repeat(*property_type));
-
-                let field_and_tag = property_fields
-                    .iter()
-                    .flat_map(|field| Iterator::zip(iter::repeat(field), field.tag.iter()));
-
-                Iterator::zip(name_and_type, field_and_tag)
-            });
-        for ((property_name, property_type), (property_field, tag)) in tag_iterator {
-            let context_field = ContextField {
-                vertex_id: *vid,
-                field_name: property_name.clone(),
-                field_type: property_type.clone(),
-            };
-            let tag_name = tag
-                .name
-                .as_ref()
-                .unwrap_or_else(|| property_field.alias.as_ref().unwrap_or(property_name))
-                .clone();
-
-            maybe_duplicate_tags.push((tag_name, context_field));
-        }
-    }
-    let tags: BTreeMap<Arc<str>, ContextField> = match maybe_duplicate_tags
-        .into_iter()
-        .try_collect_unique()
-        .map_err(|field_duplicates| {
-            let conflict_info = DuplicatedNamesConflict {
-                duplicates: field_duplicates
-                    .iter()
-                    .map(|(tag_name, fields)| {
-                        let types_and_fields = fields
-                            .iter()
-                            .map(|field| {
-                                let vid = field.vertex_id;
-                                (
-                                    vertices[&vid].0.as_ref().to_owned(),
-                                    field.field_name.as_ref().to_owned(),
-                                )
-                            })
-                            .collect();
-
-                        (tag_name.as_ref().to_owned(), types_and_fields)
-                    })
-                    .collect(),
-            };
-            FrontendError::MultipleTagsWithSameName(conflict_info)
-        }) {
-        Ok(t) => t,
-        Err(e) => {
-            errors.push(e);
-            return Err(errors);
-        }
-    };
-
     let vertex_results = vertices
         .iter()
         .map(|(vid, (uncoerced_type_name, field_node))| {
@@ -588,7 +534,8 @@ where
                 schema,
                 &property_names_by_vertex,
                 &properties,
-                &tags,
+                tags,
+                component_path,
                 *vid,
                 uncoerced_type_name,
                 field_node,
@@ -871,6 +818,7 @@ fn get_recurse_implicit_coercion(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[allow(clippy::type_complexity)]
 fn make_vertex<'schema, 'query>(
     schema: &'schema Schema,
@@ -879,7 +827,8 @@ fn make_vertex<'schema, 'query>(
         (Vid, Arc<str>),
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     >,
-    tags: &BTreeMap<Arc<str>, ContextField>,
+    tags: &mut TagHandler,
+    component_path: &ComponentPath,
     vid: Vid,
     uncoerced_type_name: &Arc<str>,
     field_node: &'query FieldNode,
@@ -930,6 +879,7 @@ fn make_vertex<'schema, 'query>(
             for filter_directive in property_field.filter.iter() {
                 match make_filter_expr(
                     schema,
+                    component_path,
                     tags,
                     vid,
                     property_name,
@@ -976,6 +926,8 @@ fn fill_in_vertex_data<'schema, 'query, V, E>(
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     >,
     output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
+    component_path: &mut ComponentPath,
+    tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
     current_vid: Vid,
     pre_coercion_type: Arc<str>,
@@ -1044,6 +996,8 @@ where
                             vid_maker,
                             eid_maker,
                             output_prefixes,
+                            component_path,
+                            tags,
                             next_eid,
                             edge_definition.name.node.as_str().to_owned().into(),
                             edge_parameters,
@@ -1081,6 +1035,8 @@ where
                     property_names_by_vertex,
                     properties,
                     output_prefixes,
+                    component_path,
+                    tags,
                     Some(current_vid),
                     next_vid,
                     subfield_pre_coercion_type.clone(),
@@ -1112,6 +1068,35 @@ where
 
                     (subfield_name, subfield_raw_type, SmallVec::from([subfield]))
                 });
+
+            for tag_directive in &subfield.tag {
+                // The tag's name is the first of the following that is defined:
+                // - the explicit "name" parameter in the @tag directive itself
+                // - the alias of the field with the @tag directive
+                // - the name of the field with the @tag directive
+                let tag_name = tag_directive
+                    .name
+                    .as_ref()
+                    .map(|x| x.as_ref())
+                    .unwrap_or_else(|| {
+                        subfield
+                            .alias
+                            .as_ref()
+                            .map(|x| x.as_ref())
+                            .unwrap_or_else(|| subfield.name.as_ref())
+                    });
+                let tag_field = ContextField {
+                    vertex_id: current_vid,
+                    field_name: subfield.name.clone(),
+                    field_type: subfield_raw_type.to_owned(),
+                };
+
+                if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
+                    errors.push(FrontendError::MultipleTagsWithSameName(
+                        tag_name.to_string(),
+                    ));
+                }
+            }
         } else {
             unreachable!();
         }
@@ -1131,6 +1116,8 @@ fn make_fold<'a, 'schema, 'query, V, E>(
     vid_maker: &mut V,
     eid_maker: &mut E,
     output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
+    component_path: &mut ComponentPath,
+    tags: &mut TagHandler<'query>,
     fold_eid: Eid,
     edge_name: Arc<str>,
     edge_parameters: Option<Arc<EdgeParameters>>,
@@ -1145,18 +1132,25 @@ where
     V: Iterator<Item = Vid>,
     E: Iterator<Item = Eid>,
 {
+    component_path.push(starting_vid);
+    tags.begin_subcomponent(starting_vid);
+
     let component = make_query_component(
         schema,
         query,
         vid_maker,
         eid_maker,
         output_prefixes,
+        component_path,
+        tags,
         Some(parent_vid),
         starting_vid,
         starting_pre_coercion_type,
         starting_post_coercion_type,
         starting_field,
     )?;
+    component_path.pop(starting_vid);
+    let imported_tags = tags.end_subcomponent(starting_vid);
 
     // TODO: properly load fold post-filters and fold-specific outputs
     let post_filters = Arc::new(vec![]);
@@ -1169,6 +1163,7 @@ where
         edge_name,
         parameters: edge_parameters,
         component: component.into(),
+        imported_tags,
         post_filters,
         fold_specific_outputs,
     })
