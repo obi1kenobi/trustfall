@@ -78,7 +78,7 @@ type Comment implements Item {
     # edges
     byUser: User!
     reply: [Comment!]
-    parent: [Item!]!  # either a parent comment or the story being commented on
+    parent: Item!  # either a parent comment or the story being commented on
 }
 
 type User {
