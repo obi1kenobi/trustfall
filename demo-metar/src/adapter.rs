@@ -146,7 +146,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                     "seaLevelPressureMb" => {
                         float_field!(data_contexts, Token::MetarReport, sea_level_pressure_mb)
                     }
-                    unknown_field_name => unreachable!(unknown_field_name),
+                    unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
             }
             "MetarCloudCover" => {
@@ -156,7 +156,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                     "baseAltitude" => {
                         non_float_field!(data_contexts, Token::CloudCover, base_altitude)
                     }
-                    unknown_field_name => unreachable!(unknown_field_name),
+                    unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
             }
             _ => unreachable!(),
