@@ -23,6 +23,14 @@ pub enum FrontendError {
     )]
     TagUsedBeforeDefinition(String, String),
 
+    #[error(
+        "Tag \"{1}\" is defined within a @fold but is used outside that @fold in a filter on \
+        property name \"{0}\". This is not supported; if possible, please consider reorganizing \
+        the query so that the tagged values are captured outside the @fold and \
+        their use in @filter moves inside the @fold."
+    )]
+    TagUsedOutsideItsFoldedSubquery(String, String),
+
     #[error("Multiple fields are being output under the same name: {0:?}")]
     MultipleOutputsWithSameName(DuplicatedNamesConflict),
 

@@ -320,7 +320,10 @@ fn make_filter_expr(
                                 ));
                             }
                             Err(TagLookupError::TagDefinedInsideFold(tag_name)) => {
-                                todo!()
+                                return Err(FrontendError::TagUsedOutsideItsFoldedSubquery(
+                                    property_name.as_ref().to_owned(),
+                                    tag_name,
+                                ));
                             }
                             Err(TagLookupError::TagUsedBeforeDefinition(tag_name)) => {
                                 return Err(FrontendError::TagUsedBeforeDefinition(
