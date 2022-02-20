@@ -470,7 +470,7 @@ fn fill_in_query_variables(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn make_query_component<'a, 'schema, 'query, V, E>(
+fn make_query_component<'schema, 'query, V, E>(
     schema: &'schema Schema,
     query: &'query Query,
     vid_maker: &mut V,
@@ -1113,7 +1113,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn make_fold<'a, 'schema, 'query, V, E>(
+fn make_fold<'schema, 'query, V, E>(
     schema: &'schema Schema,
     query: &'query Query,
     vid_maker: &mut V,

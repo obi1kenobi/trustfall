@@ -994,7 +994,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn expand_non_recursive_edge<'schema, 'query, DataToken: Clone + Debug + 'query>(
+fn expand_non_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     component: &IRQueryComponent,
@@ -1133,7 +1133,7 @@ fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn perform_one_recursive_edge_expansion<'schema, 'query, DataToken: Clone + Debug + 'query>(
+fn perform_one_recursive_edge_expansion<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     _component: &IRQueryComponent,
@@ -1261,7 +1261,7 @@ fn unpack_piggyback_inner<DataToken: Debug + Clone>(
     output.push(context);
 }
 
-fn post_process_recursive_expansion<'schema, 'query, DataToken: Clone + Debug + 'query>(
+fn post_process_recursive_expansion<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     component: &IRQueryComponent,

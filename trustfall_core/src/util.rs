@@ -104,7 +104,7 @@ pub(crate) struct TestParsedGraphQLQuery {
 }
 
 #[allow(dead_code)]
-pub(crate) type TestParsedGraphQLQueryResult<'q> = Result<TestParsedGraphQLQuery, ParseError>;
+pub(crate) type TestParsedGraphQLQueryResult = Result<TestParsedGraphQLQuery, ParseError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct TestIRQuery {

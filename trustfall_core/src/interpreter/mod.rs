@@ -232,7 +232,7 @@ impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> 
 
 impl<DataToken: Debug + Clone + PartialEq + Eq> Eq for DataContext<DataToken> {}
 
-impl<'de, DataToken> Serialize for DataContext<DataToken>
+impl<DataToken> Serialize for DataContext<DataToken>
 where
     DataToken: Debug + Clone + Serialize,
     for<'d> DataToken: Deserialize<'d>,
