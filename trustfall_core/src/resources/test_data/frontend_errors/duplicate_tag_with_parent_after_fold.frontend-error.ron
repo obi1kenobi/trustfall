@@ -1,0 +1,4 @@
+Err(MultipleErrors(DisplayVec([
+  MultipleTagsWithSameName("tagged"),
+  TagUsedOutsideItsFoldedSubquery("value", "tagged"),
+])))
