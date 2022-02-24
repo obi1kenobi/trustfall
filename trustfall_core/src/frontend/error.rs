@@ -31,6 +31,12 @@ pub enum FrontendError {
     )]
     TagUsedOutsideItsFoldedSubquery(String, String),
 
+    #[error(
+        "One or more tags were defined in the query but were never used. Please remove these \
+        unused @tag directives. Unused tag names: {0:?}"
+    )]
+    UnusedTags(Vec<String>),
+
     #[error("Multiple fields are being output under the same name: {0:?}")]
     MultipleOutputsWithSameName(DuplicatedNamesConflict),
 

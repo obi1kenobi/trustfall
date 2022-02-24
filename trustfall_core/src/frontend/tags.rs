@@ -1,5 +1,5 @@
 use std::{
-    collections::{btree_map::OccupiedError, BTreeMap},
+    collections::{btree_map::OccupiedError, BTreeMap, BTreeSet},
     fmt::Debug,
 };
 
@@ -8,19 +8,21 @@ use crate::ir::{ContextField, Vid};
 
 #[derive(Debug, Default)]
 pub(super) struct TagHandler<'a> {
-    tags: BTreeMap<&'a str, TagEntry>,
+    tags: BTreeMap<&'a str, TagEntry<'a>>,
+    used_tags: BTreeSet<&'a str>,
     component_imported_tags: Vec<(Vid, Vec<ContextField>)>,
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct TagEntry {
+pub(super) struct TagEntry<'a> {
+    pub(super) name: &'a str,
     pub(super) field: ContextField,
     pub(super) path: ComponentPath,
 }
 
-impl TagEntry {
-    fn new(field: ContextField, path: ComponentPath) -> Self {
-        Self { field, path }
+impl<'a> TagEntry<'a> {
+    fn new(name: &'a str, field: ContextField, path: ComponentPath) -> Self {
+        Self { name, field, path }
     }
 }
 
@@ -35,9 +37,9 @@ impl<'a> TagHandler<'a> {
         name: &'a str,
         field: ContextField,
         path: &ComponentPath,
-    ) -> Result<(), OccupiedError<'_, &'a str, TagEntry>> {
+    ) -> Result<(), OccupiedError<'_, &'a str, TagEntry<'a>>> {
         self.tags
-            .try_insert(name, TagEntry::new(field, path.clone()))?;
+            .try_insert(name, TagEntry::new(name, field, path.clone()))?;
 
         Ok(())
     }
@@ -79,6 +81,8 @@ impl<'a> TagHandler<'a> {
                     assert_eq!(*component_root, importing_component_root);
                     imported_tags.push(entry.field.clone());
                 }
+
+                self.used_tags.insert(entry.name);
                 Ok(entry)
             } else {
                 Err(TagLookupError::TagUsedBeforeDefinition(name.to_string()))
@@ -87,6 +91,21 @@ impl<'a> TagHandler<'a> {
             // The tag is defined in a fold that is either inside of, or parallel to,
             // the component that uses the tag. This is not allowed.
             Err(TagLookupError::TagDefinedInsideFold(name.to_string()))
+        }
+    }
+
+    pub(super) fn finish(self) -> Result<(), BTreeSet<&'a str>> {
+        let unused_tags: BTreeSet<_> = self
+            .tags
+            .keys()
+            .copied()
+            .into_iter()
+            .filter(|x| !self.used_tags.contains(x))
+            .collect();
+        if unused_tags.is_empty() {
+            Ok(())
+        } else {
+            Err(unused_tags)
         }
     }
 }

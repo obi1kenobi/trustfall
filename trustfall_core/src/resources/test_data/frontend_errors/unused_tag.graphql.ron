@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+
+    // The @tag is unused, so this is an error.
+    query: r#"
+{
+    Four {
+        name @tag
+        value @output
+    }
+}"#,
+    arguments: {},
+)

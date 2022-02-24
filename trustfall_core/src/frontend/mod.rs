@@ -415,6 +415,12 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         errors.extend(v.into_iter().map(|x| x.into()));
     }
 
+    if let Err(e) = tags.finish() {
+        errors.push(FrontendError::UnusedTags(
+            e.into_iter().map(String::from).collect(),
+        ));
+    }
+
     if errors.is_empty() {
         Ok(IRQuery {
             root_name: root_field_name.as_ref().to_owned().into(),
