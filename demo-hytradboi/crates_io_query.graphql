@@ -1,0 +1,21 @@
+{
+    MostDownloadedCrates {
+        name @output
+
+        sourceRepository {
+            ... on GitHubRepository {
+                url @output
+
+                workflows {
+                    job {
+                        step {
+                            ... on GitHubActionsImportedStep {
+                                uses @output
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

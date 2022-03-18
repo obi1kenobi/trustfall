@@ -1,0 +1,135 @@
+type RootSchemaQuery {
+    MostDownloadedCrates: [Crate!]!
+
+    HackerNewsFrontPage: [HackerNewsItem!]!
+    HackerNewsTop(max: Int): [HackerNewsItem!]!
+    HackerNewsLatest(max: Int): [HackerNewsStory!]!
+    HackerNewsUser(name: String!): HackerNewsUser
+}
+
+type Crate {
+    name: String!
+    latestVersion: String!
+
+    sourceRepository: Repository
+}
+
+interface Webpage {
+    url: String!
+}
+
+interface Repository implements Webpage {
+    # rootDirectory: Directory
+    url: String!
+    lastModified: DateTime!
+}
+
+type GitHubRepository implements Repository & Webpage {
+    organization: String!
+    repoName: String!
+    url: String!
+    lastModified: DateTime!
+
+    workflows: [GitHubWorkflow!]
+    # rootDirectory: Directory
+}
+
+type GitHubWorkflow {
+    name: String
+    filename: String!
+    job: GitHubActionsJob
+}
+
+type GitHubActionsJob {
+    name: String
+    runsOn: String
+    step: [GitHubActionsStep!]
+}
+
+interface GitHubActionsStep {
+    name: String
+}
+
+type GitHubActionsImportedStep implements GitHubActionsStep {
+    name: String
+    uses: String
+
+    with: [NameValuePair!]
+}
+
+type NameValuePair {
+    name: String!
+    value: String!
+}
+
+type GitHubActionsRunStep implements GitHubActionsStep {
+    name: String
+    run: [String!]
+
+    env: [NameValuePair!]
+}
+
+interface HackerNewsItem {
+    id: Int!
+    unixTime: Int!
+}
+
+type HackerNewsJob implements HackerNewsItem {
+    # properties from HackerNewsItem
+    id: Int!
+    unixTime: Int!
+
+    # own properties
+    title: String!
+    score: Int!
+    url: String!
+    link: Webpage!
+}
+
+type HackerNewsStory implements HackerNewsItem {
+    # properties from HackerNewsItem
+    id: Int!
+    unixTime: Int!
+
+    # own properties
+    byUsername: String!
+    score: Int!
+    text: String
+    title: String!
+    url: String
+    commentsCount: Int!
+
+    # edges
+    byUser: HackerNewsUser!
+    comment: [HackerNewsComment!]
+    link: Webpage
+}
+
+type HackerNewsComment implements HackerNewsItem {
+    # properties from HackerNewsItem
+    id: Int!
+    unixTime: Int!
+
+    # own properties
+    text: String!
+    byUsername: String!
+    childCount: Int!
+
+    # edges
+    byUser: HackerNewsUser!
+    reply: [HackerNewsComment!]
+    parent: HackerNewsItem!  # either a parent comment or the story being commented on
+}
+
+type HackerNewsUser {
+    id: String!
+    karma: Int!
+    about: String
+    unixCreatedAt: Int!
+
+    # The HackerNews API treats submissions of comments and stories the same way.
+    # The way to get only a user's submitted stories is to use this edge then
+    # apply a type coercion on the `HackerNewsItem` vertex on edge endpoint:
+    # `... on HackerNewsStory`
+    submitted: [HackerNewsItem!]
+}
