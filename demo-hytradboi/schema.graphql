@@ -3,7 +3,7 @@ type RootSchemaQuery {
 
     HackerNewsFrontPage: [HackerNewsItem!]!
     HackerNewsTop(max: Int): [HackerNewsItem!]!
-    HackerNewsLatest(max: Int): [HackerNewsStory!]!
+    HackerNewsLatestStories(max: Int): [HackerNewsStory!]!
     HackerNewsUser(name: String!): HackerNewsUser
 }
 
@@ -11,7 +11,7 @@ type Crate {
     name: String!
     latestVersion: String!
 
-    sourceRepository: Repository
+    repository: Repository
 }
 
 interface Webpage {
@@ -19,9 +19,7 @@ interface Webpage {
 }
 
 interface Repository implements Webpage {
-    # rootDirectory: Directory
     url: String!
-    lastModified: DateTime!
 }
 
 type GitHubRepository implements Repository & Webpage {

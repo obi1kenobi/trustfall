@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
+use consecrates::{api::Crate, Query, Sorting};
+use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
+use lazy_static::__Deref;
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
     ir::{EdgeParameters, Eid, FieldValue, Vid},
@@ -15,9 +18,7 @@ const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
 lazy_static! {
     static ref HN_CLIENT: HnClient = HnClient::init().unwrap();
     static ref CRATES_CLIENT: consecrates::Client = consecrates::Client::new(USER_AGENT);
-    static ref GITHUB_CLIENT: octorust::Client = octorust::Client::new(
-        USER_AGENT, None,
-    ).unwrap();
+    static ref GITHUB_CLIENT: octorust::Client = octorust::Client::new(USER_AGENT, None,).unwrap();
 }
 
 pub struct DemoAdapter;
@@ -85,6 +86,82 @@ impl DemoAdapter {
                     username, e
                 );
                 Box::new(std::iter::empty())
+            }
+        }
+    }
+
+    fn most_downloaded_crates(&self) -> Box<dyn Iterator<Item = Token>> {
+        Box::new(CratesIterator::from(CRATES_CLIENT.deref()).map(|x| x.into()))
+    }
+}
+
+struct CratesIterator<'a> {
+    client: &'a consecrates::Client,
+    next_page: usize,
+    batch: Option<std::vec::IntoIter<Crate>>,
+}
+
+impl<'a> From<&'a consecrates::Client> for CratesIterator<'a> {
+    fn from(client: &'a consecrates::Client) -> Self {
+        Self {
+            client,
+            next_page: 1,
+            batch: None,
+        }
+    }
+}
+
+impl<'a> CratesIterator<'a> {
+    fn fetch_next_page(&mut self) -> bool {
+        let current_page = self.next_page;
+        self.next_page += 1;
+        match self.client.get_crates(Query {
+            page: Some(current_page),
+            sort: Some(Sorting::RecentDownloads),
+            per_page: Some(100),
+            ..Default::default()
+        }) {
+            Ok(c) => {
+                if c.crates.is_empty() {
+                    false
+                } else {
+                    self.batch = Some(c.crates.into_iter());
+                    true
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "Got an error while getting most downloaded crates page {}: {}",
+                    current_page, e
+                );
+                false
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for CratesIterator<'a> {
+    type Item = Crate;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.batch.take() {
+                Some(mut iter) => match iter.next() {
+                    Some(c) => {
+                        self.batch = Some(iter);
+                        return Some(c);
+                    }
+                    None => {
+                        if !self.fetch_next_page() {
+                            return None;
+                        }
+                    }
+                },
+                None => {
+                    if !self.fetch_next_page() {
+                        return None;
+                    }
+                }
             }
         }
     }
@@ -166,8 +243,8 @@ impl Adapter<'static> for DemoAdapter {
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::DataToken>> {
         match edge.as_ref() {
-            "FrontPage" => self.front_page(),
-            "Top" => {
+            "HackerNewsFrontPage" => self.front_page(),
+            "HackerNewsTop" => {
                 // TODO: This is unergonomic, build a more convenient API here.
                 let max = parameters
                     .unwrap()
@@ -176,7 +253,7 @@ impl Adapter<'static> for DemoAdapter {
                     .map(|v| v.as_u64().unwrap() as usize);
                 self.top(max)
             }
-            "LatestStory" => {
+            "HackerNewsLatestStories" => {
                 // TODO: This is unergonomic, build a more convenient API here.
                 let max = parameters
                     .unwrap()
@@ -185,10 +262,11 @@ impl Adapter<'static> for DemoAdapter {
                     .map(|v| v.as_u64().unwrap() as usize);
                 self.latest_stories(max)
             }
-            "User" => {
+            "HackerNewsUser" => {
                 let username_value = parameters.as_ref().unwrap().0.get("name").unwrap();
                 self.user(username_value.as_str().unwrap())
             }
+            "MostDownloadedCrates" => self.most_downloaded_crates(),
             _ => unreachable!(),
         }
     }
@@ -202,9 +280,24 @@ impl Adapter<'static> for DemoAdapter {
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
         match (current_type_name.as_ref(), field_name.as_ref()) {
+            (_, "__typename") => Box::new(data_contexts.map(|ctx| {
+                let value = match ctx.current_token.as_ref() {
+                    Some(token) => token.typename().into(),
+                    None => FieldValue::Null,
+                };
+
+                (ctx, value)
+            })),
+
             // properties on Item and its implementers
-            ("HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment", "id") => impl_item_property!(data_contexts, id),
-            ("HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment", "unixTime") => {
+            (
+                "HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment",
+                "id",
+            ) => impl_item_property!(data_contexts, id),
+            (
+                "HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment",
+                "unixTime",
+            ) => {
                 impl_item_property!(data_contexts, time)
             }
 
@@ -216,7 +309,9 @@ impl Adapter<'static> for DemoAdapter {
             // properties on Story
             ("HackerNewsStory", "byUsername") => impl_property!(data_contexts, as_story, by),
             ("HackerNewsStory", "text") => impl_property!(data_contexts, as_story, text),
-            ("HackerNewsStory", "commentsCount") => impl_property!(data_contexts, as_story, descendants),
+            ("HackerNewsStory", "commentsCount") => {
+                impl_property!(data_contexts, as_story, descendants)
+            }
             ("HackerNewsStory", "score") => impl_property!(data_contexts, as_story, score),
             ("HackerNewsStory", "title") => impl_property!(data_contexts, as_story, title),
             ("HackerNewsStory", "url") => impl_property!(data_contexts, as_story, url),
@@ -224,14 +319,16 @@ impl Adapter<'static> for DemoAdapter {
             // properties on Comment
             ("HackerNewsComment", "byUsername") => impl_property!(data_contexts, as_comment, by),
             ("HackerNewsComment", "text") => impl_property!(data_contexts, as_comment, text),
-            ("HackerNewsComment", "childCount") => impl_property!(data_contexts, as_comment, comment, {
-                comment
-                    .kids
-                    .as_ref()
-                    .map(|v| v.len() as u64)
-                    .unwrap_or(0)
-                    .into()
-            }),
+            ("HackerNewsComment", "childCount") => {
+                impl_property!(data_contexts, as_comment, comment, {
+                    comment
+                        .kids
+                        .as_ref()
+                        .map(|v| v.len() as u64)
+                        .unwrap_or(0)
+                        .into()
+                })
+            }
 
             // properties on User
             ("HackerNewsUser", "id") => impl_property!(data_contexts, as_user, id),
@@ -239,6 +336,30 @@ impl Adapter<'static> for DemoAdapter {
             ("HackerNewsUser", "about") => impl_property!(data_contexts, as_user, about),
             ("HackerNewsUser", "unixCreatedAt") => impl_property!(data_contexts, as_user, created),
             ("HackerNewsUser", "delay") => impl_property!(data_contexts, as_user, delay),
+
+            // properties on Webpage
+            ("Webpage" | "Repository" | "GitHubRepository", "url") => {
+                impl_property!(data_contexts, as_webpage, url, { url.into() })
+            }
+
+            // properties on GitHubRepository
+            ("GitHubRepository", "organization") => {
+                impl_property!(data_contexts, as_github_repository, repo, {
+                    repo.organization
+                        .as_ref()
+                        .map(|org| org.name.as_str())
+                        .into()
+                })
+            }
+            ("GitHubRepository", "name") => {
+                impl_property!(data_contexts, as_github_repository, name)
+            }
+            ("GitHubRepository", "fullName") => {
+                impl_property!(data_contexts, as_github_repository, full_name)
+            }
+            ("GitHubRepository", "lastModified") => {
+                impl_property!(data_contexts, as_github_repository, updated_at)
+            }
             _ => unreachable!(),
         }
     }
@@ -427,6 +548,24 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
+            ("Crate", "sourceRepository") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        let cr = token.as_crate().unwrap();
+                        match cr.repository.as_ref() {
+                            None => Box::new(std::iter::empty()),
+                            Some(repo) => {
+                                let token = resolve_url(repo.as_str());
+                                Box::new(token.into_iter())
+                            }
+                        }
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
             _ => unreachable!("{} {}", current_type_name.as_ref(), edge_name.as_ref()),
         }
     }
@@ -460,5 +599,37 @@ impl Adapter<'static> for DemoAdapter {
         });
 
         Box::new(iterator)
+    }
+}
+
+fn resolve_url(url: &str) -> Option<Token> {
+    let maybe_git_url = GitUrl::parse(url);
+    match maybe_git_url {
+        Ok(git_url) => {
+            if matches!(git_url.host, Some(x) if x == "github.com") {
+                let repos = octorust::repos::Repos::new(GITHUB_CLIENT.clone());
+                let future = repos.get(
+                    git_url
+                        .owner
+                        .as_ref()
+                        .unwrap_or_else(|| panic!("repo {} had no owner", url))
+                        .as_str(),
+                    git_url.name.as_str(),
+                );
+                match futures_executor::block_on(future) {
+                    Ok(repo) => Some(Token::GitHubRepository(Rc::from(repo))),
+                    Err(e) => {
+                        eprintln!(
+                            "Error getting repository information for url {}: {}",
+                            url, e
+                        );
+                        None
+                    }
+                }
+            } else {
+                Some(Token::Repository(Rc::from(url)))
+            }
+        }
+        Err(..) => None,
     }
 }

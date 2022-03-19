@@ -14,8 +14,8 @@ use trustfall_core::{
 #[macro_use]
 extern crate lazy_static;
 
-mod token;
 mod adapter;
+mod token;
 
 lazy_static! {
     static ref SCHEMA: Schema =

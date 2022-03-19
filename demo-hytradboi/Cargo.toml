@@ -11,6 +11,8 @@ async-graphql-value = "^2.11.3"
 chrono = { version = "0.4.19", features = ["serde"] }
 consecrates = "0.1.1"
 csv = "1.1.6"
+futures-executor = "0.3.21"
+git-url-parse = "0.4.0"
 hn_api = "0.1.0"
 lazy_static = "1.4.0"
 maplit = "1.0.2"

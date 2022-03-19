@@ -2,7 +2,7 @@
     MostDownloadedCrates {
         name @output
 
-        sourceRepository {
+        repository {
             ... on GitHubRepository {
                 url @output
 

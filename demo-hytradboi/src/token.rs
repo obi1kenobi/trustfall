@@ -4,6 +4,7 @@ use consecrates::api::Crate;
 use hn_api::types::{Comment, Item, Job, Story, User};
 use octorust::types::FullRepository;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Token {
     HackerNewsItem(Rc<Item>),
@@ -12,14 +13,17 @@ pub enum Token {
     HackerNewsComment(Rc<Comment>),
     HackerNewsUser(Rc<User>),
     Crate(Rc<Crate>),
+    Repository(Rc<str>),
     GitHubRepository(Rc<FullRepository>),
     GitHubWorkflow(),
     GitHubActionsJob(),
     GitHubActionsImportedStep(),
     GitHubActionsRunStep(),
     NameValuePair(Rc<(String, String)>),
+    Webpage(Rc<str>),
 }
 
+#[allow(dead_code)]
 impl Token {
     pub fn typename(&self) -> &'static str {
         match self {
@@ -29,12 +33,14 @@ impl Token {
             Token::HackerNewsComment(..) => "HackerNewsComment",
             Token::HackerNewsUser(..) => "HackerNewsUser",
             Token::Crate(..) => "Crate",
+            Token::Repository(..) => "Repository",
             Token::GitHubRepository(..) => "GitHubRepository",
             Token::GitHubWorkflow(..) => "GitHubWorkflow",
             Token::GitHubActionsJob(..) => "GitHubActionsJob",
             Token::GitHubActionsImportedStep(..) => "GitHubActionsImportedStep",
             Token::GitHubActionsRunStep(..) => "GitHubActionsRunStep",
             Token::NameValuePair(..) => "NameValuePair",
+            Token::Webpage(..) => "Webpage",
         }
     }
 
@@ -85,7 +91,24 @@ impl Token {
         }
     }
 
-    pub fn as_repository(&self) -> Option<&FullRepository> {
+    pub fn as_webpage(&self) -> Option<&str> {
+        match self {
+            Token::GitHubRepository(r) => Some(r.url.as_ref()),
+            Token::Repository(r) => Some(r.as_ref()),
+            Token::Webpage(w) => Some(w.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_repository(&self) -> Option<&str> {
+        match self {
+            Token::GitHubRepository(r) => Some(r.url.as_ref()),
+            Token::Repository(r) => Some(r.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_github_repository(&self) -> Option<&FullRepository> {
         match self {
             Token::GitHubRepository(r) => Some(r.as_ref()),
             _ => None,
