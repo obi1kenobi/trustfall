@@ -64,11 +64,12 @@ type GitHubRepository implements Repository & Webpage {
 type GitHubWorkflow {
     name: String
     path: String!
-    job: GitHubActionsJob
+
+    jobs: GitHubActionsJob
 }
 
 type GitHubActionsJob {
-    name: String
+    name: String!
     runsOn: String
     step: [GitHubActionsStep!]
 }
@@ -91,7 +92,7 @@ type NameValuePair {
 
 type GitHubActionsRunStep implements GitHubActionsStep {
     name: String
-    run: [String!]
+    run: [String!]!
 
     env: [NameValuePair!]
 }

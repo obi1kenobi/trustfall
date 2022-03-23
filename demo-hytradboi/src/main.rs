@@ -18,6 +18,7 @@ mod adapter;
 mod pagers;
 mod token;
 mod util;
+mod actions_parser;
 
 lazy_static! {
     static ref SCHEMA: Schema =

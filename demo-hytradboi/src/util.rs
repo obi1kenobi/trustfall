@@ -1,3 +1,5 @@
+use octorust::types::FullRepository;
+
 pub(crate) enum PagerOutput<T> {
     None,
     KnownFinalPage(std::vec::IntoIter<T>),
@@ -72,4 +74,11 @@ impl<T, P: Pager<Item=T>> Iterator for PaginationIterator<T, P> {
             }
         }
     }
+}
+
+pub(crate) fn get_owner_and_repo(repo: &FullRepository) -> (&str, &str) {
+    let owner = repo.owner.as_ref().unwrap().login.as_str();
+    let repo_name = repo.name.as_str();
+
+    (owner, repo_name)
 }

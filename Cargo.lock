@@ -468,12 +468,14 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "base64 0.13.0",
  "chrono",
  "consecrates",
  "csv",
  "futures-executor",
  "git-url-parse",
  "hn_api",
+ "itertools",
  "lazy_static",
  "maplit",
  "octorust",
@@ -484,6 +486,7 @@ dependencies = [
  "serde_json",
  "tokio 1.17.0",
  "trustfall_core",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -1232,6 +1235,12 @@ name = "libc"
 version = "0.2.121"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efaa7b300f3b5fe8eb6bf21ce3895e1751d9665086af2d64b42f19701015ff4f"
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
 name = "lock_api"
@@ -3234,4 +3243,13 @@ checksum = "d59cefebd0c892fa2dd6de581e937301d8552cb44489cdff035c6187cb63fa5e"
 dependencies = [
  "winapi 0.2.8",
  "winapi-build",
+]
+
+[[package]]
+name = "yaml-rust"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
+dependencies = [
+ "linked-hash-map",
 ]

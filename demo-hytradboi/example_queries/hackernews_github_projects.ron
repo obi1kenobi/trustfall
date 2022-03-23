@@ -12,6 +12,18 @@ InputQuery (
                     workflows {
                         name @output
                         path @output
+
+                        jobs {
+                            job: name @output
+                            runsOn @output
+
+                            step {
+                                ... on GitHubActionsImportedStep {
+                                    step: name @output
+                                    uses @output
+                                }
+                            }
+                        }
                     }
                 }
             }

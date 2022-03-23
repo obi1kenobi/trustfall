@@ -5,6 +5,7 @@ use std::{rc::Rc, sync::Arc, fs};
 use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
 use lazy_static::__Deref;
+use octorust::types::{FullRepository, ContentFile};
 use tokio::runtime::Runtime;
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
@@ -14,7 +15,7 @@ use trustfall_core::{
 use crate::{
     pagers::{CratesPager, WorkflowsPager},
     token::Token,
-    util::Pager,
+    util::{Pager, get_owner_and_repo}, actions_parser::{get_jobs_in_workflow_file, get_steps_in_job},
 };
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
@@ -34,6 +35,7 @@ lazy_static! {
         )),
     )
     .unwrap();
+    static ref REPOS_CLIENT: octorust::repos::Repos = octorust::repos::Repos::new(GITHUB_CLIENT.clone());
     static ref RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -158,7 +160,7 @@ macro_rules! impl_property {
                 .map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
-                Some(t) => (&t.$attr).into(),
+                Some(t) => (&t.$attr).clone().into(),
 
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
@@ -244,7 +246,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, value)
             })),
 
-            // properties on Item and its implementers
+            // properties on HackerNewsItem and its implementers
             (
                 "HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment",
                 "id",
@@ -256,12 +258,12 @@ impl Adapter<'static> for DemoAdapter {
                 impl_item_property!(data_contexts, time)
             }
 
-            // properties on Job
+            // properties on HackerNewsJob
             ("HackerNewsJob", "score") => impl_property!(data_contexts, as_job, score),
             ("HackerNewsJob", "title") => impl_property!(data_contexts, as_job, title),
             ("HackerNewsJob", "url") => impl_property!(data_contexts, as_job, url),
 
-            // properties on Story
+            // properties on HackerNewsStory
             ("HackerNewsStory", "byUsername") => impl_property!(data_contexts, as_story, by),
             ("HackerNewsStory", "text") => impl_property!(data_contexts, as_story, text),
             ("HackerNewsStory", "commentsCount") => {
@@ -271,7 +273,7 @@ impl Adapter<'static> for DemoAdapter {
             ("HackerNewsStory", "title") => impl_property!(data_contexts, as_story, title),
             ("HackerNewsStory", "url") => impl_property!(data_contexts, as_story, url),
 
-            // properties on Comment
+            // properties on HackerNewsComment
             ("HackerNewsComment", "byUsername") => impl_property!(data_contexts, as_comment, by),
             ("HackerNewsComment", "text") => impl_property!(data_contexts, as_comment, text),
             ("HackerNewsComment", "childCount") => {
@@ -285,7 +287,7 @@ impl Adapter<'static> for DemoAdapter {
                 })
             }
 
-            // properties on User
+            // properties on HackerNewsUser
             ("HackerNewsUser", "id") => impl_property!(data_contexts, as_user, id),
             ("HackerNewsUser", "karma") => impl_property!(data_contexts, as_user, karma),
             ("HackerNewsUser", "about") => impl_property!(data_contexts, as_user, about),
@@ -315,8 +317,29 @@ impl Adapter<'static> for DemoAdapter {
             ("GitHubRepository", "lastModified") => {
                 impl_property!(data_contexts, as_github_repository, updated_at)
             }
-            ("GitHubWorkflow", "name") => impl_property!(data_contexts, as_github_workflow, name),
-            ("GitHubWorkflow", "path") => impl_property!(data_contexts, as_github_workflow, path),
+
+            // properties on GitHubWorkflow
+            ("GitHubWorkflow", "name") => impl_property!(data_contexts, as_github_workflow, wf, {
+                wf.workflow.name.as_str().into()
+            }),
+            ("GitHubWorkflow", "path") => impl_property!(data_contexts, as_github_workflow, wf, {
+                wf.workflow.path.as_str().into()
+            }),
+
+            // properties on GitHubActionsJob
+            ("GitHubActionsJob", "name") => impl_property!(data_contexts, as_github_actions_job, name),
+            ("GitHubActionsJob", "runsOn") => impl_property!(data_contexts, as_github_actions_job, runs_on),
+
+            // properties on GitHubActionsStep and its implementers
+            ("GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep", "name") => impl_property!(data_contexts, as_github_actions_step, step_name, {
+                step_name.map(|x| x.to_string()).into()
+            }),
+
+            // properties on GitHubActionsImportedStep
+            ("GitHubActionsImportedStep", "uses") => impl_property!(data_contexts, as_github_actions_imported_step, uses),
+
+            // properties on GitHubActionsRunStep
+            ("GitHubActionsRunStep", "run") => impl_property!(data_contexts, as_github_actions_run_step, run),
             _ => unreachable!(),
         }
     }
@@ -564,9 +587,39 @@ impl Adapter<'static> for DemoAdapter {
                     None => Box::new(std::iter::empty()),
                     Some(token) => Box::new(
                         WorkflowsPager::new(GITHUB_CLIENT.clone(), token, RUNTIME.deref())
-                            .into_iter()
-                            .map(|x| x.into()),
+                            .into_iter().map(|x| x.into())
                     ),
+                };
+
+                (ctx, neighbors)
+            })),
+            ("GitHubWorkflow", "jobs") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        let workflow = token.as_github_workflow().unwrap();
+                        let path = workflow.workflow.path.as_ref();
+                        let repo = workflow.repo.as_ref();
+                        let workflow_content = get_repo_file_content(repo, path);
+                        match workflow_content {
+                            None => Box::new(std::iter::empty()),
+                            Some(content) => {
+                                let content = Rc::new(content);
+                                get_jobs_in_workflow_file(content)
+                            }
+                        }
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
+            ("GitHubActionsJob", "step") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(Token::GitHubActionsJob(job)) => get_steps_in_job(job),
+                    _ => unreachable!(),
                 };
 
                 (ctx, neighbors)
@@ -600,6 +653,8 @@ impl Adapter<'static> for DemoAdapter {
                 ("Webpage", "Repository") => token.as_repository().is_some(),
                 ("Webpage", "GitHubRepository") => token.as_github_repository().is_some(),
                 ("Repository", "GitHubRepository") => token.as_github_repository().is_some(),
+                ("GitHubActionsStep", "GitHubActionsImportedStep") => token.as_github_actions_imported_step().is_some(),
+                ("GitHubActionsStep", "GitHubActionsRunStep") => token.as_github_actions_run_step().is_some(),
                 unhandled => unreachable!("{:?}", unhandled),
             };
 
@@ -624,8 +679,7 @@ fn resolve_url(url: &str) -> Option<Token> {
                 // This is just a regular link to a webpage.
                 Some(Token::Webpage(Rc::from(url)))
             } else if matches!(git_url.host, Some(x) if x == "github.com") {
-                let repos = octorust::repos::Repos::new(GITHUB_CLIENT.clone());
-                let future = repos.get(
+                let future = REPOS_CLIENT.get(
                     git_url
                         .owner
                         .as_ref()
@@ -648,5 +702,21 @@ fn resolve_url(url: &str) -> Option<Token> {
             }
         }
         Err(..) => Some(Token::Webpage(Rc::from(url))),
+    }
+}
+
+fn get_repo_file_content(repo: &FullRepository, path: &str) -> Option<ContentFile> {
+    let (owner, repo_name) = get_owner_and_repo(repo);
+    let main_branch = repo.default_branch.as_ref();
+
+    match RUNTIME.block_on(REPOS_CLIENT.get_content_file(owner, repo_name, path, main_branch)) {
+        Ok(content) => Some(content),
+        Err(e) => {
+            eprintln!(
+                "Error getting repo {}/{} branch {} file {}: {}",
+                owner, repo_name, main_branch, path, e
+            );
+            None
+        },
     }
 }
