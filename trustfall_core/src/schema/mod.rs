@@ -343,7 +343,10 @@ fn check_property_and_edge_invariants(
             } else {
                 // Somehow the base named type is neither a vertex nor a scalar,
                 // and this field is neither an edge nor a property.
-                unreachable!()
+                unreachable!(
+                    "field {} (type {}) appears to represent neither an edge nor a property",
+                    field_defn.name.node.as_ref(), field_type.to_string(),
+                )
             }
         }
     }

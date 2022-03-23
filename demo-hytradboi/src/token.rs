@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use consecrates::api::Crate;
 use hn_api::types::{Comment, Item, Job, Story, User};
-use octorust::types::FullRepository;
+use octorust::types::{FullRepository, Workflow};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -15,7 +15,7 @@ pub enum Token {
     Crate(Rc<Crate>),
     Repository(Rc<str>),
     GitHubRepository(Rc<FullRepository>),
-    GitHubWorkflow(),
+    GitHubWorkflow(Rc<Workflow>),
     GitHubActionsJob(),
     GitHubActionsImportedStep(),
     GitHubActionsRunStep(),
@@ -114,6 +114,13 @@ impl Token {
             _ => None,
         }
     }
+
+    pub fn as_github_workflow(&self) -> Option<&Workflow> {
+        match self {
+            Token::GitHubWorkflow(w) => Some(w.as_ref()),
+            _ => None,
+        }
+    }
 }
 
 impl From<Item> for Token {
@@ -155,5 +162,11 @@ impl From<Crate> for Token {
 impl From<FullRepository> for Token {
     fn from(r: FullRepository) -> Self {
         Self::GitHubRepository(Rc::from(r))
+    }
+}
+
+impl From<Workflow> for Token {
+    fn from(w: Workflow) -> Self {
+        Self::GitHubWorkflow(Rc::from(w))
     }
 }

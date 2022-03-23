@@ -1,29 +1,52 @@
 #![allow(dead_code)]
 
-use std::{rc::Rc, sync::Arc};
+use std::{rc::Rc, sync::Arc, fs};
 
-use consecrates::{api::Crate, Query, Sorting};
 use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
 use lazy_static::__Deref;
+use tokio::runtime::Runtime;
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
-use crate::token::Token;
+use crate::{
+    pagers::{CratesPager, WorkflowsPager},
+    token::Token,
+    util::Pager,
+};
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
 
 lazy_static! {
     static ref HN_CLIENT: HnClient = HnClient::init().unwrap();
     static ref CRATES_CLIENT: consecrates::Client = consecrates::Client::new(USER_AGENT);
-    static ref GITHUB_CLIENT: octorust::Client = octorust::Client::new(USER_AGENT, None,).unwrap();
+    static ref GITHUB_CLIENT: octorust::Client = octorust::Client::new(
+        USER_AGENT,
+        Some(octorust::auth::Credentials::Token(
+            std::env::var("GITHUB_TOKEN").unwrap_or_else(|_| {
+                fs::read_to_string("./localdata/gh_token")
+                    .expect("could not find creds file")
+                    .trim()
+                    .to_string()
+            })
+        )),
+    )
+    .unwrap();
+    static ref RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 }
 
 pub struct DemoAdapter;
 
 impl DemoAdapter {
+    pub fn new() -> Self {
+        Self
+    }
+
     fn front_page(&self) -> Box<dyn Iterator<Item = Token>> {
         self.top(Some(30))
     }
@@ -91,79 +114,11 @@ impl DemoAdapter {
     }
 
     fn most_downloaded_crates(&self) -> Box<dyn Iterator<Item = Token>> {
-        Box::new(CratesIterator::from(CRATES_CLIENT.deref()).map(|x| x.into()))
-    }
-}
-
-struct CratesIterator<'a> {
-    client: &'a consecrates::Client,
-    next_page: usize,
-    batch: Option<std::vec::IntoIter<Crate>>,
-}
-
-impl<'a> From<&'a consecrates::Client> for CratesIterator<'a> {
-    fn from(client: &'a consecrates::Client) -> Self {
-        Self {
-            client,
-            next_page: 1,
-            batch: None,
-        }
-    }
-}
-
-impl<'a> CratesIterator<'a> {
-    fn fetch_next_page(&mut self) -> bool {
-        let current_page = self.next_page;
-        self.next_page += 1;
-        match self.client.get_crates(Query {
-            page: Some(current_page),
-            sort: Some(Sorting::RecentDownloads),
-            per_page: Some(100),
-            ..Default::default()
-        }) {
-            Ok(c) => {
-                if c.crates.is_empty() {
-                    false
-                } else {
-                    self.batch = Some(c.crates.into_iter());
-                    true
-                }
-            }
-            Err(e) => {
-                eprintln!(
-                    "Got an error while getting most downloaded crates page {}: {}",
-                    current_page, e
-                );
-                false
-            }
-        }
-    }
-}
-
-impl<'a> Iterator for CratesIterator<'a> {
-    type Item = Crate;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.batch.take() {
-                Some(mut iter) => match iter.next() {
-                    Some(c) => {
-                        self.batch = Some(iter);
-                        return Some(c);
-                    }
-                    None => {
-                        if !self.fetch_next_page() {
-                            return None;
-                        }
-                    }
-                },
-                None => {
-                    if !self.fetch_next_page() {
-                        return None;
-                    }
-                }
-            }
-        }
+        Box::new(
+            CratesPager::new(CRATES_CLIENT.deref())
+                .into_iter()
+                .map(|x| x.into()),
+        )
     }
 }
 
@@ -360,6 +315,8 @@ impl Adapter<'static> for DemoAdapter {
             ("GitHubRepository", "lastModified") => {
                 impl_property!(data_contexts, as_github_repository, updated_at)
             }
+            ("GitHubWorkflow", "name") => impl_property!(data_contexts, as_github_workflow, name),
+            ("GitHubWorkflow", "path") => impl_property!(data_contexts, as_github_workflow, path),
             _ => unreachable!(),
         }
     }
@@ -436,6 +393,41 @@ impl Adapter<'static> for DemoAdapter {
                             });
 
                         Box::new(neighbors_iter)
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
+            ("HackerNewsStory", "link") => Box::new(data_contexts.map(|ctx| {
+                let token = &ctx.current_token;
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        let story = token.as_story().unwrap();
+                        Box::new(
+                            story
+                                .url
+                                .as_ref()
+                                .and_then(|url| resolve_url(url.as_str()))
+                                .into_iter(),
+                        )
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
+            ("HackerNewsJob", "link") => Box::new(data_contexts.map(|ctx| {
+                let token = &ctx.current_token;
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        let job = token.as_job().unwrap();
+                        Box::new(
+                            job.url
+                                .as_ref()
+                                .and_then(|url| resolve_url(url.as_str()))
+                                .into_iter(),
+                        )
                     }
                 };
 
@@ -566,6 +558,19 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
+            ("GitHubRepository", "workflows") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => Box::new(
+                        WorkflowsPager::new(GITHUB_CLIENT.clone(), token, RUNTIME.deref())
+                            .into_iter()
+                            .map(|x| x.into()),
+                    ),
+                };
+
+                (ctx, neighbors)
+            })),
             _ => unreachable!("{} {}", current_type_name.as_ref(), edge_name.as_ref()),
         }
     }
@@ -589,10 +594,13 @@ impl Adapter<'static> for DemoAdapter {
             // at the cost of a bit of code repetition.
 
             let can_coerce = match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
-                ("HackerNewsItem", "Job") => token.as_job().is_some(),
-                ("HackerNewsItem", "Story") => token.as_story().is_some(),
-                ("HackerNewsItem", "Comment") => token.as_comment().is_some(),
-                _ => unreachable!(),
+                ("HackerNewsItem", "HackerNewsJob") => token.as_job().is_some(),
+                ("HackerNewsItem", "HackerNewsStory") => token.as_story().is_some(),
+                ("HackerNewsItem", "HackerNewsComment") => token.as_comment().is_some(),
+                ("Webpage", "Repository") => token.as_repository().is_some(),
+                ("Webpage", "GitHubRepository") => token.as_github_repository().is_some(),
+                ("Repository", "GitHubRepository") => token.as_github_repository().is_some(),
+                unhandled => unreachable!("{:?}", unhandled),
             };
 
             (ctx, can_coerce)
@@ -603,10 +611,19 @@ impl Adapter<'static> for DemoAdapter {
 }
 
 fn resolve_url(url: &str) -> Option<Token> {
+    // HACK: Avoiding this bug https://github.com/tjtelan/git-url-parse-rs/issues/22
+    if !url.contains("github.com") && !url.contains("gitlab.com") {
+        return Some(Token::Webpage(Rc::from(url)));
+    }
+
     let maybe_git_url = GitUrl::parse(url);
     match maybe_git_url {
         Ok(git_url) => {
-            if matches!(git_url.host, Some(x) if x == "github.com") {
+            if git_url.fullname != git_url.path.trim_matches('/') {
+                // The link points *within* the repo rather than *at* the repo.
+                // This is just a regular link to a webpage.
+                Some(Token::Webpage(Rc::from(url)))
+            } else if matches!(git_url.host, Some(x) if x == "github.com") {
                 let repos = octorust::repos::Repos::new(GITHUB_CLIENT.clone());
                 let future = repos.get(
                     git_url
@@ -616,7 +633,7 @@ fn resolve_url(url: &str) -> Option<Token> {
                         .as_str(),
                     git_url.name.as_str(),
                 );
-                match futures_executor::block_on(future) {
+                match RUNTIME.block_on(future) {
                     Ok(repo) => Some(Token::GitHubRepository(Rc::from(repo))),
                     Err(e) => {
                         eprintln!(
@@ -630,6 +647,6 @@ fn resolve_url(url: &str) -> Option<Token> {
                 Some(Token::Repository(Rc::from(url)))
             }
         }
-        Err(..) => None,
+        Err(..) => Some(Token::Webpage(Rc::from(url))),
     }
 }

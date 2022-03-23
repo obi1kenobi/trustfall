@@ -1,3 +1,29 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(
+    """Name of the filter operation to perform."""
+    op: String!
+    """List of string operands for the operator."""
+    value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """Name to apply to the given property field."""
+    name: String
+) on FIELD
+directive @output(
+    """What to designate the output field generated from this property field."""
+    name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
+
 type RootSchemaQuery {
     MostDownloadedCrates: [Crate!]!
 
@@ -23,10 +49,13 @@ interface Repository implements Webpage {
 }
 
 type GitHubRepository implements Repository & Webpage {
-    organization: String!
-    repoName: String!
+    # properties from Repository
     url: String!
-    lastModified: DateTime!
+
+    organization: String!
+    name: String!
+    fullName: String!
+    # lastModified: DateTime!
 
     workflows: [GitHubWorkflow!]
     # rootDirectory: Directory
@@ -34,7 +63,7 @@ type GitHubRepository implements Repository & Webpage {
 
 type GitHubWorkflow {
     name: String
-    filename: String!
+    path: String!
     job: GitHubActionsJob
 }
 

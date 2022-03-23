@@ -15,7 +15,9 @@ use trustfall_core::{
 extern crate lazy_static;
 
 mod adapter;
+mod pagers;
 mod token;
+mod util;
 
 lazy_static! {
     static ref SCHEMA: Schema =
@@ -33,17 +35,21 @@ fn execute_query(path: &str) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
-    let adapter = Rc::new(RefCell::new(DemoAdapter));
+    let adapter = Rc::new(RefCell::new(DemoAdapter::new()));
 
     let query = parse(&SCHEMA, input_query.query).unwrap();
     let arguments = input_query.args;
 
-    for data_item in interpret_ir(adapter, query, arguments).unwrap() {
+    for (index, data_item) in interpret_ir(adapter, query, arguments).unwrap().enumerate() {
         // Use the value variant with an untagged enum serialization, to make the printout cleaner.
         let data_item: BTreeMap<Arc<str>, TransparentValue> =
             data_item.into_iter().map(|(k, v)| (k, v.into())).collect();
 
         println!("\n{}", serde_json::to_string_pretty(&data_item).unwrap());
+
+        if index == 10 {
+            break;
+        }
     }
 }
 
