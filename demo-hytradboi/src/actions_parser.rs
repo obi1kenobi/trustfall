@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use octorust::types::ContentFile;
-use yaml_rust::YamlLoader;
+use yaml_rust::{YamlLoader, Yaml};
 
 use crate::token::{ActionsImportedStep, ActionsJob, ActionsRunStep, Token};
 
@@ -108,5 +108,39 @@ pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = T
                 None
             }
         }
+    }))
+}
+
+pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator<Item=Token>> {
+    let step_hash = match step.yaml.clone() {
+        Yaml::Hash(h) => h,
+        _ => unreachable!(),
+    };
+    let env_key = Yaml::String("env".to_string());
+    let env_hash = match step_hash.get(&env_key) {
+        Some(Yaml::Hash(h)) => h.clone(),
+        Some(unexpected) => {
+            eprintln!("unexpected value {:?} for 'env' key: {:?}", unexpected, step.yaml);
+            return Box::new(std::iter::empty());
+        }
+        None => {
+            // No "env" key for this run step.
+            return Box::new(std::iter::empty());
+        }
+    };
+
+    Box::new(env_hash.into_iter().filter_map(move |(key_yaml, value_yaml)| {
+        let key = key_yaml.as_str()?.to_string();
+        let value = match value_yaml {
+            Yaml::Real(s) | Yaml::String(s) => s,
+            Yaml::Integer(i) => i.to_string(),
+            Yaml::Boolean(b) => b.to_string(),
+            _ => {
+                eprintln!("unexpected value for env key {}: {:?}", key, value_yaml);
+                return None;
+            }
+        };
+
+        Some(Token::NameValuePair(Rc::from((key, value))))
     }))
 }

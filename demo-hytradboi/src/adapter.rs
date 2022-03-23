@@ -15,7 +15,7 @@ use trustfall_core::{
 use crate::{
     pagers::{CratesPager, WorkflowsPager},
     token::Token,
-    util::{Pager, get_owner_and_repo}, actions_parser::{get_jobs_in_workflow_file, get_steps_in_job},
+    util::{Pager, get_owner_and_repo}, actions_parser::{get_jobs_in_workflow_file, get_steps_in_job, get_env_for_run_step},
 };
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
@@ -340,6 +340,14 @@ impl Adapter<'static> for DemoAdapter {
 
             // properties on GitHubActionsRunStep
             ("GitHubActionsRunStep", "run") => impl_property!(data_contexts, as_github_actions_run_step, run),
+
+            // properties on NameValuePair
+            ("NameValuePair", "name") => impl_property!(data_contexts, as_name_value_pair, pair, {
+                pair.0.clone().into()
+            }),
+            ("NameValuePair", "value") => impl_property!(data_contexts, as_name_value_pair, pair, {
+                pair.1.clone().into()
+            }),
             _ => unreachable!(),
         }
     }
@@ -619,6 +627,16 @@ impl Adapter<'static> for DemoAdapter {
                 let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(Token::GitHubActionsJob(job)) => get_steps_in_job(job),
+                    _ => unreachable!(),
+                };
+
+                (ctx, neighbors)
+            })),
+            ("GitHubActionsRunStep", "env") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(Token::GitHubActionsRunStep(s)) => get_env_for_run_step(s),
                     _ => unreachable!(),
                 };
 

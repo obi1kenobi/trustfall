@@ -202,6 +202,13 @@ impl Token {
             _ => None,
         }
     }
+
+    pub fn as_name_value_pair(&self) -> Option<&(String, String)> {
+        match self {
+            Token::NameValuePair(nvp) => Some(nvp.as_ref()),
+            _ => None,
+        }
+    }
 }
 
 impl From<Item> for Token {
