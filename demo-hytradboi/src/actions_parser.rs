@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use octorust::types::ContentFile;
-use yaml_rust::{YamlLoader, Yaml};
+use yaml_rust::{Yaml, YamlLoader};
 
 use crate::token::{ActionsImportedStep, ActionsJob, ActionsRunStep, Token};
 
@@ -79,16 +79,9 @@ pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = T
         let name = element["name"].as_str().map(|x| x.to_string());
         let uses = element["uses"].as_str();
         let run_element = &element["run"];
-        let run = if run_element.is_array() {
-            run_element.as_vec().and_then(|vec| {
-                vec.iter()
-                    .map(|elem| elem.as_str().map(|x| x.to_string()).ok_or(elem))
-                    .try_collect()
-                    .ok()
-            })
-        } else {
-            run_element.as_str().map(|r| vec![r.to_string()])
-        };
+        let run = run_element
+            .as_str()
+            .map(|r| r.trim().split('\n').map(|x| x.to_string()).collect_vec());
 
         match (uses, run) {
             (Some(uses), None) => {
@@ -111,7 +104,7 @@ pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = T
     }))
 }
 
-pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator<Item=Token>> {
+pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator<Item = Token>> {
     let step_hash = match step.yaml.clone() {
         Yaml::Hash(h) => h,
         _ => unreachable!(),
@@ -120,7 +113,10 @@ pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator
     let env_hash = match step_hash.get(&env_key) {
         Some(Yaml::Hash(h)) => h.clone(),
         Some(unexpected) => {
-            eprintln!("unexpected value {:?} for 'env' key: {:?}", unexpected, step.yaml);
+            eprintln!(
+                "unexpected value {:?} for 'env' key: {:?}",
+                unexpected, step.yaml
+            );
             return Box::new(std::iter::empty());
         }
         None => {
@@ -129,18 +125,22 @@ pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator
         }
     };
 
-    Box::new(env_hash.into_iter().filter_map(move |(key_yaml, value_yaml)| {
-        let key = key_yaml.as_str()?.to_string();
-        let value = match value_yaml {
-            Yaml::Real(s) | Yaml::String(s) => s,
-            Yaml::Integer(i) => i.to_string(),
-            Yaml::Boolean(b) => b.to_string(),
-            _ => {
-                eprintln!("unexpected value for env key {}: {:?}", key, value_yaml);
-                return None;
-            }
-        };
+    Box::new(
+        env_hash
+            .into_iter()
+            .filter_map(move |(key_yaml, value_yaml)| {
+                let key = key_yaml.as_str()?.to_string();
+                let value = match value_yaml {
+                    Yaml::Real(s) | Yaml::String(s) => s,
+                    Yaml::Integer(i) => i.to_string(),
+                    Yaml::Boolean(b) => b.to_string(),
+                    _ => {
+                        eprintln!("unexpected value for env key {}: {:?}", key, value_yaml);
+                        return None;
+                    }
+                };
 
-        Some(Token::NameValuePair(Rc::from((key, value))))
-    }))
+                Some(Token::NameValuePair(Rc::from((key, value))))
+            }),
+    )
 }
