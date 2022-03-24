@@ -15,13 +15,25 @@ pub enum Token {
     HackerNewsUser(Rc<User>),
     Crate(Rc<Crate>),
     Repository(Rc<str>),
-    GitHubRepository(Rc<FullRepository>),
+    GitHubRepository(Rc<Repository>),
     GitHubWorkflow(Rc<RepoWorkflow>),
     GitHubActionsJob(Rc<ActionsJob>),
     GitHubActionsImportedStep(Rc<ActionsImportedStep>),
     GitHubActionsRunStep(Rc<ActionsRunStep>),
     NameValuePair(Rc<(String, String)>),
     Webpage(Rc<str>),
+}
+
+#[derive(Debug, Clone)]
+pub struct Repository {
+    pub url: String,
+    pub repo: Rc<FullRepository>,
+}
+
+impl Repository {
+    pub(crate) fn new(url: String, repo: Rc<FullRepository>) -> Self {
+        Self { url, repo }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -162,7 +174,7 @@ impl Token {
 
     pub fn as_github_repository(&self) -> Option<&FullRepository> {
         match self {
-            Token::GitHubRepository(r) => Some(r.as_ref()),
+            Token::GitHubRepository(r) => Some(r.repo.as_ref()),
             _ => None,
         }
     }
@@ -247,8 +259,8 @@ impl From<Crate> for Token {
     }
 }
 
-impl From<FullRepository> for Token {
-    fn from(r: FullRepository) -> Self {
+impl From<Repository> for Token {
+    fn from(r: Repository) -> Self {
         Self::GitHubRepository(Rc::from(r))
     }
 }

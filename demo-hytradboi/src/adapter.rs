@@ -14,7 +14,7 @@ use trustfall_core::{
 
 use crate::{
     pagers::{CratesPager, WorkflowsPager},
-    token::Token,
+    token::{Token, Repository},
     util::{Pager, get_owner_and_repo}, actions_parser::{get_jobs_in_workflow_file, get_steps_in_job, get_env_for_run_step},
 };
 
@@ -706,7 +706,7 @@ fn resolve_url(url: &str) -> Option<Token> {
                     git_url.name.as_str(),
                 );
                 match RUNTIME.block_on(future) {
-                    Ok(repo) => Some(Token::GitHubRepository(Rc::from(repo))),
+                    Ok(repo) => Some(Repository::new(url.to_string(), Rc::new(repo)).into()),
                     Err(e) => {
                         eprintln!(
                             "Error getting repository information for url {}: {}",

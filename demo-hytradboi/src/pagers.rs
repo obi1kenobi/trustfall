@@ -74,7 +74,7 @@ impl<'a> Pager for WorkflowsPager<'a> {
             Token::GitHubRepository(r) => r.clone(),
             _ => unreachable!(),
         };
-        let (owner, repo_name) = get_owner_and_repo(repo_clone.as_ref());
+        let (owner, repo_name) = get_owner_and_repo(repo_clone.repo.as_ref());
 
         println!(
             "getting workflows page {} for {}/{}",
@@ -92,18 +92,18 @@ impl<'a> Pager for WorkflowsPager<'a> {
                     PagerOutput::None
                 } else if response.workflows.len() == per_page as usize {
                     PagerOutput::Page(response.workflows.into_iter().map(|w| {
-                        RepoWorkflow::new(repo_clone.clone(), Rc::new(w))
+                        RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w))
                     }).collect::<Vec<_>>().into_iter())
                 } else {
                     PagerOutput::KnownFinalPage(response.workflows.into_iter().map(|w| {
-                        RepoWorkflow::new(repo_clone.clone(), Rc::new(w))
+                        RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w))
                     }).collect::<Vec<_>>().into_iter())
                 }
             }
             Err(e) => {
                 eprintln!(
                     "Got an error while getting repo {} workflows page {}: {}",
-                    repo_clone.full_name.as_str(),
+                    repo_clone.repo.full_name.as_str(),
                     page,
                     e
                 );
