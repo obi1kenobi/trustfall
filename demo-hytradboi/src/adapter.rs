@@ -294,6 +294,10 @@ impl Adapter<'static> for DemoAdapter {
             ("HackerNewsUser", "unixCreatedAt") => impl_property!(data_contexts, as_user, created),
             ("HackerNewsUser", "delay") => impl_property!(data_contexts, as_user, delay),
 
+            // properties on Crate
+            ("Crate", "name") => impl_property!(data_contexts, as_crate, name),
+            ("Crate", "latestVersion") => impl_property!(data_contexts, as_crate, max_version),
+
             // properties on Webpage
             ("Webpage" | "Repository" | "GitHubRepository", "url") => {
                 impl_property!(data_contexts, as_webpage, url, { url.into() })
@@ -571,7 +575,7 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("Crate", "sourceRepository") => Box::new(data_contexts.map(|ctx| {
+            ("Crate", "repository") => Box::new(data_contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
                 let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
                     None => Box::new(std::iter::empty()),
