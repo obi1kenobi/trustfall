@@ -147,6 +147,7 @@ type HackerNewsComment implements HackerNewsItem {
     byUser: HackerNewsUser!
     reply: [HackerNewsComment!]
     parent: HackerNewsItem!  # either a parent comment or the story being commented on
+    topmostAncestor: HackerNewsItem!  # the ultimate ancestor of this item: a story or job
 }
 
 type HackerNewsUser {

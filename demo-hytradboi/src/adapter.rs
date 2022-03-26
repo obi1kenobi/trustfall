@@ -516,6 +516,44 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
+            ("HackerNewsComment", "topmostAncestor") => Box::new(data_contexts.map(|ctx| {
+                let token = ctx.current_token.clone();
+                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                    None => Box::new(std::iter::empty()),
+                    Some(token) => {
+                        let comment = token.as_comment().unwrap();
+                        let mut comment_id = comment.id;
+                        let mut parent_id = comment.parent;
+                        loop {
+                            match HN_CLIENT.get_item(parent_id) {
+                                Ok(None) => break Box::new(std::iter::empty()),
+                                Ok(Some(item)) => match item {
+                                    Item::Story(s) => break Box::new(std::iter::once(s.into())),
+                                    Item::Job(j) => break Box::new(std::iter::once(j.into())),
+                                    Item::Comment(c) => {
+                                        comment_id = c.id;
+                                        parent_id = c.parent;
+                                    },
+                                    Item::Poll(..) | Item::Pollopt(..) => {
+                                        // Not supported, because HackerNews doesn't really
+                                        // run polls anymore, even though the API still supports them.
+                                        break Box::new(std::iter::empty());
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "API error while fetching comment {} parent {}: {}",
+                                        comment_id, parent_id, e
+                                    );
+                                    break Box::new(std::iter::empty());
+                                }
+                            }
+                        }
+                    }
+                };
+
+                (ctx, neighbors)
+            })),
             ("HackerNewsComment", "reply") => Box::new(data_contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
                 let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
