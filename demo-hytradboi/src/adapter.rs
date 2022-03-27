@@ -304,12 +304,10 @@ impl Adapter<'static> for DemoAdapter {
             }
 
             // properties on GitHubRepository
-            ("GitHubRepository", "organization") => {
+            ("GitHubRepository", "owner") => {
                 impl_property!(data_contexts, as_github_repository, repo, {
-                    repo.organization
-                        .as_ref()
-                        .map(|org| org.name.as_str())
-                        .into()
+                    let (owner, _) = get_owner_and_repo(repo);
+                    owner.into()
                 })
             }
             ("GitHubRepository", "name") => {

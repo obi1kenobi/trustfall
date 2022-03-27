@@ -52,7 +52,7 @@ type GitHubRepository implements Repository & Webpage {
     # properties from Repository
     url: String!
 
-    organization: String!
+    owner: String!
     name: String!
     fullName: String!
     # lastModified: DateTime!
