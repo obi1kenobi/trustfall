@@ -76,11 +76,6 @@ impl<'a> Pager for WorkflowsPager<'a> {
         };
         let (owner, repo_name) = get_owner_and_repo(repo_clone.repo.as_ref());
 
-        println!(
-            "getting workflows page {} for {}/{}",
-            page, owner, repo_name
-        );
-
         match self.runtime.block_on(self.actions.list_repo_workflows(
             owner,
             repo_name,
