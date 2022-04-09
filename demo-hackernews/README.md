@@ -33,7 +33,7 @@ already provided by the iterator-style execution model.
 - [Components](#components)
 - [Installing Rust nightly](#installing-rust-nightly)
 - [Running queries](#running-queries)
-   - [Query syntax refresher](#query-syntax-refresher)
+   - [Query syntax primer](#query-syntax-primer)
 - [Examples](#examples)
    - [Example: Front page stories with links](#example-front-page-stories-with-links)
    - [Example: Jobs in the top 50 items](#example-jobs-in-the-top-50-items)
@@ -87,7 +87,7 @@ you are not actually using a GraphQL API, and the query semantics are *not* the 
 GraphQL's capabilities are a strict subset of the abilities of the query capabilities
 of `trustfall`.
 
-### Query syntax refresher
+### Query syntax primer
 
 Here are the most notable aspects in which the `trustfall` query language differs from GraphQL:
 - `@output` is used to mark fields for output; in SQL, this would correspond to a term
