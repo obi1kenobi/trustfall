@@ -4,13 +4,50 @@ This repository contains the `trustfall` query engine, which can be used to quer
 or combination of data sources: databases, APIs, raw files (JSON, CSV, etc.), git version control,
 etc.
 
-A 10min video overview and demo of this engine is available in
-the "How to Query (Almost) Everything" talk from the [HYTRADBOI 2022](https://www.hytradboi.com/)
-conference. The source code for that demo is available in the `demo-hytradboi` directory:
+![Terminal recording of running `cargo run --release -- query example_queries/actions_in_repos_with_min_10_hn_pts.ron` in the `demo-hytradboi` demo project. The system returns the first 20 results of the query in 6.36 seconds."](https://github.com/obi1kenobi/trustfall/raw/main/demo-hytradboi/query-demo.gif)
+
+*Demo showing the execution of the cross-API query: "Which GitHub Actions are used in projects on the front page of HackerNews with >=10 points?"*
+
+The demo executes the following query across the HackerNews and GitHub APIs and over the YAML-formatted GitHub repository workflow files:
+```graphql
+{
+  HackerNewsTop(max: 200) {
+    ... on HackerNewsStory {
+      hn_score: score @filter(op: ">=", value: ["$min_score"]) @output
+
+      link {
+        ... on GitHubRepository {
+          repo_url: url @output
+
+          workflows {
+            workflow: name @output
+            workflow_path: path @output
+
+            jobs {
+              job: name @output
+
+              step {
+                ... on GitHubActionsImportedStep {
+                  step: name @output
+                  action: uses @output
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This demo is part of the "How to Query (Almost) Everything" talk
+from the [HYTRADBOI 2022](https://www.hytradboi.com/) conference.
+The source code for the demo is available in the `demo-hytradboi` directory:
 [link](https://github.com/obi1kenobi/trustfall/tree/main/demo-hytradboi).
 
 For a brief overview of the query language and an example of using it to query APIs, check the
-`demo-hackernews` directory which contains a demo of querying the HackerNews APIs: [link](https://github.com/obi1kenobi/trustfall/tree/main/demo-hackernews).
+`demo-hackernews` directory for a simpler demo only querying the HackerNews APIs: [link](https://github.com/obi1kenobi/trustfall/tree/main/demo-hackernews).
 
 This project currently requires nightly Rust. Removing this requirement is planned for the near future: [tracking issue](https://github.com/obi1kenobi/trustfall/issues/15).
 
