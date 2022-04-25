@@ -5,7 +5,7 @@ use tokio::runtime::Runtime;
 
 use crate::{
     token::{RepoWorkflow, Token},
-    util::{Pager, PagerOutput, get_owner_and_repo},
+    util::{get_owner_and_repo, Pager, PagerOutput},
 };
 
 pub(crate) struct CratesPager<'a> {
@@ -86,13 +86,23 @@ impl<'a> Pager for WorkflowsPager<'a> {
                 if response.workflows.is_empty() {
                     PagerOutput::None
                 } else if response.workflows.len() == per_page as usize {
-                    PagerOutput::Page(response.workflows.into_iter().map(|w| {
-                        RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w))
-                    }).collect::<Vec<_>>().into_iter())
+                    PagerOutput::Page(
+                        response
+                            .workflows
+                            .into_iter()
+                            .map(|w| RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w)))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    )
                 } else {
-                    PagerOutput::KnownFinalPage(response.workflows.into_iter().map(|w| {
-                        RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w))
-                    }).collect::<Vec<_>>().into_iter())
+                    PagerOutput::KnownFinalPage(
+                        response
+                            .workflows
+                            .into_iter()
+                            .map(|w| RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w)))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    )
                 }
             }
             Err(e) => {

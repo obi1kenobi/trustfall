@@ -83,7 +83,9 @@ impl From<FieldValue> for TransparentValue {
             FieldValue::Boolean(x) => TransparentValue::Boolean(x),
             FieldValue::DateTimeUtc(x) => TransparentValue::DateTimeUtc(x),
             FieldValue::Enum(x) => TransparentValue::Enum(x),
-            FieldValue::List(x) => TransparentValue::List(x.into_iter().map(|v| v.into()).collect()),
+            FieldValue::List(x) => {
+                TransparentValue::List(x.into_iter().map(|v| v.into()).collect())
+            }
         }
     }
 }

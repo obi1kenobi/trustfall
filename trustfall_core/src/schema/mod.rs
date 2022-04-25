@@ -345,7 +345,8 @@ fn check_property_and_edge_invariants(
                 // and this field is neither an edge nor a property.
                 unreachable!(
                     "field {} (type {}) appears to represent neither an edge nor a property",
-                    field_defn.name.node.as_ref(), field_type.to_string(),
+                    field_defn.name.node.as_ref(),
+                    field_type.to_string(),
                 )
             }
         }

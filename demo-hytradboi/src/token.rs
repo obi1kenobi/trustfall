@@ -57,7 +57,11 @@ pub struct ActionsJob {
 
 impl ActionsJob {
     pub(crate) fn new(yaml: Yaml, name: String, runs_on: Option<String>) -> Self {
-        Self { yaml, name, runs_on }
+        Self {
+            yaml,
+            name,
+            runs_on,
+        }
     }
 }
 

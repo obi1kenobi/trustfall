@@ -11,19 +11,22 @@ pub(crate) trait Pager {
 
     fn get_page(&mut self, page: usize) -> PagerOutput<Self::Item>;
 
-    fn into_iter(self) -> PaginationIterator<Self::Item, Self> where Self : Sized {
+    fn into_iter(self) -> PaginationIterator<Self::Item, Self>
+    where
+        Self: Sized,
+    {
         PaginationIterator::new(self)
     }
 }
 
-pub(crate) struct PaginationIterator<T, P: Pager<Item=T>> {
+pub(crate) struct PaginationIterator<T, P: Pager<Item = T>> {
     pager: P,
     next_page: usize,
     batch: Option<std::vec::IntoIter<T>>,
     final_page_seen: bool,
 }
 
-impl<T, P: Pager<Item=T>> PaginationIterator<T, P> {
+impl<T, P: Pager<Item = T>> PaginationIterator<T, P> {
     pub(crate) fn new(pager: P) -> Self {
         Self {
             pager,
@@ -34,7 +37,7 @@ impl<T, P: Pager<Item=T>> PaginationIterator<T, P> {
     }
 }
 
-impl<T, P: Pager<Item=T>> Iterator for PaginationIterator<T, P> {
+impl<T, P: Pager<Item = T>> Iterator for PaginationIterator<T, P> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -49,9 +52,7 @@ impl<T, P: Pager<Item=T>> Iterator for PaginationIterator<T, P> {
                         true
                     }
                 }
-                None => {
-                    true
-                }
+                None => true,
             };
             if needs_next_page {
                 if self.final_page_seen {
@@ -65,10 +66,10 @@ impl<T, P: Pager<Item=T>> Iterator for PaginationIterator<T, P> {
                         PagerOutput::KnownFinalPage(batch) => {
                             self.final_page_seen = true;
                             self.batch = Some(batch);
-                        },
+                        }
                         PagerOutput::Page(batch) => {
                             self.batch = Some(batch);
-                        },
+                        }
                     }
                 }
             }

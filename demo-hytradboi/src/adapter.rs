@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
-use std::{rc::Rc, sync::Arc, fs};
+use std::{fs, rc::Rc, sync::Arc};
 
 use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
 use lazy_static::__Deref;
-use octorust::types::{FullRepository, ContentFile};
+use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
@@ -13,9 +13,10 @@ use trustfall_core::{
 };
 
 use crate::{
+    actions_parser::{get_env_for_run_step, get_jobs_in_workflow_file, get_steps_in_job},
     pagers::{CratesPager, WorkflowsPager},
-    token::{Token, Repository},
-    util::{Pager, get_owner_and_repo}, actions_parser::{get_jobs_in_workflow_file, get_steps_in_job, get_env_for_run_step},
+    token::{Repository, Token},
+    util::{get_owner_and_repo, Pager},
 };
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
@@ -35,7 +36,8 @@ lazy_static! {
         )),
     )
     .unwrap();
-    static ref REPOS_CLIENT: octorust::repos::Repos = octorust::repos::Repos::new(GITHUB_CLIENT.clone());
+    static ref REPOS_CLIENT: octorust::repos::Repos =
+        octorust::repos::Repos::new(GITHUB_CLIENT.clone());
     static ref RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -329,27 +331,40 @@ impl Adapter<'static> for DemoAdapter {
             }),
 
             // properties on GitHubActionsJob
-            ("GitHubActionsJob", "name") => impl_property!(data_contexts, as_github_actions_job, name),
-            ("GitHubActionsJob", "runsOn") => impl_property!(data_contexts, as_github_actions_job, runs_on),
+            ("GitHubActionsJob", "name") => {
+                impl_property!(data_contexts, as_github_actions_job, name)
+            }
+            ("GitHubActionsJob", "runsOn") => {
+                impl_property!(data_contexts, as_github_actions_job, runs_on)
+            }
 
             // properties on GitHubActionsStep and its implementers
-            ("GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep", "name") => impl_property!(data_contexts, as_github_actions_step, step_name, {
+            (
+                "GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep",
+                "name",
+            ) => impl_property!(data_contexts, as_github_actions_step, step_name, {
                 step_name.map(|x| x.to_string()).into()
             }),
 
             // properties on GitHubActionsImportedStep
-            ("GitHubActionsImportedStep", "uses") => impl_property!(data_contexts, as_github_actions_imported_step, uses),
+            ("GitHubActionsImportedStep", "uses") => {
+                impl_property!(data_contexts, as_github_actions_imported_step, uses)
+            }
 
             // properties on GitHubActionsRunStep
-            ("GitHubActionsRunStep", "run") => impl_property!(data_contexts, as_github_actions_run_step, run),
+            ("GitHubActionsRunStep", "run") => {
+                impl_property!(data_contexts, as_github_actions_run_step, run)
+            }
 
             // properties on NameValuePair
             ("NameValuePair", "name") => impl_property!(data_contexts, as_name_value_pair, pair, {
                 pair.0.clone().into()
             }),
-            ("NameValuePair", "value") => impl_property!(data_contexts, as_name_value_pair, pair, {
-                pair.1.clone().into()
-            }),
+            ("NameValuePair", "value") => {
+                impl_property!(data_contexts, as_name_value_pair, pair, {
+                    pair.1.clone().into()
+                })
+            }
             _ => unreachable!(),
         }
     }
@@ -531,13 +546,13 @@ impl Adapter<'static> for DemoAdapter {
                                     Item::Comment(c) => {
                                         comment_id = c.id;
                                         parent_id = c.parent;
-                                    },
+                                    }
                                     Item::Poll(..) | Item::Pollopt(..) => {
                                         // Not supported, because HackerNews doesn't really
                                         // run polls anymore, even though the API still supports them.
                                         break Box::new(std::iter::empty());
                                     }
-                                }
+                                },
                                 Err(e) => {
                                     eprintln!(
                                         "API error while fetching comment {} parent {}: {}",
@@ -635,7 +650,8 @@ impl Adapter<'static> for DemoAdapter {
                     None => Box::new(std::iter::empty()),
                     Some(token) => Box::new(
                         WorkflowsPager::new(GITHUB_CLIENT.clone(), token, RUNTIME.deref())
-                            .into_iter().map(|x| x.into())
+                            .into_iter()
+                            .map(|x| x.into()),
                     ),
                 };
 
@@ -711,8 +727,12 @@ impl Adapter<'static> for DemoAdapter {
                 ("Webpage", "Repository") => token.as_repository().is_some(),
                 ("Webpage", "GitHubRepository") => token.as_github_repository().is_some(),
                 ("Repository", "GitHubRepository") => token.as_github_repository().is_some(),
-                ("GitHubActionsStep", "GitHubActionsImportedStep") => token.as_github_actions_imported_step().is_some(),
-                ("GitHubActionsStep", "GitHubActionsRunStep") => token.as_github_actions_run_step().is_some(),
+                ("GitHubActionsStep", "GitHubActionsImportedStep") => {
+                    token.as_github_actions_imported_step().is_some()
+                }
+                ("GitHubActionsStep", "GitHubActionsRunStep") => {
+                    token.as_github_actions_run_step().is_some()
+                }
                 unhandled => unreachable!("{:?}", unhandled),
             };
 
@@ -775,6 +795,6 @@ fn get_repo_file_content(repo: &FullRepository, path: &str) -> Option<ContentFil
                 owner, repo_name, main_branch, path, e
             );
             None
-        },
+        }
     }
 }

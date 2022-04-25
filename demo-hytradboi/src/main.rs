@@ -56,7 +56,10 @@ fn execute_query(path: &str) {
             .as_ref()
             .clone()
             .into_iter()
-            .map(|(k, v)| (k, serde_json::to_string_pretty(&TransparentValue::from(v)).unwrap()))
+            .map(|(k, v)| (
+                k,
+                serde_json::to_string_pretty(&TransparentValue::from(v)).unwrap()
+            ))
             .collect::<BTreeMap<_, _>>()
     );
 
