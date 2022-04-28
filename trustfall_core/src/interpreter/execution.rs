@@ -22,6 +22,7 @@ use crate::{
         FoldSpecificField, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
         Recursive, Vid,
     },
+    util::BTreeMapTryInsertExt,
 };
 
 use super::{error::QueryArgumentsError, Adapter, DataContext, InterpretedQuery};
@@ -403,7 +404,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
         };
         context
             .folded_contexts
-            .try_insert(fold_eid, fold_elements)
+            .insert_or_error(fold_eid, fold_elements)
             .unwrap();
 
         // Remove no-longer-needed imported tags.
@@ -450,7 +451,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 }
             };
             ctx.folded_values
-                .try_insert((fold_eid, output_name.clone()), value)
+                .insert_or_error((fold_eid, output_name.clone()), value)
                 .unwrap();
         }
 

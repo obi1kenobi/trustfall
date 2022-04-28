@@ -1,4 +1,3 @@
-#![feature(map_try_insert)]
 #![forbid(unsafe_code)]
 #![forbid(unused_lifetimes)]
 

@@ -49,8 +49,6 @@ The source code for the demo is available in the `demo-hytradboi` directory:
 For a brief overview of the query language and an example of using it to query APIs, check the
 `demo-hackernews` directory for a simpler demo only querying the HackerNews APIs: [link](https://github.com/obi1kenobi/trustfall/tree/main/demo-hackernews).
 
-This project currently requires nightly Rust. Removing this requirement is planned for the near future: [tracking issue](https://github.com/obi1kenobi/trustfall/issues/15).
-
 Python bindings are available, and are built automatically on every change to the engine; the most recent version may be downloaded [here](https://github.com/obi1kenobi/trustfall/releases). A getting started guide for Python is
 forthcoming ([tracking issue](https://github.com/obi1kenobi/trustfall/issues/16)); in the meantime,
 the best resource is the Python bindings'

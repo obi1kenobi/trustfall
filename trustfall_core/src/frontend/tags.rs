@@ -1,10 +1,13 @@
 use std::{
-    collections::{btree_map::OccupiedError, BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet},
     fmt::Debug,
 };
 
 use super::util::ComponentPath;
-use crate::ir::{ContextField, Vid};
+use crate::{
+    ir::{ContextField, Vid},
+    util::{BTreeMapOccupiedError, BTreeMapTryInsertExt},
+};
 
 #[derive(Debug, Default)]
 pub(super) struct TagHandler<'a> {
@@ -37,9 +40,9 @@ impl<'a> TagHandler<'a> {
         name: &'a str,
         field: ContextField,
         path: &ComponentPath,
-    ) -> Result<(), OccupiedError<'_, &'a str, TagEntry<'a>>> {
+    ) -> Result<(), BTreeMapOccupiedError<'_, &'a str, TagEntry<'a>>> {
         self.tags
-            .try_insert(name, TagEntry::new(name, field, path.clone()))?;
+            .insert_or_error(name, TagEntry::new(name, field, path.clone()))?;
 
         Ok(())
     }

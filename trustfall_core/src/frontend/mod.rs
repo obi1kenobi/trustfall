@@ -22,7 +22,7 @@ use crate::{
         IRQueryComponent, IRVertex, LocalField, Operation, Recursive, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
-    util::TryCollectUniqueKey,
+    util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
 };
 
 use self::{
@@ -171,7 +171,7 @@ fn make_edge_parameters(
             }
             Some(value) => {
                 edge_arguments
-                    .try_insert(arg_name.to_owned().into(), value)
+                    .insert_or_error(arg_name.to_owned().into(), value)
                     .unwrap(); // Duplicates should have been caught at parse time.
             }
         }
@@ -951,11 +951,11 @@ where
     let mut errors: Vec<FrontendError> = vec![];
 
     vertices
-        .try_insert(current_vid, (pre_coercion_type, current_field))
+        .insert_or_error(current_vid, (pre_coercion_type, current_field))
         .unwrap();
 
     output_prefixes
-        .try_insert(
+        .insert_or_error(
             current_vid,
             (parent_vid, current_field.alias.as_ref().map(|x| x.as_ref())),
         )
@@ -1030,7 +1030,7 @@ where
                 }
             } else {
                 edges
-                    .try_insert(next_eid, (current_vid, next_vid, connection))
+                    .insert_or_error(next_eid, (current_vid, next_vid, connection))
                     .expect("Unexpectedly encountered duplicate eid");
 
                 if let Err(e) = fill_in_vertex_data(
