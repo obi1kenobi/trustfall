@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     interpreter::{Adapter, DataContext},
     ir::{EdgeParameters, Eid, FieldValue, IRQuery, Vid},
+    util::BTreeMapTryInsertExt,
 };
 
 use super::InterpretedQuery;
@@ -52,7 +53,7 @@ where
             parent_opid: parent,
             content,
         };
-        self.ops.try_insert(next_opid, op).unwrap();
+        self.ops.insert_or_error(next_opid, op).unwrap();
         next_opid
     }
 }

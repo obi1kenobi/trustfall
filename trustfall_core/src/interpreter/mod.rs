@@ -4,8 +4,11 @@ use async_graphql_parser::types::Type;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{
-    indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldValue, Vid,
+use crate::{
+    ir::{
+        indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldValue, Vid,
+    },
+    util::BTreeMapTryInsertExt,
 };
 
 use self::error::QueryArgumentsError;
@@ -137,7 +140,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
 
     fn record_token(&mut self, vid: Vid) {
         self.tokens
-            .try_insert(vid, self.current_token.clone())
+            .insert_or_error(vid, self.current_token.clone())
             .unwrap();
     }
 
