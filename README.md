@@ -43,7 +43,8 @@ The demo executes the following query across the HackerNews and GitHub APIs and 
 
 This demo is part of the "How to Query (Almost) Everything" talk
 from the [HYTRADBOI 2022](https://www.hytradboi.com/) conference.
-The source code for the demo is available in the `demo-hytradboi` directory:
+Instructions for running the demo are available together with the source code
+in the `demo-hytradboi` directory:
 [link](https://github.com/obi1kenobi/trustfall/tree/main/demo-hytradboi).
 
 For a brief overview of the query language and an example of using it to query APIs, check the
