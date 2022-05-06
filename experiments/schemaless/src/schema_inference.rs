@@ -11,6 +11,7 @@ use async_graphql_value::Value;
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum InferredType {
+    Boolean,
     Int,
     String,
     Float,
@@ -26,6 +27,14 @@ pub(crate) enum VertexKind {
     Type,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, derive_new::new)]
+pub(crate) struct InferredField {
+    ty: InferredType,
+
+    #[new(default)]
+    parameters: BTreeMap<Rc<str>, InferredType>,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, derive_new::new)]
 pub(crate) struct InferredVertexType {
@@ -36,10 +45,7 @@ pub(crate) struct InferredVertexType {
     implements: BTreeSet<Rc<str>>,
 
     #[new(default)]
-    parameters: BTreeMap<Rc<str>, InferredType>,
-
-    #[new(default)]
-    fields: BTreeMap<Rc<str>, InferredType>,
+    fields: BTreeMap<Rc<str>, InferredField>,
 }
 
 #[derive(Debug)]
@@ -124,14 +130,14 @@ impl InferredSchema {
             .entry(field_name.clone())
         {
             Entry::Vacant(v) => {
-                v.insert(field_type.clone());
+                v.insert(InferredField::new(field_type.clone()));
             }
             Entry::Occupied(mut occ) => {
-                if field_type != InferredType::Unknown && occ.get() != &field_type {
+                if field_type != InferredType::Unknown && occ.get().ty != field_type {
                     // TODO: handle Unknown inside NonNull or List, followed by more successful
                     //       inference from elsewhere -- right now that returns 'diverging' error
-                    if occ.get() == &InferredType::Unknown {
-                        *occ.get_mut() = field_type.clone();
+                    if occ.get().ty == InferredType::Unknown {
+                        occ.get_mut().ty = field_type.clone();
                     } else {
                         return Err(format!(
                             "diverging inferred types for type {} field {}: {:?} vs {:?}",
@@ -146,6 +152,49 @@ impl InferredSchema {
         };
 
         Ok(field_type)
+    }
+
+    pub(crate) fn ensure_field_has_parameter(
+        &mut self,
+        type_name: &Rc<str>,
+        field_name: &Rc<str>,
+        parameter_name: Rc<str>,
+        parameter_type: InferredType,
+    ) -> Result<(), String> {
+        match self
+            .types
+            .get_mut(type_name)
+            .expect("vertex type was never added")
+            .fields
+            .get_mut(field_name)
+            .expect("field was never added")
+            .parameters
+            .entry(parameter_name.clone())
+        {
+            Entry::Vacant(v) => {
+                v.insert(parameter_type);
+            }
+            Entry::Occupied(mut occ) => {
+                if parameter_type != InferredType::Unknown && occ.get() != &parameter_type {
+                    // TODO: handle Unknown inside NonNull or List, followed by more successful
+                    //       inference from elsewhere -- right now that returns 'diverging' error
+                    if occ.get() == &InferredType::Unknown {
+                        *occ.get_mut() = parameter_type;
+                    } else {
+                        return Err(format!(
+                            "diverging inferred types for type {} field {} parameter {}: {:?} vs {:?}",
+                            type_name,
+                            field_name,
+                            parameter_name,
+                            occ.get(),
+                            parameter_type,
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub(crate) fn into_schema(self) -> String {
@@ -252,8 +301,6 @@ fn recurse_into_selection_set(
         };
         for field in inner_fields {
             let field_name: Rc<str> = Rc::from(field.name.node.to_string());
-
-            // TODO: handle field parameters, if any
 
             // if possible, figure out if this field is an edge (i.e. vertex-typed) or a property:
             // - @output and @filter directives appear only on properties
@@ -387,8 +434,60 @@ fn recurse_into_selection_set(
                     inferred_type,
                 )?;
             };
+
+            // Add any parameters this field might take.
+            for (name, value) in &field.arguments {
+                let parameter_name = name.node.as_ref();
+                let parameter_type = infer_type_for_value(&value.node)?;
+                inferred.ensure_field_has_parameter(
+                    &current_type,
+                    &field_name,
+                    Rc::from(parameter_name.to_string()),
+                    parameter_type,
+                )?;
+            }
         }
     }
 
     Ok(())
+}
+
+fn infer_type_for_value(value: &Value) -> Result<InferredType, String> {
+    Ok(match value {
+        Value::Number(num) => if num.is_f64() {
+            InferredType::Float
+        } else {
+            InferredType::Int
+        }
+        Value::String(_) => InferredType::String,
+        Value::Boolean(_) => InferredType::Boolean,
+        Value::List(l) => {
+            let inferred_subtypes = l.iter().map(infer_type_for_value).collect::<Result<Vec<_>,_>>()?;
+
+            let mut known_candidate_types = inferred_subtypes.into_iter().filter(|v| v != &InferredType::Unknown);
+            let inner_type = match known_candidate_types.next() {
+                Some(candidate_type) => {
+                    for other_candidate in known_candidate_types {
+                        if candidate_type != other_candidate {
+                            return Err("found diverging types within the same list value, unable to infer a valid type for the list".into());
+                        }
+                    }
+                    candidate_type
+                }
+                None => {
+                    // The list either has no values or has only values whose types
+                    // we weren't able to infer.
+                    InferredType::Unknown
+                }
+            };
+
+            InferredType::List(Box::new(inner_type))
+        }
+        Value::Null | Value::Binary(_) => InferredType::Unknown,
+        Value::Variable(_) |
+        Value::Enum(_) |
+        Value::Object(_) => {
+            return Err("invalid query: enums, input objects, and explicitly-defined query variables are not supported as field arguments".into())
+        }
+    })
 }
