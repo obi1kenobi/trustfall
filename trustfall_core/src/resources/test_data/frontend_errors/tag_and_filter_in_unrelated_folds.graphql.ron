@@ -1,0 +1,19 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+
+    // The @tag is within a different folded component relative to its use, so this is an error.
+    // Unlike the query where the @filter is not inside a @fold, this query cannot be rewritten
+    // by switching the @filter and @tag to make it valid.
+    query: r#"
+{
+    Four {
+        predecessor @fold {
+            value @tag(name: "folded") @output
+        }
+        successor @fold {
+            value @filter(op: ">", value: ["%folded"]) @output
+        }
+    }
+}"#,
+    arguments: {},
+)

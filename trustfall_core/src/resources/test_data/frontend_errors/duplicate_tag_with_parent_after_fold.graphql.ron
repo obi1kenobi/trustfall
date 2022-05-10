@@ -1,0 +1,24 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        predecessor @fold {
+            value @tag(name: "tagged")
+
+            successor {
+                pre: value @output @filter(op: ">", value: ["%tagged"])
+            }
+        }
+
+        successor {
+            value @tag(name: "tagged")
+
+            successor {
+                post: value @output @filter(op: ">", value: ["%tagged"])
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

@@ -31,9 +31,9 @@ already provided by the iterator-style execution model.
 
 ## Table of Contents
 - [Components](#components)
-- [Installing Rust nightly](#installing-rust-nightly)
+- [Installing Rust](#installing-rust)
 - [Running queries](#running-queries)
-   - [Query syntax refresher](#query-syntax-refresher)
+   - [Query syntax primer](#query-syntax-primer)
 - [Examples](#examples)
    - [Example: Front page stories with links](#example-front-page-stories-with-links)
    - [Example: Jobs in the top 50 items](#example-jobs-in-the-top-50-items)
@@ -61,16 +61,14 @@ The project consists of the following components:
       is actually of `type Dog implements Animal`.
 - `main.rs` is a simple CLI app that can execute query files in `ron` format.
 
-## Installing Rust nightly
+## Installing Rust
 
-This demo requires the nightly version of the Rust compiler. To install Rust nightly, follow the
-[instructions in the Rust book for your operating system](https://rust-lang.github.io/rustup/installation/index.html).
+This demo requires the Rust toolchain. To install Rust, follow the
+[official instructions](https://www.rust-lang.org/tools/install). On UNIX-like operating systems,
+that's usually as simple as `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`.
 
-After you have Rust nightly installed locally, `cd` to the root directory of the repository
-then run `rustup override set nightly` to ensure nightly Rust is the default for this project.
-
-To confirm everything is set up correctly, run `cargo check` and, after compiling for a while,
-it should find no errors.
+To confirm everything is set up correctly, `cd` into this directory and run `cargo check`.
+After compiling for a minute or two, it should find no errors.
 
 ## Running queries
 
@@ -87,7 +85,7 @@ you are not actually using a GraphQL API, and the query semantics are *not* the 
 GraphQL's capabilities are a strict subset of the abilities of the query capabilities
 of `trustfall`.
 
-### Query syntax refresher
+### Query syntax primer
 
 Here are the most notable aspects in which the `trustfall` query language differs from GraphQL:
 - `@output` is used to mark fields for output; in SQL, this would correspond to a term

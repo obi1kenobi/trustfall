@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 use crate::ir::FieldValue;
+use crate::util::BTreeMapTryInsertExt;
 
 use super::{
     directives::{
@@ -249,7 +250,7 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
     let arguments = field.node.arguments.iter().try_fold(
         BTreeMap::new(),
         |mut acc, (name, value)| -> Result<BTreeMap<Arc<str>, FieldValue>, ParseError> {
-            acc.try_insert(
+            acc.insert_or_error(
                 name.node.as_ref().to_owned().into(),
                 FieldValue::try_from(&value.node).map_err(|_| {
                     ParseError::InvalidFieldArgument(

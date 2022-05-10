@@ -23,11 +23,25 @@ pub enum FrontendError {
     )]
     TagUsedBeforeDefinition(String, String),
 
+    #[error(
+        "Tag \"{1}\" is defined within a @fold but is used outside that @fold in a filter on \
+        property name \"{0}\". This is not supported; if possible, please consider reorganizing \
+        the query so that the tagged values are captured outside the @fold and \
+        their use in @filter moves inside the @fold."
+    )]
+    TagUsedOutsideItsFoldedSubquery(String, String),
+
+    #[error(
+        "One or more tags were defined in the query but were never used. Please remove these \
+        unused @tag directives. Unused tag names: {0:?}"
+    )]
+    UnusedTags(Vec<String>),
+
     #[error("Multiple fields are being output under the same name: {0:?}")]
     MultipleOutputsWithSameName(DuplicatedNamesConflict),
 
-    #[error("Multiple fields have @tag directives with the same name: {0:?}")]
-    MultipleTagsWithSameName(DuplicatedNamesConflict),
+    #[error("Multiple fields have @tag directives with the same name: {0}")]
+    MultipleTagsWithSameName(String),
 
     #[error("Incompatible types encountered in @filter.")]
     FilterTypeError(#[from] FilterTypeError),

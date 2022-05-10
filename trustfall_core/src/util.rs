@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{btree_map, hash_map, BTreeMap, HashMap};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::Arc;
@@ -83,6 +83,74 @@ where
 {
 }
 
+/// A struct similar to the OccupiedError struct in the not-yet-stable `map_try_insert` feature.
+/// For internal use only. The `pub(crate)` visibility ensures that this type never leaks out
+/// to the external API of this crate.
+#[allow(dead_code)]
+#[derive(Debug)]
+pub(crate) struct HashMapOccupiedError<'a, K: 'a, V: 'a> {
+    /// The entry in the map that was already occupied.
+    pub entry: hash_map::OccupiedEntry<'a, K, V>,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
+}
+
+pub(crate) trait HashMapTryInsertExt<K, V> {
+    // Analogous API to the `try_insert()` function in the not-yet-stable `map_try_insert` feature.
+    fn insert_or_error(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result<&mut V, HashMapOccupiedError<'_, K, V>>;
+}
+
+impl<K: Eq + Hash, V> HashMapTryInsertExt<K, V> for HashMap<K, V> {
+    fn insert_or_error(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result<&mut V, HashMapOccupiedError<'_, K, V>> {
+        match self.entry(key) {
+            hash_map::Entry::Vacant(v) => Ok(v.insert(value)),
+            hash_map::Entry::Occupied(entry) => Err(HashMapOccupiedError { entry, value }),
+        }
+    }
+}
+
+/// A struct similar to the OccupiedError struct in the not-yet-stable `map_try_insert` feature.
+/// For internal use only. The `pub(crate)` visibility ensures that this type never leaks out
+/// to the external API of this crate.
+#[allow(dead_code)]
+#[derive(Debug)]
+pub(crate) struct BTreeMapOccupiedError<'a, K: 'a + Ord, V: 'a> {
+    /// The entry in the map that was already occupied.
+    pub entry: btree_map::OccupiedEntry<'a, K, V>,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
+}
+
+pub(crate) trait BTreeMapTryInsertExt<K: Ord, V> {
+    // Analogous API to the `try_insert()` function in the not-yet-stable `map_try_insert` feature.
+    fn insert_or_error(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result<&mut V, BTreeMapOccupiedError<'_, K, V>>;
+}
+
+impl<K: Ord, V> BTreeMapTryInsertExt<K, V> for BTreeMap<K, V> {
+    fn insert_or_error(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result<&mut V, BTreeMapOccupiedError<'_, K, V>> {
+        match self.entry(key) {
+            btree_map::Entry::Vacant(v) => Ok(v.insert(value)),
+            btree_map::Entry::Occupied(entry) => Err(BTreeMapOccupiedError { entry, value }),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct TestGraphQLQuery {
     pub(crate) schema_name: String,
@@ -104,7 +172,7 @@ pub(crate) struct TestParsedGraphQLQuery {
 }
 
 #[allow(dead_code)]
-pub(crate) type TestParsedGraphQLQueryResult<'q> = Result<TestParsedGraphQLQuery, ParseError>;
+pub(crate) type TestParsedGraphQLQueryResult = Result<TestParsedGraphQLQuery, ParseError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct TestIRQuery {

@@ -1,0 +1,164 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "predecessor",
+          fold: Some(FoldDirective()),
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "value",
+              tag: [
+                TagDirective(
+                  name: Some("tagged"),
+                ),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "successor",
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "successor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("pre"),
+                ), FieldNode(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("pre"),
+                  filter: [
+                    FilterDirective(
+                      operation: GreaterThan((), TagRef("tagged")),
+                    ),
+                  ],
+                  output: [
+                    OutputDirective(),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 12,
+            column: 9,
+          ),
+          name: "successor",
+        ), FieldNode(
+          position: Pos(
+            line: 12,
+            column: 9,
+          ),
+          name: "successor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 13,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 13,
+                column: 13,
+              ),
+              name: "value",
+              tag: [
+                TagDirective(
+                  name: Some("tagged"),
+                ),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 15,
+                column: 13,
+              ),
+              name: "successor",
+            ), FieldNode(
+              position: Pos(
+                line: 15,
+                column: 13,
+              ),
+              name: "successor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 16,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("post"),
+                ), FieldNode(
+                  position: Pos(
+                    line: 16,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("post"),
+                  filter: [
+                    FilterDirective(
+                      operation: GreaterThan((), TagRef("tagged")),
+                    ),
+                  ],
+                  output: [
+                    OutputDirective(),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

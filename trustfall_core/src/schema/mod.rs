@@ -20,6 +20,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::types::{get_base_named_type, is_argument_type_valid, is_scalar_only_subtype};
+use crate::util::{BTreeMapTryInsertExt, HashMapTryInsertExt};
 
 use self::error::InvalidSchemaError;
 
@@ -111,7 +112,7 @@ impl Schema {
                 }
                 TypeSystemDefinition::Directive(d) => {
                     directives
-                        .try_insert(Arc::from(d.node.name.node.to_string()), d.node)
+                        .insert_or_error(Arc::from(d.node.name.node.to_string()), d.node)
                         .unwrap();
                 }
                 TypeSystemDefinition::Type(t) => {
@@ -125,11 +126,13 @@ impl Schema {
 
                     match &node.kind {
                         TypeKind::Scalar => {
-                            scalars.try_insert(type_name.clone(), node.clone()).unwrap();
+                            scalars
+                                .insert_or_error(type_name.clone(), node.clone())
+                                .unwrap();
                         }
                         TypeKind::Object(_) | TypeKind::Interface(_) => {
                             vertex_types
-                                .try_insert(type_name.clone(), node.clone())
+                                .insert_or_error(type_name.clone(), node.clone())
                                 .unwrap();
                         }
                         TypeKind::Enum(_) => unimplemented!(),
@@ -149,7 +152,7 @@ impl Schema {
                             let field_name = Arc::from(field_node.name.node.to_string());
 
                             fields
-                                .try_insert((type_name.clone(), field_name), field_node)
+                                .insert_or_error((type_name.clone(), field_name), field_node)
                                 .unwrap();
                         }
                     }
@@ -296,6 +299,7 @@ fn check_property_and_edge_invariants(
                     for param_defn in &field_defn.arguments {
                         if let Some(value) = &param_defn.node.default_value {
                             let param_type = &param_defn.node.ty.node;
+                            #[allow(clippy::needless_borrow)]
                             match (&value.node).try_into() {
                                 Ok(value) => {
                                     if !is_argument_type_valid(param_type, &value) {
@@ -342,7 +346,11 @@ fn check_property_and_edge_invariants(
             } else {
                 // Somehow the base named type is neither a vertex nor a scalar,
                 // and this field is neither an edge nor a property.
-                unreachable!()
+                unreachable!(
+                    "field {} (type {}) appears to represent neither an edge nor a property",
+                    field_defn.name.node.as_ref(),
+                    field_type.to_string(),
+                )
             }
         }
     }
@@ -674,7 +682,7 @@ fn get_field_origins(
                 .remove(field_name.as_ref())
                 .unwrap_or_else(|| FieldOrigin::SingleAncestor(type_name.clone()));
             field_origins
-                .try_insert((type_name.clone(), Arc::from(field_name.as_ref())), origin)
+                .insert_or_error((type_name.clone(), Arc::from(field_name.as_ref())), origin)
                 .unwrap();
         }
 

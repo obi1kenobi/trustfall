@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        name @tag
+
+        multiple(max: 3) @fold {
+            name @filter(op: "<", value: ["%name"])
+            value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

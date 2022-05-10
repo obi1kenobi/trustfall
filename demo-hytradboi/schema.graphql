@@ -1,0 +1,164 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(
+    """Name of the filter operation to perform."""
+    op: String!
+    """List of string operands for the operator."""
+    value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """Name to apply to the given property field."""
+    name: String
+) on FIELD
+directive @output(
+    """What to designate the output field generated from this property field."""
+    name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
+
+type RootSchemaQuery {
+    MostDownloadedCrates: [Crate!]!
+
+    HackerNewsFrontPage: [HackerNewsItem!]!
+    HackerNewsTop(max: Int): [HackerNewsItem!]!
+    HackerNewsLatestStories(max: Int): [HackerNewsStory!]!
+    HackerNewsUser(name: String!): HackerNewsUser
+}
+
+type Crate {
+    name: String!
+    latestVersion: String!
+
+    repository: Repository
+}
+
+interface Webpage {
+    url: String!
+}
+
+interface Repository implements Webpage {
+    url: String!
+}
+
+type GitHubRepository implements Repository & Webpage {
+    # properties from Repository
+    url: String!
+
+    owner: String!
+    name: String!
+    fullName: String!
+    # lastModified: DateTime!
+
+    workflows: [GitHubWorkflow!]
+    # rootDirectory: Directory
+}
+
+type GitHubWorkflow {
+    name: String
+    path: String!
+
+    jobs: GitHubActionsJob
+}
+
+type GitHubActionsJob {
+    name: String!
+    runsOn: String
+    step: [GitHubActionsStep!]
+}
+
+interface GitHubActionsStep {
+    name: String
+}
+
+type GitHubActionsImportedStep implements GitHubActionsStep {
+    name: String
+    uses: String
+
+    with: [NameValuePair!]
+}
+
+type NameValuePair {
+    name: String!
+    value: String!
+}
+
+type GitHubActionsRunStep implements GitHubActionsStep {
+    name: String
+    run: [String!]!
+
+    env: [NameValuePair!]
+}
+
+interface HackerNewsItem {
+    id: Int!
+    unixTime: Int!
+}
+
+type HackerNewsJob implements HackerNewsItem {
+    # properties from HackerNewsItem
+    id: Int!
+    unixTime: Int!
+
+    # own properties
+    title: String!
+    score: Int!
+    url: String!
+    link: Webpage!
+}
+
+type HackerNewsStory implements HackerNewsItem {
+    # properties from HackerNewsItem
+    id: Int!
+    unixTime: Int!
+
+    # own properties
+    byUsername: String!
+    score: Int!
+    text: String
+    title: String!
+    url: String
+    commentsCount: Int!
+
+    # edges
+    byUser: HackerNewsUser!
+    comment: [HackerNewsComment!]
+    link: Webpage
+}
+
+type HackerNewsComment implements HackerNewsItem {
+    # properties from HackerNewsItem
+    id: Int!
+    unixTime: Int!
+
+    # own properties
+    text: String!
+    byUsername: String!
+    childCount: Int!
+
+    # edges
+    byUser: HackerNewsUser!
+    reply: [HackerNewsComment!]
+    parent: HackerNewsItem!  # either a parent comment or the story being commented on
+    topmostAncestor: HackerNewsItem!  # the ultimate ancestor of this item: a story or job
+}
+
+type HackerNewsUser {
+    id: String!
+    karma: Int!
+    about: String
+    unixCreatedAt: Int!
+
+    # The HackerNews API treats submissions of comments and stories the same way.
+    # The way to get only a user's submitted stories is to use this edge then
+    # apply a type coercion on the `HackerNewsItem` vertex on edge endpoint:
+    # `... on HackerNewsStory`
+    submitted: [HackerNewsItem!]
+}

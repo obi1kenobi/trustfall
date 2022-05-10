@@ -1,5 +1,5 @@
-#![feature(map_try_insert)]
 #![forbid(unsafe_code)]
+#![forbid(unused_lifetimes)]
 
 #[macro_use]
 extern crate maplit;
@@ -207,8 +207,8 @@ fn reserialize(path: &str) {
             let schema_error: InvalidSchemaError = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&schema_error)
         }
-        Some((_, ext)) => unreachable!(ext),
-        None => unreachable!(path),
+        Some((_, ext)) => unreachable!("{}", ext),
+        None => unreachable!("{}", path),
     };
 
     println!("{}", output_data);
@@ -240,8 +240,8 @@ fn corpus_graphql(path: &str, schema_name: &str) {
             }
             test_query.query.replace("    ", " ")
         }
-        Some((_, ext)) => unreachable!(ext),
-        None => unreachable!(path),
+        Some((_, ext)) => unreachable!("{}", ext),
+        None => unreachable!("{}", path),
     };
 
     println!("{}", output_data);

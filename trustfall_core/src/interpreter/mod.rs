@@ -4,8 +4,11 @@ use async_graphql_parser::types::Type;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{
-    indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldValue, Vid,
+use crate::{
+    ir::{
+        indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldValue, Vid,
+    },
+    util::BTreeMapTryInsertExt,
 };
 
 use self::error::QueryArgumentsError;
@@ -23,14 +26,25 @@ pub struct DataContext<DataToken: Clone + Debug> {
     tokens: BTreeMap<Vid, Option<DataToken>>,
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<DataToken>>,
-    folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
+    folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
+    folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
+    imported_tags: BTreeMap<(Vid, Arc<str>), FieldValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 enum ValueOrVec {
     Value(FieldValue),
     Vec(Vec<ValueOrVec>),
+}
+
+impl ValueOrVec {
+    fn as_mut_vec(&mut self) -> Option<&mut Vec<ValueOrVec>> {
+        match self {
+            ValueOrVec::Value(_) => None,
+            ValueOrVec::Vec(v) => Some(v),
+        }
+    }
 }
 
 impl From<ValueOrVec> for FieldValue {
@@ -59,10 +73,17 @@ where
     suspended_tokens: Vec<Option<DataToken>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    folded_values: BTreeMap<(Eid, Arc<str>), Vec<ValueOrVec>>,
+    folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
+
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     piggyback: Option<Vec<DataContext<DataToken>>>,
+
+    /// Tagged values imported from an ancestor component of the one currently being evaluated.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    imported_tags: BTreeMap<(Vid, Arc<str>), FieldValue>,
 }
 
 impl<DataToken> From<SerializableContext<DataToken>> for DataContext<DataToken>
@@ -76,8 +97,10 @@ where
             tokens: context.tokens,
             values: context.values,
             suspended_tokens: context.suspended_tokens,
+            folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
+            imported_tags: context.imported_tags,
         }
     }
 }
@@ -93,8 +116,10 @@ where
             tokens: context.tokens,
             values: context.values,
             suspended_tokens: context.suspended_tokens,
+            folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
+            imported_tags: context.imported_tags,
         }
     }
 }
@@ -103,17 +128,19 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
     fn new(token: Option<DataToken>) -> DataContext<DataToken> {
         DataContext {
             current_token: token,
+            piggyback: None,
             tokens: Default::default(),
             values: Default::default(),
             suspended_tokens: Default::default(),
+            folded_contexts: Default::default(),
             folded_values: Default::default(),
-            piggyback: None,
+            imported_tags: Default::default(),
         }
     }
 
     fn record_token(&mut self, vid: Vid) {
         self.tokens
-            .try_insert(vid, self.current_token.clone())
+            .insert_or_error(vid, self.current_token.clone())
             .unwrap();
     }
 
@@ -123,8 +150,10 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             tokens: self.tokens,
             values: self.values,
             suspended_tokens: self.suspended_tokens,
+            folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
+            imported_tags: self.imported_tags,
         }
     }
 
@@ -134,8 +163,10 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             tokens: self.tokens.clone(),
             values: self.values.clone(),
             suspended_tokens: self.suspended_tokens.clone(),
+            folded_contexts: self.folded_contexts.clone(),
             folded_values: self.folded_values.clone(),
             piggyback: None,
+            imported_tags: self.imported_tags.clone(),
         }
     }
 
@@ -145,8 +176,10 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             tokens: self.tokens,
             values: self.values,
             suspended_tokens: self.suspended_tokens,
+            folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
+            imported_tags: self.imported_tags,
         }
     }
 
@@ -158,8 +191,10 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
                 tokens: self.tokens,
                 values: self.values,
                 suspended_tokens: self.suspended_tokens,
+                folded_contexts: self.folded_contexts,
                 folded_values: self.folded_values,
                 piggyback: self.piggyback,
+                imported_tags: self.imported_tags,
             }
         } else {
             self
@@ -175,8 +210,10 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
                     tokens: self.tokens,
                     values: self.values,
                     suspended_tokens: self.suspended_tokens,
+                    folded_contexts: self.folded_contexts,
                     folded_values: self.folded_values,
                     piggyback: self.piggyback,
+                    imported_tags: self.imported_tags,
                 }
             }
             Some(_) => self,
@@ -190,13 +227,15 @@ impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> 
             && self.tokens == other.tokens
             && self.values == other.values
             && self.suspended_tokens == other.suspended_tokens
+            && self.folded_contexts == other.folded_contexts
             && self.piggyback == other.piggyback
+            && self.imported_tags == other.imported_tags
     }
 }
 
 impl<DataToken: Debug + Clone + PartialEq + Eq> Eq for DataContext<DataToken> {}
 
-impl<'de, DataToken> Serialize for DataContext<DataToken>
+impl<DataToken> Serialize for DataContext<DataToken>
 where
     DataToken: Debug + Clone + Serialize,
     for<'d> DataToken: Deserialize<'d>,

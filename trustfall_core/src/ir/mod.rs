@@ -69,7 +69,7 @@ pub enum TransparentValue {
     Boolean(bool),
     DateTimeUtc(DateTime<Utc>),
     Enum(String),
-    List(Vec<FieldValue>),
+    List(Vec<TransparentValue>),
 }
 
 impl From<FieldValue> for TransparentValue {
@@ -83,7 +83,9 @@ impl From<FieldValue> for TransparentValue {
             FieldValue::Boolean(x) => TransparentValue::Boolean(x),
             FieldValue::DateTimeUtc(x) => TransparentValue::DateTimeUtc(x),
             FieldValue::Enum(x) => TransparentValue::Enum(x),
-            FieldValue::List(x) => TransparentValue::List(x),
+            FieldValue::List(x) => {
+                TransparentValue::List(x.into_iter().map(|v| v.into()).collect())
+            }
         }
     }
 }
@@ -106,6 +108,20 @@ impl FieldValue {
     pub fn as_u64(&self) -> Option<u64> {
         match self {
             FieldValue::Uint64(u) => Some(*u),
+            FieldValue::Int64(i) => (*i).try_into().ok(),
+            FieldValue::Null
+            | FieldValue::Float64(_)
+            | FieldValue::String(_)
+            | FieldValue::Boolean(_)
+            | FieldValue::DateTimeUtc(_)
+            | FieldValue::List(_)
+            | FieldValue::Enum(_) => None,
+        }
+    }
+
+    pub fn as_usize(&self) -> Option<usize> {
+        match self {
+            FieldValue::Uint64(u) => (*u).try_into().ok(),
             FieldValue::Int64(i) => (*i).try_into().ok(),
             FieldValue::Null
             | FieldValue::Float64(_)
@@ -476,8 +492,22 @@ pub struct IRFold {
 
     pub component: Arc<IRQueryComponent>,
 
+    /// Tags from the directly-enclosing component whose values are needed
+    /// inside this fold's component or one of its subcomponents.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Arc<Vec<Operation<LocalField, Argument>>>,
+    pub imported_tags: Vec<ContextField>,
+
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificField>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub post_filters: Arc<Vec<Operation<FoldSpecificField, Argument>>>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FoldSpecificField {
+    Count, // Represents the number of elements in an IRFold's component.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

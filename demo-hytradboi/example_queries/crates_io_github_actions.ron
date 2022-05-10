@@ -1,0 +1,33 @@
+InputQuery (
+    query: r#"
+{
+    MostDownloadedCrates {
+        crate: name @output
+        latestVersion @output
+
+        repository {
+            ... on GitHubRepository {
+                url @output
+
+                workflows {
+                    name @output
+                    path @output
+
+                    jobs {
+                        job: name @output
+                        runsOn @output
+
+                        step {
+                            ... on GitHubActionsImportedStep {
+                                step: name @output
+                                uses @output
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}"#,
+    args: {},
+)

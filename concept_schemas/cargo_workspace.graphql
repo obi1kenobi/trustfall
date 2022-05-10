@@ -1,0 +1,63 @@
+type Workspace {
+    members: [WorkspaceMember!]
+
+    primary_member: WorkspaceMember
+}
+
+type WorkspaceMember {
+    package: String!
+    version: String!
+
+    features: [Feature!]
+    dependencies: [SpecifiedDependency!]
+    dev_dependencies: [SpecifiedDependency!]
+
+    """
+    What are the dependencies and their features when:
+    - the specified features are explicitly enabled (optional, defaults to []);
+    - default features are enabled or not (optional, defaults to true);
+    - using the specified OS (optional, defaults to non-OS-specific);
+    - running the specified architecture (optional, defaults to non-arch-specific).
+    """
+    computed_dependencies(features: [String!], default_features: Boolean, target_os: String, target_arch: String): [SpecifiedDependency!]
+
+    """
+    What are the dependencies and their features when using all features of this WorkspaceMember,
+    and when:
+    - using the specified OS (optional, defaults to non-OS-specific);
+    - running the specified architecture (optional, defaults to non-arch-specific).
+    """
+    computed_dependencies_with_all_features(target_os: String, target_arch: String): [SpecifiedDependency!]
+}
+
+type Feature {
+    name: String!
+
+    uses: [FeatureDependency!]
+}
+
+interface FeatureDependency {
+    raw_name: String!
+}
+
+type PackageDependency implements FeatureDependency {
+    package: String!
+
+    refers_to: Dependency!
+}
+
+type PackageFeatureDependency implements FeatureDependency {
+    package: String!
+    feature: String!
+
+    refers_to: Dependency!
+}
+
+type SpecifiedDependency {
+    name: String!
+    version_specifier: String!
+    explicitly_enabled_features: [String!]!
+    default_features: Boolean!
+    optional: Boolean!
+    path: String
+}
