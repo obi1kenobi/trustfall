@@ -235,65 +235,86 @@ schema {{
         components.push("\n".to_string());
 
         for (type_name, type_info) in self.types.iter() {
-            let is_interface = self
-                .types
-                .iter()
-                .filter_map(|(k, v)| if k != type_name { Some(v) } else { None })
-                .flat_map(|v| v.implements.iter())
-                .any(|implemented| implemented == type_name);
-            let type_kind = if is_interface { "interface" } else { "type" };
-
-            assert!(!type_info.implements.contains(type_name.as_ref()));
-            let mut implements: Vec<_> = type_info.implements.iter().map(|x| x.as_ref()).collect();
-            implements.sort_unstable();
-            let implemented = if implements.is_empty() {
-                String::new()
-            } else {
-                let mut buffer = String::from("implements ");
-                buffer.push_str(implements.join(" & ").as_str());
-                buffer
-            };
-
-            components.push(format!("{type_kind} {type_name} {implemented} {{\n"));
-
-            if type_info.fields.is_empty() {
-                // GraphQL schemas do not allow types or interfaces to have no fields.
-                // Add a synthetic "anonymous" field instead.
-                let field_name = Self::ANONYMOUS_FIELD_NAME;
-                let field_type = Self::TYPE_CHOICE_FOR_FREE_TYPES;
-                components.push(format!("  {field_name}: {field_type}\n"));
-            } else {
-                for (field_name, field_def) in type_info.fields.iter() {
-                    let field_ty = field_def
-                        .ty
-                        .to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
-                    let parameters = if field_def.parameters.is_empty() {
-                        String::new()
-                    } else {
-                        let parameter_components: Vec<_> = field_def
-                            .parameters
-                            .iter()
-                            .map(|(name, ty)| {
-                                let ty = ty.to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
-                                format!("{name}: {ty}")
-                            })
-                            .collect();
-
-                        let all_parameters = parameter_components.join(", ");
-                        format!("({all_parameters})")
-                    };
-                    components.push(format!("  {field_name}{parameters}: {field_ty}\n"))
-                }
-            }
-
-            components.push("}\n\n".to_string());
+            self.write_type_into_schema_buffer(&mut components, type_name, type_info);
         }
 
         components.concat()
     }
+
+    fn write_type_into_schema_buffer(
+        &self,
+        buffer: &mut Vec<String>,
+        type_name: &str,
+        type_info: &InferredVertexType,
+    ) {
+        let is_interface = self
+            .types
+            .iter()
+            .filter_map(|(k, v)| if k.as_ref() != type_name { Some(v) } else { None })
+            .flat_map(|v| v.implements.iter())
+            .any(|implemented| implemented.as_ref() == type_name);
+        let type_kind = if is_interface { "interface" } else { "type" };
+
+        assert!(!type_info.implements.contains(type_name));
+
+        let mut implements: Vec<_> = type_info.implements.iter().map(|x| x.as_ref()).collect();
+        implements.sort_unstable();
+
+        let implemented = if implements.is_empty() {
+            String::new()
+        } else {
+            let mut buffer = String::from(" implements ");
+            buffer.push_str(implements.join(" & ").as_str());
+            buffer
+        };
+
+        // e.g. "type Foo implements Bar & Baz {\n"
+        buffer.push(format!("{type_kind} {type_name}{implemented} {{\n"));
+
+        if type_info.fields.is_empty() {
+            // GraphQL schemas do not allow types or interfaces to have no fields.
+            // Add a synthetic "anonymous" field instead.
+            let field_name = Self::ANONYMOUS_FIELD_NAME;
+            let field_info = InferredField::new(InferredType::Unknown);
+
+            self.write_type_field_into_schema_buffer(buffer, field_name, &field_info);
+        } else {
+            for (field_name, field_info) in type_info.fields.iter() {
+                self.write_type_field_into_schema_buffer(buffer, field_name.as_ref(), field_info);
+            }
+        }
+        buffer.push("}\n\n".to_string());
+    }
+
+    fn write_type_field_into_schema_buffer(
+        &self,
+        buffer: &mut Vec<String>,
+        field_name: &str,
+        field_info: &InferredField,
+    ) {
+        let field_ty = field_info
+            .ty
+            .to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
+        let parameters = if field_info.parameters.is_empty() {
+            String::new()
+        } else {
+            let parameter_components: Vec<_> = field_info
+                .parameters
+                .iter()
+                .map(|(name, ty)| {
+                    let ty = ty.to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
+                    format!("{name}: {ty}")
+                })
+                .collect();
+
+            let all_parameters = parameter_components.join(", ");
+            format!("({all_parameters})")
+        };
+        buffer.push(format!("  {field_name}{parameters}: {field_ty}\n"))
+    }
 }
 
-pub(crate) fn infer_schema_from_query(query: &str) -> Result<String, String> {
+pub fn infer_schema_from_query(query: &str) -> Result<String, String> {
     let maybe_doc = async_graphql_parser::parse_query(query);
     let doc = match maybe_doc {
         Ok(d) => d,
