@@ -7,6 +7,7 @@ use async_graphql_parser::types::{
     DocumentOperations, InlineFragment, OperationType, Selection, SelectionSet,
 };
 use async_graphql_value::Value;
+use trustfall_core::schema::Schema;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -224,19 +225,14 @@ impl InferredSchema {
         let root_type = self.root_type.as_ref();
         let mut components: Vec<String> = Vec::with_capacity(1000);
         components.push(format!(
-            r"schema {{
+            "
+schema {{
     query: {root_type}
 }}
-
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
-directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
-directive @fold on FIELD
-
 "
         ));
+        components.push(Schema::ALL_DIRECTIVE_DEFINITIONS.to_string());
+        components.push("\n".to_string());
 
         for (type_name, type_info) in self.types.iter() {
             let is_interface = self
