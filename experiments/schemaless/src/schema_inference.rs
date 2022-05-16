@@ -21,6 +21,27 @@ pub(crate) enum InferredType {
     Vertex(Rc<str>),
 }
 
+impl InferredType {
+    pub(crate) fn to_graphql_type(&self, unknown_type_standin: &str) -> String {
+        match self {
+            InferredType::Boolean => "Boolean".to_string(),
+            InferredType::Int => "Int".to_string(),
+            InferredType::String => "String".to_string(),
+            InferredType::Float => "Float".to_string(),
+            InferredType::Unknown => unknown_type_standin.to_string(),
+            InferredType::NonNull(inner) => {
+                let inner_ty = inner.to_graphql_type(unknown_type_standin);
+                format!("{inner_ty}!")
+            }
+            InferredType::List(inner) => {
+                let inner_ty = inner.to_graphql_type(unknown_type_standin);
+                format!("[{inner_ty}]")
+            }
+            InferredType::Vertex(inner) => inner.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum VertexKind {
     Interface,
@@ -57,6 +78,8 @@ struct InferredSchema {
 
 impl InferredSchema {
     const ROOT_TYPE_NAME: &'static str = "RootSchemaQuery";
+    const TYPE_CHOICE_FOR_FREE_TYPES: &'static str = "String";
+    const ANONYMOUS_FIELD_NAME: &'static str = "_AnonField";
 
     pub(crate) fn new() -> Self {
         let root_type: Rc<str> = Rc::from(String::from(Self::ROOT_TYPE_NAME));
@@ -198,8 +221,79 @@ impl InferredSchema {
     }
 
     pub(crate) fn into_schema(self) -> String {
-        dbg!(&self);
-        todo!()
+        let root_type = self.root_type.as_ref();
+        let mut components: Vec<String> = Vec::with_capacity(1000);
+        components.push(format!(
+            r"schema {{
+    query: {root_type}
+}}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+"
+        ));
+
+        for (type_name, type_info) in self.types.iter() {
+            let is_interface = self
+                .types
+                .iter()
+                .filter_map(|(k, v)| if k != type_name { Some(v) } else { None })
+                .flat_map(|v| v.implements.iter())
+                .any(|implemented| implemented == type_name);
+            let type_kind = if is_interface { "interface" } else { "type" };
+
+            assert!(!type_info.implements.contains(type_name.as_ref()));
+            let mut implements: Vec<_> = type_info.implements.iter().map(|x| x.as_ref()).collect();
+            implements.sort_unstable();
+            let implemented = if implements.is_empty() {
+                String::new()
+            } else {
+                let mut buffer = String::from("implements ");
+                buffer.push_str(implements.join(" & ").as_str());
+                buffer
+            };
+
+            components.push(format!("{type_kind} {type_name} {implemented} {{\n"));
+
+            if type_info.fields.is_empty() {
+                // GraphQL schemas do not allow types or interfaces to have no fields.
+                // Add a synthetic "anonymous" field instead.
+                let field_name = Self::ANONYMOUS_FIELD_NAME;
+                let field_type = Self::TYPE_CHOICE_FOR_FREE_TYPES;
+                components.push(format!("  {field_name}: {field_type}\n"));
+            } else {
+                for (field_name, field_def) in type_info.fields.iter() {
+                    let field_ty = field_def
+                        .ty
+                        .to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
+                    let parameters = if field_def.parameters.is_empty() {
+                        String::new()
+                    } else {
+                        let parameter_components: Vec<_> = field_def
+                            .parameters
+                            .iter()
+                            .map(|(name, ty)| {
+                                let ty = ty.to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
+                                format!("{name}: {ty}")
+                            })
+                            .collect();
+
+                        let all_parameters = parameter_components.join(", ");
+                        format!("({all_parameters})")
+                    };
+                    components.push(format!("  {field_name}{parameters}: {field_ty}\n"))
+                }
+            }
+
+            components.push("}\n\n".to_string());
+        }
+
+        components.concat()
     }
 }
 
