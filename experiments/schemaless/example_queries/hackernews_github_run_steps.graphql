@@ -1,0 +1,35 @@
+{
+    HackerNewsTop(max: 1000) {
+        ... on HackerNewsStory {
+            score @filter(op: ">=", value: ["$min_score"]) @output
+
+            link {
+                ... on GitHubRepository {
+                    url @output
+
+                    workflows {
+                        name @output
+                        path @output
+
+                        jobs {
+                            job: name @output
+                            runsOn @output
+
+                            step {
+                                ... on GitHubActionsRunStep {
+                                    step: name @output
+                                    run @output
+
+                                    env @fold {
+                                        env_name: name @output
+                                        env_value: value @output
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,18 @@
+{
+    HackerNewsUser(name: "patio11") {
+        submitted {
+            ... on HackerNewsComment {
+                text @output
+
+                topmostAncestor {
+                    ... on HackerNewsStory {
+                        url @filter(op: "has_substring", value: ["$url"])
+                            @output
+                        submitter: byUsername @output
+                        score @output
+                    }
+                }
+            }
+        }
+    }
+}

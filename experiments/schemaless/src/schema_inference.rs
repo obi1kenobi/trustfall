@@ -602,3 +602,365 @@ fn infer_type_for_value(value: &Value) -> Result<InferredType, String> {
         }
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::infer_schema_from_query;
+
+    #[test]
+    fn test_valid_schema_inferred_for_actions_in_repos_with_min_hn_pts() -> Result<(), String> {
+        let query = include_str!("../example_queries/actions_in_repos_with_min_hn_pts.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubActionsImportedStep implements _AnonType5 {
+  name: String
+  uses: String
+}
+
+type GitHubRepository implements _AnonType2 {
+  url: String
+  workflows: [_AnonType3]
+}
+
+type HackerNewsStory implements _AnonType1 {
+  link: [_AnonType2]
+  score: String
+}
+
+type RootSchemaQuery {
+  HackerNewsTop(max: Int): [_AnonType1]
+}
+
+interface _AnonType1 {
+  _AnonField: String
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+type _AnonType3 {
+  jobs: [_AnonType4]
+  name: String
+  path: String
+}
+
+type _AnonType4 {
+  name: String
+  step: [_AnonType5]
+}
+
+interface _AnonType5 {
+  _AnonField: String
+}";
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_valid_schema_inferred_for_crates_io_github_actions() -> Result<(), String> {
+        let query = include_str!("../example_queries/crates_io_github_actions.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubActionsImportedStep implements _AnonType5 {
+  name: String
+  uses: String
+}
+
+type GitHubRepository implements _AnonType2 {
+  url: String
+  workflows: [_AnonType3]
+}
+
+type RootSchemaQuery {
+  MostDownloadedCrates: [_AnonType1]
+}
+
+type _AnonType1 {
+  latestVersion: String
+  name: String
+  repository: [_AnonType2]
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+type _AnonType3 {
+  jobs: [_AnonType4]
+  name: String
+  path: String
+}
+
+type _AnonType4 {
+  name: String
+  runsOn: String
+  step: [_AnonType5]
+}
+
+interface _AnonType5 {
+  _AnonField: String
+}";
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+        #[test]
+    fn test_valid_schema_inferred_for_hackernews_github_projects() -> Result<(), String> {
+        let query = include_str!("../example_queries/hackernews_github_projects.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubActionsImportedStep implements _AnonType5 {
+  name: String
+  uses: String
+}
+
+type GitHubRepository implements _AnonType2 {
+  url: String
+  workflows: [_AnonType3]
+}
+
+type HackerNewsStory implements _AnonType1 {
+  link: [_AnonType2]
+  score: String
+}
+
+type RootSchemaQuery {
+  HackerNewsTop(max: Int): [_AnonType1]
+}
+
+interface _AnonType1 {
+  _AnonField: String
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+type _AnonType3 {
+  jobs: [_AnonType4]
+  name: String
+  path: String
+}
+
+type _AnonType4 {
+  name: String
+  step: [_AnonType5]
+}
+
+interface _AnonType5 {
+  _AnonField: String
+}
+";
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+        #[test]
+    fn test_valid_schema_inferred_for_hackernews_github_run_steps() -> Result<(), String> {
+        let query = include_str!("../example_queries/hackernews_github_run_steps.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubActionsRunStep implements _AnonType5 {
+  env: [_AnonType6]
+  name: String
+  run: String
+}
+
+type GitHubRepository implements _AnonType2 {
+  url: String
+  workflows: [_AnonType3]
+}
+
+type HackerNewsStory implements _AnonType1 {
+  link: [_AnonType2]
+  score: String
+}
+
+type RootSchemaQuery {
+  HackerNewsTop(max: Int): [_AnonType1]
+}
+
+interface _AnonType1 {
+  _AnonField: String
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+type _AnonType3 {
+  jobs: [_AnonType4]
+  name: String
+  path: String
+}
+
+type _AnonType4 {
+  name: String
+  runsOn: String
+  step: [_AnonType5]
+}
+
+interface _AnonType5 {
+  _AnonField: String
+}
+
+type _AnonType6 {
+  name: String
+  value: String
+}
+";
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+        #[test]
+    fn test_valid_schema_inferred_for_hackernews_patio11_own_post_comments() -> Result<(), String> {
+        let query = include_str!("../example_queries/hackernews_patio11_own_post_comments.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type HackerNewsComment implements _AnonType2 {
+  text: String
+  topmostAncestor: [_AnonType3]
+}
+
+type HackerNewsStory implements _AnonType3 {
+  byUsername: String
+  score: String
+  url: String
+}
+
+type RootSchemaQuery {
+  HackerNewsUser(name: String): [_AnonType1]
+}
+
+type _AnonType1 {
+  submitted: [_AnonType2]
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+interface _AnonType3 {
+  _AnonField: String
+}
+";
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+        #[test]
+    fn test_valid_schema_inferred_for_repos_with_min_hackernews_points() -> Result<(), String> {
+        let query = include_str!("../example_queries/repos_with_min_hackernews_points.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubRepository implements _AnonType2 {
+  url: String
+}
+
+type HackerNewsStory implements _AnonType1 {
+  link: [_AnonType2]
+  score: String
+}
+
+type RootSchemaQuery {
+  HackerNewsTop(max: Int): [_AnonType1]
+}
+
+interface _AnonType1 {
+  _AnonField: String
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+";
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+}
