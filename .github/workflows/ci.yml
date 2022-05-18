@@ -47,6 +47,7 @@ jobs:
             target/
             trustfall_core/target/
             pytrustfall/target/
+            experiments/schemaless/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up python
@@ -134,6 +135,7 @@ jobs:
             target/
             trustfall_core/target/
             pytrustfall/target/
+            experiments/schemaless/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: cargo clippy
@@ -170,6 +172,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
+            trustfall_core/target/
+            pytrustfall/target/
+            experiments/schemaless/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: cargo test
