@@ -221,12 +221,40 @@ impl InferredSchema {
         Ok(())
     }
 
-    pub(crate) fn into_schema(self) -> String {
+    /// Ensure that every type that implements interfaces has all the fields those interfaces have.
+    pub(crate) fn normalize(&mut self) {
+        let mut needed_fields: BTreeMap<Rc<str>, BTreeMap<Rc<str>, InferredField>> =
+            Default::default();
+        for (type_name, type_def) in self.types.iter() {
+            for implemented in &type_def.implements {
+                let implemented_ty = &self.types[implemented];
+                for (field_name, field_def) in &implemented_ty.fields {
+                    if !type_def.fields.contains_key(field_name) {
+                        needed_fields
+                            .entry(type_name.clone())
+                            .or_default()
+                            .insert(field_name.clone(), field_def.clone());
+                    }
+                }
+            }
+        }
+
+        for (type_name, fields_to_add) in needed_fields {
+            self.types
+                .get_mut(&type_name)
+                .expect("type was never added")
+                .fields
+                .extend(fields_to_add);
+        }
+    }
+
+    pub(crate) fn into_schema(mut self) -> String {
+        self.normalize();
+
         let root_type = self.root_type.as_ref();
         let mut components: Vec<String> = Vec::with_capacity(1000);
         components.push(format!(
-            "
-schema {{
+            "schema {{
     query: {root_type}
 }}
 "
@@ -250,7 +278,13 @@ schema {{
         let is_interface = self
             .types
             .iter()
-            .filter_map(|(k, v)| if k.as_ref() != type_name { Some(v) } else { None })
+            .filter_map(|(k, v)| {
+                if k.as_ref() != type_name {
+                    Some(v)
+                } else {
+                    None
+                }
+            })
             .flat_map(|v| v.implements.iter())
             .any(|implemented| implemented.as_ref() == type_name);
         let type_kind = if is_interface { "interface" } else { "type" };
@@ -271,18 +305,27 @@ schema {{
         // e.g. "type Foo implements Bar & Baz {\n"
         buffer.push(format!("{type_kind} {type_name}{implemented} {{\n"));
 
-        if type_info.fields.is_empty() {
+        // Check if any of the interfaces this type implements have no known fields,
+        // and therefore have had a synthetic "anonymous" field added.
+        // If so, then that field must be added to all implementors as well.
+        let needs_synthetic_field = type_info
+            .implements
+            .iter()
+            .any(|implemented_type| self.types[implemented_type].fields.is_empty());
+
+        if type_info.fields.is_empty() || needs_synthetic_field {
             // GraphQL schemas do not allow types or interfaces to have no fields.
             // Add a synthetic "anonymous" field instead.
             let field_name = Self::ANONYMOUS_FIELD_NAME;
             let field_info = InferredField::new(InferredType::Unknown);
 
             self.write_type_field_into_schema_buffer(buffer, field_name, &field_info);
-        } else {
-            for (field_name, field_info) in type_info.fields.iter() {
-                self.write_type_field_into_schema_buffer(buffer, field_name.as_ref(), field_info);
-            }
         }
+
+        for (field_name, field_info) in type_info.fields.iter() {
+            self.write_type_field_into_schema_buffer(buffer, field_name.as_ref(), field_info);
+        }
+
         buffer.push("}\n\n".to_string());
     }
 
@@ -605,6 +648,8 @@ fn infer_type_for_value(value: &Value) -> Result<InferredType, String> {
 
 #[cfg(test)]
 mod tests {
+    use trustfall_core::schema::Schema;
+
     use crate::infer_schema_from_query;
 
     #[test]
@@ -624,142 +669,19 @@ directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
 
 type GitHubActionsImportedStep implements _AnonType5 {
+  _AnonField: String
   name: String
   uses: String
 }
 
 type GitHubRepository implements _AnonType2 {
+  _AnonField: String
   url: String
   workflows: [_AnonType3]
 }
 
 type HackerNewsStory implements _AnonType1 {
-  link: [_AnonType2]
-  score: String
-}
-
-type RootSchemaQuery {
-  HackerNewsTop(max: Int): [_AnonType1]
-}
-
-interface _AnonType1 {
   _AnonField: String
-}
-
-interface _AnonType2 {
-  _AnonField: String
-}
-
-type _AnonType3 {
-  jobs: [_AnonType4]
-  name: String
-  path: String
-}
-
-type _AnonType4 {
-  name: String
-  step: [_AnonType5]
-}
-
-interface _AnonType5 {
-  _AnonField: String
-}";
-
-        let schema_text = infer_schema_from_query(query)?;
-        assert_eq!(expected_schema.trim(), schema_text.trim());
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_valid_schema_inferred_for_crates_io_github_actions() -> Result<(), String> {
-        let query = include_str!("../example_queries/crates_io_github_actions.graphql");
-
-        let expected_schema = "
-schema {
-    query: RootSchemaQuery
-}
-
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
-directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
-directive @fold on FIELD
-
-type GitHubActionsImportedStep implements _AnonType5 {
-  name: String
-  uses: String
-}
-
-type GitHubRepository implements _AnonType2 {
-  url: String
-  workflows: [_AnonType3]
-}
-
-type RootSchemaQuery {
-  MostDownloadedCrates: [_AnonType1]
-}
-
-type _AnonType1 {
-  latestVersion: String
-  name: String
-  repository: [_AnonType2]
-}
-
-interface _AnonType2 {
-  _AnonField: String
-}
-
-type _AnonType3 {
-  jobs: [_AnonType4]
-  name: String
-  path: String
-}
-
-type _AnonType4 {
-  name: String
-  runsOn: String
-  step: [_AnonType5]
-}
-
-interface _AnonType5 {
-  _AnonField: String
-}";
-
-        let schema_text = infer_schema_from_query(query)?;
-        assert_eq!(expected_schema.trim(), schema_text.trim());
-
-        Ok(())
-    }
-
-        #[test]
-    fn test_valid_schema_inferred_for_hackernews_github_projects() -> Result<(), String> {
-        let query = include_str!("../example_queries/hackernews_github_projects.graphql");
-
-        let expected_schema = "
-schema {
-    query: RootSchemaQuery
-}
-
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
-directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
-directive @fold on FIELD
-
-type GitHubActionsImportedStep implements _AnonType5 {
-  name: String
-  uses: String
-}
-
-type GitHubRepository implements _AnonType2 {
-  url: String
-  workflows: [_AnonType3]
-}
-
-type HackerNewsStory implements _AnonType1 {
   link: [_AnonType2]
   score: String
 }
@@ -792,13 +714,155 @@ interface _AnonType5 {
 }
 ";
 
+        // Ensure the expected schema is actually a valid schema.
+        Schema::parse(expected_schema).map_err(|e| e.to_string())?;
+
         let schema_text = infer_schema_from_query(query)?;
         assert_eq!(expected_schema.trim(), schema_text.trim());
 
         Ok(())
     }
 
-        #[test]
+    #[test]
+    fn test_valid_schema_inferred_for_crates_io_github_actions() -> Result<(), String> {
+        let query = include_str!("../example_queries/crates_io_github_actions.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubActionsImportedStep implements _AnonType5 {
+  _AnonField: String
+  name: String
+  uses: String
+}
+
+type GitHubRepository implements _AnonType2 {
+  _AnonField: String
+  url: String
+  workflows: [_AnonType3]
+}
+
+type RootSchemaQuery {
+  MostDownloadedCrates: [_AnonType1]
+}
+
+type _AnonType1 {
+  latestVersion: String
+  name: String
+  repository: [_AnonType2]
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+type _AnonType3 {
+  jobs: [_AnonType4]
+  name: String
+  path: String
+}
+
+type _AnonType4 {
+  name: String
+  runsOn: String
+  step: [_AnonType5]
+}
+
+interface _AnonType5 {
+  _AnonField: String
+}
+";
+
+        // Ensure the expected schema is actually a valid schema.
+        Schema::parse(expected_schema).map_err(|e| e.to_string())?;
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_valid_schema_inferred_for_hackernews_github_projects() -> Result<(), String> {
+        let query = include_str!("../example_queries/hackernews_github_projects.graphql");
+
+        let expected_schema = "
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type GitHubActionsImportedStep implements _AnonType5 {
+  _AnonField: String
+  name: String
+  uses: String
+}
+
+type GitHubRepository implements _AnonType2 {
+  _AnonField: String
+  url: String
+  workflows: [_AnonType3]
+}
+
+type HackerNewsStory implements _AnonType1 {
+  _AnonField: String
+  link: [_AnonType2]
+  score: String
+}
+
+type RootSchemaQuery {
+  HackerNewsTop(max: Int): [_AnonType1]
+}
+
+interface _AnonType1 {
+  _AnonField: String
+}
+
+interface _AnonType2 {
+  _AnonField: String
+}
+
+type _AnonType3 {
+  jobs: [_AnonType4]
+  name: String
+  path: String
+}
+
+type _AnonType4 {
+  name: String
+  step: [_AnonType5]
+}
+
+interface _AnonType5 {
+  _AnonField: String
+}
+";
+
+        // Ensure the expected schema is actually a valid schema.
+        Schema::parse(expected_schema).map_err(|e| e.to_string())?;
+
+        let schema_text = infer_schema_from_query(query)?;
+        assert_eq!(expected_schema.trim(), schema_text.trim());
+
+        Ok(())
+    }
+
+    #[test]
     fn test_valid_schema_inferred_for_hackernews_github_run_steps() -> Result<(), String> {
         let query = include_str!("../example_queries/hackernews_github_run_steps.graphql");
 
@@ -815,17 +879,20 @@ directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
 
 type GitHubActionsRunStep implements _AnonType5 {
+  _AnonField: String
   env: [_AnonType6]
   name: String
   run: String
 }
 
 type GitHubRepository implements _AnonType2 {
+  _AnonField: String
   url: String
   workflows: [_AnonType3]
 }
 
 type HackerNewsStory implements _AnonType1 {
+  _AnonField: String
   link: [_AnonType2]
   score: String
 }
@@ -864,13 +931,16 @@ type _AnonType6 {
 }
 ";
 
+        // Ensure the expected schema is actually a valid schema.
+        Schema::parse(expected_schema).map_err(|e| e.to_string())?;
+
         let schema_text = infer_schema_from_query(query)?;
         assert_eq!(expected_schema.trim(), schema_text.trim());
 
         Ok(())
     }
 
-        #[test]
+    #[test]
     fn test_valid_schema_inferred_for_hackernews_patio11_own_post_comments() -> Result<(), String> {
         let query = include_str!("../example_queries/hackernews_patio11_own_post_comments.graphql");
 
@@ -887,11 +957,13 @@ directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
 
 type HackerNewsComment implements _AnonType2 {
+  _AnonField: String
   text: String
   topmostAncestor: [_AnonType3]
 }
 
 type HackerNewsStory implements _AnonType3 {
+  _AnonField: String
   byUsername: String
   score: String
   url: String
@@ -914,13 +986,16 @@ interface _AnonType3 {
 }
 ";
 
+        // Ensure the expected schema is actually a valid schema.
+        Schema::parse(expected_schema).map_err(|e| e.to_string())?;
+
         let schema_text = infer_schema_from_query(query)?;
         assert_eq!(expected_schema.trim(), schema_text.trim());
 
         Ok(())
     }
 
-        #[test]
+    #[test]
     fn test_valid_schema_inferred_for_repos_with_min_hackernews_points() -> Result<(), String> {
         let query = include_str!("../example_queries/repos_with_min_hackernews_points.graphql");
 
@@ -937,10 +1012,12 @@ directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
 
 type GitHubRepository implements _AnonType2 {
+  _AnonField: String
   url: String
 }
 
 type HackerNewsStory implements _AnonType1 {
+  _AnonField: String
   link: [_AnonType2]
   score: String
 }
@@ -957,6 +1034,8 @@ interface _AnonType2 {
   _AnonField: String
 }
 ";
+        // Ensure the expected schema is actually a valid schema.
+        Schema::parse(expected_schema).map_err(|e| e.to_string())?;
 
         let schema_text = infer_schema_from_query(query)?;
         assert_eq!(expected_schema.trim(), schema_text.trim());

@@ -1,4 +1,4 @@
-use std::{fs, env};
+use std::{env, fs};
 
 mod schema_inference;
 
@@ -23,7 +23,7 @@ fn main() {
                 assert!(reversed_args.is_empty());
                 make_schema(path)
             }
-        }
+        },
         Some(cmd) => panic!("Unrecognized command given: {}", cmd),
     }
 }
