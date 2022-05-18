@@ -1,0 +1,14 @@
+{
+  HackerNewsTop(max: 1000) {
+    ... on HackerNewsStory {
+      score @filter(op: ">=", value: ["$min_score"])
+            @output
+
+      link {
+        ... on GitHubRepository {
+          url @output
+        }
+      }
+    }
+  }
+}

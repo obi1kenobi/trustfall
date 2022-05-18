@@ -1,0 +1,14 @@
+[package]
+name = "schemaless"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-graphql-parser = "2.11.3"
+async-graphql-value = "2.11.3"
+derive-new = "0.5.9"
+lazy_static = "1.4.0"
+maplit = "1.0.2"
+trustfall_core = { path = "../../trustfall_core" }

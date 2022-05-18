@@ -7,4 +7,5 @@ members = [
     "demo-metar",
     "demo-feeds",
     "demo-hytradboi",
+    "experiments/schemaless",
 ]
