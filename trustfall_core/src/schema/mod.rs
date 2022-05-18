@@ -81,7 +81,6 @@ lazy_static! {
 }
 
 impl Schema {
-
     pub const ALL_DIRECTIVE_DEFINITIONS: &'static str = "
 directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
 directive @tag(name: String) on FIELD
