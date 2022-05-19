@@ -8,4 +8,5 @@ members = [
     "demo-feeds",
     "demo-hytradboi",
     "experiments/schemaless",
+    "experiments/schemaless_wasm",
 ]
