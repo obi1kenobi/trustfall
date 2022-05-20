@@ -81,6 +81,15 @@ lazy_static! {
 }
 
 impl Schema {
+    pub const ALL_DIRECTIVE_DEFINITIONS: &'static str = "
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+";
+
     pub fn parse(input: impl AsRef<str>) -> Result<Self, InvalidSchemaError> {
         let doc = parse_schema(input)?;
         Self::new(doc)
@@ -750,6 +759,9 @@ mod tests {
         input_path.push(format!("{}.graphql", stem));
 
         let input_data = fs::read_to_string(input_path).unwrap();
+
+        // Ensure all test schemas contain the directive definitions this module promises are valid.
+        assert!(input_data.contains(Schema::ALL_DIRECTIVE_DEFINITIONS));
 
         match Schema::parse(input_data) {
             Ok(_) => {}
