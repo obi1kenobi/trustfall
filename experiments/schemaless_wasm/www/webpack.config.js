@@ -9,6 +9,12 @@ module.exports = {
   },
   mode: "development",
   plugins: [
-    new CopyWebpackPlugin(['index.html'])
+    new HTMLPlugin({
+        title: 'Query-based Schema Generator',
+        meta: {
+          viewport: 'minimum-scale=1, initial-scale=1, width=device-width',
+        },
+        template: 'src/index.ejs',
+      })
   ],
 };
