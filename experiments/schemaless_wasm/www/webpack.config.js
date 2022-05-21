@@ -6,7 +6,7 @@ module.exports = (env) => {
     const isDev = env !== 'production'
     const mode = isDev ? 'development' : 'production'
     return {
-        entry: "./bootstrap.js",
+        entry: "./bootstrap.ts",
         output: {
             path: path.resolve(__dirname, "dist"),
             filename: "bootstrap.js",
