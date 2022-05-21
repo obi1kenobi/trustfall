@@ -14,7 +14,7 @@ module.exports = {
         meta: {
           viewport: 'minimum-scale=1, initial-scale=1, width=device-width',
         },
-        template: 'src/index.ejs',
+        template: './index.ejs',
       })
   ],
 };
