@@ -12,5 +12,10 @@
     },
     "rules": {
         "@typescript-eslint/no-var-requires": 0
+    },
+    "settings": {
+        "react": {
+            "version": "18"
+        }
     }
 }
