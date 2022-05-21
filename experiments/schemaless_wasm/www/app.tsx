@@ -40,7 +40,7 @@ export default function App(): JSX.Element {
     const [schema, setSchema] = useState('');
 
     const handleQueryChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-        console.log("Setting query")
+        console.log('Setting query');
         setQuery(evt.currentTarget.value);
     };
 
@@ -50,7 +50,7 @@ export default function App(): JSX.Element {
         } catch (e) {
             setSchema(e as string);
         }
-    }, [])
+    }, [query]);
 
     return (
         <main>

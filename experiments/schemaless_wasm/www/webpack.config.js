@@ -1,14 +1,14 @@
 const HTMLPlugin = require('html-webpack-plugin');
-const path = require("path");
+const path = require('path');
 
 module.exports = (env) => {
-    const isDev = env !== 'production'
-    const mode = isDev ? 'development' : 'production'
+    const isDev = env !== 'production';
+    const mode = isDev ? 'development' : 'production';
     return {
-        entry: "./bootstrap.ts",
+        entry: './bootstrap.ts',
         output: {
-            path: path.resolve(__dirname, "dist"),
-            filename: "bootstrap.js",
+            path: path.resolve(__dirname, 'dist'),
+            filename: 'bootstrap.js',
         },
         devtool: isDev ? 'cheap-module-source-map' : 'source-map',
         mode,
@@ -16,15 +16,15 @@ module.exports = (env) => {
             extensions: ['.tsx', '.ts', '.js', '.json'],
         },
         experiments: {
-            asyncWebAssembly: true
+            asyncWebAssembly: true,
         },
         plugins: [
             new HTMLPlugin({
-              title: 'Query-based Schema Generator',
-              meta: {
-                  viewport: 'minimum-scale=1, initial-scale=1, width=device-width',
-              },
-              template: "./index.ejs",
+                title: 'Query-based Schema Generator',
+                meta: {
+                    viewport: 'minimum-scale=1, initial-scale=1, width=device-width',
+                },
+                template: './index.ejs',
             }),
         ],
         module: {
@@ -33,7 +33,7 @@ module.exports = (env) => {
                     test: /\.(js|ts|tsx)$/,
                     use: {
                         loader: 'babel-loader',
-                        options: {cacheDirectory: true, envName: mode},
+                        options: { cacheDirectory: true, envName: mode },
                     },
                     exclude: /node_modules/,
                 },
@@ -41,7 +41,7 @@ module.exports = (env) => {
                     test: /\.(eot|otf|svg|ttf|woff|woff2|gif)$/,
                     type: 'asset/resource',
                 },
-            ]
+            ],
         },
         devServer: {
             historyApiFallback: true,
@@ -53,4 +53,4 @@ module.exports = (env) => {
             },
         },
     };
-}
+};
