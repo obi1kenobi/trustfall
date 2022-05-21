@@ -46,13 +46,13 @@ module.exports = (env) => {
             ]
         },
         devServer: {
-          historyApiFallback: true,
-          host: 'localhost',
-          hot: true,
-          open: true,
-          devMiddleware: {
-            stats: 'minimal',
-          },
+            historyApiFallback: true,
+            host: 'localhost',
+            hot: true,
+            open: true,
+            devMiddleware: {
+                stats: 'minimal',
+            },
         },
     };
 }
