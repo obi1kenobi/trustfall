@@ -30,6 +30,8 @@
     "schemaless_wasm": "file:../pkg"
   },
   "devDependencies": {
+    "@babel/preset-react": "^7.17.12",
+    "@babel/preset-typescript": "^7.17.12",
     "babel-loader": "^8.2.5",
     "copy-webpack-plugin": "^5.0.0",
     "hello-wasm-pack": "^0.1.0",
