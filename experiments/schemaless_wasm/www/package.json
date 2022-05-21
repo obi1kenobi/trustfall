@@ -29,6 +29,7 @@
     },
     "homepage": "https://github.com/rustwasm/create-wasm-app#readme",
     "dependencies": {
+        "@monaco-editor/react": "^4.4.5",
         "core-js": "^3.22.5",
         "monaco-editor": "^0.33.0",
         "monaco-graphql": "^1.0.17",
@@ -52,7 +53,6 @@
         "eslint-plugin-react-hooks": "^4.5.0",
         "hello-wasm-pack": "^0.1.0",
         "html-webpack-plugin": "^5.5.0",
-        "monaco-editor-webpack-plugin": "^7.0.1",
         "prettier": "^2.6.2",
         "typescript": "^4.6.4",
         "webpack": "^5.72.1",
