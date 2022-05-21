@@ -5,7 +5,7 @@ module.exports = (env) => {
     const isDev = env !== 'production';
     const mode = isDev ? 'development' : 'production';
     return {
-        entry: './bootstrap.ts',
+        entry: './src/bootstrap.ts',
         output: {
             path: path.resolve(__dirname, 'dist'),
             filename: 'bootstrap.js',
@@ -24,7 +24,7 @@ module.exports = (env) => {
                 meta: {
                     viewport: 'minimum-scale=1, initial-scale=1, width=device-width',
                 },
-                template: './index.ejs',
+                template: './src/index.ejs',
             }),
         ],
         module: {
