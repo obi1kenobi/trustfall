@@ -50,7 +50,7 @@ export default function App(): JSX.Element {
         } catch (e) {
             setSchema(e as string);
         }
-    }, [query])
+    }, [])
 
     return (
         <main>

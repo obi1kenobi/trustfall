@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "webpack --config webpack.config.js",
-    "start": "webpack-dev-server"
+    "start": "webpack-dev-server",
+    "lint": "tsc && eslint --ext=tsx,ts,js ."
   },
   "repository": {
     "type": "git",
@@ -37,8 +38,15 @@
     "@babel/preset-typescript": "^7.17.12",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
+    "@types/webpack-env": "^1.17.0",
+    "@typescript-eslint/eslint-plugin": "^5.25.0",
+    "@typescript-eslint/parser": "^5.25.0",
     "babel-loader": "^8.2.5",
     "copy-webpack-plugin": "^5.0.0",
+    "eslint": "^8.16.0",
+    "eslint-config-typescript": "^3.0.0",
+    "eslint-plugin-react": "^7.30.0",
+    "eslint-plugin-react-hooks": "^4.5.0",
     "hello-wasm-pack": "^0.1.0",
     "html-webpack-plugin": "^5.5.0",
     "prettier": "^2.6.2",

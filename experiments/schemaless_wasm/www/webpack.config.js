@@ -1,4 +1,3 @@
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HTMLPlugin = require('html-webpack-plugin');
 const path = require("path");
 
@@ -11,7 +10,6 @@ module.exports = (env) => {
             path: path.resolve(__dirname, "dist"),
             filename: "bootstrap.js",
         },
-        mode: "development",
         devtool: isDev ? 'cheap-module-source-map' : 'source-map',
         mode,
         resolve: {
