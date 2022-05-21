@@ -8,7 +8,7 @@ console.log("from JS: result=", result);
 const iter = wasm.get_iterator();
 const next = iter.next();
 
-function make_iter(iter) {
+function make_iter(iter: wasm.MyIterator): IterableIterator<unknown> {
     return {
         "next": function () {
             const n = iter.next();
