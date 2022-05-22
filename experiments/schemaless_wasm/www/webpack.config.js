@@ -1,5 +1,4 @@
 const HTMLPlugin = require('html-webpack-plugin');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const path = require('path');
 
 module.exports = (env) => {
@@ -41,6 +40,10 @@ module.exports = (env) => {
                 {
                     test: /\.(eot|otf|svg|ttf|woff|woff2|gif)$/,
                     type: 'asset/resource',
+                },
+                {
+                    test: /\.graphql$/,
+                    type: 'asset/source',
                 },
             ],
         },

@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 
 import * as wasm from 'schemaless_wasm';
+import { EXAMPLE_QUERY_MAP } from './exampleQueries';
 
 wasm.init();
 
@@ -47,22 +48,41 @@ console.log('from JS: wrapped=', wrapped.next());
 const arr = Array.from(make_iter(wasm.get_iterator()));
 console.log('from JS: arr=', arr);
 
+const queryOptions: Array<keyof EXAMPLE_QUERY_MAP> = [
+    'actions_in_repos_with_min_hn_pts',
+    'crates_io_github_actions',
+    'hackernews_patio11_own_post_comments',
+    'repos_with_min_hackernews_points',
+];
+
 export default function App(): JSX.Element {
     const [query, setQuery] = useState('');
     const [schema, setSchema] = useState('');
-    const [exampleQueryId, setExampleQueryId] = useState('');
+    const [exampleQueryId, setExampleQueryId] = useState<keyof EXAMPLE_QUERY_MAP>('');
 
     const handleExampleQueryChange = (evt: SelectChangeEvent) => {
-        setExampleQueryId(evt.currentTarget.value);
+        setExampleQueryId(evt.target.value);
     };
 
     useEffect(() => {
-        try {
-            setSchema(wasm.infer_schema(query));
-        } catch (e) {
-            setSchema(e as string);
+        if (query === '') {
+            setSchema('# Enter a query on the left, or select an example query from the dropdown.');
+        } else {
+            try {
+                setSchema(wasm.infer_schema(query));
+            } catch (e) {
+                setSchema(e as string);
+            }
         }
     }, [query]);
+
+    useEffect(() => {
+        if (exampleQueryId) {
+            setQuery(EXAMPLE_QUERY_MAP[exampleQueryId].query);
+        } else {
+            setQuery('');
+        }
+    }, [exampleQueryId]);
 
     return (
         <>
@@ -80,6 +100,11 @@ export default function App(): JSX.Element {
                                 onChange={handleExampleQueryChange}
                             >
                                 <MenuItem value="">None</MenuItem>
+                                {queryOptions.map((key) => (
+                                    <MenuItem key={key} value={key}>
+                                        {EXAMPLE_QUERY_MAP[key].label}
+                                    </MenuItem>
+                                ))}
                             </Select>
                         </FormControl>
                     </Typography>
