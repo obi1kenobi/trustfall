@@ -29,7 +29,10 @@
     },
     "homepage": "https://github.com/rustwasm/create-wasm-app#readme",
     "dependencies": {
+        "@emotion/react": "^11.9.0",
+        "@emotion/styled": "^11.8.1",
         "@monaco-editor/react": "^4.4.5",
+        "@mui/material": "^5.8.0",
         "core-js": "^3.22.5",
         "monaco-editor": "^0.33.0",
         "monaco-graphql": "^1.0.17",
