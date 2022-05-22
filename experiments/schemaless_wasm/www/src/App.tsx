@@ -1,4 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
+import {
+    Box,
+    GlobalStyles,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    SelectChangeEvent,
+    Typography,
+} from '@mui/material';
+
 import * as wasm from 'schemaless_wasm';
 
 wasm.init();
@@ -38,10 +50,10 @@ console.log('from JS: arr=', arr);
 export default function App(): JSX.Element {
     const [query, setQuery] = useState('');
     const [schema, setSchema] = useState('');
+    const [exampleQueryId, setExampleQueryId] = useState('');
 
-    const handleQueryChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-        console.log('Setting query');
-        setQuery(evt.currentTarget.value);
+    const handleExampleQueryChange = (evt: SelectChangeEvent) => {
+        setExampleQueryId(evt.currentTarget.value);
     };
 
     useEffect(() => {
@@ -53,22 +65,57 @@ export default function App(): JSX.Element {
     }, [query]);
 
     return (
-        <main>
-            <textarea
-                value={query}
-                onChange={handleQueryChange}
-                rows={40}
-                cols={80}
-                placeholder="Enter your query here..."
-                autoFocus
-            />
-            <textarea
-                value={schema}
-                rows={40}
-                cols={80}
-                placeholder="Your generated schema will appear here..."
-                readOnly
-            />
-        </main>
+        <>
+            <GlobalStyles styles={{ body: { fontFamily: 'Roboto' } }} />
+            <Box sx={{ display: 'flex' }}>
+                <Box sx={{ flex: '1 0 auto' }}>
+                    <Typography variant="h4" component="h1" sx={{ my: 2 }}>
+                        Query
+                        <FormControl sx={{ mx: 2, minWidth: 200 }} size="small">
+                            <InputLabel id="example-query-select">Example Query</InputLabel>
+                            <Select
+                                labelId="example-query-select"
+                                label="Example Query"
+                                value={exampleQueryId}
+                                onChange={handleExampleQueryChange}
+                            >
+                                <MenuItem value="">None</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Typography>
+                    <Box sx={{ border: '1px solid #eee' }}>
+                        <Editor
+                            defaultLanguage="graphql"
+                            value={query}
+                            onChange={setQuery}
+                            height="500px"
+                            options={{
+                                minimap: {
+                                    enabled: false,
+                                },
+                            }}
+                        />
+                    </Box>
+                </Box>
+                <Box sx={{ flex: '1 0 auto', marginLeft: 2 }}>
+                    <Typography variant="h4" component="h1" sx={{ my: 2 }}>
+                        Generated Schema
+                    </Typography>
+                    <Box sx={{ border: '1px solid #eee' }}>
+                        <Editor
+                            defaultLanguage="graphql"
+                            value={schema}
+                            height="500px"
+                            options={{
+                                minimap: {
+                                    enabled: false,
+                                },
+                            }}
+                            readOnly={false}
+                        />
+                    </Box>
+                </Box>
+            </Box>
+        </>
     );
 }
