@@ -133,11 +133,11 @@ export default function App(): JSX.Element {
                             value={schema}
                             height="500px"
                             options={{
+                                readOnly: true,
                                 minimap: {
                                     enabled: false,
                                 },
                             }}
-                            readOnly={false}
                         />
                     </Box>
                 </Box>
