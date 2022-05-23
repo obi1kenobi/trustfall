@@ -48,7 +48,7 @@ console.log('from JS: wrapped=', wrapped.next());
 const arr = Array.from(make_iter(wasm.get_iterator()));
 console.log('from JS: arr=', arr);
 
-const queryOptions: Array<keyof EXAMPLE_QUERY_MAP> = [
+const queryOptions: Array<keyof typeof EXAMPLE_QUERY_MAP> = [
     'actions_in_repos_with_min_hn_pts',
     'crates_io_github_actions',
     'hackernews_patio11_own_post_comments',
@@ -56,22 +56,27 @@ const queryOptions: Array<keyof EXAMPLE_QUERY_MAP> = [
 ];
 
 export default function App(): JSX.Element {
-    const [query, setQuery] = useState('');
+    const [query, setQuery] = useState<string | undefined>('');
     const [schema, setSchema] = useState('');
-    const [exampleQueryId, setExampleQueryId] = useState<keyof EXAMPLE_QUERY_MAP>('');
+    const [exampleQueryId, setExampleQueryId] = useState<
+        keyof typeof EXAMPLE_QUERY_MAP | undefined
+    >(undefined);
 
     const handleExampleQueryChange = (evt: SelectChangeEvent) => {
-        setExampleQueryId(evt.target.value);
+        const { value } = evt.target;
+        if (value in EXAMPLE_QUERY_MAP) {
+            setExampleQueryId(value as keyof typeof EXAMPLE_QUERY_MAP);
+        }
     };
 
     useEffect(() => {
-        if (query === '') {
+        if (!query || query === '') {
             setSchema('# Enter a query on the left, or select an example query from the dropdown.');
         } else {
             try {
                 setSchema(wasm.infer_schema(query));
             } catch (e) {
-                const message = `# An error was encountered:\n${e}`
+                const message = `# An error was encountered:\n${e}`;
                 setSchema(message);
             }
         }
