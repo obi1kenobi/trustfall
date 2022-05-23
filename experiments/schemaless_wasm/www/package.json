@@ -8,6 +8,7 @@
     },
     "scripts": {
         "build": "webpack --config webpack.config.js",
+        "build:wasm": "wasm-pack build ../",
         "start": "webpack-dev-server",
         "lint": "tsc && eslint --ext=tsx,ts,js . && prettier --check .",
         "fix": "eslint --fix --ext=js,jsx,ts,tsx . && prettier --write ."
@@ -34,8 +35,6 @@
         "@monaco-editor/react": "^4.4.5",
         "@mui/material": "^5.8.0",
         "core-js": "^3.22.5",
-        "monaco-editor": "^0.33.0",
-        "monaco-graphql": "^1.0.17",
         "react": "^18.1.0",
         "react-dom": "^18.1.0",
         "schemaless_wasm": "file:../pkg"
