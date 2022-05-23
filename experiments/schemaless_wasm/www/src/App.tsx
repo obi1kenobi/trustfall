@@ -71,7 +71,8 @@ export default function App(): JSX.Element {
             try {
                 setSchema(wasm.infer_schema(query));
             } catch (e) {
-                setSchema(e as string);
+                const message = `# An error was encountered:\n${e}`
+                setSchema(message);
             }
         }
     }, [query]);
