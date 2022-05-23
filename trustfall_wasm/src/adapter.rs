@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
@@ -43,7 +43,7 @@ extern "C" {
 pub struct EdgeParameters {}  // TODO
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct WrappedContext(DataContext<JsValue>);
 
 #[wasm_bindgen]
@@ -59,6 +59,8 @@ impl WrappedContext {
 #[wasm_bindgen]
 pub struct ContextIterator {
     iter: Box<dyn Iterator<Item = DataContext<JsValue>>>,
+    registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
+    next_item: u32,
 }
 
 #[wasm_bindgen]
@@ -84,11 +86,21 @@ impl RawIteratorItem {
 #[wasm_bindgen]
 impl ContextIterator {
     fn new(iter: Box<dyn Iterator<Item = DataContext<JsValue>>>) -> Self {
-        Self { iter }
+        Self {
+            iter,
+            registry: Rc::from(RefCell::new(Default::default())),
+            next_item: 0,
+        }
     }
 
     pub fn advance(&mut self) -> RawIteratorItem {
         let next = self.iter.next();
+        if let Some(ctx) = next.clone() {
+            let next_item = self.next_item;
+            self.next_item = self.next_item.wrapping_add(1);
+            let existing = self.registry.borrow_mut().insert(next_item, ctx);
+            assert!(existing.is_none(), "id {} already inserted with value {:?}", next_item, existing);
+        }
         RawIteratorItem::new(next)
     }
 }
@@ -122,11 +134,13 @@ impl Iterator for TokenIterator {
 
 struct ContextAndValueIterator {
     inner: js_sys::Iterator,
+    registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
+    next_item: u32,
 }
 
 impl ContextAndValueIterator {
-    fn new(inner: js_sys::Iterator) -> Self {
-        Self { inner }
+    fn new(inner: js_sys::Iterator, registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>) -> Self {
+        Self { inner, registry, next_item: 0 }
     }
 }
 
@@ -140,12 +154,40 @@ impl Iterator for ContextAndValueIterator {
             .expect("unexpected value returned from JS iterator next()");
 
         if iter_next.done() {
+            assert!(self.registry.borrow().is_empty());
             None
         } else {
+            let next_item = self.next_item;
+            self.next_item = self.next_item.wrapping_add(1);
+            let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
+
             let value = iter_next.value();
-            Some(todo!())
+            let field_value = if value.is_null() {
+                FieldValue::Null
+            } else if let Some(s) = value.as_string() {
+                FieldValue::String(s)
+            } else if let Some(f) = value.as_f64() {
+                FieldValue::Float64(f)
+            } else if let Some(b) = value.as_bool() {
+                FieldValue::Boolean(b)
+            } else {
+                panic!("unhandled value: {:?}", value)
+            };
+
+            Some((ctx, field_value))
         }
     }
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub struct WrappedValue(FieldValue);
+
+#[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub struct ContextAndFieldValue {
+    context: WrappedContext,
+    value: WrappedValue,
 }
 
 struct AdapterShim {
@@ -175,8 +217,10 @@ impl Adapter<'static> for AdapterShim {
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'static> {
-        let js_iter = self.inner.project_property(ContextIterator::new(data_contexts), current_type_name.as_ref(), field_name.as_ref());
-        Box::new(ContextAndValueIterator::new(js_iter))
+        let ctx_iter = ContextIterator::new(data_contexts);
+        let registry = ctx_iter.registry.clone();
+        let js_iter = self.inner.project_property(ctx_iter, current_type_name.as_ref(), field_name.as_ref());
+        Box::new(ContextAndValueIterator::new(js_iter, registry))
     }
 
     fn project_neighbors(
