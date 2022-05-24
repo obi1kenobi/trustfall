@@ -6,6 +6,8 @@ use trustfall_core::{
 };
 use wasm_bindgen::prelude::*;
 
+use crate::shim::{EdgeParameters, ContextIterator, ReturnedContextIdAndValue};
+
 #[wasm_bindgen]
 extern "C" {
     pub type JsAdapter;
@@ -37,72 +39,6 @@ extern "C" {
         current_type_name: &str,
         coerce_to_type_name: &str,
     ) -> js_sys::Iterator;
-}
-
-#[wasm_bindgen]
-pub struct EdgeParameters {}  // TODO
-
-#[wasm_bindgen]
-#[derive(Debug, Clone)]
-pub struct WrappedContext(DataContext<JsValue>);
-
-#[wasm_bindgen]
-impl WrappedContext {
-    pub fn current_token(&self) -> JsValue {
-        match self.0.current_token.as_ref() {
-            None => JsValue::NULL,
-            Some(v) => v.clone()
-        }
-    }
-}
-
-#[wasm_bindgen]
-pub struct ContextIterator {
-    iter: Box<dyn Iterator<Item = DataContext<JsValue>>>,
-    registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
-    next_item: u32,
-}
-
-#[wasm_bindgen]
-pub struct RawIteratorItem {
-    value: Option<WrappedContext>,
-}
-
-#[wasm_bindgen]
-impl RawIteratorItem {
-    fn new(inner: Option<DataContext<JsValue>>) -> Self {
-        Self { value: inner.map(WrappedContext) }
-    }
-
-    pub fn done(&self) -> bool {
-        self.value.is_none()
-    }
-
-    pub fn value(&self) -> Option<WrappedContext> {
-        self.value.clone()
-    }
-}
-
-#[wasm_bindgen]
-impl ContextIterator {
-    fn new(iter: Box<dyn Iterator<Item = DataContext<JsValue>>>) -> Self {
-        Self {
-            iter,
-            registry: Rc::from(RefCell::new(Default::default())),
-            next_item: 0,
-        }
-    }
-
-    pub fn advance(&mut self) -> RawIteratorItem {
-        let next = self.iter.next();
-        if let Some(ctx) = next.clone() {
-            let next_item = self.next_item;
-            self.next_item = self.next_item.wrapping_add(1);
-            let existing = self.registry.borrow_mut().insert(next_item, ctx);
-            assert!(existing.is_none(), "id {} already inserted with value {:?}", next_item, existing);
-        }
-        RawIteratorItem::new(next)
-    }
 }
 
 struct TokenIterator {
@@ -158,36 +94,17 @@ impl Iterator for ContextAndValueIterator {
             None
         } else {
             let next_item = self.next_item;
+
+            let next_element: ReturnedContextIdAndValue  = iter_next.value().into_serde().expect("not a legal iterator element");
+            assert_eq!(next_element.local_id, next_item);
+
             self.next_item = self.next_item.wrapping_add(1);
+
             let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
 
-            let value = iter_next.value();
-            let field_value = if value.is_null() {
-                FieldValue::Null
-            } else if let Some(s) = value.as_string() {
-                FieldValue::String(s)
-            } else if let Some(f) = value.as_f64() {
-                FieldValue::Float64(f)
-            } else if let Some(b) = value.as_bool() {
-                FieldValue::Boolean(b)
-            } else {
-                panic!("unhandled value: {:?}", value)
-            };
-
-            Some((ctx, field_value))
+            Some((ctx, next_element.value))
         }
     }
-}
-
-#[wasm_bindgen]
-#[derive(Debug, Clone)]
-pub struct WrappedValue(FieldValue);
-
-#[wasm_bindgen]
-#[derive(Debug, Clone)]
-pub struct ContextAndFieldValue {
-    context: WrappedContext,
-    value: WrappedValue,
 }
 
 struct AdapterShim {

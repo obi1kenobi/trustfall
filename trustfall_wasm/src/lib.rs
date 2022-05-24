@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 #[macro_use] mod util;
 pub mod adapter;
+pub mod shim;
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
