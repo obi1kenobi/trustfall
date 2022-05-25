@@ -95,20 +95,32 @@ impl Iterator for ContextAndValueIterator {
         } else {
             let next_item = self.next_item;
 
-            let next_element: ReturnedContextIdAndValue  = iter_next.value().into_serde().expect("not a legal iterator element");
+            let value = iter_next.value();
+            log!("received={:?}", value);
+
+            // let value_str = value.as_string().expect("value was not a string");
+            // let next_element: ReturnedContextIdAndValue = serde_json::from_str(value_str.as_str()).expect("serde deserialization failed");
+
+            let next_element: ReturnedContextIdAndValue = value.into_serde().expect("not a legal iterator element");
             assert_eq!(next_element.local_id, next_item);
 
             self.next_item = self.next_item.wrapping_add(1);
 
             let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
 
-            Some((ctx, next_element.value))
+            Some((ctx, next_element.value.into()))
         }
     }
 }
 
-struct AdapterShim {
+pub(super) struct AdapterShim {
     inner: JsAdapter,
+}
+
+impl AdapterShim {
+    pub(super) fn new(inner: JsAdapter) -> Self {
+        Self { inner }
+    }
 }
 
 #[allow(unused_variables)]

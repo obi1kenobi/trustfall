@@ -1,34 +1,76 @@
+use std::{cell::RefCell, rc::Rc};
+
 use wasm_bindgen::prelude::*;
 
-#[macro_use] mod util;
+use adapter::{AdapterShim, JsAdapter};
+
+#[macro_use]
+pub mod util;
 pub mod adapter;
 pub mod shim;
-
-pub fn set_panic_hook() {
-    // When the `console_error_panic_hook` feature is enabled, we can call the
-    // `set_panic_hook` function at least once during initialization, and then
-    // we will get better error messages if our code ever panics.
-    //
-    // For more details see
-    // https://github.com/rustwasm/console_error_panic_hook#readme
-    #[cfg(feature = "console_error_panic_hook")]
-    console_error_panic_hook::set_once();
-}
 
 // Schema
 make_wasm_bindgen_struct_with_debug_clone!(Schema, trustfall_core::schema::Schema);
 
 // Errors
-make_wasm_bindgen_struct_with_debug_clone!(InvalidSchemaError, trustfall_core::schema::error::InvalidSchemaError);
-make_wasm_bindgen_struct_with_debug_clone!(ParseError, trustfall_core::graphql_query::error::ParseError);
-make_wasm_bindgen_struct_with_debug_clone!(ValidationError, trustfall_core::frontend::error::ValidationError);
-make_wasm_bindgen_struct_with_debug_clone!(FrontendError, trustfall_core::frontend::error::FrontendError);
-make_wasm_bindgen_struct_with_debug_clone!(InvalidIRQueryError, trustfall_core::ir::indexed::InvalidIRQueryError);
-make_wasm_bindgen_struct_with_debug_clone!(QueryArgumentsError, trustfall_core::interpreter::error::QueryArgumentsError);
+make_wasm_bindgen_struct_with_debug_clone!(
+    InvalidSchemaError,
+    trustfall_core::schema::error::InvalidSchemaError
+);
+make_wasm_bindgen_struct_with_debug_clone!(
+    ParseError,
+    trustfall_core::graphql_query::error::ParseError
+);
+make_wasm_bindgen_struct_with_debug_clone!(
+    ValidationError,
+    trustfall_core::frontend::error::ValidationError
+);
+make_wasm_bindgen_struct_with_debug_clone!(
+    FrontendError,
+    trustfall_core::frontend::error::FrontendError
+);
+make_wasm_bindgen_struct_with_debug_clone!(
+    InvalidIRQueryError,
+    trustfall_core::ir::indexed::InvalidIRQueryError
+);
+make_wasm_bindgen_struct_with_debug_clone!(
+    QueryArgumentsError,
+    trustfall_core::interpreter::error::QueryArgumentsError
+);
 
 #[wasm_bindgen]
 impl Schema {
     pub fn parse(input: &str) -> Result<Schema, crate::InvalidSchemaError> {
-        trustfall_core::schema::Schema::parse(input).map(Schema::new).map_err(crate::InvalidSchemaError::new)
+        trustfall_core::schema::Schema::parse(input)
+            .map(Schema::new)
+            .map_err(crate::InvalidSchemaError::new)
     }
+}
+
+#[wasm_bindgen(start)]
+pub fn run_at_start() -> Result<(), JsValue> {
+    util::init()
+}
+
+#[wasm_bindgen]
+pub fn attempt(adapter: JsAdapter, query: &str) -> Result<(), String> {
+    let schema = trustfall_core::schema::Schema::parse(include_str!(
+        "../../trustfall_core/src/resources/schemas/numbers.graphql"
+    ))
+    .unwrap();
+    let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
+
+    let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
+
+    let results_iter = trustfall_core::interpreter::execution::interpret_ir(
+        wrapped_adapter,
+        query,
+        Default::default(),
+    )
+    .map_err(|e| e.to_string())?;
+    for result in results_iter {
+        log!("result={:?}", result);
+    }
+
+    Ok(())
 }

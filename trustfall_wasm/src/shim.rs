@@ -75,6 +75,7 @@ impl ContextIterator {
         }
     }
 
+    #[wasm_bindgen(js_name = "next")]
     pub fn advance(&mut self) -> ContextIteratorItem {
         let next = self.iter.next();
         if let Some(ctx) = next {
@@ -101,5 +102,39 @@ pub struct EdgeParameters {}  // TODO
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndValue {
     pub(super) local_id: u32,
-    pub(super) value: FieldValue,
+    pub(super) value: ReturnedValue,
+}
+
+impl ReturnedContextIdAndValue {
+    pub fn local_id(&self) -> u32 {
+        self.local_id
+    }
+
+    pub fn value(&self) -> &ReturnedValue {
+        &self.value
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ReturnedValue {
+    Null,
+    String(String),
+    Integer(i64),
+    Float(f64),
+    Boolean(bool),
+    List(Vec<ReturnedValue>),
+}
+
+impl From<ReturnedValue> for FieldValue {
+    fn from(v: ReturnedValue) -> Self {
+        match v {
+            ReturnedValue::Null => FieldValue::Null,
+            ReturnedValue::String(s) => FieldValue::String(s),
+            ReturnedValue::Integer(i) => FieldValue::Int64(i),
+            ReturnedValue::Float(n) => FieldValue::Float64(n),
+            ReturnedValue::Boolean(b) => FieldValue::Boolean(b),
+            ReturnedValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+        }
+    }
 }
