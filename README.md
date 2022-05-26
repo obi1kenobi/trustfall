@@ -2,7 +2,9 @@
 
 This repository contains the `trustfall` query engine, which can be used to query any data source
 or combination of data sources: databases, APIs, raw files (JSON, CSV, etc.), git version control,
-etc.
+etc. For a 10min video introduction to the project, see
+the ["How to Query (Almost) Everything" talk](https://www.hytradboi.com/2022/how-to-query-almost-everything)
+from the [HYTRADBOI 2022](https://www.hytradboi.com/) conference.
 
 ![Terminal recording of running `cargo run --release -- query example_queries/actions_in_repos_with_min_10_hn_pts.ron` in the `demo-hytradboi` demo project. The system returns the first 20 results of the query in 6.36 seconds."](https://github.com/obi1kenobi/trustfall/raw/main/demo-hytradboi/query-demo.gif)
 
