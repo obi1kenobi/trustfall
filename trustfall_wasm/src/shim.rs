@@ -138,3 +138,12 @@ impl From<ReturnedValue> for FieldValue {
         }
     }
 }
+
+/// The (context, can_coerce) iterator item returned by the WASM version
+/// of the can_coerce_to_type() adapter method.
+#[wasm_bindgen]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReturnedContextIdAndBool {
+    pub local_id: u32,
+    pub value: bool,
+}

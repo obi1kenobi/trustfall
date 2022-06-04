@@ -6,7 +6,7 @@ use trustfall_core::{
 };
 use wasm_bindgen::prelude::*;
 
-use crate::shim::{EdgeParameters, ContextIterator, ReturnedContextIdAndValue};
+use crate::shim::{EdgeParameters, ContextIterator, ReturnedContextIdAndValue, ReturnedContextIdAndBool};
 
 #[wasm_bindgen]
 extern "C" {
@@ -113,6 +113,49 @@ impl Iterator for ContextAndValueIterator {
     }
 }
 
+
+struct ContextAndBoolIterator {
+    inner: js_sys::Iterator,
+    registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
+    next_item: u32,
+}
+
+impl ContextAndBoolIterator {
+    fn new(inner: js_sys::Iterator, registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>) -> Self {
+        Self { inner, registry, next_item: 0 }
+    }
+}
+
+impl Iterator for ContextAndBoolIterator {
+    type Item = (DataContext<JsValue>, bool);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let iter_next = self
+            .inner
+            .next()
+            .expect("unexpected value returned from JS iterator next()");
+
+        if iter_next.done() {
+            assert!(self.registry.borrow().is_empty());
+            None
+        } else {
+            let next_item = self.next_item;
+
+            let value = iter_next.value();
+            log!("received={:?}", value);
+
+            let next_element: ReturnedContextIdAndBool = value.into_serde().expect("not a legal iterator element");
+            assert_eq!(next_element.local_id, next_item);
+
+            self.next_item = self.next_item.wrapping_add(1);
+
+            let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
+
+            Some((ctx, next_element.value))
+        }
+    }
+}
+
 pub(super) struct AdapterShim {
     inner: JsAdapter,
 }
@@ -180,6 +223,9 @@ impl Adapter<'static> for AdapterShim {
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'static> {
-        todo!()
+        let ctx_iter = ContextIterator::new(data_contexts);
+        let registry = ctx_iter.registry.clone();
+        let js_iter = self.inner.can_coerce_to_type(ctx_iter, current_type_name.as_ref(), coerce_to_type_name.as_ref());
+        Box::new(ContextAndBoolIterator::new(js_iter, registry))
     }
 }
