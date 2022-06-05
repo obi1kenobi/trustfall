@@ -68,7 +68,23 @@ class JsAdapter {
   ) -> js_sys::Iterator;
   */
   *project_neighbors(data_contexts, current_type_name, edge_name, parameters) {
-
+    const ctxs = make_iter(data_contexts);
+    if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
+      if (edge_name === "successor") {
+        for (const ctx of ctxs) {
+          const val = [
+            ctx.local_id,
+            [ctx.current_token + 1],
+          ];
+          console.log("proj_nbrs yielding=", val);
+          yield val;
+        }
+      } else {
+        throw `unreachable neighbor name: ${current_type_name} ${field_name}`;
+      }
+    } else {
+      throw `unreachable type name: ${current_type_name} ${field_name}`;
+    }
   }
 
   /*
@@ -135,6 +151,10 @@ try {
       Number(max: 10) {
         ... on Prime {
           value @output
+
+          successor {
+            next: value @output
+          }
         }
       }
     }`,
