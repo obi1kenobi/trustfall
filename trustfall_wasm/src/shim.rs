@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc, collections::BTreeMap};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use trustfall_core::{interpreter::DataContext, ir::FieldValue};
@@ -15,7 +15,10 @@ pub struct JsContext {
 #[wasm_bindgen]
 impl JsContext {
     pub(super) fn new(local_id: u32, current_token: Option<JsValue>) -> Self {
-        Self { local_id, current_token }
+        Self {
+            local_id,
+            current_token,
+        }
     }
 
     #[wasm_bindgen(getter)]
@@ -84,7 +87,12 @@ impl ContextIterator {
             let current_token = ctx.current_token.clone();
 
             let existing = self.registry.borrow_mut().insert(next_item, ctx);
-            assert!(existing.is_none(), "id {} already inserted with value {:?}", next_item, existing);
+            assert!(
+                existing.is_none(),
+                "id {} already inserted with value {:?}",
+                next_item,
+                existing
+            );
 
             ContextIteratorItem::new_item(JsContext::new(next_item, current_token))
         } else {
@@ -94,7 +102,38 @@ impl ContextIterator {
 }
 
 #[wasm_bindgen]
-pub struct EdgeParameters {}  // TODO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EdgeParameters {
+    values: BTreeMap<String, ReturnedValue>, // TODO: Rename ReturnedValue to something more appropriate
+}
+
+#[wasm_bindgen]
+impl EdgeParameters {
+    pub fn get(&self, name: &str) -> JsValue {
+        let value = self
+            .values
+            .get(name)
+            .expect("no edge parameter by that name");
+
+        JsValue::from_serde(&value).expect("serde conversion failed")
+    }
+
+    pub fn into_js_dict(&self) -> JsValue {
+        JsValue::from_serde(&self.values).expect("serde conversion failed")
+    }
+}
+
+impl From<&trustfall_core::ir::EdgeParameters> for EdgeParameters {
+    fn from(p: &trustfall_core::ir::EdgeParameters) -> Self {
+        Self {
+            values: p
+                .0
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone().into()))
+                .collect(),
+        }
+    }
+}
 
 /// The (context, value) iterator item returned by the WASM version
 /// of the project_property() adapter method.
@@ -135,6 +174,25 @@ impl From<ReturnedValue> for FieldValue {
             ReturnedValue::Float(n) => FieldValue::Float64(n),
             ReturnedValue::Boolean(b) => FieldValue::Boolean(b),
             ReturnedValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+        }
+    }
+}
+
+impl From<FieldValue> for ReturnedValue {
+    fn from(v: FieldValue) -> Self {
+        match v {
+            FieldValue::Null => ReturnedValue::Null,
+            FieldValue::String(s) => ReturnedValue::String(s),
+            FieldValue::Int64(i) => ReturnedValue::Integer(i),
+            FieldValue::Uint64(u) => match i64::try_from(u) {
+                Ok(i) => ReturnedValue::Integer(i),
+                Err(_) => ReturnedValue::Float(u as f64),
+            },
+            FieldValue::Float64(n) => ReturnedValue::Float(n),
+            FieldValue::Boolean(b) => ReturnedValue::Boolean(b),
+            FieldValue::List(v) => ReturnedValue::List(v.into_iter().map(|x| x.into()).collect()),
+            FieldValue::DateTimeUtc(_) => unimplemented!(),
+            FieldValue::Enum(_) => unimplemented!(),
         }
     }
 }

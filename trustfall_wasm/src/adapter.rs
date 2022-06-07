@@ -16,7 +16,11 @@ extern "C" {
     pub type JsAdapter;
 
     #[wasm_bindgen(structural, method)]
-    pub fn get_starting_tokens(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
+    pub fn get_starting_tokens(
+        this: &JsAdapter,
+        edge: &str,
+        parameters: Option<EdgeParameters>,
+    ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method)]
     pub fn project_property(
@@ -259,7 +263,8 @@ impl Adapter<'static> for AdapterShim {
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::DataToken> + 'static> {
-        let js_iter = self.inner.get_starting_tokens(edge.as_ref());
+        let parameters = parameters.map(|p| p.as_ref().into());
+        let js_iter = self.inner.get_starting_tokens(edge.as_ref(), parameters);
         Box::new(TokenIterator::new(js_iter.into_iter()))
     }
 
@@ -298,7 +303,7 @@ impl Adapter<'static> for AdapterShim {
     > {
         let ctx_iter = ContextIterator::new(data_contexts);
         let registry = ctx_iter.registry.clone();
-        let parameters = None; // TODO: FIXME
+        let parameters = parameters.map(|p| p.as_ref().into());
 
         let js_iter = self.inner.project_neighbors(
             ctx_iter,

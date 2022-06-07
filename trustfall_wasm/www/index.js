@@ -20,9 +20,16 @@ class JsAdapter {
   #[wasm_bindgen(structural, method)]
   pub fn get_starting_tokens(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
   */
-  *get_starting_tokens(edge) {
-    for (const num of [1, 2, 3, 4, 5, 6, 7, 8]) {
-      yield num;
+  *get_starting_tokens(edge, parameters) {
+    if (edge === "Number") {
+      const params = parameters.into_js_dict();
+      console.log("get_starting params=", params);
+      const maxValue = params["max"];
+      for (var i = 1; i <= maxValue; i++) {
+        yield i;
+      }
+    } else {
+      throw `unreachable edge name: ${edge}`;
     }
   }
 

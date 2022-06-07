@@ -1,7 +1,7 @@
 use js_sys::Object;
 use wasm_bindgen::prelude::*;
 
-use crate::shim::{ReturnedValue, ReturnedContextIdAndValue};
+use crate::shim::{ReturnedContextIdAndValue, ReturnedValue};
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
