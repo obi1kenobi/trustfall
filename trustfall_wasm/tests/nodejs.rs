@@ -5,8 +5,6 @@ use trustfall_wasm::{
 };
 use wasm_bindgen_test::wasm_bindgen_test;
 
-wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
-
 #[cfg(test)]
 pub fn make_test_schema() -> Schema {
     let schema_text = "\
