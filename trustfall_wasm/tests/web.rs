@@ -1,6 +1,6 @@
 use trustfall_core::ir::FieldValue;
 use trustfall_wasm::{
-    shim::{ReturnedContextIdAndValue, ReturnedValue},
+    shim::{ReturnedContextIdAndValue, JsFieldValue},
     Schema,
 };
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -43,7 +43,7 @@ pub fn test_schema() {
 
 #[wasm_bindgen_test]
 pub fn deserialize_returned_value() {
-    let value: ReturnedValue = serde_json::from_str("1").expect("could not deserialize");
+    let value: JsFieldValue = serde_json::from_str("1").expect("could not deserialize");
     let field_value: FieldValue = value.into();
     assert_eq!(field_value, FieldValue::Int64(1));
 }

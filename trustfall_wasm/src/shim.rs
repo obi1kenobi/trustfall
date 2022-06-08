@@ -103,12 +103,12 @@ impl ContextIterator {
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EdgeParameters {
-    values: BTreeMap<String, ReturnedValue>, // TODO: Rename ReturnedValue to something more appropriate
+pub struct JsEdgeParameters {
+    values: BTreeMap<String, JsFieldValue>,
 }
 
 #[wasm_bindgen]
-impl EdgeParameters {
+impl JsEdgeParameters {
     pub fn get(&self, name: &str) -> JsValue {
         let value = self
             .values
@@ -123,7 +123,7 @@ impl EdgeParameters {
     }
 }
 
-impl From<&trustfall_core::ir::EdgeParameters> for EdgeParameters {
+impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
     fn from(p: &trustfall_core::ir::EdgeParameters) -> Self {
         Self {
             values: p
@@ -141,7 +141,7 @@ impl From<&trustfall_core::ir::EdgeParameters> for EdgeParameters {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndValue {
     pub(super) local_id: u32,
-    pub(super) value: ReturnedValue,
+    pub(super) value: JsFieldValue,
 }
 
 impl ReturnedContextIdAndValue {
@@ -149,48 +149,48 @@ impl ReturnedContextIdAndValue {
         self.local_id
     }
 
-    pub fn value(&self) -> &ReturnedValue {
+    pub fn value(&self) -> &JsFieldValue {
         &self.value
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum ReturnedValue {
+pub enum JsFieldValue {
     Null,
     String(String),
     Integer(i64),
     Float(f64),
     Boolean(bool),
-    List(Vec<ReturnedValue>),
+    List(Vec<JsFieldValue>),
 }
 
-impl From<ReturnedValue> for FieldValue {
-    fn from(v: ReturnedValue) -> Self {
+impl From<JsFieldValue> for FieldValue {
+    fn from(v: JsFieldValue) -> Self {
         match v {
-            ReturnedValue::Null => FieldValue::Null,
-            ReturnedValue::String(s) => FieldValue::String(s),
-            ReturnedValue::Integer(i) => FieldValue::Int64(i),
-            ReturnedValue::Float(n) => FieldValue::Float64(n),
-            ReturnedValue::Boolean(b) => FieldValue::Boolean(b),
-            ReturnedValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+            JsFieldValue::Null => FieldValue::Null,
+            JsFieldValue::String(s) => FieldValue::String(s),
+            JsFieldValue::Integer(i) => FieldValue::Int64(i),
+            JsFieldValue::Float(n) => FieldValue::Float64(n),
+            JsFieldValue::Boolean(b) => FieldValue::Boolean(b),
+            JsFieldValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
         }
     }
 }
 
-impl From<FieldValue> for ReturnedValue {
+impl From<FieldValue> for JsFieldValue {
     fn from(v: FieldValue) -> Self {
         match v {
-            FieldValue::Null => ReturnedValue::Null,
-            FieldValue::String(s) => ReturnedValue::String(s),
-            FieldValue::Int64(i) => ReturnedValue::Integer(i),
+            FieldValue::Null => JsFieldValue::Null,
+            FieldValue::String(s) => JsFieldValue::String(s),
+            FieldValue::Int64(i) => JsFieldValue::Integer(i),
             FieldValue::Uint64(u) => match i64::try_from(u) {
-                Ok(i) => ReturnedValue::Integer(i),
-                Err(_) => ReturnedValue::Float(u as f64),
+                Ok(i) => JsFieldValue::Integer(i),
+                Err(_) => JsFieldValue::Float(u as f64),
             },
-            FieldValue::Float64(n) => ReturnedValue::Float(n),
-            FieldValue::Boolean(b) => ReturnedValue::Boolean(b),
-            FieldValue::List(v) => ReturnedValue::List(v.into_iter().map(|x| x.into()).collect()),
+            FieldValue::Float64(n) => JsFieldValue::Float(n),
+            FieldValue::Boolean(b) => JsFieldValue::Boolean(b),
+            FieldValue::List(v) => JsFieldValue::List(v.into_iter().map(|x| x.into()).collect()),
             FieldValue::DateTimeUtc(_) => unimplemented!(),
             FieldValue::Enum(_) => unimplemented!(),
         }

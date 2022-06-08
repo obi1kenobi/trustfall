@@ -8,7 +8,7 @@ use trustfall_core::{
 use wasm_bindgen::prelude::*;
 
 use crate::shim::{
-    ContextIterator, EdgeParameters, ReturnedContextIdAndBool, ReturnedContextIdAndValue,
+    ContextIterator, JsEdgeParameters, ReturnedContextIdAndBool, ReturnedContextIdAndValue,
 };
 
 #[wasm_bindgen]
@@ -19,7 +19,7 @@ extern "C" {
     pub fn get_starting_tokens(
         this: &JsAdapter,
         edge: &str,
-        parameters: Option<EdgeParameters>,
+        parameters: Option<JsEdgeParameters>,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method)]
@@ -36,7 +36,7 @@ extern "C" {
         data_contexts: ContextIterator,
         current_type_name: &str,
         edge_name: &str,
-        parameters: Option<EdgeParameters>,
+        parameters: Option<JsEdgeParameters>,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method)]
