@@ -1,6 +1,6 @@
 use trustfall_core::ir::FieldValue;
 use trustfall_wasm::{
-    shim::{ReturnedContextIdAndValue, JsFieldValue},
+    shim::{JsFieldValue, ReturnedContextIdAndValue},
     Schema,
 };
 use wasm_bindgen_test::wasm_bindgen_test;

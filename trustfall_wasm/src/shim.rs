@@ -5,6 +5,83 @@ use wasm_bindgen::prelude::*;
 
 use trustfall_core::{interpreter::DataContext, ir::FieldValue};
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum JsFieldValue {
+    Null,
+    String(String),
+    Integer(i64),
+    Float(f64),
+    Boolean(bool),
+    List(Vec<JsFieldValue>),
+}
+
+impl From<JsFieldValue> for FieldValue {
+    fn from(v: JsFieldValue) -> Self {
+        match v {
+            JsFieldValue::Null => FieldValue::Null,
+            JsFieldValue::String(s) => FieldValue::String(s),
+            JsFieldValue::Integer(i) => FieldValue::Int64(i),
+            JsFieldValue::Float(n) => FieldValue::Float64(n),
+            JsFieldValue::Boolean(b) => FieldValue::Boolean(b),
+            JsFieldValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+        }
+    }
+}
+
+impl From<FieldValue> for JsFieldValue {
+    fn from(v: FieldValue) -> Self {
+        match v {
+            FieldValue::Null => JsFieldValue::Null,
+            FieldValue::String(s) => JsFieldValue::String(s),
+            FieldValue::Int64(i) => JsFieldValue::Integer(i),
+            FieldValue::Uint64(u) => match i64::try_from(u) {
+                Ok(i) => JsFieldValue::Integer(i),
+                Err(_) => JsFieldValue::Float(u as f64),
+            },
+            FieldValue::Float64(n) => JsFieldValue::Float(n),
+            FieldValue::Boolean(b) => JsFieldValue::Boolean(b),
+            FieldValue::List(v) => JsFieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+            FieldValue::DateTimeUtc(_) => unimplemented!(),
+            FieldValue::Enum(_) => unimplemented!(),
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsEdgeParameters {
+    values: BTreeMap<String, JsFieldValue>,
+}
+
+#[wasm_bindgen]
+impl JsEdgeParameters {
+    pub fn get(&self, name: &str) -> JsValue {
+        let value = self
+            .values
+            .get(name)
+            .expect("no edge parameter by that name");
+
+        JsValue::from_serde(&value).expect("serde conversion failed")
+    }
+
+    pub fn into_js_dict(&self) -> JsValue {
+        JsValue::from_serde(&self.values).expect("serde conversion failed")
+    }
+}
+
+impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
+    fn from(p: &trustfall_core::ir::EdgeParameters) -> Self {
+        Self {
+            values: p
+                .0
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone().into()))
+                .collect(),
+        }
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct JsContext {
@@ -26,6 +103,20 @@ impl JsContext {
         match &self.current_token {
             Some(value) => value.clone(),
             None => JsValue::NULL,
+        }
+    }
+}
+
+pub(super) struct JsStringConstants {
+    pub(super) local_id: JsValue,
+    pub(super) neighbors: JsValue,
+}
+
+impl JsStringConstants {
+    pub(super) fn new() -> Self {
+        Self {
+            local_id: JsValue::from_str("local_id"),
+            neighbors: JsValue::from_str("neighbors"),
         }
     }
 }
@@ -96,40 +187,6 @@ impl ContextIterator {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsEdgeParameters {
-    values: BTreeMap<String, JsFieldValue>,
-}
-
-#[wasm_bindgen]
-impl JsEdgeParameters {
-    pub fn get(&self, name: &str) -> JsValue {
-        let value = self
-            .values
-            .get(name)
-            .expect("no edge parameter by that name");
-
-        JsValue::from_serde(&value).expect("serde conversion failed")
-    }
-
-    pub fn into_js_dict(&self) -> JsValue {
-        JsValue::from_serde(&self.values).expect("serde conversion failed")
-    }
-}
-
-impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
-    fn from(p: &trustfall_core::ir::EdgeParameters) -> Self {
-        Self {
-            values: p
-                .0
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone().into()))
-                .collect(),
-        }
-    }
-}
-
 /// The (context, value) iterator item returned by the WASM version
 /// of the project_property() adapter method.
 #[wasm_bindgen]
@@ -146,49 +203,6 @@ impl ReturnedContextIdAndValue {
 
     pub fn value(&self) -> &JsFieldValue {
         &self.value
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum JsFieldValue {
-    Null,
-    String(String),
-    Integer(i64),
-    Float(f64),
-    Boolean(bool),
-    List(Vec<JsFieldValue>),
-}
-
-impl From<JsFieldValue> for FieldValue {
-    fn from(v: JsFieldValue) -> Self {
-        match v {
-            JsFieldValue::Null => FieldValue::Null,
-            JsFieldValue::String(s) => FieldValue::String(s),
-            JsFieldValue::Integer(i) => FieldValue::Int64(i),
-            JsFieldValue::Float(n) => FieldValue::Float64(n),
-            JsFieldValue::Boolean(b) => FieldValue::Boolean(b),
-            JsFieldValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
-        }
-    }
-}
-
-impl From<FieldValue> for JsFieldValue {
-    fn from(v: FieldValue) -> Self {
-        match v {
-            FieldValue::Null => JsFieldValue::Null,
-            FieldValue::String(s) => JsFieldValue::String(s),
-            FieldValue::Int64(i) => JsFieldValue::Integer(i),
-            FieldValue::Uint64(u) => match i64::try_from(u) {
-                Ok(i) => JsFieldValue::Integer(i),
-                Err(_) => JsFieldValue::Float(u as f64),
-            },
-            FieldValue::Float64(n) => JsFieldValue::Float(n),
-            FieldValue::Boolean(b) => JsFieldValue::Boolean(b),
-            FieldValue::List(v) => JsFieldValue::List(v.into_iter().map(|x| x.into()).collect()),
-            FieldValue::DateTimeUtc(_) => unimplemented!(),
-            FieldValue::Enum(_) => unimplemented!(),
-        }
     }
 }
 

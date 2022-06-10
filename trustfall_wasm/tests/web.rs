@@ -1,13 +1,14 @@
 use common::run_numbers_query;
 use trustfall_core::ir::FieldValue;
 use trustfall_wasm::{
-    shim::{ReturnedContextIdAndValue, JsFieldValue},
+    shim::{JsFieldValue, ReturnedContextIdAndValue},
     Schema,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen_test::wasm_bindgen_test;
 
-#[macro_use] extern crate maplit;
+#[macro_use]
+extern crate maplit;
 
 mod common;
 
@@ -112,19 +113,19 @@ pub fn test_execute_query_with_traversal_and_coercion() {
     let actual_results = run_numbers_query(query, args).expect("query and args were not valid");
 
     let expected_results = vec![
-        btreemap!{
+        btreemap! {
             String::from("value") => JsFieldValue::Integer(2),
             String::from("next") => JsFieldValue::Integer(3),
         },
-        btreemap!{
+        btreemap! {
             String::from("value") => JsFieldValue::Integer(3),
             String::from("next") => JsFieldValue::Integer(4),
         },
-        btreemap!{
+        btreemap! {
             String::from("value") => JsFieldValue::Integer(5),
             String::from("next") => JsFieldValue::Integer(6),
         },
-        btreemap!{
+        btreemap! {
             String::from("value") => JsFieldValue::Integer(7),
             String::from("next") => JsFieldValue::Integer(8),
         },

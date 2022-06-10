@@ -8,7 +8,8 @@ use trustfall_core::{
 use wasm_bindgen::prelude::*;
 
 use crate::shim::{
-    ContextIterator, JsEdgeParameters, ReturnedContextIdAndBool, ReturnedContextIdAndValue,
+    ContextIterator, JsEdgeParameters, JsStringConstants, ReturnedContextIdAndBool,
+    ReturnedContextIdAndValue,
 };
 
 #[wasm_bindgen]
@@ -127,17 +128,20 @@ struct ContextAndNeighborsIterator {
     inner: js_sys::Iterator,
     registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
     next_item: u32,
+    constants: Rc<JsStringConstants>,
 }
 
 impl ContextAndNeighborsIterator {
     fn new(
         inner: js_sys::Iterator,
         registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
+        constants: Rc<JsStringConstants>,
     ) -> Self {
         Self {
             inner,
             registry,
             next_item: 0,
+            constants,
         }
     }
 }
@@ -161,10 +165,10 @@ impl Iterator for ContextAndNeighborsIterator {
             let next_item = self.next_item;
             let value = iter_next.value();
 
-            let local_id = js_sys::Reflect::get(&value, &JsValue::from(0i64))
-                .expect("could not retrieve target[0] value");
-            let neighbors_value = js_sys::Reflect::get(&value, &JsValue::from(1i64))
-                .expect("could not retrieve target[1] value");
+            let local_id = js_sys::Reflect::get(&value, &self.constants.local_id)
+                .expect("could not retrieve target.local_id value");
+            let neighbors_value = js_sys::Reflect::get(&value, &self.constants.neighbors)
+                .expect("could not retrieve target.neighbors value");
             let neighbors_iter = try_iter(&neighbors_value)
                 .expect("attempting to look up Symbol.iterator threw an exception")
                 .expect("element neighbors value was not an iterator");
@@ -238,11 +242,15 @@ impl Iterator for ContextAndBoolIterator {
 
 pub struct AdapterShim {
     inner: JsAdapter,
+    constants: Rc<JsStringConstants>,
 }
 
 impl AdapterShim {
     pub fn new(inner: JsAdapter) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            constants: Rc::new(JsStringConstants::new()),
+        }
     }
 }
 
@@ -305,7 +313,11 @@ impl Adapter<'static> for AdapterShim {
             edge_name.as_ref(),
             parameters,
         );
-        Box::new(ContextAndNeighborsIterator::new(js_iter, registry))
+        Box::new(ContextAndNeighborsIterator::new(
+            js_iter,
+            registry,
+            self.constants.clone(),
+        ))
     }
 
     fn can_coerce_to_type(

@@ -1,6 +1,9 @@
-use std::{rc::Rc, cell::RefCell, collections::BTreeMap, sync::Arc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
-use trustfall_wasm::{adapter::{AdapterShim, JsAdapter}, shim::JsFieldValue};
+use trustfall_wasm::{
+    adapter::{AdapterShim, JsAdapter},
+    shim::JsFieldValue,
+};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(inline_js = r#"
@@ -62,10 +65,10 @@ use wasm_bindgen::prelude::*;
             if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
                 if (edge_name === "successor") {
                     for (const ctx of data_contexts) {
-                        const val = [
-                            ctx.local_id,
-                            [ctx.current_token + 1],
-                        ];
+                        const val = {
+                            local_id: ctx.local_id,
+                            neighbors: [ctx.current_token + 1],
+                        };
                         yield val;
                     }
                 } else {
@@ -135,7 +138,10 @@ extern "C" {
     pub fn make_adapter() -> JsAdapter;
 }
 
-pub fn run_numbers_query(query: &str, args: BTreeMap<String, JsFieldValue>) -> Result<Vec<BTreeMap<String, JsFieldValue>>, String> {
+pub fn run_numbers_query(
+    query: &str,
+    args: BTreeMap<String, JsFieldValue>,
+) -> Result<Vec<BTreeMap<String, JsFieldValue>>, String> {
     trustfall_wasm::util::init().expect("init failed");
 
     let schema = trustfall_core::schema::Schema::parse(include_str!(
@@ -151,10 +157,18 @@ pub fn run_numbers_query(query: &str, args: BTreeMap<String, JsFieldValue>) -> R
     let results: Vec<_> = trustfall_core::interpreter::execution::interpret_ir(
         wrapped_adapter,
         query,
-        Arc::new(args.into_iter().map(|(k, v)| (Arc::from(k), v.into())).collect()),
+        Arc::new(
+            args.into_iter()
+                .map(|(k, v)| (Arc::from(k), v.into()))
+                .collect(),
+        ),
     )
     .map_err(|e| e.to_string())?
-    .map(|res| res.into_iter().map(|(k, v)| (k.to_string(), v.into())).collect())
+    .map(|res| {
+        res.into_iter()
+            .map(|(k, v)| (k.to_string(), v.into()))
+            .collect()
+    })
     .collect();
 
     Ok(results)
