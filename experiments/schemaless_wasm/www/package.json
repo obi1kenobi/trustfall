@@ -1,11 +1,8 @@
 {
-    "name": "create-wasm-app",
+    "name": "schemaless_wasm",
     "version": "0.1.0",
-    "description": "create an app to consume rust-generated wasm packages",
+    "description": "a WASM web demo of \"schemaless\", a query-first GraphQL prototype",
     "main": "index.js",
-    "bin": {
-        "create-wasm-app": ".bin/create-wasm-app.js"
-    },
     "scripts": {
         "build": "webpack --config webpack.config.js",
         "build:wasm": "wasm-pack build ../",
@@ -15,7 +12,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/rustwasm/create-wasm-app.git"
+        "url": "git+https://github.com/obi1kenobi/trustfall.git"
     },
     "keywords": [
         "webassembly",
@@ -23,12 +20,12 @@
         "rust",
         "webpack"
     ],
-    "author": "Ashley Williams <ashley666ashley@gmail.com>",
-    "license": "(MIT OR Apache-2.0)",
+    "author": "Predrag Gruevski",
+    "license": "Apache-2.0",
     "bugs": {
-        "url": "https://github.com/rustwasm/create-wasm-app/issues"
+        "url": "https://github.com/obi1kenobi/trustfall/issues"
     },
-    "homepage": "https://github.com/rustwasm/create-wasm-app#readme",
+    "homepage": "https://github.com/obi1kenobi/trustfall",
     "dependencies": {
         "@emotion/react": "^11.9.0",
         "@emotion/styled": "^11.8.1",
@@ -48,7 +45,6 @@
         "@typescript-eslint/eslint-plugin": "^5.25.0",
         "@typescript-eslint/parser": "^5.25.0",
         "babel-loader": "^8.2.5",
-        "copy-webpack-plugin": "^5.0.0",
         "eslint": "^8.16.0",
         "eslint-config-typescript": "^3.0.0",
         "eslint-plugin-react": "^7.30.0",
