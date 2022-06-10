@@ -47,13 +47,10 @@ impl Schema {
     }
 }
 
-#[wasm_bindgen(start)]
-pub fn run_at_start() -> Result<(), JsValue> {
-    util::init()
-}
-
 #[wasm_bindgen]
 pub fn attempt(adapter: JsAdapter, query: &str) -> Result<(), String> {
+    util::init().expect("failed init");
+
     let schema = trustfall_core::schema::Schema::parse(include_str!(
         "../../trustfall_core/src/resources/schemas/numbers.graphql"
     ))

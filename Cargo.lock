@@ -2955,6 +2955,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
+ "maplit",
  "ron 0.7.0",
  "serde",
  "serde_json",

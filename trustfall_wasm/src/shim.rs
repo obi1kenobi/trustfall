@@ -8,7 +8,7 @@ use trustfall_core::{interpreter::DataContext, ir::FieldValue};
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct JsContext {
-    pub(super) local_id: u32,
+    pub local_id: u32,
     current_token: Option<JsValue>,
 }
 
@@ -19,11 +19,6 @@ impl JsContext {
             local_id,
             current_token,
         }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn local_id(&self) -> u32 {
-        self.local_id
     }
 
     #[wasm_bindgen(getter)]
@@ -154,7 +149,7 @@ impl ReturnedContextIdAndValue {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum JsFieldValue {
     Null,

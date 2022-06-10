@@ -1,20 +1,6 @@
 import * as wasm from "trustfall_wasm";
 
 
-function make_iter(iter) {
-  return {
-    "next": function () {
-      var n = iter.next();
-      return {
-        "done": n.done,
-        "value": n.value,
-      };
-    },
-    [Symbol.iterator]: function () { return this; }
-  }
-}
-
-
 class JsAdapter {
   /*
   #[wasm_bindgen(structural, method)]
@@ -43,11 +29,10 @@ class JsAdapter {
   ) -> js_sys::Iterator;
   */
   *project_property(data_contexts, current_type_name, field_name) {
-    const ctxs = make_iter(data_contexts);
-    console.log("ctxs=", ctxs);
+    console.log("ctxs=", data_contexts);
     if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
       if (field_name === "value") {
-        for (const ctx of ctxs) {
+        for (const ctx of data_contexts) {
           const val = {
             local_id: ctx.local_id,
             value: ctx.current_token,
@@ -75,10 +60,9 @@ class JsAdapter {
   ) -> js_sys::Iterator;
   */
   *project_neighbors(data_contexts, current_type_name, edge_name, parameters) {
-    const ctxs = make_iter(data_contexts);
     if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
       if (edge_name === "successor") {
-        for (const ctx of ctxs) {
+        for (const ctx of data_contexts) {
           const val = [
             ctx.local_id,
             [ctx.current_token + 1],
@@ -104,7 +88,6 @@ class JsAdapter {
   ) -> js_sys::Iterator;
   */
   *can_coerce_to_type(data_contexts, current_type_name, coerce_to_type_name) {
-    const ctxs = make_iter(data_contexts);
     const primes = {
       2: null,
       3: null,
@@ -112,10 +95,10 @@ class JsAdapter {
       7: null,
       11: null,
     };
-    console.log("ctxs=", ctxs);
+    console.log("ctxs=", data_contexts);
     if (current_type_name === "Number") {
       if (coerce_to_type_name === "Prime") {
-        for (const ctx of ctxs) {
+        for (const ctx of data_contexts) {
           var can_coerce = false;
           if (ctx.current_token in primes) {
             can_coerce = true;
@@ -129,7 +112,7 @@ class JsAdapter {
           yield val;
         }
       } else if (coerce_to_type_name === "Composite") {
-        for (const ctx of ctxs) {
+        for (const ctx of data_contexts) {
           var can_coerce = false;
           if (!(ctx.current_token in primes || ctx.current_token === 1)) {
             can_coerce = true;

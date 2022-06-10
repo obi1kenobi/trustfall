@@ -104,9 +104,7 @@ impl Iterator for ContextAndValueIterator {
             None
         } else {
             let next_item = self.next_item;
-
             let value = iter_next.value();
-            log!("received={:?}", value);
 
             let next_element: ReturnedContextIdAndValue =
                 value.into_serde().expect("not a legal iterator element");
@@ -161,9 +159,7 @@ impl Iterator for ContextAndNeighborsIterator {
             None
         } else {
             let next_item = self.next_item;
-
             let value = iter_next.value();
-            log!("received={:?}", value);
 
             let local_id = js_sys::Reflect::get(&value, &JsValue::from(0i64))
                 .expect("could not retrieve target[0] value");
@@ -221,9 +217,7 @@ impl Iterator for ContextAndBoolIterator {
             None
         } else {
             let next_item = self.next_item;
-
             let value = iter_next.value();
-            log!("received={:?}", value);
 
             let next_element: ReturnedContextIdAndBool =
                 value.into_serde().expect("not a legal iterator element");
@@ -242,12 +236,12 @@ impl Iterator for ContextAndBoolIterator {
     }
 }
 
-pub(super) struct AdapterShim {
+pub struct AdapterShim {
     inner: JsAdapter,
 }
 
 impl AdapterShim {
-    pub(super) fn new(inner: JsAdapter) -> Self {
+    pub fn new(inner: JsAdapter) -> Self {
         Self { inner }
     }
 }
