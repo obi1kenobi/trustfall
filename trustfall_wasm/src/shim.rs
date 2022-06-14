@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -213,4 +213,52 @@ impl ReturnedContextIdAndValue {
 pub struct ReturnedContextIdAndBool {
     pub local_id: u32,
     pub value: bool,
+}
+
+#[wasm_bindgen]
+pub struct QueryResultIterator {
+    iter: Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>>>,
+}
+
+#[wasm_bindgen]
+pub struct QueryResultItem {
+    item: Option<BTreeMap<Arc<str>, JsFieldValue>>,
+}
+
+#[wasm_bindgen]
+impl QueryResultItem {
+    fn new_item(value: BTreeMap<Arc<str>, JsFieldValue>) -> Self {
+        Self { item: Some(value) }
+    }
+
+    fn new_done() -> Self {
+        Self { item: None }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn done(&self) -> bool {
+        self.item.is_none()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn value(&self) -> JsValue {
+        JsValue::from_serde(&self.item).expect("serde conversion failed")
+    }
+}
+
+#[wasm_bindgen]
+impl QueryResultIterator {
+    pub(super) fn new(iter: Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>>>) -> Self {
+        Self { iter }
+    }
+
+    #[wasm_bindgen(js_name = "next")]
+    pub fn advance(&mut self) -> QueryResultItem {
+        let next = self.iter.next();
+        if let Some(result) = next {
+            QueryResultItem::new_item(result.into_iter().map(|(k, v)| (k, v.into())).collect())
+        } else {
+            QueryResultItem::new_done()
+        }
+    }
 }

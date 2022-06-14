@@ -1,8 +1,7 @@
-use common::run_numbers_query;
+use common::{run_numbers_query, make_test_schema};
 use trustfall_core::ir::FieldValue;
 use trustfall_wasm::{
     shim::{JsFieldValue, ReturnedContextIdAndValue},
-    Schema,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -17,35 +16,6 @@ wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 #[wasm_bindgen(start)]
 pub fn run_at_start() {
     trustfall_wasm::util::init().expect("init failed");
-}
-
-#[cfg(test)]
-pub fn make_test_schema() -> Schema {
-    let schema_text = "\
-schema {
-    query: RootSchemaQuery
-}
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
-directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
-directive @fold on FIELD
-
-type RootSchemaQuery {
-    Number(max: Int!): [Number!]
-}
-
-type Number {
-    name: String
-    value: Int!
-
-    predecessor: Number
-    successor: Number!
-    multiple(max: Int!): [Number!]
-}";
-
-    Schema::parse(schema_text).unwrap()
 }
 
 #[wasm_bindgen_test]
@@ -81,11 +51,233 @@ pub fn deserialize_returned_context_id_and_null_value() {
 }
 
 #[wasm_bindgen(inline_js = r#"
-    export function js_test_query() {
+import {Schema, execute_query} from "../../wasm-bindgen-test";
 
+export function js_test_query() {
+        const numbers_schema = Schema.parse(`
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Number(min: Int = 0, max: Int!): [Number!]
+    Zero: Number!
+    One: Number!
+    Two: Prime!
+    Four: Composite!
+}
+
+interface Named {
+    name: String
+}
+
+interface Number implements Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+}
+
+type Prime implements Number & Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+}
+
+type Composite implements Number & Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+    divisor: [Number!]!
+    primeFactor: [Prime!]!
+}
+
+type Letter implements Named {
+    name: String
+}
+`);
+
+        class JsNumbersAdapter {
+            /*
+            #[wasm_bindgen(structural, method)]
+            pub fn get_starting_tokens(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
+            */
+            *get_starting_tokens(edge, parameters) {
+                if (edge === "Number") {
+                    const params = parameters.into_js_dict();
+                    const maxValue = params["max"];
+                    for (var i = 1; i <= maxValue; i++) {
+                        yield i;
+                    }
+                } else {
+                    throw `unreachable edge name: ${edge}`;
+                }
+            }
+
+            /*
+            #[wasm_bindgen(structural, method)]
+            pub fn project_property(
+                this: &JsAdapter,
+                data_contexts: ContextIterator,
+                current_type_name: &str,
+                field_name: &str,
+            ) -> js_sys::Iterator;
+            */
+            *project_property(data_contexts, current_type_name, field_name) {
+                if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
+                    if (field_name === "value") {
+                        for (const ctx of data_contexts) {
+                            const val = {
+                                local_id: ctx.local_id,
+                                value: ctx.current_token,
+                            };
+                            yield val;
+                        }
+                    } else {
+                        throw `unreachable field name: ${current_type_name} ${field_name}`;
+                    }
+                } else {
+                    throw `unreachable type name: ${current_type_name} ${field_name}`;
+                }
+            }
+
+            /*
+            #[wasm_bindgen(structural, method)]
+            pub fn project_neighbors(
+                this: &JsAdapter,
+                data_contexts: ContextIterator,
+                current_type_name: &str,
+                edge_name: &str,
+                parameters: Option<EdgeParameters>,
+            ) -> js_sys::Iterator;
+            */
+            *project_neighbors(data_contexts, current_type_name, edge_name, parameters) {
+                if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
+                    if (edge_name === "successor") {
+                        for (const ctx of data_contexts) {
+                            const val = {
+                                local_id: ctx.local_id,
+                                neighbors: [ctx.current_token + 1],
+                            };
+                            yield val;
+                        }
+                    } else {
+                        throw `unreachable neighbor name: ${current_type_name} ${field_name}`;
+                    }
+                } else {
+                    throw `unreachable type name: ${current_type_name} ${field_name}`;
+                }
+            }
+
+            /*
+            #[wasm_bindgen(structural, method)]
+            pub fn can_coerce_to_type(
+                this: &JsAdapter,
+                data_contexts: ContextIterator,
+                current_type_name: &str,
+                coerce_to_type_name: &str,
+            ) -> js_sys::Iterator;
+            */
+            *can_coerce_to_type(data_contexts, current_type_name, coerce_to_type_name) {
+                const primes = {
+                    2: null,
+                    3: null,
+                    5: null,
+                    7: null,
+                    11: null,
+                };
+                if (current_type_name === "Number") {
+                    if (coerce_to_type_name === "Prime") {
+                        for (const ctx of data_contexts) {
+                            var can_coerce = false;
+                            if (ctx.current_token in primes) {
+                                can_coerce = true;
+                            }
+                            const val = {
+                                local_id: ctx.local_id,
+                                value: can_coerce,
+                            };
+                            yield val;
+                        }
+                    } else if (coerce_to_type_name === "Composite") {
+                        for (const ctx of data_contexts) {
+                            var can_coerce = false;
+                            if (!(ctx.current_token in primes || ctx.current_token === 1)) {
+                                can_coerce = true;
+                            }
+                            const val = {
+                                local_id: ctx.local_id,
+                                value: can_coerce,
+                            };
+                            yield val;
+                        }
+                    } else {
+                        throw `unreachable coercion type name: ${current_type_name} ${coerce_to_type_name}`;
+                    }
+                } else {
+                    throw `unreachable type name: ${current_type_name} ${coerce_to_type_name}`;
+                }
+            }
+        }
+
+        var adapter = new JsNumbersAdapter();
+
+        const query = `
+{
+    Number(max: 10) {
+        ... on Prime {
+            value @output @filter(op: ">", value: ["$val"])
+
+            successor {
+                next: value @output
+            }
+        }
+    }
+}`;
+        const args = {
+            "val": 2,
+        };
+
+        const results = Array.from(execute_query(numbers_schema, adapter, query, args));
+        const expected_results = [
+            {
+                "next": 4,
+                "value": 3,
+            }, {
+                "next": 6,
+                "value": 5,
+            }, {
+                "next": 8,
+                "value": 7,
+            },
+        ];
+
+        // TODO: Is there a better way to compare arrays of objects without a ton of extra code?
+        if (JSON.stringify(results) !== JSON.stringify(expected_results)) {
+            console.log("received: ", JSON.stringify(results));
+            throw "mismatch!";
+        }
     }
 "#)]
 extern "C" {
+    // TODO: reuse existing adapter code instead of copy-pasting it here.
     pub fn js_test_query();
 }
 

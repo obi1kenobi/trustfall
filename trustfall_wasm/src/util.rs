@@ -1,7 +1,7 @@
 use js_sys::Object;
 use wasm_bindgen::prelude::*;
 
-use crate::shim::ContextIterator;
+use crate::shim::{ContextIterator, QueryResultIterator};
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -59,12 +59,15 @@ extern "C" {
 pub fn init() -> Result<(), JsValue> {
     set_panic_hook();
 
-    // Update the ContextIterator prototype to make it an iterator.
+    // Update the ContextIterator and QueryResultIterator prototypes to make them be iterators.
     // This uses the workaround suggested in https://github.com/rustwasm/wasm-bindgen/issues/1478
     //
     // One day, it might not be required to instantiate an object and patch its prototype
     // through Javascript. That will be a day to celebrate.
     let x = ContextIterator::new(Box::new(std::iter::empty()));
+    iterify(&Object::get_prototype_of(&x.into()));
+
+    let x: QueryResultIterator = QueryResultIterator::new(Box::new(std::iter::empty()));
     iterify(&Object::get_prototype_of(&x.into()));
 
     Ok(())

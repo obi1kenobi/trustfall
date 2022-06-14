@@ -1,5 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
+use shim::{JsFieldValue, QueryResultIterator};
 use wasm_bindgen::prelude::*;
 
 use adapter::{AdapterShim, JsAdapter};
@@ -45,6 +46,35 @@ impl Schema {
             .map(Schema::new)
             .map_err(crate::InvalidSchemaError::new)
     }
+}
+
+#[wasm_bindgen]
+pub fn execute_query(
+    schema: Schema,
+    adapter: JsAdapter,
+    query: &str,
+    args: JsValue,
+) -> Result<QueryResultIterator, String> {
+    // TODO: add a proper error type
+    let args = args
+        .into_serde::<BTreeMap<String, JsFieldValue>>()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|(k, v)| (Arc::from(k), v.into()))
+        .collect();
+
+    let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
+
+    let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
+
+    let results_iter = trustfall_core::interpreter::execution::interpret_ir(
+        wrapped_adapter,
+        query,
+        Arc::new(args),
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(QueryResultIterator::new(results_iter))
 }
 
 #[wasm_bindgen]

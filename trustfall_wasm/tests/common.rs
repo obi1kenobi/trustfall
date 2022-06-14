@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 use trustfall_wasm::{
     adapter::{AdapterShim, JsAdapter},
-    shim::JsFieldValue,
+    shim::JsFieldValue, Schema,
 };
 use wasm_bindgen::prelude::*;
 
@@ -172,4 +172,32 @@ pub fn run_numbers_query(
     .collect();
 
     Ok(results)
+}
+
+pub fn make_test_schema() -> Schema {
+    let schema_text = "\
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Number(max: Int!): [Number!]
+}
+
+type Number {
+    name: String
+    value: Int!
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Number!]
+}";
+
+    Schema::parse(schema_text).unwrap()
 }
