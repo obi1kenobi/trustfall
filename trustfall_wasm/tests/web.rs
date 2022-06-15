@@ -1,7 +1,7 @@
 use common::{make_test_schema, run_numbers_query};
 use trustfall_core::ir::FieldValue;
-use trustfall_wasm::shim::{JsFieldValue, ReturnedContextIdAndValue};
-use wasm_bindgen::prelude::wasm_bindgen;
+use trustfall_wasm::shim::JsFieldValue;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 #[macro_use]
@@ -26,26 +26,6 @@ pub fn deserialize_returned_value() {
     let value: JsFieldValue = serde_json::from_str("1").expect("could not deserialize");
     let field_value: FieldValue = value.into();
     assert_eq!(field_value, FieldValue::Int64(1));
-}
-
-#[wasm_bindgen_test]
-pub fn deserialize_returned_context_id_and_int_value() {
-    let ctx_and_value: ReturnedContextIdAndValue =
-        serde_json::from_str(r#"{"local_id":0,"value":1}"#).expect("could not deserialize");
-
-    assert_eq!(ctx_and_value.local_id(), 0);
-    let field_value: FieldValue = ctx_and_value.value().clone().into();
-    assert_eq!(field_value, FieldValue::Int64(1));
-}
-
-#[wasm_bindgen_test]
-pub fn deserialize_returned_context_id_and_null_value() {
-    let ctx_and_value: ReturnedContextIdAndValue =
-        serde_json::from_str(r#"{"local_id":2,"value":null}"#).expect("could not deserialize");
-
-    assert_eq!(ctx_and_value.local_id(), 2);
-    let field_value: FieldValue = ctx_and_value.value().clone().into();
-    assert_eq!(field_value, FieldValue::Null);
 }
 
 #[wasm_bindgen(inline_js = r#"
@@ -143,7 +123,7 @@ type Letter implements Named {
                     if (field_name === "value") {
                         for (const ctx of data_contexts) {
                             const val = {
-                                local_id: ctx.localId,
+                                localId: ctx.localId,
                                 value: ctx.currentToken,
                             };
                             yield val;
@@ -171,7 +151,7 @@ type Letter implements Named {
                     if (edge_name === "successor") {
                         for (const ctx of data_contexts) {
                             const val = {
-                                local_id: ctx.localId,
+                                localId: ctx.localId,
                                 neighbors: [ctx.currentToken + 1],
                             };
                             yield val;
@@ -209,7 +189,7 @@ type Letter implements Named {
                                 can_coerce = true;
                             }
                             const val = {
-                                local_id: ctx.localId,
+                                localId: ctx.localId,
                                 value: can_coerce,
                             };
                             yield val;
@@ -221,7 +201,7 @@ type Letter implements Named {
                                 can_coerce = true;
                             }
                             const val = {
-                                local_id: ctx.localId,
+                                localId: ctx.localId,
                                 value: can_coerce,
                             };
                             yield val;

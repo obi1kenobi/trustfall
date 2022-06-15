@@ -116,7 +116,7 @@ pub(super) struct JsStringConstants {
 impl JsStringConstants {
     pub(super) fn new() -> Self {
         Self {
-            local_id: JsValue::from_str("local_id"),
+            local_id: JsValue::from_str("localId"),
             neighbors: JsValue::from_str("neighbors"),
         }
     }
@@ -193,18 +193,10 @@ impl ContextIterator {
 #[wasm_bindgen]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndValue {
-    pub(super) local_id: u32,
+    #[wasm_bindgen(js_name = "localId")]
+    #[serde(rename = "localId")]
+    pub local_id: u32,
     pub(super) value: JsFieldValue,
-}
-
-impl ReturnedContextIdAndValue {
-    pub fn local_id(&self) -> u32 {
-        self.local_id
-    }
-
-    pub fn value(&self) -> &JsFieldValue {
-        &self.value
-    }
 }
 
 /// The (context, can_coerce) iterator item returned by the WASM version
@@ -212,6 +204,8 @@ impl ReturnedContextIdAndValue {
 #[wasm_bindgen]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndBool {
+    #[wasm_bindgen(js_name = "localId")]
+    #[serde(rename = "localId")]
     pub local_id: u32,
     pub value: bool,
 }

@@ -39,7 +39,7 @@ use wasm_bindgen::prelude::*;
                 if (field_name === "value") {
                     for (const ctx of data_contexts) {
                         const val = {
-                            local_id: ctx.localId,
+                            localId: ctx.localId,
                             value: ctx.currentToken,
                         };
                         yield val;
@@ -67,7 +67,7 @@ use wasm_bindgen::prelude::*;
                 if (edge_name === "successor") {
                     for (const ctx of data_contexts) {
                         const val = {
-                            local_id: ctx.localId,
+                            localId: ctx.localId,
                             neighbors: [ctx.currentToken + 1],
                         };
                         yield val;
@@ -105,7 +105,7 @@ use wasm_bindgen::prelude::*;
                             can_coerce = true;
                         }
                         const val = {
-                            local_id: ctx.localId,
+                            localId: ctx.localId,
                             value: can_coerce,
                         };
                         yield val;
@@ -117,7 +117,7 @@ use wasm_bindgen::prelude::*;
                             can_coerce = true;
                         }
                         const val = {
-                            local_id: ctx.localId,
+                            localId: ctx.localId,
                             value: can_coerce,
                         };
                         yield val;

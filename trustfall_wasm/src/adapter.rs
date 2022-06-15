@@ -166,7 +166,7 @@ impl Iterator for ContextAndNeighborsIterator {
             let value = iter_next.value();
 
             let local_id = js_sys::Reflect::get(&value, &self.constants.local_id)
-                .expect("could not retrieve target.local_id value");
+                .expect("could not retrieve target.localId value");
             let neighbors_value = js_sys::Reflect::get(&value, &self.constants.neighbors)
                 .expect("could not retrieve target.neighbors value");
             let neighbors_iter = try_iter(&neighbors_value)
