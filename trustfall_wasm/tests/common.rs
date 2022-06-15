@@ -10,10 +10,10 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(inline_js = r#"
     class JsNumbersAdapter {
         /*
-        #[wasm_bindgen(structural, method)]
+        #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
         pub fn get_starting_tokens(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
         */
-        *get_starting_tokens(edge, parameters) {
+        *getStartingTokens(edge, parameters) {
             if (edge === "Number") {
                 const params = parameters.into_js_dict();
                 const maxValue = params["max"];
@@ -26,7 +26,7 @@ use wasm_bindgen::prelude::*;
         }
 
         /*
-        #[wasm_bindgen(structural, method)]
+        #[wasm_bindgen(structural, method, js_name = "projectProperty")]
         pub fn project_property(
             this: &JsAdapter,
             data_contexts: ContextIterator,
@@ -34,7 +34,7 @@ use wasm_bindgen::prelude::*;
             field_name: &str,
         ) -> js_sys::Iterator;
         */
-        *project_property(data_contexts, current_type_name, field_name) {
+        *projectProperty(data_contexts, current_type_name, field_name) {
             if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
                 if (field_name === "value") {
                     for (const ctx of data_contexts) {
@@ -53,7 +53,7 @@ use wasm_bindgen::prelude::*;
         }
 
         /*
-        #[wasm_bindgen(structural, method)]
+        #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
         pub fn project_neighbors(
             this: &JsAdapter,
             data_contexts: ContextIterator,
@@ -62,7 +62,7 @@ use wasm_bindgen::prelude::*;
             parameters: Option<EdgeParameters>,
         ) -> js_sys::Iterator;
         */
-        *project_neighbors(data_contexts, current_type_name, edge_name, parameters) {
+        *projectNeighbors(data_contexts, current_type_name, edge_name, parameters) {
             if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
                 if (edge_name === "successor") {
                     for (const ctx of data_contexts) {
@@ -81,7 +81,7 @@ use wasm_bindgen::prelude::*;
         }
 
         /*
-        #[wasm_bindgen(structural, method)]
+        #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
         pub fn can_coerce_to_type(
             this: &JsAdapter,
             data_contexts: ContextIterator,
@@ -89,7 +89,7 @@ use wasm_bindgen::prelude::*;
             coerce_to_type_name: &str,
         ) -> js_sys::Iterator;
         */
-        *can_coerce_to_type(data_contexts, current_type_name, coerce_to_type_name) {
+        *canCoerceToType(data_contexts, current_type_name, coerce_to_type_name) {
             const primes = {
                 2: null,
                 3: null,

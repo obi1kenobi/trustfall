@@ -16,14 +16,14 @@ use crate::shim::{
 extern "C" {
     pub type JsAdapter;
 
-    #[wasm_bindgen(structural, method)]
+    #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
     pub fn get_starting_tokens(
         this: &JsAdapter,
         edge: &str,
         parameters: Option<JsEdgeParameters>,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method)]
+    #[wasm_bindgen(structural, method, js_name = "projectProperty")]
     pub fn project_property(
         this: &JsAdapter,
         data_contexts: ContextIterator,
@@ -31,7 +31,7 @@ extern "C" {
         field_name: &str,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method)]
+    #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
     pub fn project_neighbors(
         this: &JsAdapter,
         data_contexts: ContextIterator,
@@ -40,7 +40,7 @@ extern "C" {
         parameters: Option<JsEdgeParameters>,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method)]
+    #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
     pub fn can_coerce_to_type(
         this: &JsAdapter,
         data_contexts: ContextIterator,
