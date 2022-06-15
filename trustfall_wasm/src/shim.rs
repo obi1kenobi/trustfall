@@ -85,6 +85,7 @@ impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct JsContext {
+    #[wasm_bindgen(js_name = "localId")]
     pub local_id: u32,
     current_token: Option<JsValue>,
 }
@@ -98,7 +99,7 @@ impl JsContext {
         }
     }
 
-    #[wasm_bindgen(getter)]
+    #[wasm_bindgen(getter, js_name = "currentToken")]
     pub fn current_token(&self) -> JsValue {
         match &self.current_token {
             Some(value) => value.clone(),

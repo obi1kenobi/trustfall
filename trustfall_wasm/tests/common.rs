@@ -2,7 +2,8 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 use trustfall_wasm::{
     adapter::{AdapterShim, JsAdapter},
-    shim::JsFieldValue, Schema,
+    shim::JsFieldValue,
+    Schema,
 };
 use wasm_bindgen::prelude::*;
 
@@ -38,8 +39,8 @@ use wasm_bindgen::prelude::*;
                 if (field_name === "value") {
                     for (const ctx of data_contexts) {
                         const val = {
-                            local_id: ctx.local_id,
-                            value: ctx.current_token,
+                            local_id: ctx.localId,
+                            value: ctx.currentToken,
                         };
                         yield val;
                     }
@@ -66,8 +67,8 @@ use wasm_bindgen::prelude::*;
                 if (edge_name === "successor") {
                     for (const ctx of data_contexts) {
                         const val = {
-                            local_id: ctx.local_id,
-                            neighbors: [ctx.current_token + 1],
+                            local_id: ctx.localId,
+                            neighbors: [ctx.currentToken + 1],
                         };
                         yield val;
                     }
@@ -100,11 +101,11 @@ use wasm_bindgen::prelude::*;
                 if (coerce_to_type_name === "Prime") {
                     for (const ctx of data_contexts) {
                         var can_coerce = false;
-                        if (ctx.current_token in primes) {
+                        if (ctx.currentToken in primes) {
                             can_coerce = true;
                         }
                         const val = {
-                            local_id: ctx.local_id,
+                            local_id: ctx.localId,
                             value: can_coerce,
                         };
                         yield val;
@@ -112,11 +113,11 @@ use wasm_bindgen::prelude::*;
                 } else if (coerce_to_type_name === "Composite") {
                     for (const ctx of data_contexts) {
                         var can_coerce = false;
-                        if (!(ctx.current_token in primes || ctx.current_token === 1)) {
+                        if (!(ctx.currentToken in primes || ctx.currentToken === 1)) {
                             can_coerce = true;
                         }
                         const val = {
-                            local_id: ctx.local_id,
+                            local_id: ctx.localId,
                             value: can_coerce,
                         };
                         yield val;

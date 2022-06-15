@@ -1,4 +1,4 @@
-use common::{run_numbers_query, make_test_schema};
+use common::{make_test_schema, run_numbers_query};
 use trustfall_core::ir::FieldValue;
 use trustfall_wasm::shim::{JsFieldValue, ReturnedContextIdAndValue};
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -41,7 +41,6 @@ pub fn deserialize_returned_context_id_and_null_value() {
     let field_value: FieldValue = ctx_and_value.value().clone().into();
     assert_eq!(field_value, FieldValue::Null);
 }
-
 
 #[wasm_bindgen_test]
 pub fn test_execute_query_with_traversal_and_coercion() {
