@@ -48,3 +48,27 @@ export interface Adapter<T> {
         coerce_to_type_name: string
     ): IterableIterator<ContextAndBool>;
 }
+
+export class Schema {
+    free(): void;
+
+    /**
+    * @param {string} input
+    * @returns {Schema}
+    */
+    static parse(input: string): Schema;
+}
+
+/**
+* @param {Schema} schema
+* @param {Adapter<T>} adapter
+* @param {string} query
+* @param {Record<string, JsFieldValue>} args
+* @returns {IterableIterator<Record<string, JsFieldValue>>}
+*/
+export function execute_query<T>(
+    schema: Schema,
+    adapter: Adapter<T>,
+    query: string,
+    args: Record<string, JsFieldValue>,
+): IterableIterator<Record<string, JsFieldValue>>;
