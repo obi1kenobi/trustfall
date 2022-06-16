@@ -26,7 +26,7 @@ export interface ContextAndBool {
 export interface Adapter<T> {
     getStartingTokens(
         edge: string,
-        parameters: JsEdgeParameters | null
+        parameters: JsEdgeParameters,
     ): IterableIterator<T>;
 
     projectProperty(
@@ -39,7 +39,7 @@ export interface Adapter<T> {
         data_contexts: IterableIterator<JsContext<T>>,
         current_type_name: string,
         edge_name: string,
-        parameters: JsEdgeParameters | null
+        parameters: JsEdgeParameters,
     ): IterableIterator<ContextAndNeighborsIterator<T>>;
 
     canCoerceToType(

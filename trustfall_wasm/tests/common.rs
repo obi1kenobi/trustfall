@@ -15,8 +15,7 @@ use wasm_bindgen::prelude::*;
         */
         *getStartingTokens(edge, parameters) {
             if (edge === "Number") {
-                const params = parameters.into_js_dict();
-                const maxValue = params["max"];
+                const maxValue = parameters["max"];
                 for (var i = 1; i <= maxValue; i++) {
                     yield i;
                 }

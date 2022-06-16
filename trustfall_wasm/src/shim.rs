@@ -49,7 +49,7 @@ impl From<FieldValue> for JsFieldValue {
 }
 
 #[wasm_bindgen]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct JsEdgeParameters {
     values: BTreeMap<String, JsFieldValue>,
 }
@@ -67,6 +67,24 @@ impl JsEdgeParameters {
 
     pub fn into_js_dict(&self) -> JsValue {
         JsValue::from_serde(&self.values).expect("serde conversion failed")
+    }
+}
+
+impl From<Option<trustfall_core::ir::EdgeParameters>> for JsEdgeParameters {
+    fn from(p: Option<trustfall_core::ir::EdgeParameters>) -> Self {
+        match p.as_ref() {
+            None => Default::default(),
+            Some(parameters) => parameters.into(),
+        }
+    }
+}
+
+impl From<Option<Arc<trustfall_core::ir::EdgeParameters>>> for JsEdgeParameters {
+    fn from(p: Option<Arc<trustfall_core::ir::EdgeParameters>>) -> Self {
+        match p.as_ref() {
+            None => Default::default(),
+            Some(parameters) => (&(**parameters)).into(),
+        }
     }
 }
 

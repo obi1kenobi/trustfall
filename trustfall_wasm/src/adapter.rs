@@ -20,7 +20,7 @@ extern "C" {
     pub fn get_starting_tokens(
         this: &JsAdapter,
         edge: &str,
-        parameters: Option<JsEdgeParameters>,
+        parameters: JsValue,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "projectProperty")]
@@ -37,7 +37,7 @@ extern "C" {
         data_contexts: ContextIterator,
         current_type_name: &str,
         edge_name: &str,
-        parameters: Option<JsEdgeParameters>,
+        parameters: JsValue,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
@@ -265,8 +265,10 @@ impl Adapter<'static> for AdapterShim {
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::DataToken> + 'static> {
-        let parameters = parameters.map(|p| p.as_ref().into());
-        let js_iter = self.inner.get_starting_tokens(edge.as_ref(), parameters);
+        let parameters: JsEdgeParameters = parameters.into();
+        let js_iter = self
+            .inner
+            .get_starting_tokens(edge.as_ref(), parameters.into_js_dict());
         Box::new(TokenIterator::new(js_iter.into_iter()))
     }
 
@@ -305,13 +307,13 @@ impl Adapter<'static> for AdapterShim {
     > {
         let ctx_iter = ContextIterator::new(data_contexts);
         let registry = ctx_iter.registry.clone();
-        let parameters = parameters.map(|p| p.as_ref().into());
+        let parameters: JsEdgeParameters = parameters.into();
 
         let js_iter = self.inner.project_neighbors(
             ctx_iter,
             current_type_name.as_ref(),
             edge_name.as_ref(),
-            parameters,
+            parameters.into_js_dict(),
         );
         Box::new(ContextAndNeighborsIterator::new(
             js_iter,
