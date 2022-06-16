@@ -190,10 +190,8 @@ impl ContextIterator {
 
 /// The (context, value) iterator item returned by the WASM version
 /// of the project_property() adapter method.
-#[wasm_bindgen]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndValue {
-    #[wasm_bindgen(js_name = "localId")]
     #[serde(rename = "localId")]
     pub local_id: u32,
     pub(super) value: JsFieldValue,
@@ -201,10 +199,8 @@ pub struct ReturnedContextIdAndValue {
 
 /// The (context, can_coerce) iterator item returned by the WASM version
 /// of the can_coerce_to_type() adapter method.
-#[wasm_bindgen]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndBool {
-    #[wasm_bindgen(js_name = "localId")]
     #[serde(rename = "localId")]
     pub local_id: u32,
     pub value: bool,

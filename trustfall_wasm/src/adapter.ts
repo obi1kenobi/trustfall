@@ -1,48 +1,50 @@
-type JsFieldValue = string | boolean | number | null | JsFieldValue[];
-type JsEdgeParameters = Record<string, JsFieldValue>;
+export type JsFieldValue = string | boolean | number | null | JsFieldValue[];
+export type JsEdgeParameters = Record<string, JsFieldValue>;
 
-interface JsContext<T> {
-  local_id: number;
-  value: T | null;
+export interface JsContext<T> {
+    free(): void;
+
+    readonly localId: number;
+    readonly currentToken: any;
 }
 
-interface ContextAndValue {
-  local_id: number;
-  value: JsFieldValue;
+export interface ContextAndValue {
+    localId: number;
+    value: JsFieldValue;
 }
 
-interface ContextAndNeighborsIterator<T> {
-  local_id: number;
-  neighbors: IterableIterator<T>;
+export interface ContextAndNeighborsIterator<T> {
+    localId: number;
+    neighbors: IterableIterator<T>;
 }
 
-interface ContextAndBool {
-  local_id: number;
-  value: boolean;
+export interface ContextAndBool {
+    localId: number;
+    value: boolean;
 }
 
-interface JsAdapter<T> {
-  get_starting_tokens(
-    edge: string,
-    parameters: JsEdgeParameters | null
-  ): IterableIterator<T>;
+export interface Adapter<T> {
+    getStartingTokens(
+        edge: string,
+        parameters: JsEdgeParameters | null
+    ): IterableIterator<T>;
 
-  project_property(
-    data_contexts: IterableIterator<JsContext<T>>,
-    current_type_name: string,
-    field_name: string
-  ): IterableIterator<ContextAndValue>;
+    projectProperty(
+        data_contexts: IterableIterator<JsContext<T>>,
+        current_type_name: string,
+        field_name: string
+    ): IterableIterator<ContextAndValue>;
 
-  project_neighbors(
-    data_contexts: IterableIterator<JsContext<T>>,
-    current_type_name: string,
-    edge_name: string,
-    parameters: JsEdgeParameters | null
-  ): IterableIterator<ContextAndNeighborsIterator<T>>;
+    projectNeighbors(
+        data_contexts: IterableIterator<JsContext<T>>,
+        current_type_name: string,
+        edge_name: string,
+        parameters: JsEdgeParameters | null
+    ): IterableIterator<ContextAndNeighborsIterator<T>>;
 
-  can_coerce_to_type(
-    data_contexts: IterableIterator<JsContext<T>>,
-    current_type_name: string,
-    coerce_to_type_name: string
-  ): IterableIterator<ContextAndBool>;
+    canCoerceToType(
+        data_contexts: IterableIterator<JsContext<T>>,
+        current_type_name: string,
+        coerce_to_type_name: string
+    ): IterableIterator<ContextAndBool>;
 }
