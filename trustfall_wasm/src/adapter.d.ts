@@ -5,7 +5,7 @@ export interface JsContext<T> {
     free(): void;
 
     readonly localId: number;
-    readonly currentToken: any;
+    readonly currentToken: T | null;
 }
 
 export interface ContextAndValue {
