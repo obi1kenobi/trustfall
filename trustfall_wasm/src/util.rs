@@ -16,7 +16,7 @@ pub fn set_panic_hook() {
 
 macro_rules! make_wasm_bindgen_struct_with_debug_clone {
     ($id:ident, $t:path) => {
-        #[wasm_bindgen::prelude::wasm_bindgen]
+        #[wasm_bindgen::prelude::wasm_bindgen(inspectable)]
         #[derive(Debug, Clone)]
         pub struct $id($t);
 
