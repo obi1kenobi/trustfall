@@ -66,7 +66,7 @@ export class Schema {
 * @param {Record<string, JsFieldValue>} args
 * @returns {IterableIterator<Record<string, JsFieldValue>>}
 */
-export function execute_query<T>(
+export function executeQuery<T>(
     schema: Schema,
     adapter: Adapter<T>,
     query: string,

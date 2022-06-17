@@ -130,11 +130,12 @@ use wasm_bindgen::prelude::*;
         }
     }
 
-    export function make_adapter() {
+    export function makeAdapter() {
         return new JsNumbersAdapter();
     }
 "#)]
 extern "C" {
+    #[wasm_bindgen(js_name = "makeAdapter")]
     pub fn make_adapter() -> JsAdapter;
 }
 

@@ -48,7 +48,7 @@ impl Schema {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = "executeQuery")]
 pub fn execute_query(
     schema: Schema,
     adapter: JsAdapter,
@@ -75,29 +75,4 @@ pub fn execute_query(
     .map_err(|e| e.to_string())?;
 
     Ok(QueryResultIterator::new(results_iter))
-}
-
-#[wasm_bindgen]
-pub fn attempt(adapter: JsAdapter, query: &str) -> Result<(), String> {
-    util::init().expect("failed init");
-
-    let schema = trustfall_core::schema::Schema::parse(include_str!(
-        "../../trustfall_core/src/resources/schemas/numbers.graphql"
-    ))
-    .unwrap();
-    let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
-
-    let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
-
-    let results_iter = trustfall_core::interpreter::execution::interpret_ir(
-        wrapped_adapter,
-        query,
-        Default::default(),
-    )
-    .map_err(|e| e.to_string())?;
-    for result in results_iter {
-        log!("result={:?}", result);
-    }
-
-    Ok(())
 }
