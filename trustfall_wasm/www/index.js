@@ -1,5 +1,4 @@
 import { Schema, executeQuery, initialize } from "trustfall_wasm";
-console.log(typeof (executeQuery));
 
 const numbersSchema = Schema.parse(`
 schema {
