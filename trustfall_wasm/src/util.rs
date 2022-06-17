@@ -56,6 +56,7 @@ extern "C" {
     pub fn iterify(obj: &Object);
 }
 
+#[wasm_bindgen]
 pub fn init() -> Result<(), JsValue> {
     set_panic_hook();
 

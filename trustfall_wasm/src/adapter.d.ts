@@ -72,3 +72,5 @@ export function executeQuery<T>(
     query: string,
     args: Record<string, JsFieldValue>,
 ): IterableIterator<Record<string, JsFieldValue>>;
+
+export function init();

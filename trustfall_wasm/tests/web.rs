@@ -32,7 +32,7 @@ pub fn deserialize_returned_value() {
 import {Schema, executeQuery} from "../../wasm-bindgen-test";
 
 export function testQuery() {
-    const numbers_schema = Schema.parse(`
+    const numbersSchema = Schema.parse(`
 schema {
     query: RootSchemaQuery
 }
@@ -232,7 +232,7 @@ type Letter implements Named {
         "val": 2,
     };
 
-    const results = Array.from(executeQuery(numbers_schema, adapter, query, args));
+    const results = Array.from(executeQuery(numbersSchema, adapter, query, args));
     const expected_results = [
         {
             "next": 4,
