@@ -57,7 +57,7 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub fn init() -> Result<(), JsValue> {
+pub fn initialize() -> Result<(), JsValue> {
     set_panic_hook();
 
     // Update the ContextIterator and QueryResultIterator prototypes to make them be iterators.

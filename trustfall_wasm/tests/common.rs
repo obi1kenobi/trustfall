@@ -143,7 +143,7 @@ pub fn run_numbers_query(
     query: &str,
     args: BTreeMap<String, JsFieldValue>,
 ) -> Result<Vec<BTreeMap<String, JsFieldValue>>, String> {
-    trustfall_wasm::util::init().expect("init failed");
+    trustfall_wasm::util::initialize().expect("init failed");
 
     let schema = trustfall_core::schema::Schema::parse(include_str!(
         "../../trustfall_core/src/resources/schemas/numbers.graphql"

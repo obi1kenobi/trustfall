@@ -13,7 +13,7 @@ wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen(start)]
 pub fn run_at_start() {
-    trustfall_wasm::util::init().expect("init failed");
+    trustfall_wasm::util::initialize().expect("initialize failed");
 }
 
 #[wasm_bindgen_test]

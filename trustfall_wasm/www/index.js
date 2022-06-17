@@ -1,4 +1,4 @@
-import { Schema, executeQuery, init } from "trustfall_wasm";
+import { Schema, executeQuery, initialize } from "trustfall_wasm";
 console.log(typeof (executeQuery));
 
 const numbersSchema = Schema.parse(`
@@ -207,5 +207,5 @@ function runQuery() {
   }
 }
 
-init();
+initialize();
 runQuery();
