@@ -87,7 +87,8 @@ jobs:
           pytest
           maturin build --interpreter python -o target/wheels/
 
-      - id: branch-info
+      - name: Set environment variables
+        id: branch-info
         run: |
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
@@ -225,9 +226,10 @@ jobs:
           wasm-pack test --headless --firefox
           wasm-pack test --headless --chrome
 
-      - id: branch-info
+      - name: Set environment variables
+        id: branch-info
         run: |
-          set -e
+          set -ex
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
           echo "::set-output name=TAG_NAME::$(.github/workflows/get_wasm_prerelease_name.sh)"
