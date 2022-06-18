@@ -22,7 +22,7 @@ All following commands are run from the `trustfall_wasm` directory.
 The WASM module currently only supports web browser use, and does not support running in Node.
 To run browser tests, make sure you have Firefox or Chrome installed, and then run
 one of the following commands matching the browser you'd like to test in:
-```bash
+```
 wasm-pack test --headless --firefox
 wasm-pack test --headless --chrome
 ```
@@ -35,13 +35,13 @@ Building the WASM module is therefore a two-step process:
 - Copy the hand-written TypeScript definitions into the build directory (by default, `pkg`).
 
 To create a dev build, run the following commands:
-```bash
+```
 wasm-pack build --dev
 cp src/trustfall_wasm.d.ts pkg/
 ```
 
 To create a release build, run the following commands:
-```bash
+```
 wasm-pack build
 cp src/trustfall_wasm.d.ts pkg/
 ```
