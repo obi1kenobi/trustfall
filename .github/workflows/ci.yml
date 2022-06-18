@@ -90,6 +90,7 @@ jobs:
       - name: Set environment variables
         id: branch-info
         run: |
+          set -ex
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
           echo "::set-output name=TAG_NAME::$(.github/workflows/get_py_prerelease_name.sh)"
@@ -189,8 +190,8 @@ jobs:
   wasm-tests:
     name: WASM tests
     runs-on: ubuntu-latest
-    #needs:
-    #  - rust-tests
+    needs:
+     - rust-tests
     permissions:
       contents: write
     steps:
@@ -243,22 +244,20 @@ jobs:
           cd trustfall_wasm
           wasm-pack build --no-typescript
           cp src/trustfall_wasm.d.ts pkg/
-          cd pkg/
-          tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
-          cd ..
-          ls -alh
+          # cd pkg/
+          # tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         if: steps.branch-info.outputs.WASM_CHANGED != 0
         with:
           name: wasm-module
-          path: trustfall_wasm/trustfall_wasm.tar.gz
+          path: trustfall_wasm/pkg/
           retention-days: 1
 
       - name: Make a new prerelease
         uses: ncipollo/release-action@v1
-        if: steps.branch-info.outputs.WASM_CHANGED != 0  # steps.branch-info.outputs.BRANCH_NAME == 'wasm_support' &&
+        if: steps.branch-info.outputs.BRANCH_NAME == 'main' && steps.branch-info.outputs.WASM_CHANGED != 0
         with:
           artifacts: "trustfall_wasm/pkg/*"
           commit: ${{ steps.branch-info.outputs.COMMIT }}

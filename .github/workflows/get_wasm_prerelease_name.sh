@@ -6,11 +6,11 @@ set -euo pipefail
 # Go to the trustfall_wasm directory.
 cd "$(git rev-parse --show-toplevel)/trustfall_wasm"
 
-# CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
-# if [[ "$CURRENT_BRANCH" != 'wasm_support' ]]; then
-#     echo >&2 "Not publishing since not on main branch: $CURRENT_BRANCH"
-#     exit 0
-# fi
+CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
+if [[ "$CURRENT_BRANCH" != 'wasm_support' ]]; then
+    echo >&2 "Not publishing since not on main branch: $CURRENT_BRANCH"
+    exit 0
+fi
 
 pip install toml 1>&2
 
