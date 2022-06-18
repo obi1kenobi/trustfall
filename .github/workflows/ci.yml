@@ -253,7 +253,7 @@ jobs:
 
       - name: Make a new prerelease
         uses: ncipollo/release-action@v1
-        if: steps.branch-info.outputs.BRANCH_NAME == 'wasm_support' && steps.branch-info.outputs.WASM_CHANGED != 0
+        if: steps.branch-info.outputs.WASM_CHANGED != 0  # steps.branch-info.outputs.BRANCH_NAME == 'wasm_support' &&
         with:
           artifacts: "trustfall_wasm/trustfall_wasm.tar.gz"
           commit: ${{ steps.branch-info.outputs.COMMIT }}
