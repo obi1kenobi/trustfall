@@ -260,7 +260,7 @@ jobs:
         uses: ncipollo/release-action@v1
         if: steps.branch-info.outputs.WASM_CHANGED != 0  # steps.branch-info.outputs.BRANCH_NAME == 'wasm_support' &&
         with:
-          artifacts: "trustfall_wasm/trustfall_wasm.tar.gz"
+          artifacts: "trustfall_wasm/pkg/*"
           commit: ${{ steps.branch-info.outputs.COMMIT }}
           tag: ${{ steps.branch-info.outputs.TAG_NAME }}
           generateReleaseNotes: true
