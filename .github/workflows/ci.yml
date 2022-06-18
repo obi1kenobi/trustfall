@@ -91,7 +91,7 @@ jobs:
         run: |
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
-          echo "::set-output name=TAG_NAME::$(.github/workflows/get_prerelease_name.sh)"
+          echo "::set-output name=TAG_NAME::$(.github/workflows/get_py_prerelease_name.sh)"
           echo "::set-output name=PYTHON_BINDINGS_CHANGED::$(.github/workflows/python_bindings_changed.sh)"
 
       - name: Upload artifact
@@ -227,10 +227,11 @@ jobs:
 
       - id: branch-info
         run: |
+          set -e
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
-          echo "::set-output name=TAG_NAME::$(.github/workflows/get_prerelease_name.sh)"
-          echo "::set-output name=WASM_CHANGED::$(.github/workflows/wasm_changed.sh)"
+          echo "::set-output name=TAG_NAME::$(.github/workflows/get_wasm_prerelease_name.sh)"
+          echo "::set-output name=WASM_CHANGED::$(.github/workflows/wasm_pkg_changed.sh)"
 
       - name: Build WASM module
         if: steps.branch-info.outputs.WASM_CHANGED != 0
