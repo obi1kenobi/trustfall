@@ -239,21 +239,21 @@ jobs:
           cd trustfall_wasm
           wasm-pack build --no-typescript
           cp src/trustfall_wasm.d.ts pkg/
-          tar -czvf pkg/trustfall_wasm.tar.gz pkg/
+          tar -czvf trustfall_wasm.tar.gz pkg/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         if: steps.branch-info.outputs.WASM_CHANGED != 0
         with:
           name: wasm-module
-          path: trustfall_wasm/pkg/trustfall_wasm.tar.gz
+          path: trustfall_wasm/trustfall_wasm.tar.gz
           retention-days: 1
 
       - name: Make a new prerelease
         uses: ncipollo/release-action@v1
         if: steps.branch-info.outputs.BRANCH_NAME == 'wasm_support' && steps.branch-info.outputs.WASM_CHANGED != 0
         with:
-          artifacts: "trustfall_wasm/pkg/trustfall_wasm.tar.gz"
+          artifacts: "trustfall_wasm/trustfall_wasm.tar.gz"
           commit: ${{ steps.branch-info.outputs.COMMIT }}
           tag: ${{ steps.branch-info.outputs.TAG_NAME }}
           generateReleaseNotes: true
