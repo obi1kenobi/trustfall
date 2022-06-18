@@ -239,7 +239,7 @@ jobs:
           cd trustfall_wasm
           wasm-pack build --no-typescript
           cp src/trustfall_wasm.d.ts pkg/
-          tar -xzf pkg/trustfall_wasm.tar.gz pkg/
+          tar -czvf pkg/trustfall_wasm.tar.gz pkg/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
