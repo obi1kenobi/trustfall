@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)/trustfall_wasm"
 
 CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
-if [[ "$CURRENT_BRANCH" != 'wasm_support' ]]; then
+if [[ "$CURRENT_BRANCH" != 'main' ]]; then
     echo >&2 "Not publishing since not on main branch: $CURRENT_BRANCH"
     exit 0
 fi
