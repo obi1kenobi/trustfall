@@ -17,6 +17,7 @@ jobs:
       - lint
       - rust-tests
       - python-tests
+      - wasm-tests
       - js-lint
     steps:
       - run: exit 0
@@ -47,6 +48,7 @@ jobs:
             ~/.cargo/git/db/
             target/
             trustfall_core/target/
+            trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
@@ -85,11 +87,13 @@ jobs:
           pytest
           maturin build --interpreter python -o target/wheels/
 
-      - id: branch-info
+      - name: Set environment variables
+        id: branch-info
         run: |
+          set -ex
           echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
           echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
-          echo "::set-output name=TAG_NAME::$(.github/workflows/get_prerelease_name.sh)"
+          echo "::set-output name=TAG_NAME::$(.github/workflows/get_py_prerelease_name.sh)"
           echo "::set-output name=PYTHON_BINDINGS_CHANGED::$(.github/workflows/python_bindings_changed.sh)"
 
       - name: Upload artifact
@@ -135,6 +139,7 @@ jobs:
             ~/.cargo/git/db/
             target/
             trustfall_core/target/
+            trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
@@ -174,12 +179,92 @@ jobs:
             ~/.cargo/git/db/
             target/
             trustfall_core/target/
+            trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: cargo test
         run: cargo test
+
+  wasm-tests:
+    name: WASM tests
+    runs-on: ubuntu-latest
+    needs:
+     - rust-tests
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            trustfall_core/target/
+            trustfall_wasm/target/
+            pytrustfall/target/
+            experiments/schemaless/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Run cargo test and wasm-pack tests
+        run: |
+          cd trustfall_wasm
+          cargo test
+          wasm-pack test --headless --firefox
+          wasm-pack test --headless --chrome
+
+      - name: Set environment variables
+        id: branch-info
+        run: |
+          set -ex
+          echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
+          echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
+          echo "::set-output name=TAG_NAME::$(.github/workflows/get_wasm_prerelease_name.sh)"
+          echo "::set-output name=WASM_CHANGED::$(.github/workflows/wasm_pkg_changed.sh)"
+
+      - name: Build WASM module
+        if: steps.branch-info.outputs.WASM_CHANGED != 0
+        run: |
+          cd trustfall_wasm
+          wasm-pack build --no-typescript
+          cp src/trustfall_wasm.d.ts pkg/
+          # cd pkg/
+          # tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        if: steps.branch-info.outputs.WASM_CHANGED != 0
+        with:
+          name: wasm-module
+          path: trustfall_wasm/pkg/
+          retention-days: 1
+
+      - name: Make a new prerelease
+        uses: ncipollo/release-action@v1
+        if: steps.branch-info.outputs.BRANCH_NAME == 'main' && steps.branch-info.outputs.WASM_CHANGED != 0
+        with:
+          artifacts: "trustfall_wasm/pkg/*"
+          commit: ${{ steps.branch-info.outputs.COMMIT }}
+          tag: ${{ steps.branch-info.outputs.TAG_NAME }}
+          generateReleaseNotes: true
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   js-lint:
     name: Run JS linters
@@ -203,4 +288,3 @@ jobs:
 
       - name: Run linters
         run: npm run lint
-

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "trustfall_core",
+    "trustfall_wasm",
     "filetests_proc_macro",
     "pytrustfall",
     "demo-hackernews",
