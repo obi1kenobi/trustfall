@@ -225,6 +225,40 @@ jobs:
           wasm-pack test --headless --firefox
           wasm-pack test --headless --chrome
 
+      - id: branch-info
+        run: |
+          echo "::set-output name=COMMIT::$(git rev-parse HEAD)"
+          echo "::set-output name=BRANCH_NAME::${GITHUB_REF#refs/heads/}"
+          echo "::set-output name=TAG_NAME::$(.github/workflows/get_prerelease_name.sh)"
+          echo "::set-output name=WASM_CHANGED::$(.github/workflows/wasm_changed.sh)"
+
+      - name: Build WASM module
+        if: steps.branch-info.outputs.WASM_CHANGED != 0
+        run: |
+          cd trustfall_wasm
+          wasm-pack build --no-typescript
+          cp src/trustfall_wasm.d.ts pkg/
+          tar -xzf pkg/trustfall_wasm.tar.gz pkg/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        if: steps.branch-info.outputs.WASM_CHANGED != 0
+        with:
+          name: wasm-module
+          path: trustfall_wasm/pkg/trustfall_wasm.tar.gz
+          retention-days: 1
+
+      - name: Make a new prerelease
+        uses: ncipollo/release-action@v1
+        if: steps.branch-info.outputs.BRANCH_NAME == 'wasm_support' && steps.branch-info.outputs.WASM_CHANGED != 0
+        with:
+          artifacts: "trustfall_wasm/pkg/trustfall_wasm.tar.gz"
+          commit: ${{ steps.branch-info.outputs.COMMIT }}
+          tag: ${{ steps.branch-info.outputs.TAG_NAME }}
+          generateReleaseNotes: true
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   js-lint:
     name: Run JS linters
     runs-on: ubuntu-latest
