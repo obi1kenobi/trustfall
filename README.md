@@ -61,6 +61,7 @@ the best resource is the Python bindings'
 
 - `trustfall_core` contains the query engine itself: [link](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_core)
 - `pytrustfall` contains `pyo3`-based Python bindings for the `trustfall` engine: [link](https://github.com/obi1kenobi/trustfall/tree/main/pytrustfall)
+- `trustfall_wasm` is a WASM build of the `trustfall` engine: [link](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_wasm)
 - `demo-hackernews` contains an example use case: querying the HackerNews APIs.
 - `demo-hytradboi` contains the demo code from the "How to Query (Almost) Everything" talk
   at the [HYTRADBOI 2022](https://www.hytradboi.com/) conference.
