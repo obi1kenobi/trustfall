@@ -5,7 +5,7 @@ It initializes the WASM module, sets up a query adapter, runs a query,
 and prints the results to `console.log()`.
 
 See the schema and query adapter used in this demo in the included `index.js`
-[file](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_wasm/www/index.js)
+[file](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_wasm/www/index.js).
 
 ## Building and running `trustfall_wasm_www`
 
