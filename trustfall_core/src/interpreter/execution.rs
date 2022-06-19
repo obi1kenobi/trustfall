@@ -18,8 +18,8 @@ use crate::{
         ValueOrVec,
     },
     ir::{
-        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldValue,
-        FoldSpecificField, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
+        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
+        FoldSpecificFieldKind, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
         Recursive, Vid,
     },
     util::BTreeMapTryInsertExt,
@@ -249,12 +249,15 @@ fn get_max_fold_count_limit(query: &InterpretedQuery, fold: &IRFold) -> Option<u
 
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
-            Operation::Equals(FoldSpecificField::Count, Argument::Variable(var_ref))
-            | Operation::LessThanOrEqual(FoldSpecificField::Count, Argument::Variable(var_ref)) => {
+            Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
+            | Operation::LessThanOrEqual(
+                FoldSpecificFieldKind::Count,
+                Argument::Variable(var_ref),
+            ) => {
                 let variable_value = query.arguments[&var_ref.variable_name].as_usize().unwrap();
                 Some(variable_value)
             }
-            Operation::LessThan(FoldSpecificField::Count, Argument::Variable(var_ref)) => {
+            Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
                 let variable_value = query.arguments[&var_ref.variable_name].as_usize().unwrap();
                 // saturating_sub() here is a safeguard against underflow: in principle,
                 // we shouldn't see a comparison for "< 0", but if we do regardless, we'd prefer to
@@ -263,7 +266,7 @@ fn get_max_fold_count_limit(query: &InterpretedQuery, fold: &IRFold) -> Option<u
                 // The later full application of filters ensures correctness.
                 Some(variable_value.saturating_sub(1))
             }
-            Operation::OneOf(FoldSpecificField::Count, Argument::Variable(var_ref)) => {
+            Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
                 match &query.arguments[&var_ref.variable_name] {
                     FieldValue::List(v) => v.iter().map(|x| x.as_usize().unwrap()).max(),
                     _ => unreachable!(),
@@ -446,7 +449,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
         // Add any fold-specific field outputs to the context's folded values.
         for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
             let value = match fold_specific_field {
-                FoldSpecificField::Count => {
+                FoldSpecificFieldKind::Count => {
                     ValueOrVec::Value(FieldValue::Uint64(fold_elements.len() as u64))
                 }
             };
@@ -535,12 +538,18 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 #[inline(always)]
 fn is_tag_optional_and_missing<'query, DataToken: Clone + Debug + 'query>(
     context: &DataContext<DataToken>,
-    tagged_field: &ContextField,
+    tagged_field: &FieldRef,
 ) -> bool {
+    // Get a representative Vid that will show whether the tagged value exists or not.
+    let vid = match tagged_field {
+        FieldRef::ContextField(field) => field.vertex_id,
+        FieldRef::FoldSpecificField(field) => field.fold_root_id,
+    };
+
     // Some(None) means "there's a value associated with that Vid, and it's None".
     // None would mean that the tagged value is local, i.e. nothing is associated with that Vid yet.
     // Some(Some(token)) would mean that a vertex was found and associated with that Vid.
-    matches!(context.tokens.get(&tagged_field.vertex_id), Some(None))
+    matches!(context.tokens.get(&vid), Some(None))
 }
 
 macro_rules! implement_filter {
@@ -617,7 +626,7 @@ fn apply_fold_specific_filter<'query, DataToken: Clone + Debug + 'query>(
     component: &IRQueryComponent,
     fold: &IRFold,
     current_vid: Vid,
-    filter: &Operation<FoldSpecificField, Argument>,
+    filter: &Operation<FoldSpecificFieldKind, Argument>,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let fold_specific_field = filter.left();
@@ -646,7 +655,7 @@ fn apply_filter<
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expression_iterator = match filter.right() {
-        Some(Argument::Tag(context_field)) => {
+        Some(Argument::Tag(FieldRef::ContextField(context_field))) => {
             if context_field.vertex_id == current_vid {
                 // This tag is from the vertex we're currently filtering. That means the field
                 // whose value we want to get is actually local, so there's no need to compute it
@@ -666,6 +675,9 @@ fn apply_filter<
             } else {
                 compute_context_field(adapter_ref, query, component, context_field, iterator)
             }
+        }
+        Some(Argument::Tag(FieldRef::FoldSpecificField(_fold_field))) => {
+            todo!()
         }
         Some(Argument::Variable(var)) => {
             let right_value = query.arguments[var.variable_name.as_ref()].to_owned();
@@ -850,12 +862,12 @@ fn compute_context_field<'query, DataToken: Clone + Debug + 'query>(
 
 fn compute_fold_specific_field<'query, DataToken: Clone + Debug + 'query>(
     fold: &IRFold,
-    fold_specific_field: &FoldSpecificField,
+    fold_specific_field: &FoldSpecificFieldKind,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let fold_eid = fold.eid;
     match fold_specific_field {
-        FoldSpecificField::Count => Box::new(iterator.map(move |mut ctx| {
+        FoldSpecificFieldKind::Count => Box::new(iterator.map(move |mut ctx| {
             let value = ctx.folded_contexts[&fold_eid].len();
             ctx.values.push(FieldValue::Uint64(value as u64));
             ctx

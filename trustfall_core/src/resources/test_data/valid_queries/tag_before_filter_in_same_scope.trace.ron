@@ -147,11 +147,11 @@ TestInterpreterOutputTrace(
               Contains(LocalField(
                 field_name: "vowelsInName",
                 field_type: "[String]",
-              ), Tag(ContextField(
+              ), Tag(ContextField(ContextField(
                 vertex_id: Vid(1),
                 field_name: "name",
                 field_type: "String",
-              ))),
+              )))),
             ],
           ),
         },

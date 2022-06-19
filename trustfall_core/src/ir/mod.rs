@@ -8,6 +8,7 @@ pub mod value;
 use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::types::{BaseType, Type};
+use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::error::FilterTypeError;
@@ -142,26 +143,90 @@ pub struct IRFold {
     pub imported_tags: Vec<ContextField>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificField>,
+    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificFieldKind>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Arc<Vec<Operation<FoldSpecificField, Argument>>>,
+    pub post_filters: Arc<Vec<Operation<FoldSpecificFieldKind, Argument>>>,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FoldSpecificField {
+pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
+}
+
+lazy_static! {
+    static ref NON_NULL_INT_TYPE: Type = Type {
+        base: BaseType::Named(Name::new("Integer")),
+        nullable: false,
+    };
+}
+
+impl FoldSpecificFieldKind {
+    pub fn field_type(&self) -> &Type {
+        match self {
+            Self::Count => &NON_NULL_INT_TYPE,
+        }
+    }
+
+    pub fn field_name(&self) -> &str {
+        match self {
+            FoldSpecificFieldKind::Count => "@fold.count",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FoldSpecificField {
+    pub fold_eid: Eid,     // uniquely identifies the fold
+    pub fold_root_id: Vid, // used to quickly check whether the fold exists at all,
+    // e.g. for "tagged parameter is optional and missing" purposes
+    pub kind: FoldSpecificFieldKind,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FieldRef {
+    ContextField(ContextField),
+    FoldSpecificField(FoldSpecificField),
+}
+
+impl From<ContextField> for FieldRef {
+    fn from(c: ContextField) -> Self {
+        Self::ContextField(c)
+    }
+}
+
+impl From<FoldSpecificField> for FieldRef {
+    fn from(f: FoldSpecificField) -> Self {
+        Self::FoldSpecificField(f)
+    }
+}
+
+impl FieldRef {
+    pub fn field_type(&self) -> &Type {
+        match self {
+            FieldRef::ContextField(c) => &c.field_type,
+            FieldRef::FoldSpecificField(f) => f.kind.field_type(),
+        }
+    }
+
+    pub fn field_name(&self) -> &str {
+        match self {
+            FieldRef::ContextField(c) => c.field_name.as_ref(),
+            FieldRef::FoldSpecificField(f) => f.kind.field_name(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Argument {
-    Tag(ContextField),
+    Tag(FieldRef),
     Variable(VariableRef),
 }
 
 impl Argument {
-    pub(crate) fn as_tag(&self) -> Option<&ContextField> {
+    pub(crate) fn as_tag(&self) -> Option<&FieldRef> {
         match self {
             Argument::Tag(t) => Some(t),
             Argument::Variable(_) => None,
@@ -354,7 +419,7 @@ impl Operation<LocalField, Argument> {
         let right = self.right();
         let left_type = &left.field_type;
         let right_type = right.map(|arg| match arg {
-            Argument::Tag(tag) => &tag.field_type,
+            Argument::Tag(tag) => tag.field_type(),
             Argument::Variable(var) => &var.variable_type,
         });
 
@@ -403,8 +468,8 @@ impl Operation<LocalField, Argument> {
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
-                        tag.field_name.to_string(),
-                        tag.field_type.to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
                     )])
                 }
             }
@@ -434,8 +499,8 @@ impl Operation<LocalField, Argument> {
                     errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableTag(
                         self.operation_name().to_string(),
                         tag_name.unwrap().to_string(),
-                        tag.field_name.to_string(),
-                        tag.field_type.to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
                     ));
                 }
 
@@ -452,8 +517,8 @@ impl Operation<LocalField, Argument> {
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
-                        tag.field_name.to_string(),
-                        tag.field_type.to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
                     ));
                 }
 
@@ -494,8 +559,8 @@ impl Operation<LocalField, Argument> {
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
-                        tag.field_name.to_string(),
-                        tag.field_type.to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
                     )])
                 }
             }
@@ -514,8 +579,8 @@ impl Operation<LocalField, Argument> {
                         Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
                             self.operation_name().to_string(),
                             tag_name.unwrap().to_string(),
-                            tag.field_name.to_string(),
-                            tag.field_type.to_string(),
+                            tag.field_name().to_string(),
+                            tag.field_type().to_string(),
                         )])
                     }
                 }?;
@@ -535,8 +600,8 @@ impl Operation<LocalField, Argument> {
                         left.field_name.to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
-                        tag.field_name.to_string(),
-                        tag.field_type.to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
                     )])
                 }
             }
@@ -572,8 +637,8 @@ impl Operation<LocalField, Argument> {
                         errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
                             self.operation_name().to_string(),
                             tag_name.unwrap().to_string(),
-                            tag.field_name.to_string(),
-                            tag.field_type.to_string(),
+                            tag.field_name().to_string(),
+                            tag.field_type().to_string(),
                         ));
                     }
                 }

@@ -333,7 +333,7 @@ fn make_filter_expr(
                             }
                         };
 
-                        Argument::Tag(defined_tag.field.clone())
+                        Argument::Tag(defined_tag.field.clone().into())
                     }
                 })
             },

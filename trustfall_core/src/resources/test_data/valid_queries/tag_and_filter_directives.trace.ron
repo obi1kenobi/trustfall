@@ -1075,11 +1075,11 @@ TestInterpreterOutputTrace(
               Equals(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Tag(ContextField(
+              ), Tag(ContextField(ContextField(
                 vertex_id: Vid(1),
                 field_name: "value",
                 field_type: "Int",
-              ))),
+              )))),
             ],
           ),
         },
