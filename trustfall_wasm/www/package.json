@@ -1,5 +1,5 @@
 {
-  "name": "trustfall_wasm_web",
+  "name": "trustfall_wasm_www",
   "version": "0.1.0",
   "description": "a demo app running the trustfall query engine in the browser",
   "main": "index.js",

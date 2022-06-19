@@ -244,8 +244,8 @@ jobs:
           cd trustfall_wasm
           wasm-pack build --no-typescript
           cp src/trustfall_wasm.d.ts pkg/
-          # cd pkg/
-          # tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
+          cd pkg/
+          tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -259,7 +259,7 @@ jobs:
         uses: ncipollo/release-action@v1
         if: steps.branch-info.outputs.BRANCH_NAME == 'main' && steps.branch-info.outputs.WASM_CHANGED != 0
         with:
-          artifacts: "trustfall_wasm/pkg/*"
+          artifacts: "trustfall_wasm/trustfall_wasm.tar.gz"
           commit: ${{ steps.branch-info.outputs.COMMIT }}
           tag: ${{ steps.branch-info.outputs.TAG_NAME }}
           generateReleaseNotes: true
