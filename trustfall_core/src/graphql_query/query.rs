@@ -279,7 +279,6 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
     let mut filter: SmallVec<[FilterDirective; 1]> = Default::default();
     let mut output: SmallVec<[OutputDirective; 1]> = Default::default();
     let mut tag: SmallVec<[TagDirective; 0]> = Default::default();
-    let mut transform: SmallVec<[TransformDirective; 1]> = Default::default();
 
     let directives = make_directives(&field.node.directives)?;
     let mut directives_iter = directives.into_iter();
@@ -301,7 +300,7 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
     };
 
     let transform_group = if let Some(transform) = maybe_transform {
-        Some(make_transform_group(transform, directives_iter)?)
+        Some(make_transform_group(transform, &mut directives_iter)?)
     } else {
         None
     };
@@ -410,7 +409,7 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
     };
 
     let fold_group = if let Some(fold) = maybe_fold {
-        Some(make_fold_group(fold, directives_iter)?)
+        Some(make_fold_group(fold, &mut directives_iter)?)
     } else {
         None
     };
@@ -432,12 +431,12 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
 
 fn make_fold_group(
     fold: FoldDirective,
-    mut iter: impl Iterator<Item = ParsedDirective>,
+    directive_iter: &mut impl Iterator<Item = ParsedDirective>,
 ) -> Result<FoldGroup, ParseError> {
-    let transform_group = if let Some(directive) = iter.next() {
+    let transform_group = if let Some(directive) = directive_iter.next() {
         match directive {
             ParsedDirective::Transform(transform, _) => {
-                Some(make_transform_group(transform, iter)?)
+                Some(make_transform_group(transform, directive_iter)?)
             }
             ParsedDirective::Fold(_, pos) => {
                 return Err(ParseError::UnsupportedDuplicatedDirective(
@@ -465,15 +464,47 @@ fn make_fold_group(
 
 fn make_transform_group(
     transform: TransformDirective,
-    mut iter: impl Iterator<Item = ParsedDirective>,
+    directive_iter: &mut impl Iterator<Item = ParsedDirective>,
 ) -> Result<TransformGroup, ParseError> {
-    let result = todo!();
+    let mut output = vec![];
+    let mut tag = vec![];
+    let mut filter = vec![];
+
+    let retransform = loop {
+        if let Some(directive) = directive_iter.next() {
+            match directive {
+                ParsedDirective::Filter(f, _) => filter.push(f),
+                ParsedDirective::Output(o, _) => output.push(o),
+                ParsedDirective::Tag(t, _) => tag.push(t),
+                ParsedDirective::Transform(xform, _) => {
+                    break Some(Box::new(make_transform_group(xform, directive_iter)?));
+                }
+                ParsedDirective::Fold(..)
+                | ParsedDirective::Optional(..)
+                | ParsedDirective::Recurse(..) => {
+                    return Err(ParseError::UnsupportedDirectivePosition(
+                        directive.kind().to_string(),
+                        "this directive cannot appear after a @transform directive".to_string(),
+                        directive.pos(),
+                    ))
+                }
+            }
+        } else {
+            break None;
+        }
+    };
 
     // Once we encounter a @transform directive,
     // all other directives apply to the transformed value and are processed here.
-    assert!(iter.next().is_none());
+    assert!(directive_iter.next().is_none());
 
-    result
+    Ok(TransformGroup {
+        transform,
+        output,
+        tag,
+        filter,
+        retransform,
+    })
 }
 
 pub(crate) fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError> {
