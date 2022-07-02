@@ -89,7 +89,7 @@ where
 {
     struct TypeDeserializer;
 
-    impl<'a, 'de> Visitor<'de> for TypeDeserializer {
+    impl<'de> Visitor<'de> for TypeDeserializer {
         type Value = Option<bool>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -270,7 +270,7 @@ fn get_visibility(raw_metar: &str) -> Visibility {
             }
             visibility_meters
                 if visibility_meters.len() == 4
-                    && visibility_meters.chars().all(|c| c.is_digit(10)) =>
+                    && visibility_meters.chars().all(|c| c.is_ascii_digit()) =>
             {
                 let meters_per_mile: f64 = 1609.34;
                 let visibility_meters: f64 = visibility_meters.parse::<u32>().unwrap().into();

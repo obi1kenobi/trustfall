@@ -64,7 +64,7 @@ fn read_metar_data() -> Vec<MetarReport> {
             "No errors" | "No warnings" | "data source=metars" | METAR_DOC_HEADER_ROW => {}
             data => match data.split_once(' ') {
                 Some((left, right)) if right == "ms" || right == "results" => {
-                    assert!(left.chars().all(|x| x.is_digit(10)));
+                    assert!(left.chars().all(|x| x.is_ascii_digit()));
                 }
                 _ => unreachable!(),
             },
