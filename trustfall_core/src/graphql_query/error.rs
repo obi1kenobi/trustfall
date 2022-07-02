@@ -8,6 +8,9 @@ pub enum ParseError {
     #[error("Found unrecognized directive {0}")]
     UnrecognizedDirective(String, Pos),
 
+    #[error("Found directive in unsupported position {0}: {1}")]
+    UnsupportedDirectivePosition(String, String, Pos),
+
     #[error("Directive {0} missing required argument {1}")]
     MissingRequiredDirectiveArgument(String, String, Pos),
 
@@ -44,8 +47,11 @@ pub enum ParseError {
     #[error("Input is not a query operation")]
     DocumentNotAQuery(Pos),
 
-    #[error("Query references unrecognized filter operator: {0}")]
+    #[error("Unrecognized filter operator: {0}")]
     UnsupportedFilterOperator(String, Pos),
+
+    #[error("Unrecognized transform operator: {0}")]
+    UnsupportedTransformOperator(String, Pos),
 
     #[error("Specified output name \"{0}\" contains invalid characters: {1:?}")]
     InvalidOutputName(String, Vec<char>, Pos),

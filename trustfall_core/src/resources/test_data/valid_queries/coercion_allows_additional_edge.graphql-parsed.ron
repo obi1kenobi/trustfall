@@ -42,7 +42,11 @@ Ok(TestParsedGraphQLQuery(
             column: 13,
           ),
           name: "primeFactor",
-          fold: Some(FoldDirective()),
+          fold: Some(
+            FoldGroup(
+              fold: FoldDirective()
+            )
+          ),
         ), FieldNode(
           position: Pos(
             line: 7,

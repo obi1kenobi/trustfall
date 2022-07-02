@@ -12,7 +12,7 @@ use smallvec::SmallVec;
 
 use crate::{
     graphql_query::{
-        directives::{FilterDirective, FoldDirective, OperatorArgument, RecurseDirective},
+        directives::{FilterDirective, OperatorArgument, RecurseDirective},
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
@@ -844,11 +844,18 @@ fn make_vertex<'schema, 'query>(
 ) -> Result<IRVertex, Vec<FrontendError>> {
     let mut errors: Vec<FrontendError> = vec![];
 
-    if !field_node.output.is_empty() {
+    // If the current vertex is the root of a `@fold`, then sometimes outputs are allowed.
+    // This will be handled and checked in the fold creation function, so ignore it here.
+    //
+    // If the current vertex is not the root of a fold, then outputs are not allowed
+    // and we should report an error.
+    let is_fold_root = component_path.is_component_root(vid);
+    if !is_fold_root && !field_node.output.is_empty() {
         errors.push(FrontendError::UnsupportedEdgeOutput(
             field_node.name.as_ref().to_owned(),
         ));
     }
+
     if let Some(first_filter) = field_node.filter.first() {
         // TODO: If @filter on edges is allowed, tweak this.
         errors.push(FrontendError::UnsupportedEdgeFilter(
@@ -978,7 +985,7 @@ where
             let next_vid = vid_maker.next().unwrap();
             let next_eid = eid_maker.next().unwrap();
 
-            if let Some(FoldDirective {}) = connection.fold {
+            if let Some(fold_group) = &connection.fold {
                 if connection.optional.is_some() {
                     errors.push(FrontendError::UnsupportedDirectiveOnFoldedEdge(
                         subfield.name.to_string(),
@@ -991,6 +998,8 @@ where
                         "@recurse".to_owned(),
                     ));
                 }
+
+                // TODO: use fold group
 
                 let edge_definition = get_edge_definition_from_schema(
                     schema,
@@ -1160,6 +1169,16 @@ where
     )?;
     component_path.pop(starting_vid);
     let imported_tags = tags.end_subcomponent(starting_vid);
+
+    if !starting_field.output.is_empty() {
+        // The edge has @fold @output but no @transform.
+        // If it had a @transform then the output would have been in the field's transform group.
+        return Err(
+            vec![FrontendError::UnsupportedEdgeOutput(
+                starting_field.name.as_ref().to_owned(),
+            )]
+        )
+    }
 
     // TODO: properly load fold post-filters and fold-specific outputs
     let post_filters = Arc::new(vec![]);
