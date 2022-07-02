@@ -24,7 +24,7 @@ use std::{
 use async_graphql_parser::{parse_query, parse_schema};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use trustfall_core::schema::error::InvalidSchemaError;
+use trustfall_core::{interpreter::error::QueryArgumentsError, schema::error::InvalidSchemaError};
 
 use crate::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemToken},
@@ -36,7 +36,7 @@ use crate::{
         Adapter,
     },
     nullables_interpreter::NullablesAdapter,
-    numbers_interpreter::NumbersAdapter,
+    numbers_interpreter::{NumbersAdapter, NumbersToken},
     schema::Schema,
     util::{
         TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace,
@@ -199,13 +199,25 @@ fn reserialize(path: &str) {
             serialize_to_ron(&test_query_result)
         }
         Some((_, "trace")) => {
-            let test_trace: TestInterpreterOutputTrace<FilesystemToken> =
-                ron::from_str(&input_data).unwrap();
-            serialize_to_ron(&test_trace)
+            if let Ok(test_trace) =
+                ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(&input_data)
+            {
+                serialize_to_ron(&test_trace)
+            } else if let Ok(test_trace) =
+                ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(&input_data)
+            {
+                serialize_to_ron(&test_trace)
+            } else {
+                unreachable!()
+            }
         }
         Some((_, "schema-error")) => {
             let schema_error: InvalidSchemaError = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&schema_error)
+        }
+        Some((_, "exec-error")) => {
+            let exec_error: QueryArgumentsError = ron::from_str(&input_data).unwrap();
+            serialize_to_ron(&exec_error)
         }
         Some((_, ext)) => unreachable!("{}", ext),
         None => unreachable!("{}", path),

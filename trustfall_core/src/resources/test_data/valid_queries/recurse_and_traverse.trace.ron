@@ -3935,7 +3935,6 @@ TestInterpreterOutputTrace(
             edge_name: "successor",
             recursive: Some(Recursive(
               depth: 3,
-              coerce_to: None,
             )),
           ),
           Eid(2): IREdge(
