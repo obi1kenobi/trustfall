@@ -440,19 +440,18 @@ fn make_fold_group(
                 Some(make_transform_group(transform, iter)?)
             }
             ParsedDirective::Fold(_, pos) => {
-                return Err(
-                    ParseError::UnsupportedDuplicatedDirective("@fold".to_string(), pos)
-                );
+                return Err(ParseError::UnsupportedDuplicatedDirective(
+                    "@fold".to_string(),
+                    pos,
+                ));
             }
             _ => {
-                return Err(
-                    ParseError::UnsupportedDirectivePosition(
-                        directive.kind().to_string(),
-                        "this directive cannot appear after a @fold directive".to_string(),
-                        directive.pos(),
-                    )
-                )
-            },
+                return Err(ParseError::UnsupportedDirectivePosition(
+                    directive.kind().to_string(),
+                    "this directive cannot appear after a @fold directive".to_string(),
+                    directive.pos(),
+                ))
+            }
         }
     } else {
         None
