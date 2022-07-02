@@ -24,11 +24,9 @@ Ok(TestParsedGraphQLQuery(
           arguments: {
             "max": Int64(4),
           },
-          fold: Some(
-            FoldGroup(
-              fold: FoldDirective()
-            )
-          ),
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
         ), FieldNode(
           position: Pos(
             line: 4,

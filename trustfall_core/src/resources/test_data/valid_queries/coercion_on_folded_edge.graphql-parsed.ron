@@ -40,11 +40,9 @@ Ok(TestParsedGraphQLQuery(
             column: 9,
           ),
           name: "predecessor",
-          fold: Some(
-            FoldGroup(
-              fold: FoldDirective()
-            )
-          ),
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
         ), FieldNode(
           position: Pos(
             line: 6,
