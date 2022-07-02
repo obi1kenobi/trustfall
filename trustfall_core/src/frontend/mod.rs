@@ -12,14 +12,15 @@ use smallvec::SmallVec;
 
 use crate::{
     graphql_query::{
-        directives::{FilterDirective, OperatorArgument, RecurseDirective},
+        directives::{FilterDirective, FoldGroup, OperatorArgument, RecurseDirective},
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
         indexed::IndexedQuery,
         types::{intersect_types, is_argument_type_valid},
-        Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRFold, IRQuery,
-        IRQueryComponent, IRVertex, LocalField, Operation, Recursive, VariableRef, Vid,
+        Argument, ContextField, EdgeParameters, Eid, FieldValue, FoldSpecificFieldKind, IREdge,
+        IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, Recursive,
+        TransformationKind, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -999,8 +1000,6 @@ where
                     ));
                 }
 
-                // TODO: use fold group
-
                 let edge_definition = get_edge_definition_from_schema(
                     schema,
                     post_coercion_type.as_ref(),
@@ -1016,6 +1015,7 @@ where
                             output_prefixes,
                             component_path,
                             tags,
+                            fold_group,
                             next_eid,
                             edge_definition.name.node.as_str().to_owned().into(),
                             edge_parameters,
@@ -1136,6 +1136,7 @@ fn make_fold<'schema, 'query, V, E>(
     output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
     tags: &mut TagHandler<'query>,
+    fold_group: &FoldGroup,
     fold_eid: Eid,
     edge_name: Arc<str>,
     edge_parameters: Option<Arc<EdgeParameters>>,
@@ -1176,6 +1177,26 @@ where
         return Err(vec![FrontendError::UnsupportedEdgeOutput(
             starting_field.name.as_ref().to_owned(),
         )]);
+    }
+
+    if let Some(transform_group) = &fold_group.transform {
+        if transform_group.retransform.is_some() {
+            unimplemented!("re-transforming a @fold @transform value is currently not supported");
+        }
+
+        let fold_specific_field_kind = match transform_group.transform.kind {
+            TransformationKind::Count => FoldSpecificFieldKind::Count,
+        };
+
+        for filter in &transform_group.filter {
+            unimplemented!("work in a call to something like make_filter_expr() here");
+        }
+        for output in &transform_group.output {
+            unimplemented!("register the outputs here");
+        }
+        for tag in &transform_group.tag {
+            unimplemented!("register the tag here");
+        }
     }
 
     // TODO: properly load fold post-filters and fold-specific outputs
