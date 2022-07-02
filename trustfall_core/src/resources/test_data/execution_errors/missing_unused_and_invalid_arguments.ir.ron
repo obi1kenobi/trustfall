@@ -52,8 +52,8 @@ Ok(TestIRQuery(
     },
   ),
   arguments: {
-    "substr": Int64(4),
-    "num": String("four"),
     "min": Int64(0),
+    "num": String("four"),
+    "substr": Int64(4),
   },
 ))

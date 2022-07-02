@@ -35,7 +35,6 @@ Ok(TestIRQuery(
           edge_name: "successor",
           recursive: Some(Recursive(
             depth: 3,
-            coerce_to: None,
           )),
         ),
       },
