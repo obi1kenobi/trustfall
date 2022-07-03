@@ -1,0 +1,8 @@
+Err(MultipleOutputsWithSameName(DuplicatedNamesConflict(
+  duplicates: {
+    "file_name": [
+      ("File", "name"),
+      ("File", "name"),
+    ],
+  },
+)))

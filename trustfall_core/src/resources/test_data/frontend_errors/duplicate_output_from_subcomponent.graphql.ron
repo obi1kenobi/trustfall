@@ -1,0 +1,18 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        out_Directory_Subdirectory {
+            file_: out_Directory_ContainsFile {
+                name @output
+            }
+        }
+
+        out_Directory_ContainsFile @fold {
+            name @output(name: "file_name")
+        }
+    }
+}"#,
+    arguments: {},
+)

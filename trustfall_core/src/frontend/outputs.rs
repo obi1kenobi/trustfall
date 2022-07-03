@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use itertools::Itertools;
 
-use crate::ir::{Vid, FieldRef};
+use crate::ir::{FieldRef, Vid};
 
 #[derive(Debug)]
 pub(super) struct OutputHandler<'query> {
@@ -11,6 +11,7 @@ pub(super) struct OutputHandler<'query> {
     root_vid: Vid,
     root_prefix: Option<&'query str>,
     component_outputs_stack: Vec<BTreeMap<Arc<str>, Vec<FieldRef>>>,
+    global_outputs: BTreeMap<Arc<str>, Vec<FieldRef>>,
 }
 
 impl<'query> OutputHandler<'query> {
@@ -21,6 +22,7 @@ impl<'query> OutputHandler<'query> {
             root_vid,
             root_prefix,
             component_outputs_stack: Default::default(),
+            global_outputs: Default::default(),
         }
     }
 
@@ -42,7 +44,9 @@ impl<'query> OutputHandler<'query> {
     }
 
     pub(super) fn end_subcomponent(&mut self) -> BTreeMap<Arc<str>, Vec<FieldRef>> {
-        self.component_outputs_stack.pop().expect("stack was unexpectedly empty")
+        self.component_outputs_stack
+            .pop()
+            .expect("stack was unexpectedly empty")
     }
 
     fn make_output_name(&self, local_name: &str) -> Arc<str> {
@@ -59,9 +63,11 @@ impl<'query> OutputHandler<'query> {
         self.component_outputs_stack
             .last_mut()
             .expect("stack was unexpectedly empty")
-            .entry(name)
+            .entry(name.clone())
             .or_default()
-            .push(value)
+            .push(value.clone());
+
+        self.global_outputs.entry(name).or_default().push(value);
     }
 
     pub(super) fn register_locally_named_output(&mut self, local_name: &str, value: FieldRef) {
@@ -69,13 +75,18 @@ impl<'query> OutputHandler<'query> {
         self.register_output(complete_name, value)
     }
 
-    pub(super) fn register_explicitly_named_output(&mut self, explicit_name: Arc<str>, value: FieldRef) {
+    pub(super) fn register_explicitly_named_output(
+        &mut self,
+        explicit_name: Arc<str>,
+        value: FieldRef,
+    ) {
         self.register_output(explicit_name, value)
     }
 
-    pub(crate) fn finish(self) {
+    pub(crate) fn finish(self) -> BTreeMap<Arc<str>, Vec<FieldRef>> {
         assert!(self.vid_stack.is_empty());
         assert!(self.component_outputs_stack.is_empty());
-    }
 
+        self.global_outputs
+    }
 }

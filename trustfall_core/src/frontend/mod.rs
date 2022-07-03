@@ -18,9 +18,9 @@ use crate::{
     ir::{
         indexed::IndexedQuery,
         types::{intersect_types, is_argument_type_valid},
-        Argument, ContextField, EdgeParameters, Eid, FieldValue, FoldSpecificFieldKind, IREdge,
-        IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, Recursive,
-        TransformationKind, VariableRef, Vid, FieldRef,
+        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
+        IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, Recursive,
+        TransformationKind, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -424,7 +424,12 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         ));
     }
 
-    output_handler.finish();
+    let all_outputs = output_handler.finish();
+    if let Err(duplicates) = check_for_duplicate_output_names(all_outputs) {
+        let all_vertices = collect_ir_vertices(&root_component);
+        let errs = make_duplicated_output_names_error(&all_vertices, duplicates);
+        errors.extend(errs.into_iter());
+    }
 
     if errors.is_empty() {
         Ok(IRQuery {
@@ -436,6 +441,24 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
     } else {
         Err(errors.into())
     }
+}
+
+fn collect_ir_vertices(root_component: &IRQueryComponent) -> BTreeMap<Vid, IRVertex> {
+    let mut result = Default::default();
+    collect_ir_vertices_recursive_step(&mut result, root_component);
+    result
+}
+
+fn collect_ir_vertices_recursive_step(
+    result: &mut BTreeMap<Vid, IRVertex>,
+    component: &IRQueryComponent,
+) {
+    result.extend(component.vertices.iter().map(|(k, v)| (*k, v.clone())));
+
+    component
+        .folds
+        .values()
+        .for_each(move |fold| collect_ir_vertices_recursive_step(result, &fold.component))
 }
 
 fn fill_in_query_variables(
@@ -478,6 +501,52 @@ fn fill_in_query_variables(
     } else {
         Err(errors)
     }
+}
+
+fn make_duplicated_output_names_error(
+    ir_vertices: &BTreeMap<Vid, IRVertex>,
+    duplicates: BTreeMap<Arc<str>, Vec<FieldRef>>,
+) -> Vec<FrontendError> {
+    let conflict_info = DuplicatedNamesConflict {
+        duplicates: duplicates
+            .iter()
+            .map(|(k, fields)| {
+                let duplicate_values = fields
+                    .iter()
+                    .map(|field| match field {
+                        FieldRef::ContextField(field) => {
+                            let vid = field.vertex_id;
+                            (
+                                ir_vertices[&vid].type_name.to_string(),
+                                field.field_name.to_string(),
+                            )
+                        }
+                        FieldRef::FoldSpecificField(field) => {
+                            let vid = field.fold_root_id;
+                            match field.kind {
+                                FoldSpecificFieldKind::Count => (
+                                    ir_vertices[&vid].type_name.to_string(),
+                                    "fold count value".to_string(),
+                                ),
+                            }
+                        }
+                    })
+                    .collect();
+                (k.to_string(), duplicate_values)
+            })
+            .collect(),
+    };
+    vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
+}
+
+#[allow(clippy::type_complexity)]
+fn check_for_duplicate_output_names(
+    maybe_duplicated_outputs: BTreeMap<Arc<str>, Vec<FieldRef>>,
+) -> Result<BTreeMap<Arc<str>, FieldRef>, BTreeMap<Arc<str>, Vec<FieldRef>>> {
+    maybe_duplicated_outputs
+        .into_iter()
+        .flat_map(|(name, outputs)| outputs.into_iter().map(move |o| (name.clone(), o)))
+        .try_collect_unique()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -631,95 +700,21 @@ where
 
     let maybe_duplicated_outputs = output_handler.end_subcomponent();
 
-    // let component_outputs: BTreeMap<Arc<str>, ContextField> = vertices
-    //     .iter()
-    //     .flat_map(|(vid, (_, vertex_field_node))| {
-    //         vertex_field_node
-    //             .connections
-    //             .iter()
-    //             .flat_map(move |(_, child_node)| {
-    //                 child_node.output.iter().map(move |d| (*vid, child_node, d))
-    //             })
-    //     })
-    //     .map(|(vid, field_node, directive)| {
-    //         let output_name: Arc<str> = if let Some(output_name) = directive.name.as_ref() {
-    //             output_name.clone()
-    //         } else {
-    //             let mut name_parts: Vec<&'query str> =
-    //                 vec![field_node.alias.as_ref().unwrap_or(&field_node.name)];
-
-    //             let mut current_vid = Some(vid);
-    //             while let Some(v) = current_vid {
-    //                 let (next_vid, output_prefix) = output_prefixes[&v];
-    //                 if let Some(prefix) = output_prefix {
-    //                     name_parts.push(prefix);
-    //                 }
-    //                 current_vid = next_vid;
-    //             }
-    //             let value: String = name_parts.iter().rev().copied().collect();
-    //             value.into()
-    //         };
-
-    //         let (property_name, property_type, _) =
-    //             properties.get(&(vid, field_node.name.clone())).unwrap();
-
-    //         let context_field = ContextField {
-    //             vertex_id: vid,
-    //             field_name: property_name.clone(),
-    //             field_type: (*property_type).clone(),
-    //         };
-
-    //         (output_name, context_field)
-    //     });
-
-    let component_outputs = maybe_duplicated_outputs
-        .into_iter()
-        .flat_map(|(name, outputs)| outputs.into_iter().map(move |o| (name.clone(), o)))
-        .try_collect_unique()
-        .map_err(|field_duplicates| {
-            let conflict_info = DuplicatedNamesConflict {
-                duplicates: field_duplicates
-                    .iter()
-                    .map(|(k, fields)| {
-                        let duplicate_values = fields
-                            .iter()
-                            .map(|field| {
-                                match field {
-                                    FieldRef::ContextField(field) => {
-                                        let vid = field.vertex_id;
-                                        (
-                                            ir_vertices[&vid].type_name.to_string(),
-                                            field.field_name.to_string(),
-                                        )
-                                    }
-                                    FieldRef::FoldSpecificField(field) => {
-                                        let vid = field.fold_root_id;
-                                        match field.kind {
-                                            FoldSpecificFieldKind::Count => {
-                                                (
-                                                    ir_vertices[&vid].type_name.to_string(),
-                                                    "fold count value".to_string()
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            })
-                            .collect();
-                        (k.to_string(), duplicate_values)
-                    })
-                    .collect(),
-            };
-            vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
-        })?;
+    let component_outputs = match check_for_duplicate_output_names(maybe_duplicated_outputs) {
+        Ok(outputs) => outputs,
+        Err(duplicates) => {
+            return Err(make_duplicated_output_names_error(&ir_vertices, duplicates))
+        }
+    };
 
     // TODO: fixme, temporary hack to avoid changing the IRQueryComponent struct
-    let hacked_outputs = component_outputs.into_iter().filter_map(|(k, v)| {
-        match v {
+    let hacked_outputs = component_outputs
+        .into_iter()
+        .filter_map(|(k, v)| match v {
             FieldRef::ContextField(c) => Some((k, c)),
             FieldRef::FoldSpecificField(_) => None,
-        }
-    }).collect();
+        })
+        .collect();
 
     Ok(IRQueryComponent {
         root: starting_vid,
@@ -1139,9 +1134,14 @@ where
                 // otherwise. The local name is appended to any prefixes given as aliases
                 // applied to the edges whose scopes enclose the output.
                 if let Some(explicit_name) = output_directive.name.as_ref() {
-                    output_handler.register_explicitly_named_output(explicit_name.clone(), field_ref);
+                    output_handler
+                        .register_explicitly_named_output(explicit_name.clone(), field_ref);
                 } else {
-                    let local_name = subfield.alias.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| subfield.name.as_ref());
+                    let local_name = subfield
+                        .alias
+                        .as_ref()
+                        .map(|x| x.as_ref())
+                        .unwrap_or_else(|| subfield.name.as_ref());
                     output_handler.register_locally_named_output(local_name, field_ref);
                 }
             }
