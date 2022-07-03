@@ -20,7 +20,7 @@ use crate::{
         types::{intersect_types, is_argument_type_valid},
         Argument, ContextField, EdgeParameters, Eid, FieldValue, FoldSpecificFieldKind, IREdge,
         IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, Recursive,
-        TransformationKind, VariableRef, Vid,
+        TransformationKind, VariableRef, Vid, FieldRef,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -28,12 +28,14 @@ use crate::{
 
 use self::{
     error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
+    outputs::OutputHandler,
     tags::{TagHandler, TagLookupError},
     util::{get_underlying_named_type, ComponentPath},
     validation::validate_query_against_schema,
 };
 
 pub mod error;
+mod outputs;
 mod tags;
 mod util;
 mod validation;
@@ -384,14 +386,14 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
 
     let mut component_path = ComponentPath::new(starting_vid);
     let mut tags = Default::default();
-    let mut output_prefixes = Default::default();
+    let mut output_handler = OutputHandler::new(starting_vid, None);
     let mut root_component = make_query_component(
         schema,
         query,
         &mut vid_maker,
         &mut eid_maker,
-        &mut output_prefixes,
         &mut component_path,
+        &mut output_handler,
         &mut tags,
         None,
         starting_vid,
@@ -421,6 +423,8 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
             e.into_iter().map(String::from).collect(),
         ));
     }
+
+    output_handler.finish();
 
     if errors.is_empty() {
         Ok(IRQuery {
@@ -482,8 +486,8 @@ fn make_query_component<'schema, 'query, V, E>(
     query: &'query Query,
     vid_maker: &mut V,
     eid_maker: &mut E,
-    output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
     starting_vid: Vid,
@@ -514,6 +518,8 @@ where
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     > = Default::default();
 
+    output_handler.begin_subcomponent();
+
     let mut folds: BTreeMap<Eid, Arc<IRFold>> = Default::default();
     if let Err(e) = fill_in_vertex_data(
         schema,
@@ -525,8 +531,8 @@ where
         &mut folds,
         &mut property_names_by_vertex,
         &mut properties,
-        output_prefixes,
         component_path,
+        output_handler,
         tags,
         None,
         starting_vid,
@@ -623,46 +629,52 @@ where
         return Err(errors);
     }
 
-    let outputs: BTreeMap<Arc<str>, ContextField> = vertices
-        .iter()
-        .flat_map(|(vid, (_, vertex_field_node))| {
-            vertex_field_node
-                .connections
-                .iter()
-                .flat_map(move |(_, child_node)| {
-                    child_node.output.iter().map(move |d| (*vid, child_node, d))
-                })
-        })
-        .map(|(vid, field_node, directive)| {
-            let output_name: Arc<str> = if let Some(output_name) = directive.name.as_ref() {
-                output_name.clone()
-            } else {
-                let mut name_parts: Vec<&'query str> =
-                    vec![field_node.alias.as_ref().unwrap_or(&field_node.name)];
+    let maybe_duplicated_outputs = output_handler.end_subcomponent();
 
-                let mut current_vid = Some(vid);
-                while let Some(v) = current_vid {
-                    let (next_vid, output_prefix) = output_prefixes[&v];
-                    if let Some(prefix) = output_prefix {
-                        name_parts.push(prefix);
-                    }
-                    current_vid = next_vid;
-                }
-                let value: String = name_parts.iter().rev().copied().collect();
-                value.into()
-            };
+    // let component_outputs: BTreeMap<Arc<str>, ContextField> = vertices
+    //     .iter()
+    //     .flat_map(|(vid, (_, vertex_field_node))| {
+    //         vertex_field_node
+    //             .connections
+    //             .iter()
+    //             .flat_map(move |(_, child_node)| {
+    //                 child_node.output.iter().map(move |d| (*vid, child_node, d))
+    //             })
+    //     })
+    //     .map(|(vid, field_node, directive)| {
+    //         let output_name: Arc<str> = if let Some(output_name) = directive.name.as_ref() {
+    //             output_name.clone()
+    //         } else {
+    //             let mut name_parts: Vec<&'query str> =
+    //                 vec![field_node.alias.as_ref().unwrap_or(&field_node.name)];
 
-            let (property_name, property_type, _) =
-                properties.get(&(vid, field_node.name.clone())).unwrap();
+    //             let mut current_vid = Some(vid);
+    //             while let Some(v) = current_vid {
+    //                 let (next_vid, output_prefix) = output_prefixes[&v];
+    //                 if let Some(prefix) = output_prefix {
+    //                     name_parts.push(prefix);
+    //                 }
+    //                 current_vid = next_vid;
+    //             }
+    //             let value: String = name_parts.iter().rev().copied().collect();
+    //             value.into()
+    //         };
 
-            let context_field = ContextField {
-                vertex_id: vid,
-                field_name: property_name.clone(),
-                field_type: (*property_type).clone(),
-            };
+    //         let (property_name, property_type, _) =
+    //             properties.get(&(vid, field_node.name.clone())).unwrap();
 
-            (output_name, context_field)
-        })
+    //         let context_field = ContextField {
+    //             vertex_id: vid,
+    //             field_name: property_name.clone(),
+    //             field_type: (*property_type).clone(),
+    //         };
+
+    //         (output_name, context_field)
+    //     });
+
+    let component_outputs = maybe_duplicated_outputs
+        .into_iter()
+        .flat_map(|(name, outputs)| outputs.into_iter().map(move |o| (name.clone(), o)))
         .try_collect_unique()
         .map_err(|field_duplicates| {
             let conflict_info = DuplicatedNamesConflict {
@@ -672,11 +684,26 @@ where
                         let duplicate_values = fields
                             .iter()
                             .map(|field| {
-                                let vid = field.vertex_id;
-                                (
-                                    ir_vertices[&vid].type_name.to_string(),
-                                    field.field_name.to_string(),
-                                )
+                                match field {
+                                    FieldRef::ContextField(field) => {
+                                        let vid = field.vertex_id;
+                                        (
+                                            ir_vertices[&vid].type_name.to_string(),
+                                            field.field_name.to_string(),
+                                        )
+                                    }
+                                    FieldRef::FoldSpecificField(field) => {
+                                        let vid = field.fold_root_id;
+                                        match field.kind {
+                                            FoldSpecificFieldKind::Count => {
+                                                (
+                                                    ir_vertices[&vid].type_name.to_string(),
+                                                    "fold count value".to_string()
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             })
                             .collect();
                         (k.to_string(), duplicate_values)
@@ -686,12 +713,20 @@ where
             vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
         })?;
 
+    // TODO: fixme, temporary hack to avoid changing the IRQueryComponent struct
+    let hacked_outputs = component_outputs.into_iter().filter_map(|(k, v)| {
+        match v {
+            FieldRef::ContextField(c) => Some((k, c)),
+            FieldRef::FoldSpecificField(_) => None,
+        }
+    }).collect();
+
     Ok(IRQueryComponent {
         root: starting_vid,
         vertices: ir_vertices,
         edges: ir_edges,
         folds,
-        outputs,
+        outputs: hacked_outputs,
     })
 }
 
@@ -942,8 +977,8 @@ fn fill_in_vertex_data<'schema, 'query, V, E>(
         (Vid, Arc<str>),
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     >,
-    output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
     current_vid: Vid,
@@ -962,13 +997,6 @@ where
         .insert_or_error(current_vid, (pre_coercion_type, current_field))
         .unwrap();
 
-    output_prefixes
-        .insert_or_error(
-            current_vid,
-            (parent_vid, current_field.alias.as_ref().map(|x| x.as_ref())),
-        )
-        .unwrap();
-
     let defined_fields = get_vertex_field_definitions(schema, post_coercion_type.as_ref());
 
     for (connection, subfield) in &current_field.connections {
@@ -983,8 +1011,12 @@ where
             .vertex_types
             .contains_key(subfield_post_coercion_type.as_ref())
         {
+            // Processing an edge.
+
             let next_vid = vid_maker.next().unwrap();
             let next_eid = eid_maker.next().unwrap();
+            output_handler
+                .begin_nested_scope(next_vid, subfield.alias.as_ref().map(|x| x.as_ref()));
 
             if let Some(fold_group) = &connection.fold {
                 if connection.optional.is_some() {
@@ -1012,8 +1044,8 @@ where
                             query,
                             vid_maker,
                             eid_maker,
-                            output_prefixes,
                             component_path,
+                            output_handler,
                             tags,
                             fold_group,
                             next_eid,
@@ -1052,8 +1084,8 @@ where
                     folds,
                     property_names_by_vertex,
                     properties,
-                    output_prefixes,
                     component_path,
+                    output_handler,
                     tags,
                     Some(current_vid),
                     next_vid,
@@ -1064,11 +1096,15 @@ where
                     errors.extend(e);
                 }
             }
+
+            output_handler.end_nested_scope(next_vid);
         } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
             || schema
                 .scalars
                 .contains_key(subfield_post_coercion_type.as_ref())
         {
+            // Processing a property.
+
             let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
             let key = (current_vid, subfield_name.clone());
             properties
@@ -1086,6 +1122,29 @@ where
 
                     (subfield_name, subfield_raw_type, SmallVec::from([subfield]))
                 });
+
+            for output_directive in &subfield.output {
+                // TODO: handle transformed fields here.
+                let field_ref = FieldRef::ContextField(ContextField {
+                    vertex_id: current_vid,
+                    field_name: subfield.name.clone(),
+                    field_type: subfield_raw_type.clone(),
+                });
+
+                // The output's name can be either explicit or local (i.e. implicitly prefixed).
+                // Explicit names are given explicitly in the directive:
+                //     @output(name: "foo")
+                // This would result in a "foo" output name, regardless of any prefixes.
+                // Local names use the field's alias, if present, falling back to the field's name
+                // otherwise. The local name is appended to any prefixes given as aliases
+                // applied to the edges whose scopes enclose the output.
+                if let Some(explicit_name) = output_directive.name.as_ref() {
+                    output_handler.register_explicitly_named_output(explicit_name.clone(), field_ref);
+                } else {
+                    let local_name = subfield.alias.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| subfield.name.as_ref());
+                    output_handler.register_locally_named_output(local_name, field_ref);
+                }
+            }
 
             for tag_directive in &subfield.tag {
                 // The tag's name is the first of the following that is defined:
@@ -1133,8 +1192,8 @@ fn make_fold<'schema, 'query, V, E>(
     query: &'query Query,
     vid_maker: &mut V,
     eid_maker: &mut E,
-    output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     fold_group: &FoldGroup,
     fold_eid: Eid,
@@ -1159,8 +1218,8 @@ where
         query,
         vid_maker,
         eid_maker,
-        output_prefixes,
         component_path,
+        output_handler,
         tags,
         Some(parent_vid),
         starting_vid,
