@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        factor_: primeFactor @fold @transform(op: "count") @output {
+            numbers: value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

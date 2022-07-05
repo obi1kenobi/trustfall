@@ -1234,12 +1234,12 @@ where
     if !starting_field.output.is_empty() {
         // The edge has @fold @output but no @transform.
         // If it had a @transform then the output would have been in the field's transform group.
-        return Err(vec![FrontendError::UnsupportedEdgeOutput(
+        errors.push(FrontendError::UnsupportedEdgeOutput(
             starting_field.name.as_ref().to_owned(),
-        )]);
+        ));
     }
 
-    // TODO: properly load fold post-filters and fold-specific outputs
+    // TODO: properly load fold post-filters
     let post_filters = vec![];
     let mut fold_specific_outputs = BTreeMap::new();
 

@@ -177,7 +177,7 @@ impl FoldSpecificFieldKind {
 
     pub fn transform_suffix(&self) -> &str {
         match self {
-            FoldSpecificFieldKind::Count => "_count",
+            FoldSpecificFieldKind::Count => "count",
         }
     }
 }

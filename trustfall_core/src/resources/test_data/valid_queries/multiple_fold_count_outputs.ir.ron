@@ -38,7 +38,7 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "primeFactor_count": Count,
+            "primeFactorcount": Count,
           },
         ),
         Eid(2): IRFold(
@@ -66,7 +66,7 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "multiple_count": Count,
+            "multiplecount": Count,
           },
         ),
       },

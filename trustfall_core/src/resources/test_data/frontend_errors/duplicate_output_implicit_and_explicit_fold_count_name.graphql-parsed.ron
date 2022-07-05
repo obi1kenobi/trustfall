@@ -1,0 +1,79 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "primeFactor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              output: [
+                OutputDirective(),
+                OutputDirective(
+                  name: Some("primeFactorcount"),
+                ),
+              ],
+            )),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "primeFactor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("factors"),
+            ), FieldNode(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("factors"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            output: [
+              OutputDirective(),
+              OutputDirective(
+                name: Some("primeFactorcount"),
+              ),
+            ],
+          )),
+        )),
+      ],
+    ),
+  ),
+))

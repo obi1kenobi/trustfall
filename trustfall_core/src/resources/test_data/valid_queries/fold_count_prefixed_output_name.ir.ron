@@ -1,18 +1,13 @@
 Ok(TestIRQuery(
   schema_name: "numbers",
   ir_query: IRQuery(
-    root_name: "Number",
-    root_parameters: Some(EdgeParameters({
-      "max": Int64(32),
-      "min": Int64(28),
-    })),
+    root_name: "Four",
     root_component: IRQueryComponent(
       root: Vid(1),
       vertices: {
         Vid(1): IRVertex(
           vid: Vid(1),
           type_name: "Composite",
-          coerced_from_type: Some("Number"),
         ),
       },
       folds: {
@@ -30,7 +25,7 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "factors": ContextField(
+              "factor_numbers": ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
@@ -38,15 +33,8 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "primeFactorcount": Count,
+            "factor_count": Count,
           },
-        ),
-      },
-      outputs: {
-        "value": ContextField(
-          vertex_id: Vid(1),
-          field_name: "value",
-          field_type: "Int",
         ),
       },
     ),

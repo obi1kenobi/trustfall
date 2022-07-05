@@ -423,7 +423,7 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
-            (Eid(2), "multiple_count"): Value(Uint64(2)),
+            (Eid(2), "multiplecount"): Value(Uint64(2)),
             (Eid(2), "multiples"): Vec([
               Value(Int64(4)),
               Value(Int64(6)),
@@ -440,7 +440,7 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_values: {
-            (Eid(2), "multiple_count"): Value(Uint64(2)),
+            (Eid(2), "multiplecount"): Value(Uint64(2)),
             (Eid(2), "multiples"): Vec([
               Value(Int64(4)),
               Value(Int64(6)),
@@ -462,7 +462,7 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
-            (Eid(2), "multiple_count"): Value(Uint64(2)),
+            (Eid(2), "multiplecount"): Value(Uint64(2)),
             (Eid(2), "multiples"): Vec([
               Value(Int64(6)),
               Value(Int64(9)),
@@ -479,7 +479,7 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
           folded_values: {
-            (Eid(2), "multiple_count"): Value(Uint64(2)),
+            (Eid(2), "multiplecount"): Value(Uint64(2)),
             (Eid(2), "multiples"): Vec([
               Value(Int64(6)),
               Value(Int64(9)),
@@ -521,8 +521,8 @@ TestInterpreterOutputTrace(
               Value(Int64(2)),
               Value(Int64(3)),
             ]),
-            (Eid(1), "primeFactor_count"): Value(Uint64(2)),
-            (Eid(2), "multiple_count"): Vec([
+            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
+            (Eid(2), "multiplecount"): Vec([
               Value(Uint64(2)),
               Value(Uint64(2)),
             ]),
@@ -558,8 +558,8 @@ TestInterpreterOutputTrace(
               Value(Int64(2)),
               Value(Int64(3)),
             ]),
-            (Eid(1), "primeFactor_count"): Value(Uint64(2)),
-            (Eid(2), "multiple_count"): Vec([
+            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
+            (Eid(2), "multiplecount"): Vec([
               Value(Uint64(2)),
               Value(Uint64(2)),
             ]),
@@ -682,7 +682,7 @@ TestInterpreterOutputTrace(
                     },
                   ),
                   fold_specific_outputs: {
-                    "multiple_count": Count,
+                    "multiplecount": Count,
                   },
                 ),
               },
@@ -695,7 +695,7 @@ TestInterpreterOutputTrace(
               },
             ),
             fold_specific_outputs: {
-              "primeFactor_count": Count,
+              "primeFactorcount": Count,
             },
           ),
         },
@@ -715,7 +715,7 @@ TestInterpreterOutputTrace(
         Int64(2),
         Int64(3),
       ]),
-      "multiple_count": List([
+      "multiplecount": List([
         Uint64(2),
         Uint64(2),
       ]),
@@ -729,7 +729,7 @@ TestInterpreterOutputTrace(
           Int64(9),
         ]),
       ]),
-      "primeFactor_count": Uint64(2),
+      "primeFactorcount": Uint64(2),
       "value": Int64(6),
     },
   ],

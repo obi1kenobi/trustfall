@@ -33,7 +33,7 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "primeFactor_count": Count,
+            "primeFactorcount": Count,
           },
         ),
       },
