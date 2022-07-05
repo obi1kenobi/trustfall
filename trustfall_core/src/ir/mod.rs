@@ -159,7 +159,7 @@ pub enum FoldSpecificFieldKind {
 
 lazy_static! {
     static ref NON_NULL_INT_TYPE: Type = Type {
-        base: BaseType::Named(Name::new("Integer")),
+        base: BaseType::Named(Name::new("Int")),
         nullable: false,
     };
 }

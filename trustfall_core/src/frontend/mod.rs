@@ -485,31 +485,43 @@ fn fill_in_query_variables(
 ) -> Result<(), Vec<FilterTypeError>> {
     let mut errors: Vec<FilterTypeError> = vec![];
 
-    for vertex in component.vertices.values() {
-        for filter in &vertex.filters {
-            if let Some(Argument::Variable(vref)) = filter.right() {
-                let existing_type = variables
-                    .entry(vref.variable_name.clone())
-                    .or_insert_with(|| vref.variable_type.clone());
+    let all_variable_uses = component
+        .vertices
+        .values()
+        .flat_map(|vertex| &vertex.filters)
+        .map(|filter| filter.right())
+        .chain(
+            component
+                .folds
+                .values()
+                .flat_map(|fold| &fold.post_filters)
+                .map(|filter| filter.right()),
+        )
+        .filter_map(|rhs| match rhs {
+            Some(Argument::Variable(vref)) => Some(vref),
+            _ => None,
+        });
+    for vref in all_variable_uses {
+        let existing_type = variables
+            .entry(vref.variable_name.clone())
+            .or_insert_with(|| vref.variable_type.clone());
 
-                match intersect_types(existing_type, &vref.variable_type) {
-                    Some(intersection) => {
-                        *existing_type = intersection;
-                    }
-                    None => {
-                        errors.push(FilterTypeError::IncompatibleVariableTypeRequirements(
-                            vref.variable_name.to_string(),
-                            existing_type.to_string(),
-                            vref.variable_type.to_string(),
-                        ));
-                    }
-                }
+        match intersect_types(existing_type, &vref.variable_type) {
+            Some(intersection) => {
+                *existing_type = intersection;
+            }
+            None => {
+                errors.push(FilterTypeError::IncompatibleVariableTypeRequirements(
+                    vref.variable_name.to_string(),
+                    existing_type.to_string(),
+                    vref.variable_type.to_string(),
+                ));
             }
         }
     }
 
-    for inner_component in component.folds.values().map(|f| f.component.as_ref()) {
-        if let Err(e) = fill_in_query_variables(variables, inner_component) {
+    for fold in component.folds.values() {
+        if let Err(e) = fill_in_query_variables(variables, fold.component.as_ref()) {
             errors.extend(e.into_iter());
         }
     }
@@ -1257,7 +1269,7 @@ where
     }
 
     // TODO: properly load fold post-filters
-    let post_filters = vec![];
+    let mut post_filters = vec![];
     let mut fold_specific_outputs = BTreeMap::new();
 
     if let Some(transform_group) = &fold_group.transform {
@@ -1274,8 +1286,18 @@ where
         };
         let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
 
-        for filter in &transform_group.filter {
-            unimplemented!("work in a call to something like make_filter_expr() here");
+        for filter_directive in &transform_group.filter {
+            match make_filter_expr(
+                schema,
+                component_path,
+                tags,
+                starting_vid,
+                fold_specific_field.kind,
+                filter_directive,
+            ) {
+                Ok(filter) => post_filters.push(filter),
+                Err(e) => errors.extend(e.into_iter()),
+            }
         }
         for output in &transform_group.output {
             let final_output_name = match output.name.as_ref() {

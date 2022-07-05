@@ -3,7 +3,8 @@ use std::fmt::Debug;
 use async_graphql_parser::types::{BaseType, Type};
 
 use super::{
-    Argument, ContextField, FieldRef, FieldValue, FoldSpecificFieldKind, LocalField, VariableRef,
+    Argument, ContextField, FieldRef, FieldValue, FoldSpecificField, FoldSpecificFieldKind,
+    LocalField, VariableRef,
 };
 
 pub trait NamedTypedValue: Debug + Clone + PartialEq + Eq {
@@ -29,6 +30,16 @@ impl NamedTypedValue for ContextField {
 
     fn named(&self) -> &str {
         self.field_name.as_ref()
+    }
+}
+
+impl NamedTypedValue for FoldSpecificField {
+    fn typed(&self) -> &Type {
+        self.kind.field_type()
+    }
+
+    fn named(&self) -> &str {
+        self.kind.field_name()
     }
 }
 
