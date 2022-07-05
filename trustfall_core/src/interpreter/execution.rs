@@ -543,7 +543,7 @@ fn is_tag_optional_and_missing<'query, DataToken: Clone + Debug + 'query>(
     // Get a representative Vid that will show whether the tagged value exists or not.
     let vid = match tagged_field {
         FieldRef::ContextField(field) => field.vertex_id,
-        FieldRef::FoldSpecificField(field) => field.fold_root_id,
+        FieldRef::FoldSpecificField(field) => field.fold_root_vid,
     };
 
     // Some(None) means "there's a value associated with that Vid, and it's None".

@@ -49,11 +49,12 @@ impl<'query> OutputHandler<'query> {
             .expect("stack was unexpectedly empty")
     }
 
-    fn make_output_name(&self, local_name: &str) -> Arc<str> {
+    fn make_output_name(&self, local_name: &str, transforms: Option<&[&str]>) -> Arc<str> {
         let name = std::iter::once(self.root_prefix)
             .chain(self.vid_stack.iter().map(|vid| self.prefixes[vid]))
             .flatten()
             .chain(std::iter::once(local_name))
+            .chain(transforms.into_iter().flatten().copied())
             .join("");
 
         Arc::from(name)
@@ -70,9 +71,15 @@ impl<'query> OutputHandler<'query> {
         self.global_outputs.entry(name).or_default().push(value);
     }
 
-    pub(super) fn register_locally_named_output(&mut self, local_name: &str, value: FieldRef) {
-        let complete_name = self.make_output_name(local_name);
-        self.register_output(complete_name, value)
+    pub(super) fn register_locally_named_output(
+        &mut self,
+        local_name: &str,
+        transforms: Option<&[&str]>,
+        value: FieldRef,
+    ) -> Arc<str> {
+        let complete_name = self.make_output_name(local_name, transforms);
+        self.register_output(complete_name.clone(), value);
+        complete_name
     }
 
     pub(super) fn register_explicitly_named_output(

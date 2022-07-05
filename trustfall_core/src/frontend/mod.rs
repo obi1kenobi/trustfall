@@ -18,9 +18,9 @@ use crate::{
     ir::{
         indexed::IndexedQuery,
         types::{intersect_types, is_argument_type_valid},
-        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
-        IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField, Operation, Recursive,
-        TransformationKind, VariableRef, Vid,
+        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
+        FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField,
+        Operation, Recursive, TransformationKind, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -522,7 +522,7 @@ fn make_duplicated_output_names_error(
                             )
                         }
                         FieldRef::FoldSpecificField(field) => {
-                            let vid = field.fold_root_id;
+                            let vid = field.fold_root_vid;
                             match field.kind {
                                 FoldSpecificFieldKind::Count => (
                                     ir_vertices[&vid].type_name.to_string(),
@@ -1142,7 +1142,7 @@ where
                         .as_ref()
                         .map(|x| x.as_ref())
                         .unwrap_or_else(|| subfield.name.as_ref());
-                    output_handler.register_locally_named_output(local_name, field_ref);
+                    output_handler.register_locally_named_output(local_name, None, field_ref);
                 }
             }
 
@@ -1213,6 +1213,7 @@ where
     component_path.push(starting_vid);
     tags.begin_subcomponent(starting_vid);
 
+    let mut errors = vec![];
     let component = make_query_component(
         schema,
         query,
@@ -1238,29 +1239,73 @@ where
         )]);
     }
 
+    // TODO: properly load fold post-filters and fold-specific outputs
+    let post_filters = vec![];
+    let mut fold_specific_outputs = BTreeMap::new();
+
     if let Some(transform_group) = &fold_group.transform {
         if transform_group.retransform.is_some() {
             unimplemented!("re-transforming a @fold @transform value is currently not supported");
         }
 
-        let fold_specific_field_kind = match transform_group.transform.kind {
-            TransformationKind::Count => FoldSpecificFieldKind::Count,
+        let fold_specific_field = match transform_group.transform.kind {
+            TransformationKind::Count => FoldSpecificField {
+                fold_eid,
+                fold_root_vid: starting_vid,
+                kind: FoldSpecificFieldKind::Count,
+            },
         };
+        let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
 
         for filter in &transform_group.filter {
             unimplemented!("work in a call to something like make_filter_expr() here");
         }
         for output in &transform_group.output {
-            unimplemented!("register the outputs here");
+            let final_output_name = match output.name.as_ref() {
+                Some(explicit_name) => {
+                    output_handler
+                        .register_explicitly_named_output(explicit_name.clone(), field_ref.clone());
+                    explicit_name.clone()
+                }
+                None => {
+                    let local_name = if starting_field.alias.is_some() {
+                        // The field has an alias already, so don't bother adding the edge name
+                        // to the output name.
+                        ""
+                    } else {
+                        // The field does not have an alias, so use the edge name as the base
+                        // of the name.
+                        starting_field.name.as_ref()
+                    };
+                    output_handler.register_locally_named_output(
+                        local_name,
+                        Some(&[fold_specific_field.kind.transform_suffix()]),
+                        field_ref.clone(),
+                    )
+                }
+            };
+
+            let prior_output_by_that_name =
+                fold_specific_outputs.insert(final_output_name.clone(), fold_specific_field.kind);
+            if let Some(prior_output_kind) = prior_output_by_that_name {
+                errors.push(FrontendError::MultipleOutputsWithSameName(DuplicatedNamesConflict {
+                    duplicates: btreemap! {
+                        final_output_name.to_string() => vec![
+                            (starting_field.name.to_string(), prior_output_kind.field_name().to_string()),
+                            (starting_field.name.to_string(), fold_specific_field.kind.field_name().to_string()),
+                        ]
+                    }
+                }))
+            }
         }
         for tag in &transform_group.tag {
             unimplemented!("register the tag here");
         }
     }
 
-    // TODO: properly load fold post-filters and fold-specific outputs
-    let post_filters = Arc::new(vec![]);
-    let fold_specific_outputs = BTreeMap::new();
+    if !errors.is_empty() {
+        return Err(errors);
+    }
 
     Ok(IRFold {
         eid: fold_eid,

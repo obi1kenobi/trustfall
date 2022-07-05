@@ -146,11 +146,11 @@ pub struct IRFold {
     pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificFieldKind>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Arc<Vec<Operation<FoldSpecificFieldKind, Argument>>>,
+    pub post_filters: Vec<Operation<FoldSpecificFieldKind, Argument>>,
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
 }
@@ -174,13 +174,23 @@ impl FoldSpecificFieldKind {
             FoldSpecificFieldKind::Count => "@fold.count",
         }
     }
+
+    pub fn transform_suffix(&self) -> &str {
+        match self {
+            FoldSpecificFieldKind::Count => "_count",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FoldSpecificField {
-    pub fold_eid: Eid,     // uniquely identifies the fold
-    pub fold_root_id: Vid, // used to quickly check whether the fold exists at all,
+    // uniquely identifies the fold
+    pub fold_eid: Eid,
+
+    // used to quickly check whether the fold exists at all,
     // e.g. for "tagged parameter is optional and missing" purposes
+    pub fold_root_vid: Vid,
+
     pub kind: FoldSpecificFieldKind,
 }
 
