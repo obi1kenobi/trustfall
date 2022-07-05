@@ -13,7 +13,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::frontend::error::FilterTypeError;
 
-use self::types::{are_base_types_equal_ignoring_nullability, is_base_type_orderable};
+use self::types::{
+    are_base_types_equal_ignoring_nullability, is_base_type_orderable, NamedTypedValue,
+};
 pub use self::value::{FieldValue, TransparentValue};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -426,18 +428,15 @@ where
     }
 }
 
-impl Operation<LocalField, Argument> {
+impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
     pub(crate) fn operand_types_valid(
         &self,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = self.left();
         let right = self.right();
-        let left_type = &left.field_type;
-        let right_type = right.map(|arg| match arg {
-            Argument::Tag(tag) => tag.field_type(),
-            Argument::Variable(var) => &var.variable_type,
-        });
+        let left_type = left.typed();
+        let right_type = right.map(|x| x.typed());
 
         // Check the left and right operands match the operator's needs individually.
         // For example:
@@ -458,8 +457,8 @@ impl Operation<LocalField, Argument> {
                     Err(vec![
                         FilterTypeError::NonNullableTypeFilteredForNullability(
                             self.operation_name().to_owned(),
-                            left.field_name.to_string(),
-                            left.field_type.to_string(),
+                            left.named().to_string(),
+                            left_type.to_string(),
                             matches!(self, Operation::IsNotNull(..)),
                         ),
                     ])
@@ -481,7 +480,7 @@ impl Operation<LocalField, Argument> {
 
                     Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
-                        left.field_name.to_string(),
+                        left.named().to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name().to_string(),
@@ -501,7 +500,7 @@ impl Operation<LocalField, Argument> {
                 if !is_base_type_orderable(&left_type.base) {
                     errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
                         self.operation_name().to_string(),
-                        left.field_name.to_string(),
+                        left.named().to_string(),
                         left_type.to_string(),
                     ));
                 }
@@ -530,7 +529,7 @@ impl Operation<LocalField, Argument> {
 
                     errors.push(FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
-                        left.field_name.to_string(),
+                        left.named().to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name().to_string(),
@@ -552,8 +551,8 @@ impl Operation<LocalField, Argument> {
                     BaseType::Named(_) => {
                         Err(vec![FilterTypeError::ListFilterOperationOnNonListField(
                             self.operation_name().to_string(),
-                            left.field_name.to_string(),
-                            left.field_type.to_string(),
+                            left.named().to_string(),
+                            left_type.to_string(),
                         )])
                     }
                 }?;
@@ -572,7 +571,7 @@ impl Operation<LocalField, Argument> {
 
                     Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
-                        left.field_name.to_string(),
+                        left.named().to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name().to_string(),
@@ -613,7 +612,7 @@ impl Operation<LocalField, Argument> {
 
                     Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
                         self.operation_name().to_string(),
-                        left.field_name.to_string(),
+                        left.named().to_string(),
                         left_type.to_string(),
                         tag_name.unwrap().to_string(),
                         tag.field_name().to_string(),
@@ -637,7 +636,7 @@ impl Operation<LocalField, Argument> {
                     _ => {
                         errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
                             self.operation_name().to_string(),
-                            left.field_name.to_string(),
+                            left.named().to_string(),
                             left_type.to_string(),
                         ));
                     }

@@ -17,7 +17,7 @@ use crate::{
     },
     ir::{
         indexed::IndexedQuery,
-        types::{intersect_types, is_argument_type_valid},
+        types::{intersect_types, is_argument_type_valid, NamedTypedValue},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField,
         Operation, Recursive, TransformationKind, VariableRef, Vid,
@@ -280,14 +280,13 @@ fn infer_variable_type(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn make_filter_expr(
+fn make_local_field_filter_expr(
     schema: &Schema,
     component_path: &ComponentPath,
     tags: &mut TagHandler,
     current_vertex_vid: Vid,
     property_name: &Arc<str>,
     property_type: &Type,
-    property_field: &FieldNode,
     filter_directive: &FilterDirective,
 ) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
     let left = LocalField {
@@ -295,17 +294,36 @@ fn make_filter_expr(
         field_type: property_type.clone(),
     };
 
+    make_filter_expr(
+        schema,
+        component_path,
+        tags,
+        current_vertex_vid,
+        left,
+        filter_directive,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn make_filter_expr<LeftT: NamedTypedValue>(
+    schema: &Schema,
+    component_path: &ComponentPath,
+    tags: &mut TagHandler,
+    current_vertex_vid: Vid,
+    left_operand: LeftT,
+    filter_directive: &FilterDirective,
+) -> Result<Operation<LeftT, Argument>, Vec<FrontendError>> {
     let filter_operation = filter_directive
         .operation
         .try_map(
-            move |_| Ok(left),
+            |_| Ok(left_operand.clone()),
             |arg| {
                 Ok(match arg {
                     OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
                         variable_name: var_name.clone(),
                         variable_type: infer_variable_type(
-                            property_name.as_ref(),
-                            property_type,
+                            left_operand.named(),
+                            left_operand.typed(),
                             &filter_directive.operation,
                         )?,
                     }),
@@ -318,19 +336,19 @@ fn make_filter_expr(
                             Ok(defined_tag) => defined_tag,
                             Err(TagLookupError::UndefinedTag(tag_name)) => {
                                 return Err(FrontendError::UndefinedTagInFilter(
-                                    property_name.as_ref().to_owned(),
+                                    left_operand.named().to_string(),
                                     tag_name,
                                 ));
                             }
                             Err(TagLookupError::TagDefinedInsideFold(tag_name)) => {
                                 return Err(FrontendError::TagUsedOutsideItsFoldedSubquery(
-                                    property_name.as_ref().to_owned(),
+                                    left_operand.named().to_string(),
                                     tag_name,
                                 ));
                             }
                             Err(TagLookupError::TagUsedBeforeDefinition(tag_name)) => {
                                 return Err(FrontendError::TagUsedBeforeDefinition(
-                                    property_name.as_ref().to_owned(),
+                                    left_operand.named().to_string(),
                                     tag_name,
                                 ))
                             }
@@ -924,14 +942,13 @@ fn make_vertex<'schema, 'query>(
 
         for property_field in property_fields.iter() {
             for filter_directive in property_field.filter.iter() {
-                match make_filter_expr(
+                match make_local_field_filter_expr(
                     schema,
                     component_path,
                     tags,
                     vid,
                     property_name,
                     property_type,
-                    property_field,
                     filter_directive,
                 ) {
                     Ok(filter_operation) => {

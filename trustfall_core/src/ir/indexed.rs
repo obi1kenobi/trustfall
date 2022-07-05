@@ -220,11 +220,16 @@ fn add_data_from_component(
 
         // Include fold-specific outputs in the list of outputs.
         for (name, kind) in &fold.fold_specific_outputs {
-            outputs.insert_or_error(name.clone(), Output {
-                name: name.clone(),
-                value_type: kind.field_type().clone(),
-                vid: fold.to_vid,
-            }).map_err(|_| InvalidIRQueryError::GetBetterVariant(15))?;
+            outputs
+                .insert_or_error(
+                    name.clone(),
+                    Output {
+                        name: name.clone(),
+                        value_type: kind.field_type().clone(),
+                        vid: fold.to_vid,
+                    },
+                )
+                .map_err(|_| InvalidIRQueryError::GetBetterVariant(15))?;
         }
 
         add_data_from_component(
