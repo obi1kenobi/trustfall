@@ -21,7 +21,9 @@ Ok(TestParsedGraphQLQuery(
             column: 9,
           ),
           name: "successor",
-          fold: Some(FoldDirective()),
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
         ), FieldNode(
           position: Pos(
             line: 4,
@@ -91,7 +93,9 @@ Ok(TestParsedGraphQLQuery(
                 column: 13,
               ),
               name: "predecessor",
-              fold: Some(FoldDirective()),
+              fold: Some(FoldGroup(
+                fold: FoldDirective(),
+              )),
             ), FieldNode(
               position: Pos(
                 line: 11,

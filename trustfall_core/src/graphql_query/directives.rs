@@ -5,7 +5,7 @@ use async_graphql_value::Value;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::ir::Operation;
+use crate::ir::{Operation, TransformationKind};
 
 use super::error::ParseError;
 
@@ -209,6 +209,69 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) struct TransformDirective {
+    pub kind: TransformationKind,
+}
+
+impl TryFrom<&Positioned<Directive>> for TransformDirective {
+    type Error = ParseError;
+
+    fn try_from(value: &Positioned<Directive>) -> Result<Self, Self::Error> {
+        let mut seen_op: bool = false;
+        for (arg_name, _) in &value.node.arguments {
+            if arg_name.node.as_ref() == "op" {
+                if !seen_op {
+                    seen_op = true;
+                } else {
+                    return Err(ParseError::DuplicatedDirectiveArgument(
+                        "@transform".to_owned(),
+                        arg_name.node.to_string(),
+                        arg_name.pos,
+                    ));
+                }
+            } else {
+                return Err(ParseError::UnrecognizedDirectiveArgument(
+                    "@transform".to_owned(),
+                    arg_name.node.to_string(),
+                    arg_name.pos,
+                ));
+            }
+        }
+
+        let transform_argument_node = value.node.get_argument("op").ok_or_else(|| {
+            ParseError::MissingRequiredDirectiveArgument(
+                "@transform".to_owned(),
+                "op".to_owned(),
+                value.pos,
+            )
+        })?;
+
+        let transform_argument: Arc<str> = match &transform_argument_node.node {
+            Value::String(s) => s.to_owned().into(),
+            _ => {
+                return Err(ParseError::InappropriateTypeForDirectiveArgument(
+                    "@transform".to_owned(),
+                    "op".to_owned(),
+                    transform_argument_node.pos,
+                ))
+            }
+        };
+
+        let kind = match transform_argument.as_ref() {
+            "count" => TransformationKind::Count,
+            _ => {
+                return Err(ParseError::UnsupportedTransformOperator(
+                    transform_argument.to_string(),
+                    transform_argument_node.pos,
+                ))
+            }
+        };
+
+        Ok(Self { kind })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TagDirective {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<Arc<str>>,
@@ -365,6 +428,31 @@ impl TryFrom<&Positioned<Directive>> for RecurseDirective {
 
         Ok(Self { depth })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) struct TransformGroup {
+    pub transform: TransformDirective,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub output: Vec<OutputDirective>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tag: Vec<TagDirective>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub filter: Vec<FilterDirective>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retransform: Option<Box<TransformGroup>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) struct FoldGroup {
+    pub fold: FoldDirective,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transform: Option<TransformGroup>,
 }
 
 fn ensure_name_is_valid(name: &str) -> Result<(), Vec<char>> {

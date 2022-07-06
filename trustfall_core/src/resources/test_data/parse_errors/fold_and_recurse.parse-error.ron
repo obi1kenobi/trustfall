@@ -1,0 +1,4 @@
+Err(UnsupportedDirectivePosition("@recurse", "this directive cannot appear after a @fold directive", Pos(
+  line: 4,
+  column: 42,
+)))

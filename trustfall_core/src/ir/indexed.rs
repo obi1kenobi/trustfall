@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, convert::TryFrom, ptr, sync::Arc};
 use async_graphql_parser::types::{BaseType, Type};
 use serde::{Deserialize, Serialize};
 
+use crate::util::BTreeMapTryInsertExt;
+
 use super::{
     types::is_scalar_only_subtype, Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid,
 };
@@ -193,12 +195,12 @@ fn add_data_from_component(
 
     let new_fold_depth = fold_depth + 1;
     for (eid, fold) in component.folds.iter() {
-        // the "to" vertex must have Vid equal to the folded edge's Eid + 1
+        // The "to" vertex must have Vid equal to the folded edge's Eid + 1.
         if usize::from(eid.0) + 1 != usize::from(fold.to_vid.0) {
             return Err(InvalidIRQueryError::GetBetterVariant(10));
         }
 
-        // the folded edge's "from" vertex must be from this component
+        // The folded edge's "from" vertex must be from this component.
         let from_component = vids
             .get(&fold.from_vid)
             .ok_or(InvalidIRQueryError::GetBetterVariant(11))?;
@@ -206,7 +208,7 @@ fn add_data_from_component(
             return Err(InvalidIRQueryError::GetBetterVariant(12));
         }
 
-        // the folded edge's "to" vertex must be the root of the fold component
+        // The folded edge's "to" vertex must be the root of the fold component.
         if fold.to_vid != fold.component.root {
             return Err(InvalidIRQueryError::GetBetterVariant(13));
         }
@@ -214,6 +216,20 @@ fn add_data_from_component(
         let existing = eids.insert(*eid, EdgeKind::Fold(fold.clone()));
         if existing.is_some() {
             return Err(InvalidIRQueryError::GetBetterVariant(14));
+        }
+
+        // Include fold-specific outputs in the list of outputs.
+        for (name, kind) in &fold.fold_specific_outputs {
+            outputs
+                .insert_or_error(
+                    name.clone(),
+                    Output {
+                        name: name.clone(),
+                        value_type: kind.field_type().clone(),
+                        vid: fold.to_vid,
+                    },
+                )
+                .map_err(|_| InvalidIRQueryError::GetBetterVariant(15))?;
         }
 
         add_data_from_component(

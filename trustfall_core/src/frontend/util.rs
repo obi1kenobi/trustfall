@@ -52,6 +52,10 @@ impl ComponentPath {
             false
         }
     }
+
+    pub(super) fn is_component_root(&self, vid: Vid) -> bool {
+        self.path.last().expect("empty component path") == &vid
+    }
 }
 
 impl Index<usize> for ComponentPath {

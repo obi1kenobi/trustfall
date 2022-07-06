@@ -280,7 +280,12 @@ impl Adapter<'static> for NumbersAdapter {
 
                             let max_multiple =
                                 parameters.as_ref().unwrap().0["max"].as_i64().unwrap();
-                            Box::new((2..=max_multiple).map(move |mult| {
+
+                            // We're only outputting composite numbers only,
+                            // and the initial number is prime.
+                            let start_multiple = 2;
+
+                            Box::new((start_multiple..=max_multiple).map(move |mult| {
                                 let next_value = value * mult;
                                 make_number_token(&mut local_primes, next_value)
                             }))

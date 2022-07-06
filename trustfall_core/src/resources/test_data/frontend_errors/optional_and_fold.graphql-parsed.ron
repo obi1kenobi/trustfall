@@ -21,16 +21,16 @@ Ok(TestParsedGraphQLQuery(
             column: 9,
           ),
           name: "out_Directory_ContainsFile",
-          fold: Some(FoldDirective()),
+          optional: Some(OptionalDirective()),
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
         ), FieldNode(
           position: Pos(
             line: 4,
             column: 9,
           ),
           name: "out_Directory_ContainsFile",
-          output: [
-            OutputDirective(),
-          ],
           connections: [
             (FieldConnection(
               position: Pos(

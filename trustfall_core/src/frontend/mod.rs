@@ -12,14 +12,15 @@ use smallvec::SmallVec;
 
 use crate::{
     graphql_query::{
-        directives::{FilterDirective, FoldDirective, OperatorArgument, RecurseDirective},
+        directives::{FilterDirective, FoldGroup, OperatorArgument, RecurseDirective},
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
         indexed::IndexedQuery,
-        types::{intersect_types, is_argument_type_valid},
-        Argument, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRFold, IRQuery,
-        IRQueryComponent, IRVertex, LocalField, Operation, Recursive, VariableRef, Vid,
+        types::{intersect_types, is_argument_type_valid, NamedTypedValue},
+        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
+        FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField,
+        Operation, Recursive, TransformationKind, VariableRef, Vid,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -27,12 +28,14 @@ use crate::{
 
 use self::{
     error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
+    outputs::OutputHandler,
     tags::{TagHandler, TagLookupError},
     util::{get_underlying_named_type, ComponentPath},
     validation::validate_query_against_schema,
 };
 
 pub mod error;
+mod outputs;
 mod tags;
 mod util;
 mod validation;
@@ -277,14 +280,13 @@ fn infer_variable_type(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn make_filter_expr(
+fn make_local_field_filter_expr(
     schema: &Schema,
     component_path: &ComponentPath,
     tags: &mut TagHandler,
     current_vertex_vid: Vid,
     property_name: &Arc<str>,
     property_type: &Type,
-    property_field: &FieldNode,
     filter_directive: &FilterDirective,
 ) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
     let left = LocalField {
@@ -292,17 +294,36 @@ fn make_filter_expr(
         field_type: property_type.clone(),
     };
 
+    make_filter_expr(
+        schema,
+        component_path,
+        tags,
+        current_vertex_vid,
+        left,
+        filter_directive,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn make_filter_expr<LeftT: NamedTypedValue>(
+    schema: &Schema,
+    component_path: &ComponentPath,
+    tags: &mut TagHandler,
+    current_vertex_vid: Vid,
+    left_operand: LeftT,
+    filter_directive: &FilterDirective,
+) -> Result<Operation<LeftT, Argument>, Vec<FrontendError>> {
     let filter_operation = filter_directive
         .operation
         .try_map(
-            move |_| Ok(left),
+            |_| Ok(left_operand.clone()),
             |arg| {
                 Ok(match arg {
                     OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
                         variable_name: var_name.clone(),
                         variable_type: infer_variable_type(
-                            property_name.as_ref(),
-                            property_type,
+                            left_operand.named(),
+                            left_operand.typed(),
                             &filter_directive.operation,
                         )?,
                     }),
@@ -315,25 +336,25 @@ fn make_filter_expr(
                             Ok(defined_tag) => defined_tag,
                             Err(TagLookupError::UndefinedTag(tag_name)) => {
                                 return Err(FrontendError::UndefinedTagInFilter(
-                                    property_name.as_ref().to_owned(),
+                                    left_operand.named().to_string(),
                                     tag_name,
                                 ));
                             }
                             Err(TagLookupError::TagDefinedInsideFold(tag_name)) => {
                                 return Err(FrontendError::TagUsedOutsideItsFoldedSubquery(
-                                    property_name.as_ref().to_owned(),
+                                    left_operand.named().to_string(),
                                     tag_name,
                                 ));
                             }
                             Err(TagLookupError::TagUsedBeforeDefinition(tag_name)) => {
                                 return Err(FrontendError::TagUsedBeforeDefinition(
-                                    property_name.as_ref().to_owned(),
+                                    left_operand.named().to_string(),
                                     tag_name,
                                 ))
                             }
                         };
 
-                        Argument::Tag(defined_tag.field.clone())
+                        Argument::Tag(defined_tag.field.clone().into())
                     }
                 })
             },
@@ -383,14 +404,14 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
 
     let mut component_path = ComponentPath::new(starting_vid);
     let mut tags = Default::default();
-    let mut output_prefixes = Default::default();
+    let mut output_handler = OutputHandler::new(starting_vid, None);
     let mut root_component = make_query_component(
         schema,
         query,
         &mut vid_maker,
         &mut eid_maker,
-        &mut output_prefixes,
         &mut component_path,
+        &mut output_handler,
         &mut tags,
         None,
         starting_vid,
@@ -421,6 +442,13 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
         ));
     }
 
+    let all_outputs = output_handler.finish();
+    if let Err(duplicates) = check_for_duplicate_output_names(all_outputs) {
+        let all_vertices = collect_ir_vertices(&root_component);
+        let errs = make_duplicated_output_names_error(&all_vertices, duplicates);
+        errors.extend(errs.into_iter());
+    }
+
     if errors.is_empty() {
         Ok(IRQuery {
             root_name: root_field_name.as_ref().to_owned().into(),
@@ -433,37 +461,67 @@ pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuer
     }
 }
 
+fn collect_ir_vertices(root_component: &IRQueryComponent) -> BTreeMap<Vid, IRVertex> {
+    let mut result = Default::default();
+    collect_ir_vertices_recursive_step(&mut result, root_component);
+    result
+}
+
+fn collect_ir_vertices_recursive_step(
+    result: &mut BTreeMap<Vid, IRVertex>,
+    component: &IRQueryComponent,
+) {
+    result.extend(component.vertices.iter().map(|(k, v)| (*k, v.clone())));
+
+    component
+        .folds
+        .values()
+        .for_each(move |fold| collect_ir_vertices_recursive_step(result, &fold.component))
+}
+
 fn fill_in_query_variables(
     variables: &mut BTreeMap<Arc<str>, Type>,
     component: &IRQueryComponent,
 ) -> Result<(), Vec<FilterTypeError>> {
     let mut errors: Vec<FilterTypeError> = vec![];
 
-    for vertex in component.vertices.values() {
-        for filter in &vertex.filters {
-            if let Some(Argument::Variable(vref)) = filter.right() {
-                let existing_type = variables
-                    .entry(vref.variable_name.clone())
-                    .or_insert_with(|| vref.variable_type.clone());
+    let all_variable_uses = component
+        .vertices
+        .values()
+        .flat_map(|vertex| &vertex.filters)
+        .map(|filter| filter.right())
+        .chain(
+            component
+                .folds
+                .values()
+                .flat_map(|fold| &fold.post_filters)
+                .map(|filter| filter.right()),
+        )
+        .filter_map(|rhs| match rhs {
+            Some(Argument::Variable(vref)) => Some(vref),
+            _ => None,
+        });
+    for vref in all_variable_uses {
+        let existing_type = variables
+            .entry(vref.variable_name.clone())
+            .or_insert_with(|| vref.variable_type.clone());
 
-                match intersect_types(existing_type, &vref.variable_type) {
-                    Some(intersection) => {
-                        *existing_type = intersection;
-                    }
-                    None => {
-                        errors.push(FilterTypeError::IncompatibleVariableTypeRequirements(
-                            vref.variable_name.to_string(),
-                            existing_type.to_string(),
-                            vref.variable_type.to_string(),
-                        ));
-                    }
-                }
+        match intersect_types(existing_type, &vref.variable_type) {
+            Some(intersection) => {
+                *existing_type = intersection;
+            }
+            None => {
+                errors.push(FilterTypeError::IncompatibleVariableTypeRequirements(
+                    vref.variable_name.to_string(),
+                    existing_type.to_string(),
+                    vref.variable_type.to_string(),
+                ));
             }
         }
     }
 
-    for inner_component in component.folds.values().map(|f| f.component.as_ref()) {
-        if let Err(e) = fill_in_query_variables(variables, inner_component) {
+    for fold in component.folds.values() {
+        if let Err(e) = fill_in_query_variables(variables, fold.component.as_ref()) {
             errors.extend(e.into_iter());
         }
     }
@@ -475,14 +533,60 @@ fn fill_in_query_variables(
     }
 }
 
+fn make_duplicated_output_names_error(
+    ir_vertices: &BTreeMap<Vid, IRVertex>,
+    duplicates: BTreeMap<Arc<str>, Vec<FieldRef>>,
+) -> Vec<FrontendError> {
+    let conflict_info = DuplicatedNamesConflict {
+        duplicates: duplicates
+            .iter()
+            .map(|(k, fields)| {
+                let duplicate_values = fields
+                    .iter()
+                    .map(|field| match field {
+                        FieldRef::ContextField(field) => {
+                            let vid = field.vertex_id;
+                            (
+                                ir_vertices[&vid].type_name.to_string(),
+                                field.field_name.to_string(),
+                            )
+                        }
+                        FieldRef::FoldSpecificField(field) => {
+                            let vid = field.fold_root_vid;
+                            match field.kind {
+                                FoldSpecificFieldKind::Count => (
+                                    ir_vertices[&vid].type_name.to_string(),
+                                    "fold count value".to_string(),
+                                ),
+                            }
+                        }
+                    })
+                    .collect();
+                (k.to_string(), duplicate_values)
+            })
+            .collect(),
+    };
+    vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
+}
+
+#[allow(clippy::type_complexity)]
+fn check_for_duplicate_output_names(
+    maybe_duplicated_outputs: BTreeMap<Arc<str>, Vec<FieldRef>>,
+) -> Result<BTreeMap<Arc<str>, FieldRef>, BTreeMap<Arc<str>, Vec<FieldRef>>> {
+    maybe_duplicated_outputs
+        .into_iter()
+        .flat_map(|(name, outputs)| outputs.into_iter().map(move |o| (name.clone(), o)))
+        .try_collect_unique()
+}
+
 #[allow(clippy::too_many_arguments)]
 fn make_query_component<'schema, 'query, V, E>(
     schema: &'schema Schema,
     query: &'query Query,
     vid_maker: &mut V,
     eid_maker: &mut E,
-    output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
     starting_vid: Vid,
@@ -513,6 +617,8 @@ where
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     > = Default::default();
 
+    output_handler.begin_subcomponent();
+
     let mut folds: BTreeMap<Eid, Arc<IRFold>> = Default::default();
     if let Err(e) = fill_in_vertex_data(
         schema,
@@ -524,8 +630,8 @@ where
         &mut folds,
         &mut property_names_by_vertex,
         &mut properties,
-        output_prefixes,
         component_path,
+        output_handler,
         tags,
         None,
         starting_vid,
@@ -622,75 +728,30 @@ where
         return Err(errors);
     }
 
-    let outputs: BTreeMap<Arc<str>, ContextField> = vertices
-        .iter()
-        .flat_map(|(vid, (_, vertex_field_node))| {
-            vertex_field_node
-                .connections
-                .iter()
-                .flat_map(move |(_, child_node)| {
-                    child_node.output.iter().map(move |d| (*vid, child_node, d))
-                })
+    let maybe_duplicated_outputs = output_handler.end_subcomponent();
+
+    let component_outputs = match check_for_duplicate_output_names(maybe_duplicated_outputs) {
+        Ok(outputs) => outputs,
+        Err(duplicates) => {
+            return Err(make_duplicated_output_names_error(&ir_vertices, duplicates))
+        }
+    };
+
+    // TODO: fixme, temporary hack to avoid changing the IRQueryComponent struct
+    let hacked_outputs = component_outputs
+        .into_iter()
+        .filter_map(|(k, v)| match v {
+            FieldRef::ContextField(c) => Some((k, c)),
+            FieldRef::FoldSpecificField(_) => None,
         })
-        .map(|(vid, field_node, directive)| {
-            let output_name: Arc<str> = if let Some(output_name) = directive.name.as_ref() {
-                output_name.clone()
-            } else {
-                let mut name_parts: Vec<&'query str> =
-                    vec![field_node.alias.as_ref().unwrap_or(&field_node.name)];
-
-                let mut current_vid = Some(vid);
-                while let Some(v) = current_vid {
-                    let (next_vid, output_prefix) = output_prefixes[&v];
-                    if let Some(prefix) = output_prefix {
-                        name_parts.push(prefix);
-                    }
-                    current_vid = next_vid;
-                }
-                let value: String = name_parts.iter().rev().copied().collect();
-                value.into()
-            };
-
-            let (property_name, property_type, _) =
-                properties.get(&(vid, field_node.name.clone())).unwrap();
-
-            let context_field = ContextField {
-                vertex_id: vid,
-                field_name: property_name.clone(),
-                field_type: (*property_type).clone(),
-            };
-
-            (output_name, context_field)
-        })
-        .try_collect_unique()
-        .map_err(|field_duplicates| {
-            let conflict_info = DuplicatedNamesConflict {
-                duplicates: field_duplicates
-                    .iter()
-                    .map(|(k, fields)| {
-                        let duplicate_values = fields
-                            .iter()
-                            .map(|field| {
-                                let vid = field.vertex_id;
-                                (
-                                    ir_vertices[&vid].type_name.to_string(),
-                                    field.field_name.to_string(),
-                                )
-                            })
-                            .collect();
-                        (k.to_string(), duplicate_values)
-                    })
-                    .collect(),
-            };
-            vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
-        })?;
+        .collect();
 
     Ok(IRQueryComponent {
         root: starting_vid,
         vertices: ir_vertices,
         edges: ir_edges,
         folds,
-        outputs,
+        outputs: hacked_outputs,
     })
 }
 
@@ -844,11 +905,18 @@ fn make_vertex<'schema, 'query>(
 ) -> Result<IRVertex, Vec<FrontendError>> {
     let mut errors: Vec<FrontendError> = vec![];
 
-    if !field_node.output.is_empty() {
+    // If the current vertex is the root of a `@fold`, then sometimes outputs are allowed.
+    // This will be handled and checked in the fold creation function, so ignore it here.
+    //
+    // If the current vertex is not the root of a fold, then outputs are not allowed
+    // and we should report an error.
+    let is_fold_root = component_path.is_component_root(vid);
+    if !is_fold_root && !field_node.output.is_empty() {
         errors.push(FrontendError::UnsupportedEdgeOutput(
             field_node.name.as_ref().to_owned(),
         ));
     }
+
     if let Some(first_filter) = field_node.filter.first() {
         // TODO: If @filter on edges is allowed, tweak this.
         errors.push(FrontendError::UnsupportedEdgeFilter(
@@ -886,14 +954,13 @@ fn make_vertex<'schema, 'query>(
 
         for property_field in property_fields.iter() {
             for filter_directive in property_field.filter.iter() {
-                match make_filter_expr(
+                match make_local_field_filter_expr(
                     schema,
                     component_path,
                     tags,
                     vid,
                     property_name,
                     property_type,
-                    property_field,
                     filter_directive,
                 ) {
                     Ok(filter_operation) => {
@@ -934,8 +1001,8 @@ fn fill_in_vertex_data<'schema, 'query, V, E>(
         (Vid, Arc<str>),
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
     >,
-    output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
     current_vid: Vid,
@@ -954,13 +1021,6 @@ where
         .insert_or_error(current_vid, (pre_coercion_type, current_field))
         .unwrap();
 
-    output_prefixes
-        .insert_or_error(
-            current_vid,
-            (parent_vid, current_field.alias.as_ref().map(|x| x.as_ref())),
-        )
-        .unwrap();
-
     let defined_fields = get_vertex_field_definitions(schema, post_coercion_type.as_ref());
 
     for (connection, subfield) in &current_field.connections {
@@ -975,10 +1035,14 @@ where
             .vertex_types
             .contains_key(subfield_post_coercion_type.as_ref())
         {
+            // Processing an edge.
+
             let next_vid = vid_maker.next().unwrap();
             let next_eid = eid_maker.next().unwrap();
+            output_handler
+                .begin_nested_scope(next_vid, subfield.alias.as_ref().map(|x| x.as_ref()));
 
-            if let Some(FoldDirective {}) = connection.fold {
+            if let Some(fold_group) = &connection.fold {
                 if connection.optional.is_some() {
                     errors.push(FrontendError::UnsupportedDirectiveOnFoldedEdge(
                         subfield.name.to_string(),
@@ -1004,9 +1068,10 @@ where
                             query,
                             vid_maker,
                             eid_maker,
-                            output_prefixes,
                             component_path,
+                            output_handler,
                             tags,
+                            fold_group,
                             next_eid,
                             edge_definition.name.node.as_str().to_owned().into(),
                             edge_parameters,
@@ -1043,8 +1108,8 @@ where
                     folds,
                     property_names_by_vertex,
                     properties,
-                    output_prefixes,
                     component_path,
+                    output_handler,
                     tags,
                     Some(current_vid),
                     next_vid,
@@ -1055,11 +1120,15 @@ where
                     errors.extend(e);
                 }
             }
+
+            output_handler.end_nested_scope(next_vid);
         } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
             || schema
                 .scalars
                 .contains_key(subfield_post_coercion_type.as_ref())
         {
+            // Processing a property.
+
             let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
             let key = (current_vid, subfield_name.clone());
             properties
@@ -1077,6 +1146,34 @@ where
 
                     (subfield_name, subfield_raw_type, SmallVec::from([subfield]))
                 });
+
+            for output_directive in &subfield.output {
+                // TODO: handle transformed fields here.
+                let field_ref = FieldRef::ContextField(ContextField {
+                    vertex_id: current_vid,
+                    field_name: subfield.name.clone(),
+                    field_type: subfield_raw_type.clone(),
+                });
+
+                // The output's name can be either explicit or local (i.e. implicitly prefixed).
+                // Explicit names are given explicitly in the directive:
+                //     @output(name: "foo")
+                // This would result in a "foo" output name, regardless of any prefixes.
+                // Local names use the field's alias, if present, falling back to the field's name
+                // otherwise. The local name is appended to any prefixes given as aliases
+                // applied to the edges whose scopes enclose the output.
+                if let Some(explicit_name) = output_directive.name.as_ref() {
+                    output_handler
+                        .register_explicitly_named_output(explicit_name.clone(), field_ref);
+                } else {
+                    let local_name = subfield
+                        .alias
+                        .as_ref()
+                        .map(|x| x.as_ref())
+                        .unwrap_or_else(|| subfield.name.as_ref());
+                    output_handler.register_locally_named_output(local_name, None, field_ref);
+                }
+            }
 
             for tag_directive in &subfield.tag {
                 // The tag's name is the first of the following that is defined:
@@ -1124,9 +1221,10 @@ fn make_fold<'schema, 'query, V, E>(
     query: &'query Query,
     vid_maker: &mut V,
     eid_maker: &mut E,
-    output_prefixes: &mut BTreeMap<Vid, (Option<Vid>, Option<&'query str>)>,
     component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
+    fold_group: &FoldGroup,
     fold_eid: Eid,
     edge_name: Arc<str>,
     edge_parameters: Option<Arc<EdgeParameters>>,
@@ -1144,13 +1242,14 @@ where
     component_path.push(starting_vid);
     tags.begin_subcomponent(starting_vid);
 
+    let mut errors = vec![];
     let component = make_query_component(
         schema,
         query,
         vid_maker,
         eid_maker,
-        output_prefixes,
         component_path,
+        output_handler,
         tags,
         Some(parent_vid),
         starting_vid,
@@ -1161,9 +1260,91 @@ where
     component_path.pop(starting_vid);
     let imported_tags = tags.end_subcomponent(starting_vid);
 
-    // TODO: properly load fold post-filters and fold-specific outputs
-    let post_filters = Arc::new(vec![]);
-    let fold_specific_outputs = BTreeMap::new();
+    if !starting_field.output.is_empty() {
+        // The edge has @fold @output but no @transform.
+        // If it had a @transform then the output would have been in the field's transform group.
+        errors.push(FrontendError::UnsupportedEdgeOutput(
+            starting_field.name.as_ref().to_owned(),
+        ));
+    }
+
+    // TODO: properly load fold post-filters
+    let mut post_filters = vec![];
+    let mut fold_specific_outputs = BTreeMap::new();
+
+    if let Some(transform_group) = &fold_group.transform {
+        if transform_group.retransform.is_some() {
+            unimplemented!("re-transforming a @fold @transform value is currently not supported");
+        }
+
+        let fold_specific_field = match transform_group.transform.kind {
+            TransformationKind::Count => FoldSpecificField {
+                fold_eid,
+                fold_root_vid: starting_vid,
+                kind: FoldSpecificFieldKind::Count,
+            },
+        };
+        let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
+
+        for filter_directive in &transform_group.filter {
+            match make_filter_expr(
+                schema,
+                component_path,
+                tags,
+                starting_vid,
+                fold_specific_field.kind,
+                filter_directive,
+            ) {
+                Ok(filter) => post_filters.push(filter),
+                Err(e) => errors.extend(e.into_iter()),
+            }
+        }
+        for output in &transform_group.output {
+            let final_output_name = match output.name.as_ref() {
+                Some(explicit_name) => {
+                    output_handler
+                        .register_explicitly_named_output(explicit_name.clone(), field_ref.clone());
+                    explicit_name.clone()
+                }
+                None => {
+                    let local_name = if starting_field.alias.is_some() {
+                        // The field has an alias already, so don't bother adding the edge name
+                        // to the output name.
+                        ""
+                    } else {
+                        // The field does not have an alias, so use the edge name as the base
+                        // of the name.
+                        starting_field.name.as_ref()
+                    };
+                    output_handler.register_locally_named_output(
+                        local_name,
+                        Some(&[fold_specific_field.kind.transform_suffix()]),
+                        field_ref.clone(),
+                    )
+                }
+            };
+
+            let prior_output_by_that_name =
+                fold_specific_outputs.insert(final_output_name.clone(), fold_specific_field.kind);
+            if let Some(prior_output_kind) = prior_output_by_that_name {
+                errors.push(FrontendError::MultipleOutputsWithSameName(DuplicatedNamesConflict {
+                    duplicates: btreemap! {
+                        final_output_name.to_string() => vec![
+                            (starting_field.name.to_string(), prior_output_kind.field_name().to_string()),
+                            (starting_field.name.to_string(), fold_specific_field.kind.field_name().to_string()),
+                        ]
+                    }
+                }))
+            }
+        }
+        for tag in &transform_group.tag {
+            unimplemented!("register the tag here");
+        }
+    }
+
+    if !errors.is_empty() {
+        return Err(errors);
+    }
 
     Ok(IRFold {
         eid: fold_eid,

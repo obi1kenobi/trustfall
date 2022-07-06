@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        out_Directory_Subdirectory @recurse(depth: 2) @fold {
+            name @output
+        }
+    }
+}"#,
+    arguments: {},
+)

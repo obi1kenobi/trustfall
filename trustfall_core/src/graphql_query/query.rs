@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::{collections::BTreeMap, convert::TryFrom};
 
+use async_graphql_parser::types::Directive;
 use async_graphql_parser::{
     types::{DocumentOperations, ExecutableDocument, Field, OperationType, Selection},
     Pos, Positioned,
@@ -14,6 +15,7 @@ use smallvec::SmallVec;
 use crate::ir::FieldValue;
 use crate::util::BTreeMapTryInsertExt;
 
+use super::directives::{FoldGroup, TransformDirective, TransformGroup};
 use super::{
     directives::{
         FilterDirective, FoldDirective, OptionalDirective, OutputDirective, RecurseDirective,
@@ -40,7 +42,7 @@ pub(crate) struct FieldConnection {
     pub recurse: Option<RecurseDirective>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fold: Option<FoldDirective>,
+    pub fold: Option<FoldGroup>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -65,6 +67,9 @@ pub(crate) struct FieldNode {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<(FieldConnection, FieldNode)>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transform_group: Option<TransformGroup>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -72,6 +77,43 @@ pub(crate) struct Query {
     pub root_connection: FieldConnection,
 
     pub root_field: FieldNode,
+}
+
+#[derive(Debug, Clone)]
+enum ParsedDirective {
+    Filter(FilterDirective, Pos),
+    Fold(FoldDirective, Pos),
+    Optional(OptionalDirective, Pos),
+    Output(OutputDirective, Pos),
+    Recurse(RecurseDirective, Pos),
+    Tag(TagDirective, Pos),
+    Transform(TransformDirective, Pos),
+}
+
+impl ParsedDirective {
+    fn kind(&self) -> &str {
+        match self {
+            ParsedDirective::Filter(..) => "@filter",
+            ParsedDirective::Fold(..) => "@fold",
+            ParsedDirective::Optional(..) => "@optional",
+            ParsedDirective::Output(..) => "@output",
+            ParsedDirective::Recurse(..) => "@recurse",
+            ParsedDirective::Tag(..) => "@tag",
+            ParsedDirective::Transform(..) => "@transform",
+        }
+    }
+
+    fn pos(&self) -> Pos {
+        match self {
+            ParsedDirective::Filter(_, pos) => *pos,
+            ParsedDirective::Fold(_, pos) => *pos,
+            ParsedDirective::Optional(_, pos) => *pos,
+            ParsedDirective::Output(_, pos) => *pos,
+            ParsedDirective::Recurse(_, pos) => *pos,
+            ParsedDirective::Tag(_, pos) => *pos,
+            ParsedDirective::Transform(_, pos) => *pos,
+        }
+    }
 }
 
 fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field>, ParseError> {
@@ -132,6 +174,53 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
     }
 }
 
+fn make_directives(
+    directives: &[Positioned<Directive>],
+) -> Result<Vec<ParsedDirective>, ParseError> {
+    let mut parsed_directives = vec![];
+
+    for directive in directives {
+        match directive.node.name.node.as_str() {
+            "filter" => {
+                let parsed = FilterDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Filter(parsed, directive.pos));
+            }
+            "output" => {
+                let parsed = OutputDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Output(parsed, directive.pos));
+            }
+            "tag" => {
+                let parsed = TagDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Tag(parsed, directive.pos));
+            }
+            "transform" => {
+                let parsed = TransformDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Transform(parsed, directive.pos));
+            }
+            "optional" => {
+                let parsed = OptionalDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Optional(parsed, directive.pos));
+            }
+            "recurse" => {
+                let parsed = RecurseDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Recurse(parsed, directive.pos));
+            }
+            "fold" => {
+                let parsed = FoldDirective::try_from(directive)?;
+                parsed_directives.push(ParsedDirective::Fold(parsed, directive.pos));
+            }
+            _ => {
+                return Err(ParseError::UnrecognizedDirective(
+                    directive.node.name.node.to_string(),
+                    directive.pos,
+                ))
+            }
+        }
+    }
+
+    Ok(parsed_directives)
+}
+
 fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
     let name = &field.node.name.node;
     let alias = field.node.alias.as_ref().map(|x| &x.node);
@@ -190,29 +279,31 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
     let mut filter: SmallVec<[FilterDirective; 1]> = Default::default();
     let mut output: SmallVec<[OutputDirective; 1]> = Default::default();
     let mut tag: SmallVec<[TagDirective; 0]> = Default::default();
-    for directive in field.node.directives.iter() {
-        match directive.node.name.node.as_str() {
-            "filter" => {
-                let parsed = FilterDirective::try_from(directive)?;
-                filter.push(parsed);
+
+    let directives = make_directives(&field.node.directives)?;
+    let mut directives_iter = directives.into_iter();
+    let maybe_transform = loop {
+        match directives_iter.next() {
+            Some(ParsedDirective::Filter(f, _)) => filter.push(f),
+            Some(ParsedDirective::Output(o, _)) => output.push(o),
+            Some(ParsedDirective::Tag(t, _)) => tag.push(t),
+            Some(ParsedDirective::Transform(t, _)) => break Some(t),
+            Some(
+                ParsedDirective::Optional(..)
+                | ParsedDirective::Fold(..)
+                | ParsedDirective::Recurse(..),
+            ) => {
+                // edge-specific directives, ignore them
             }
-            "output" => {
-                let parsed = OutputDirective::try_from(directive)?;
-                output.push(parsed);
-            }
-            "tag" => {
-                let parsed = TagDirective::try_from(directive)?;
-                tag.push(parsed);
-            }
-            "optional" | "recurse" | "fold" => {}
-            _ => {
-                return Err(ParseError::UnrecognizedDirective(
-                    directive.node.name.node.to_string(),
-                    directive.pos,
-                ))
-            }
+            None => break None,
         }
-    }
+    };
+
+    let transform_group = if let Some(transform) = maybe_transform {
+        Some(make_transform_group(transform, &mut directives_iter)?)
+    } else {
+        None
+    };
 
     let mut connections: Vec<(FieldConnection, FieldNode)> = vec![];
     for selection in field_selections.node.items.iter() {
@@ -240,6 +331,7 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
         alias: alias.map(|x| x.as_ref().to_owned().into()),
         coerced_to: coerced_to.map(|x| x.as_ref().to_owned().into()),
         filter,
+        transform_group,
         output,
         tag,
         connections,
@@ -274,52 +366,53 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
 
     let mut optional: Option<OptionalDirective> = None;
     let mut recurse: Option<RecurseDirective> = None;
-    let mut fold: Option<FoldDirective> = None;
 
-    for directive in field.node.directives.iter() {
-        match directive.node.name.node.as_str() {
-            "optional" => {
-                let parsed = OptionalDirective::try_from(directive)?;
+    let directives = make_directives(&field.node.directives)?;
+    let mut directives_iter = directives.into_iter();
+    let maybe_fold = loop {
+        match directives_iter.next() {
+            Some(ParsedDirective::Optional(opt, pos)) => {
                 if optional.is_none() {
-                    optional = Some(parsed);
+                    optional = Some(opt);
                 } else {
                     return Err(ParseError::UnsupportedDuplicatedDirective(
                         "@optional".to_owned(),
-                        directive.pos,
+                        pos,
                     ));
                 }
             }
-            "recurse" => {
-                let parsed = RecurseDirective::try_from(directive)?;
+            Some(ParsedDirective::Recurse(rec, pos)) => {
                 if recurse.is_none() {
-                    recurse = Some(parsed);
+                    recurse = Some(rec);
                 } else {
                     return Err(ParseError::UnsupportedDuplicatedDirective(
                         "@recurse".to_owned(),
-                        directive.pos,
+                        pos,
                     ));
                 }
             }
-            "fold" => {
-                let parsed = FoldDirective::try_from(directive)?;
-                if fold.is_none() {
-                    fold = Some(parsed);
-                } else {
-                    return Err(ParseError::UnsupportedDuplicatedDirective(
-                        "@fold".to_owned(),
-                        directive.pos,
-                    ));
-                }
+            Some(ParsedDirective::Fold(fold, _)) => break Some(fold),
+            Some(ParsedDirective::Transform(_, pos)) => {
+                return Err(ParseError::OtherError(
+                    // TODO: do better
+                    "@transform applied to non-folded edge field".to_string(),
+                    pos,
+                ));
             }
-            "filter" | "output" | "tag" => {}
-            _ => {
-                return Err(ParseError::UnrecognizedDirective(
-                    directive.node.name.node.to_string(),
-                    directive.pos,
-                ))
-            }
+            Some(
+                ParsedDirective::Filter(..)
+                | ParsedDirective::Output(..)
+                | ParsedDirective::Tag(..),
+            ) => {}
+            None => break None,
         }
-    }
+    };
+
+    let fold_group = if let Some(fold) = maybe_fold {
+        Some(make_fold_group(fold, &mut directives_iter)?)
+    } else {
+        None
+    };
 
     Ok(FieldConnection {
         position: field.pos,
@@ -332,7 +425,85 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
         arguments,
         optional,
         recurse,
+        fold: fold_group,
+    })
+}
+
+fn make_fold_group(
+    fold: FoldDirective,
+    directive_iter: &mut impl Iterator<Item = ParsedDirective>,
+) -> Result<FoldGroup, ParseError> {
+    let transform_group = if let Some(directive) = directive_iter.next() {
+        match directive {
+            ParsedDirective::Transform(transform, _) => {
+                Some(make_transform_group(transform, directive_iter)?)
+            }
+            ParsedDirective::Fold(_, pos) => {
+                return Err(ParseError::UnsupportedDuplicatedDirective(
+                    "@fold".to_string(),
+                    pos,
+                ));
+            }
+            _ => {
+                return Err(ParseError::UnsupportedDirectivePosition(
+                    directive.kind().to_string(),
+                    "this directive cannot appear after a @fold directive".to_string(),
+                    directive.pos(),
+                ))
+            }
+        }
+    } else {
+        None
+    };
+
+    Ok(FoldGroup {
         fold,
+        transform: transform_group,
+    })
+}
+
+fn make_transform_group(
+    transform: TransformDirective,
+    directive_iter: &mut impl Iterator<Item = ParsedDirective>,
+) -> Result<TransformGroup, ParseError> {
+    let mut output = vec![];
+    let mut tag = vec![];
+    let mut filter = vec![];
+
+    let retransform = loop {
+        if let Some(directive) = directive_iter.next() {
+            match directive {
+                ParsedDirective::Filter(f, _) => filter.push(f),
+                ParsedDirective::Output(o, _) => output.push(o),
+                ParsedDirective::Tag(t, _) => tag.push(t),
+                ParsedDirective::Transform(xform, _) => {
+                    break Some(Box::new(make_transform_group(xform, directive_iter)?));
+                }
+                ParsedDirective::Fold(..)
+                | ParsedDirective::Optional(..)
+                | ParsedDirective::Recurse(..) => {
+                    return Err(ParseError::UnsupportedDirectivePosition(
+                        directive.kind().to_string(),
+                        "this directive cannot appear after a @transform directive".to_string(),
+                        directive.pos(),
+                    ))
+                }
+            }
+        } else {
+            break None;
+        }
+    };
+
+    // Once we encounter a @transform directive,
+    // all other directives apply to the transformed value and are processed here.
+    assert!(directive_iter.next().is_none());
+
+    Ok(TransformGroup {
+        transform,
+        output,
+        tag,
+        filter,
+        retransform,
     })
 }
 

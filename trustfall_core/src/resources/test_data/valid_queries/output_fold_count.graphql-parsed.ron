@@ -1,0 +1,89 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "primeFactor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "primeFactor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("factors"),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("factors"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            output: [
+              OutputDirective(),
+            ],
+          )),
+        )),
+      ],
+    ),
+  ),
+))

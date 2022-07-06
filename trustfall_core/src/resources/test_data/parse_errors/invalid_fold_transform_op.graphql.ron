@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        multiple(max: 3) @fold @transform(op: "non_existent") @output {
+            value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

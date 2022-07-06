@@ -456,11 +456,11 @@ TestInterpreterOutputTrace(
                           LessThan(LocalField(
                             field_name: "name",
                             field_type: "String",
-                          ), Tag(ContextField(
+                          ), Tag(ContextField(ContextField(
                             vertex_id: Vid(2),
                             field_name: "name",
                             field_type: "String",
-                          ))),
+                          )))),
                         ],
                       ),
                     },

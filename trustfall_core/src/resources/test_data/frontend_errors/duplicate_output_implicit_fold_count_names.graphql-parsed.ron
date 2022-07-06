@@ -1,52 +1,73 @@
 Ok(TestParsedGraphQLQuery(
-  schema_name: "filesystem",
+  schema_name: "numbers",
   query: Query(
     root_connection: FieldConnection(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "OriginDirectory",
+      name: "Four",
     ),
     root_field: FieldNode(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "OriginDirectory",
+      name: "Four",
       connections: [
         (FieldConnection(
           position: Pos(
             line: 4,
             column: 9,
           ),
-          name: "out_Directory_ContainsFile",
-          optional: Some(OptionalDirective()),
-          fold: Some(FoldDirective()),
+          name: "primeFactor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              output: [
+                OutputDirective(),
+                OutputDirective(),
+              ],
+            )),
+          )),
         ), FieldNode(
           position: Pos(
             line: 4,
             column: 9,
           ),
-          name: "out_Directory_ContainsFile",
+          name: "primeFactor",
           connections: [
             (FieldConnection(
               position: Pos(
                 line: 5,
                 column: 13,
               ),
-              name: "name",
+              name: "value",
+              alias: Some("factors"),
             ), FieldNode(
               position: Pos(
                 line: 5,
                 column: 13,
               ),
-              name: "name",
+              name: "value",
+              alias: Some("factors"),
               output: [
                 OutputDirective(),
               ],
             )),
           ],
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            output: [
+              OutputDirective(),
+              OutputDirective(),
+            ],
+          )),
         )),
       ],
     ),

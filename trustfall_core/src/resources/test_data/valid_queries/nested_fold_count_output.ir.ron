@@ -1,0 +1,84 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: Some(EdgeParameters({
+      "max": Int64(6),
+      "min": Int64(6),
+    })),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Composite",
+          coerced_from_type: Some("Number"),
+        ),
+      },
+      folds: {
+        Eid(1): IRFold(
+          eid: Eid(1),
+          from_vid: Vid(1),
+          to_vid: Vid(2),
+          edge_name: "primeFactor",
+          component: IRQueryComponent(
+            root: Vid(2),
+            vertices: {
+              Vid(2): IRVertex(
+                vid: Vid(2),
+                type_name: "Prime",
+              ),
+            },
+            folds: {
+              Eid(2): IRFold(
+                eid: Eid(2),
+                from_vid: Vid(2),
+                to_vid: Vid(3),
+                edge_name: "multiple",
+                parameters: Some(EdgeParameters({
+                  "max": Int64(3),
+                })),
+                component: IRQueryComponent(
+                  root: Vid(3),
+                  vertices: {
+                    Vid(3): IRVertex(
+                      vid: Vid(3),
+                      type_name: "Composite",
+                    ),
+                  },
+                  outputs: {
+                    "multiples": ContextField(
+                      vertex_id: Vid(3),
+                      field_name: "value",
+                      field_type: "Int",
+                    ),
+                  },
+                ),
+                fold_specific_outputs: {
+                  "multiplecount": Count,
+                },
+              ),
+            },
+            outputs: {
+              "factors": ContextField(
+                vertex_id: Vid(2),
+                field_name: "value",
+                field_type: "Int",
+              ),
+            },
+          ),
+          fold_specific_outputs: {
+            "primeFactorcount": Count,
+          },
+        ),
+      },
+      outputs: {
+        "value": ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        ),
+      },
+    ),
+  ),
+))
