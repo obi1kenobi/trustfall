@@ -1,0 +1,104 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(32),
+        "min": Int64(30),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      coerced_to: Some("Composite"),
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 7,
+            column: 13,
+          ),
+          name: "primeFactor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              filter: [
+                FilterDirective(
+                  operation: OneOf((), VariableRef("counts")),
+                ),
+              ],
+            )),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 7,
+            column: 13,
+          ),
+          name: "primeFactor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 8,
+                column: 17,
+              ),
+              name: "value",
+              alias: Some("factors"),
+            ), FieldNode(
+              position: Pos(
+                line: 8,
+                column: 17,
+              ),
+              name: "value",
+              alias: Some("factors"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            filter: [
+              FilterDirective(
+                operation: OneOf((), VariableRef("counts")),
+              ),
+            ],
+          )),
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "counts": List([
+      Uint64(0),
+      Uint64(1),
+    ]),
+  },
+))
