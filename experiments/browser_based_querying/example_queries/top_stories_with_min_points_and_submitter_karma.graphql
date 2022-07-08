@@ -6,6 +6,7 @@ query:
       byUsername @output
       url @output
       score @output @filter(op: ">=", value: ["$minScore"])
+      storyUrl: ownUrl @output
 
       byUser {
         karma @output @filter(op: ">=", value: ["$minKarma"])
