@@ -1,0 +1,19 @@
+query:
+{
+  HackerNewsLatestStories(max: 100) {
+    title @output
+    byUsername @output
+    url @output
+    score @output @filter(op: ">=", value: ["$minScore"])
+
+    byUser {
+      karma @output @filter(op: ">=", value: ["$minKarma"])
+    }
+  }
+}
+
+vars:
+{
+  "minScore": 5,
+  "minKarma": 300
+}

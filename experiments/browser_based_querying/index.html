@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <!--
+        These headers must be set in order for this demo to work.
+        They can't be set using this "http-equiv" approach.
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+
+    <title>Trustfall in-browser query demo</title>
+</head>
+
+<body>
+    <h1>Trustfall in-browser query demo</h1>
+
+    <div>
+        <textarea id="query" style="width: 500px; height: 340px;"></textarea>
+        <textarea id="vars" style="width: 200px; height: 340px;"></textarea>
+    </div>
+    <div style="margin: 10px">
+        <button id="run" disabled>Run query!</button>
+        <button id="more" disabled>More results!</button>
+    </div>
+    <div>
+        <textarea id="results" style="width: 710px; height: 300px;" readonly></textarea>
+    </div>
+
+    <script type="module" src="www/index.js"></script>
+</body>
+
+</html>

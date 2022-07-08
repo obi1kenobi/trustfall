@@ -1,0 +1,26 @@
+query:
+{
+  HackerNewsUser(name: "patio11") {
+    submitted {
+      ... on HackerNewsComment {
+        text @output
+        commentUrl: ownUrl @output
+
+        parent @recurse(depth: 5) {
+          ... on HackerNewsStory {
+            url @filter(op: "has_substring", value: ["$url"])
+                @output
+            submitter: byUsername @output
+            score @output
+            storyUrl: ownUrl @output
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+  "url": ".kalzumeus.com"
+}

@@ -1,0 +1,21 @@
+query:
+{
+  HackerNewsTop(max: 100) {
+    ... on HackerNewsStory {
+      title @output
+      byUsername @output
+      url @output
+      score @output @filter(op: ">=", value: ["$minScore"])
+
+      byUser {
+        karma @output @filter(op: ">=", value: ["$minKarma"])
+      }
+    }
+  }
+}
+
+vars:
+{
+  "minScore": 200,
+  "minKarma": 1000,
+}
