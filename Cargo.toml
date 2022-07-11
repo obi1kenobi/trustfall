@@ -10,4 +10,5 @@ members = [
     "demo-hytradboi",
     "experiments/schemaless",
     "experiments/schemaless_wasm",
+    "experiments/trustfall_rustdoc",
 ]
