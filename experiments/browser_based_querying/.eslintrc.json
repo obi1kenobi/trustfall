@@ -1,22 +1,22 @@
 {
-    "parser": "@typescript-eslint/parser",
-    "extends": [
-        "eslint:recommended",
-        "plugin:react/recommended",
-        "plugin:react-hooks/recommended",
-        "typescript",
-        "plugin:@typescript-eslint/recommended"
-    ],
-    "env": {
-        "node": true
-    },
-    "rules": {
-        "@typescript-eslint/no-var-requires": 0
-    },
-    "settings": {
-        "react": {
-            "version": "18"
-        }
-    },
-    "ignorePatterns": ["www2"]
+  "parser": "@typescript-eslint/parser",
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "typescript",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "@typescript-eslint/no-var-requires": 0
+  },
+  "settings": {
+    "react": {
+      "version": "18"
+    }
+  },
+  "ignorePatterns": ["www2"]
 }

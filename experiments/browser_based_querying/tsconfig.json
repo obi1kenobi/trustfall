@@ -1,11 +1,8 @@
 {
-    "compilerOptions": {
-        "lib": [
-            "dom",
-            "es2021"
-        ],
-        "module": "ESNext",
-        "target": "es2021",
-        "strict": true,
-    }
+  "compilerOptions": {
+    "lib": ["dom", "es2021"],
+    "module": "ESNext",
+    "target": "es2021",
+    "strict": true
+  }
 }

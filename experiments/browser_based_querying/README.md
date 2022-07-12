@@ -7,6 +7,7 @@ Only tested to work in Chrome. Known to not work in Firefox since [Firefox does 
 See the `example_queries` directory for some example queries to run. Live demo here: https://predr.ag/demo/trustfall/
 
 Contents:
+
 - `src` contains the TypeScript source code for the demo.
 - Those source files are built as JavaScript (currently, without a bundler) into the `www` directory (not checked in).
 - The `www2` directory contains the `trustfall_wasm` WASM bindings for the `trustfall` query engine. In principle, this shouldn't be checked in, but is checked in for convenience since this is a custom bundler-less build (unlike the regular version which assumes use with a bundler).

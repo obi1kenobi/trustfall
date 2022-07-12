@@ -1,13 +1,23 @@
-import init, { Adapter, JsEdgeParameters, JsContext, ContextAndValue, ContextAndNeighborsIterator, ContextAndBool, Schema, initialize, executeQuery } from "../www2/trustfall_wasm.js";
-import { getTopItems, getLatestItems, materializeItem, materializeUser } from "./hackernews";
+import init, {
+  Adapter,
+  JsEdgeParameters,
+  JsContext,
+  ContextAndValue,
+  ContextAndNeighborsIterator,
+  ContextAndBool,
+  Schema,
+  initialize,
+  executeQuery,
+} from '../www2/trustfall_wasm.js';
+import { getTopItems, getLatestItems, materializeItem, materializeUser } from './hackernews';
 
-console.log("running wasm init...");
+console.log('running wasm init...');
 await init();
-console.log("wasm init complete");
+console.log('wasm init complete');
 
-console.log("Query system init...");
+console.log('Query system init...');
 initialize();
-console.log("Query system initialized");
+console.log('Query system initialized');
 
 // TODO: This is a copy of schema.graphql, find a better way to include it.
 const schemaText = `
@@ -107,29 +117,29 @@ interface Webpage {
 `;
 
 const schema = Schema.parse(schemaText);
-console.log("Schema loaded.");
+console.log('Schema loaded.');
 
-postMessage("ready");
+postMessage('ready');
 
 type Vertex = any;
 
 const HNItemFieldMappings: Record<string, string> = {
-  "id": "id",
-  "unixTime": "time",
-  "title": "title",
-  "score": "score",
-  "url": "url",
-  "byUsername": "by",
-  "text": "text",
-  "commentsCount": "descendants",
-}
+  id: 'id',
+  unixTime: 'time',
+  title: 'title',
+  score: 'score',
+  url: 'url',
+  byUsername: 'by',
+  text: 'text',
+  commentsCount: 'descendants',
+};
 
 const HNUserFieldMappings: Record<string, string> = {
-  "id": "id",
-  "karma": "karma",
-  "about": "about",
-  "unixCreatedAt": "created",
-}
+  id: 'id',
+  karma: 'karma',
+  about: 'about',
+  unixCreatedAt: 'created',
+};
 
 function* limitIterator<T>(iter: IterableIterator<T>, limit: number): IterableIterator<T> {
   let count = 0;
@@ -149,30 +159,27 @@ export class MyAdapter implements Adapter<Vertex> {
     this.fetchPort = fetchPort;
   }
 
-  *getStartingTokens(
-    edge: string,
-    parameters: JsEdgeParameters,
-  ): IterableIterator<Vertex> {
-    if (edge === "HackerNewsFrontPage") {
+  *getStartingTokens(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
+    if (edge === 'HackerNewsFrontPage') {
       return limitIterator(getTopItems(this.fetchPort), 30);
-    } else if (edge === "HackerNewsTop") {
-      const limit = parameters["max"];
+    } else if (edge === 'HackerNewsTop') {
+      const limit = parameters['max'];
       const iter = getTopItems(this.fetchPort);
       if (limit == undefined) {
         yield* iter;
       } else {
         yield* limitIterator(iter, limit as number);
       }
-    } else if (edge === "HackerNewsLatestStories") {
-      const limit = parameters["max"];
+    } else if (edge === 'HackerNewsLatestStories') {
+      const limit = parameters['max'];
       const iter = getLatestItems(this.fetchPort);
       if (limit == undefined) {
         yield* iter;
       } else {
         yield* limitIterator(iter, limit as number);
       }
-    } else if (edge === "HackerNewsUser") {
-      const username = parameters["name"];
+    } else if (edge === 'HackerNewsUser') {
+      const username = parameters['name'];
       if (username == undefined) {
         throw new Error(`No username given: ${edge} ${parameters}`);
       }
@@ -192,12 +199,12 @@ export class MyAdapter implements Adapter<Vertex> {
     field_name: string
   ): IterableIterator<ContextAndValue> {
     if (
-      current_type_name === "HackerNewsItem" ||
-      current_type_name === "HackerNewsStory" ||
-      current_type_name === "HackerNewsJob" ||
-      current_type_name === "HackerNewsComment"
+      current_type_name === 'HackerNewsItem' ||
+      current_type_name === 'HackerNewsStory' ||
+      current_type_name === 'HackerNewsJob' ||
+      current_type_name === 'HackerNewsComment'
     ) {
-      if (field_name == "ownUrl") {
+      if (field_name == 'ownUrl') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
 
@@ -209,7 +216,7 @@ export class MyAdapter implements Adapter<Vertex> {
           yield {
             localId: ctx.localId,
             value: value,
-          }
+          };
         }
       } else {
         const fieldKey = HNItemFieldMappings[field_name];
@@ -222,11 +229,11 @@ export class MyAdapter implements Adapter<Vertex> {
 
           yield {
             localId: ctx.localId,
-            value: vertex ? (vertex[fieldKey] || null) : null,
-          }
+            value: vertex ? vertex[fieldKey] || null : null,
+          };
         }
       }
-    } else if (current_type_name === "HackerNewsUser") {
+    } else if (current_type_name === 'HackerNewsUser') {
       const fieldKey = HNUserFieldMappings[field_name];
       if (fieldKey == undefined) {
         throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
@@ -236,17 +243,17 @@ export class MyAdapter implements Adapter<Vertex> {
         const vertex = ctx.currentToken;
         yield {
           localId: ctx.localId,
-          value: vertex ? (vertex[fieldKey] || null) : null,
-        }
+          value: vertex ? vertex[fieldKey] || null : null,
+        };
       }
-    } else if (current_type_name === "Webpage") {
-      if (field_name === "url") {
+    } else if (current_type_name === 'Webpage') {
+      if (field_name === 'url') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           yield {
             localId: ctx.localId,
             value: vertex?.url || null,
-          }
+          };
         }
       } else {
         throw new Error(`Unexpected property: ${current_type_name} ${field_name}`);
@@ -260,14 +267,14 @@ export class MyAdapter implements Adapter<Vertex> {
     data_contexts: IterableIterator<JsContext<Vertex>>,
     current_type_name: string,
     edge_name: string,
-    parameters: JsEdgeParameters,
+    parameters: JsEdgeParameters
   ): IterableIterator<ContextAndNeighborsIterator<Vertex>> {
     if (
-      current_type_name === "HackerNewsStory" ||
-      current_type_name === "HackerNewsJob" ||
-      current_type_name === "HackerNewsComment"
+      current_type_name === 'HackerNewsStory' ||
+      current_type_name === 'HackerNewsJob' ||
+      current_type_name === 'HackerNewsComment'
     ) {
-      if (edge_name === "link") {
+      if (edge_name === 'link') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           let neighbors: Vertex[] = [];
@@ -277,32 +284,32 @@ export class MyAdapter implements Adapter<Vertex> {
           yield {
             localId: ctx.localId,
             neighbors: neighbors[Symbol.iterator](),
-          }
+          };
         }
-      } else if (edge_name === "byUser") {
+      } else if (edge_name === 'byUser') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           if (vertex) {
             yield {
               localId: ctx.localId,
               neighbors: lazyFetchMap(this.fetchPort, [vertex.by], materializeUser),
-            }
+            };
           } else {
             yield {
               localId: ctx.localId,
               neighbors: [][Symbol.iterator](),
-            }
+            };
           }
         }
-      } else if (edge_name === "comment" || edge_name === "reply") {
+      } else if (edge_name === 'comment' || edge_name === 'reply') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           yield {
             localId: ctx.localId,
             neighbors: lazyFetchMap(this.fetchPort, vertex?.kids, materializeItem),
-          }
+          };
         }
-      } else if (edge_name === "parent") {
+      } else if (edge_name === 'parent') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           const parent = vertex?.parent;
@@ -310,26 +317,26 @@ export class MyAdapter implements Adapter<Vertex> {
             yield {
               localId: ctx.localId,
               neighbors: lazyFetchMap(this.fetchPort, [parent], materializeItem),
-            }
+            };
           } else {
             yield {
               localId: ctx.localId,
               neighbors: [][Symbol.iterator](),
-            }
+            };
           }
         }
       } else {
         throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
       }
-    } else if (current_type_name === "HackerNewsUser") {
-      if (edge_name === "submitted") {
+    } else if (current_type_name === 'HackerNewsUser') {
+      if (edge_name === 'submitted') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           const submitted = vertex?.submitted;
           yield {
             localId: ctx.localId,
             neighbors: lazyFetchMap(this.fetchPort, submitted, materializeItem),
-          }
+          };
         }
       } else {
         throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
@@ -344,14 +351,14 @@ export class MyAdapter implements Adapter<Vertex> {
     current_type_name: string,
     coerce_to_type_name: string
   ): IterableIterator<ContextAndBool> {
-    if (current_type_name === "HackerNewsItem") {
+    if (current_type_name === 'HackerNewsItem') {
       let targetType;
-      if (coerce_to_type_name === "HackerNewsStory") {
-        targetType = "story";
-      } else if (coerce_to_type_name === "HackerNewsJob") {
-        targetType = "job";
-      } else if (coerce_to_type_name === "HackerNewsComment") {
-        targetType = "comment";
+      if (coerce_to_type_name === 'HackerNewsStory') {
+        targetType = 'story';
+      } else if (coerce_to_type_name === 'HackerNewsJob') {
+        targetType = 'job';
+      } else if (coerce_to_type_name === 'HackerNewsComment') {
+        targetType = 'comment';
       } else {
         throw new Error(`Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`);
       }
@@ -361,7 +368,7 @@ export class MyAdapter implements Adapter<Vertex> {
         yield {
           localId: ctx.localId,
           value: vertex?.type === targetType,
-        }
+        };
       }
     } else {
       throw new Error(`Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`);
@@ -369,7 +376,11 @@ export class MyAdapter implements Adapter<Vertex> {
   }
 }
 
-function* lazyFetchMap<InT, OutT>(fetchPort: MessagePort, inputs: Array<InT> | null, func: (port: MessagePort, arg: InT) => OutT): IterableIterator<OutT> {
+function* lazyFetchMap<InT, OutT>(
+  fetchPort: MessagePort,
+  inputs: Array<InT> | null,
+  func: (port: MessagePort, arg: InT) => OutT
+): IterableIterator<OutT> {
   if (inputs) {
     for (const input of inputs) {
       const result = func(fetchPort, input);
@@ -402,30 +413,30 @@ function performQuery(query: string, args: any): any {
 }
 
 function dispatch(e: MessageEvent): void {
-  let payload = e.data;
+  const payload = e.data;
 
-  console.log("Adapter received message:", payload);
-  if (payload.op === "init") {
+  console.log('Adapter received message:', payload);
+  if (payload.op === 'init') {
     return;
   }
 
-  if (payload.op === "channel") {
+  if (payload.op === 'channel') {
     _adapterFetchChannel = payload.data.port;
     return;
   }
 
-  if (payload.op === "query") {
+  if (payload.op === 'query') {
     _resultIter = performQuery(payload.query, payload.args);
-    payload.op = "next";
+    payload.op = 'next';
   }
 
-  if (payload.op === "next") {
+  if (payload.op === 'next') {
     const rawResult = _resultIter.next();
     const result = {
       done: rawResult.done,
       value: rawResult.value,
-    }
-    console.log("Adapter posting:", result);
+    };
+    console.log('Adapter posting:', result);
     postMessage(result);
     return;
   }

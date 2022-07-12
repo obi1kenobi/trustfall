@@ -1,17 +1,15 @@
 function run() {
-  const queryWorker = new Worker("./adapter.js", { type: "module" });
-  const fetcherWorker = new Worker("./fetcher.js", { type: "module" });
+  const queryWorker = new Worker('./adapter.js', { type: 'module' });
+  const fetcherWorker = new Worker('./fetcher.js', { type: 'module' });
   const channel = new MessageChannel();
 
-  queryWorker.postMessage({ op: "init" });
+  queryWorker.postMessage({ op: 'init' });
 
-  fetcherWorker.postMessage(
-    { op: "channel", data: { port: channel.port2 } }, [channel.port2],
-  );
+  fetcherWorker.postMessage({ op: 'channel', data: { port: channel.port2 } }, [channel.port2]);
 
   function awaitInitConfirmation(e: MessageEvent) {
-    let data = e.data;
-    if (data === "ready") {
+    const data = e.data;
+    if (data === 'ready') {
       cleanUp();
       execute();
     } else {
@@ -25,17 +23,15 @@ function run() {
   }
 
   function execute(): any {
-    queryWorker.postMessage(
-      { op: "channel", data: { port: channel.port1 } }, [channel.port1],
-    );
+    queryWorker.postMessage({ op: 'channel', data: { port: channel.port1 } }, [channel.port1]);
 
     queryWorker.onmessage = function (e: MessageEvent) {
-      let data = e.data;
-      console.log("Query msg received:", data);
-    }
+      const data = e.data;
+      console.log('Query msg received:', data);
+    };
 
     queryWorker.postMessage({
-      op: "query",
+      op: 'query',
       query: `
 {
   HackerNewsTop(max: 30) {
@@ -55,15 +51,15 @@ function run() {
       args: {
         minScore: 25,
         minKarma: 200,
-      }
+      },
     });
 
     queryWorker.postMessage({
-      op: "next",
+      op: 'next',
     });
 
     queryWorker.postMessage({
-      op: "query",
+      op: 'query',
       query: `
 {
   HackerNewsLatestStories(max: 30) {
@@ -81,15 +77,15 @@ function run() {
       args: {
         minScore: 3,
         minKarma: 200,
-      }
+      },
     });
 
     queryWorker.postMessage({
-      op: "next",
+      op: 'next',
     });
 
     queryWorker.postMessage({
-      op: "query",
+      op: 'query',
       query: `
 {
   HackerNewsUser(name: "patio11") {
@@ -104,11 +100,11 @@ function run() {
   }
 }
   `,
-      args: {}
+      args: {},
     });
 
     queryWorker.postMessage({
-      op: "query",
+      op: 'query',
       query: `
 {
   HackerNewsUser(name: "hopefullynonexistentsoicantestthis") {
@@ -117,7 +113,7 @@ function run() {
   }
 }
   `,
-      args: {}
+      args: {},
     });
   }
 }
