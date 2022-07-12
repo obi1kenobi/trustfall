@@ -234,7 +234,7 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
             .with_context(|| "Query execution error.")?;
 
         let max_n = 5;
-        println!("> Query results (max {max_n}): {query_name}");
+        println!("> Semver violations (max {max_n}) of kind: {query_name}");
         for result in results_iter.take(max_n) {
             let pretty_result: BTreeMap<Arc<str>, TransparentValue> =
                 result.into_iter().map(|(k, v)| (k, v.into())).collect();
@@ -243,7 +243,7 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
         let end_instant = Instant::now();
         let total_time = end_instant - start_instant;
 
-        println!("< Results done: {:.2}s\n", total_time.as_secs_f32());
+        println!("< Query done: {:.2}s\n", total_time.as_secs_f32());
     }
 
     Ok(())
