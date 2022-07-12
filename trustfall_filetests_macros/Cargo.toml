@@ -2,6 +2,9 @@
 name = "trustfall_filetests_macros"
 version = "0.2.0"
 edition = "2018"
+license = "Apache-2.0"
+description = "Macros powering the trustfall project's filetests implementation."
+repository = "https://github.com/obi1kenobi/trustfall"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
