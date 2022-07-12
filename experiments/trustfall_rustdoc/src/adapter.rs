@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use rustdoc_types::{Crate, Item, Span, Struct, Type};
+use rustdoc_types::{Crate, Enum, Item, Span, Struct, Type, Variant};
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
     ir::{EdgeParameters, Eid, FieldValue, Vid},
@@ -70,6 +70,7 @@ pub enum TokenKind {
     Span(Rc<Span>),
 }
 
+#[allow(dead_code)]
 impl Token {
     fn as_crate_diff(&self) -> Option<&(Rc<Crate>, Rc<Crate>)> {
         match &self.kind {
@@ -99,7 +100,6 @@ impl Token {
         })
     }
 
-    #[allow(dead_code)]
     fn as_struct_field_item(&self) -> Option<(&Item, &Type)> {
         self.as_item().and_then(|item| match &item.inner {
             rustdoc_types::ItemEnum::StructField(s) => Some((item, s)),
@@ -112,6 +112,20 @@ impl Token {
             TokenKind::Span(s) => Some(s.as_ref()),
             _ => None,
         }
+    }
+
+    fn as_enum(&self) -> Option<&Enum> {
+        self.as_item().and_then(|item| match &item.inner {
+            rustdoc_types::ItemEnum::Enum(e) => Some(e),
+            _ => None,
+        })
+    }
+
+    fn as_variant(&self) -> Option<&Variant> {
+        self.as_item().and_then(|item| match &item.inner {
+            rustdoc_types::ItemEnum::Variant(v) => Some(v),
+            _ => None,
+        })
     }
 }
 
@@ -152,7 +166,7 @@ fn get_item_property(item_token: &Token, field_name: &str) -> FieldValue {
         "name" => (&item.name).into(),
         "docs" => (&item.docs).into(),
         "attrs" => item.attrs.clone().into(),
-        "visibilityLimit" => match &item.visibility {
+        "visibility_limit" => match &item.visibility {
             rustdoc_types::Visibility::Public => "public".into(),
             rustdoc_types::Visibility::Default => "default".into(),
             rustdoc_types::Visibility::Crate => "crate".into(),
@@ -191,6 +205,14 @@ fn get_span_property(item_token: &Token, field_name: &str) -> FieldValue {
         "end_line" => (span.end.0 as u64).into(),
         "end_column" => (span.end.1 as u64).into(),
         _ => unreachable!("Span property {field_name}"),
+    }
+}
+
+fn get_enum_property(item_token: &Token, field_name: &str) -> FieldValue {
+    let enum_item = item_token.as_enum().expect("token was not an Enum");
+    match field_name {
+        "variants_stripped" => enum_item.variants_stripped.into(),
+        _ => unreachable!("Enum property {field_name}"),
     }
 }
 
@@ -248,7 +270,8 @@ impl Adapter<'static> for RustdocAdapter {
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
         if field_name.as_ref() == "__typename" {
             match current_type_name.as_ref() {
-                "Crate" | "Struct" | "StructField" | "Span" => {
+                "Crate" | "Struct" | "StructField" | "Span" | "Enum" | "PlainVariant"
+                | "TupleVariant" | "StructVariant" => {
                     // These types have no subtypes, so their __typename
                     // is always equal to their statically-determined type.
                     let typename: FieldValue = current_type_name.as_ref().into();
@@ -258,6 +281,33 @@ impl Adapter<'static> for RustdocAdapter {
                         } else {
                             (ctx, FieldValue::Null)
                         }
+                    }))
+                }
+                "Variant" => {
+                    // Inspect the inner type of the token and
+                    // output the appropriate __typename value.
+                    Box::new(data_contexts.map(|ctx| {
+                        let value = match &ctx.current_token {
+                            None => FieldValue::Null,
+                            Some(token) => match token.as_item() {
+                                Some(item) => match &item.inner {
+                                    rustdoc_types::ItemEnum::Variant(Variant::Plain) => {
+                                        "PlainVariant".into()
+                                    }
+                                    rustdoc_types::ItemEnum::Variant(Variant::Tuple(..)) => {
+                                        "TupleVariant".into()
+                                    }
+                                    rustdoc_types::ItemEnum::Variant(Variant::Struct(..)) => {
+                                        "StructVariant".into()
+                                    }
+                                    _ => {
+                                        unreachable!("unexpected item.inner type: {:?}", item.inner)
+                                    }
+                                },
+                                _ => unreachable!("unexpected token type: {token:?}"),
+                            },
+                        };
+                        (ctx, value)
                     }))
                 }
                 "Item" => {
@@ -294,10 +344,11 @@ impl Adapter<'static> for RustdocAdapter {
                         property_mapper(ctx, field_name.as_ref(), get_item_property)
                     }))
                 }
-                "Struct" | "StructField"
+                "Struct" | "StructField" | "Enum" | "Variant" | "PlainVariant" | "TupleVariant"
+                | "StructVariant"
                     if matches!(
                         field_name.as_ref(),
-                        "id" | "crate_id" | "name" | "docs" | "attrs" | "visibilityLimit"
+                        "id" | "crate_id" | "name" | "docs" | "attrs" | "visibility_limit"
                     ) =>
                 {
                     // properties inherited from Item, accesssed on Item subtypes
@@ -308,6 +359,11 @@ impl Adapter<'static> for RustdocAdapter {
                 "Struct" => Box::new(data_contexts.map(move |ctx| {
                     property_mapper(ctx, field_name.as_ref(), get_struct_property)
                 })),
+                "Enum" => {
+                    Box::new(data_contexts.map(move |ctx| {
+                        property_mapper(ctx, field_name.as_ref(), get_enum_property)
+                    }))
+                }
                 "Span" => {
                     Box::new(data_contexts.map(move |ctx| {
                         property_mapper(ctx, field_name.as_ref(), get_span_property)
@@ -389,8 +445,10 @@ impl Adapter<'static> for RustdocAdapter {
                                         // Filter out item types that are not currently supported.
                                         matches!(
                                             item.inner,
-                                            rustdoc_types::ItemEnum::Struct(_)
-                                                | rustdoc_types::ItemEnum::StructField(_)
+                                            rustdoc_types::ItemEnum::Struct(..)
+                                                | rustdoc_types::ItemEnum::StructField(..)
+                                                | rustdoc_types::ItemEnum::Enum(..)
+                                                | rustdoc_types::ItemEnum::Variant(..)
                                         )
                                     })
                                     .map(move |value| origin.make_item_token(&value));
@@ -405,7 +463,10 @@ impl Adapter<'static> for RustdocAdapter {
                     ),
                 }
             }
-            "Item" | "Struct" | "StructField" if edge_name.as_ref() == "span" => {
+            "Item" | "Struct" | "StructField" | "Enum" | "Variant" | "PlainVariant"
+            | "TupleVariant" | "StructVariant"
+                if edge_name.as_ref() == "span" =>
+            {
                 Box::new(data_contexts.map(move |ctx| {
                     let neighbors: Box<dyn Iterator<Item = Self::DataToken>> =
                         match &ctx.current_token {
@@ -462,6 +523,43 @@ impl Adapter<'static> for RustdocAdapter {
                     unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
                 }
             },
+            "Enum" => match edge_name.as_ref() {
+                "variant" => {
+                    let current_crate = self.current_crate.clone();
+                    let previous_crate = self.previous_crate.clone();
+                    Box::new(data_contexts.map(move |ctx| {
+                        let neighbors: Box<dyn Iterator<Item = Self::DataToken>> =
+                            match &ctx.current_token {
+                                None => Box::new(std::iter::empty()),
+                                Some(token) => {
+                                    let origin = token.origin;
+                                    let enum_item = token.as_enum().expect("token was not a Enum");
+
+                                    let item_index = match origin {
+                                        Origin::CurrentCrate => current_crate.index.clone(),
+                                        Origin::PreviousCrate => previous_crate
+                                            .as_ref()
+                                            .expect("no previous crate provided")
+                                            .index
+                                            .clone(),
+                                    };
+                                    Box::new(enum_item.variants.clone().into_iter().map(
+                                        move |field_id| {
+                                            origin.make_item_token(
+                                                item_index.get(&field_id).expect("missing item"),
+                                            )
+                                        },
+                                    ))
+                                }
+                            };
+
+                        (ctx, neighbors)
+                    }))
+                }
+                _ => {
+                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                }
+            },
             _ => unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}"),
         }
     }
@@ -475,15 +573,25 @@ impl Adapter<'static> for RustdocAdapter {
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
         match current_type_name.as_ref() {
-            "Item" => {
+            "Item" | "Variant" => {
                 Box::new(data_contexts.map(move |ctx| {
                     let can_coerce = match &ctx.current_token {
                         None => false,
                         Some(token) => {
                             let actual_type_name = match token.as_item() {
                                 Some(item) => match &item.inner {
-                                    rustdoc_types::ItemEnum::Struct(_) => "Struct",
-                                    rustdoc_types::ItemEnum::StructField(_) => "StructField",
+                                    rustdoc_types::ItemEnum::Struct(..) => "Struct",
+                                    rustdoc_types::ItemEnum::StructField(..) => "StructField",
+                                    rustdoc_types::ItemEnum::Enum(..) => "Enum",
+                                    rustdoc_types::ItemEnum::Variant(Variant::Plain) => {
+                                        "PlainVariant"
+                                    }
+                                    rustdoc_types::ItemEnum::Variant(Variant::Tuple(..)) => {
+                                        "TupleVariant"
+                                    }
+                                    rustdoc_types::ItemEnum::Variant(Variant::Struct(..)) => {
+                                        "StructVariant"
+                                    }
                                     _ => {
                                         unreachable!("unexpected item.inner type: {:?}", item.inner)
                                     }
@@ -491,12 +599,18 @@ impl Adapter<'static> for RustdocAdapter {
                                 _ => unreachable!("unexpected token type: {token:?}"),
                             };
 
-                            // We can compare the actual type name to the attempted coercion type
-                            // since the inheritance hierarchy only has one level.
-                            //
-                            // If more layers of interfaces are added, this logic will
-                            // need to change.
-                            actual_type_name == coerce_to_type_name.as_ref()
+                            match coerce_to_type_name.as_ref() {
+                                "Variant" => matches!(
+                                    actual_type_name,
+                                    "PlainVariant" | "TupleVariant" | "StructVariant"
+                                ),
+                                _ => {
+                                    // The remaining types are final (don't have any subtypes)
+                                    // so we can just compare the actual type name to
+                                    // the type we are attempting to coerce to.
+                                    actual_type_name == coerce_to_type_name.as_ref()
+                                }
+                            }
                         }
                     };
 

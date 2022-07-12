@@ -72,7 +72,7 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
         previous {
             item {
                 ... on Struct {
-                    visibilityLimit @filter(op: "=", value: ["$public"]) @output
+                    visibility_limit @filter(op: "=", value: ["$public"]) @output
                     name @output @tag
                     struct_type @output @tag
 
@@ -86,7 +86,7 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
         current @fold @transform(op: "count") @filter(op: "=", value: ["$zero"]) {
             item {
                 ... on Struct {
-                    visibilityLimit @filter(op: "=", value: ["$public"])
+                    visibility_limit @filter(op: "=", value: ["$public"])
                     name @filter(op: "=", value: ["%name"])
                     struct_type @filter(op: "=", value: ["%struct_type"])
                 }
@@ -105,13 +105,13 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
         previous {
             item {
                 ... on Struct {
-                    visibilityLimit @filter(op: "=", value: ["$public"])
+                    visibility_limit @filter(op: "=", value: ["$public"])
                     struct_name: name @output @tag
                     struct_type @output @tag
 
                     field {
                         field_name: name @output @tag
-                        visibilityLimit @filter(op: "=", value: ["$public"])
+                        visibility_limit @filter(op: "=", value: ["$public"])
 
                         span_: span @optional {
                             filename @output
@@ -124,13 +124,13 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
         current @fold @transform(op: "count") @filter(op: "=", value: ["$zero"]) {
             item {
                 ... on Struct {
-                    visibilityLimit @filter(op: "=", value: ["$public"])
+                    visibility_limit @filter(op: "=", value: ["$public"])
                     name @filter(op: "=", value: ["%struct_name"])
                     struct_type @filter(op: "=", value: ["%struct_type"])
 
                     field {
                         name @filter(op: "=", value: ["%field_name"])
-                        visibilityLimit @filter(op: "=", value: ["$public"])
+                        visibility_limit @filter(op: "=", value: ["$public"])
                     }
                 }
             }
@@ -142,12 +142,88 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
     struct_field_missing_args.insert(Arc::from("public"), "public".into());
     struct_field_missing_args.insert(Arc::from("zero"), 0.into());
 
+    let enum_missing_query = r#"
+{
+    CrateDiff {
+        previous {
+            item {
+                ... on Enum {
+                    visibility_limit @filter(op: "=", value: ["$public"]) @output
+                    name @output @tag
+
+                    span_: span @optional {
+                        filename @output
+                        begin_line @output
+                    }
+                }
+            }
+        }
+        current @fold @transform(op: "count") @filter(op: "=", value: ["$zero"]) {
+            item {
+                ... on Enum {
+                    visibility_limit @filter(op: "=", value: ["$public"])
+                    name @filter(op: "=", value: ["%name"])
+                }
+            }
+        }
+    }
+}
+"#;
+    let mut enum_missing_args = BTreeMap::new();
+    enum_missing_args.insert(Arc::from("public"), "public".into());
+    enum_missing_args.insert(Arc::from("zero"), 0.into());
+
+    let enum_variant_missing_query = r#"
+{
+    CrateDiff {
+        previous {
+            item {
+                ... on Enum {
+                    visibility_limit @filter(op: "=", value: ["$public"]) @output
+                    enum_name: name @output @tag
+
+                    variant {
+                        variant_name: name @output @tag
+
+                        span_: span @optional {
+                            filename @output
+                            begin_line @output
+                        }
+                    }
+                }
+            }
+        }
+        current @fold @transform(op: "count") @filter(op: "=", value: ["$zero"]) {
+            item {
+                ... on Enum {
+                    visibility_limit @filter(op: "=", value: ["$public"])
+                    name @filter(op: "=", value: ["%enum_name"])
+
+                    variant {
+                        name @filter(op: "=", value: ["%variant_name"])
+                    }
+                }
+            }
+        }
+    }
+}
+"#;
+    let mut enum_variant_missing_args = BTreeMap::new();
+    enum_variant_missing_args.insert(Arc::from("public"), "public".into());
+    enum_variant_missing_args.insert(Arc::from("zero"), 0.into());
+
     let queries = [
         ("struct missing", struct_missing_query, struct_missing_args),
         (
             "struct field missing",
             struct_field_missing_query,
             struct_field_missing_args,
+        ),
+        ("enum missing", enum_missing_query, enum_missing_args),
+        (
+            "enum variant missing",
+            enum_variant_missing_query,
+            enum_variant_missing_args,
         ),
     ];
 
@@ -183,13 +259,12 @@ fn handle_query(query: QuerySubcommand) -> anyhow::Result<()> {
     let query = r#"
 {
     Crate {
-        item @fold @transform(op: "count") @output {
-            ... on Struct {
-                visibilityLimit @filter(op: "=", value: ["$public"])
+        item {
+            ... on Enum {
+                visibility_limit @filter(op: "=", value: ["$public"])
                 name @output
-                struct_type @output
 
-                field_: field {
+                variant_: variant @fold {
                     name @output
                 }
             }
@@ -205,7 +280,9 @@ fn handle_query(query: QuerySubcommand) -> anyhow::Result<()> {
         .with_context(|| "Query execution error.")?;
 
     for result in results_iter.take(5) {
-        println!("  {:?}", result);
+        let pretty_result: BTreeMap<Arc<str>, TransparentValue> =
+            result.into_iter().map(|(k, v)| (k, v.into())).collect();
+        println!("{}", serde_json::to_string_pretty(&pretty_result)?);
     }
 
     Ok(())
