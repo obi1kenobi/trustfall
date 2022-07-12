@@ -62,8 +62,8 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
 
     let schema = RustdocAdapter::schema();
     let adapter = Rc::new(RefCell::new(RustdocAdapter::new(
-        Rc::new(current_doc),
-        Some(Rc::new(previous_doc)),
+        &current_doc,
+        Some(&previous_doc),
     )));
 
     let struct_missing_query = r#"
@@ -252,7 +252,7 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
 fn handle_query(query: QuerySubcommand) -> anyhow::Result<()> {
     let rustdoc_root = load_rustdoc_from_file(&query.rustdoc_json_output)?;
 
-    let current_crate = Rc::new(rustdoc_root);
+    let current_crate = &rustdoc_root;
     let schema = RustdocAdapter::schema();
     let adapter = Rc::new(RefCell::new(RustdocAdapter::new(current_crate, None)));
 
