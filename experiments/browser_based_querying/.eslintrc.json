@@ -17,5 +17,6 @@
         "react": {
             "version": "18"
         }
-    }
+    },
+    "ignorePatterns": ["www2"]
 }
