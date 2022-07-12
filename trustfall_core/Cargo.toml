@@ -3,6 +3,10 @@ name = "trustfall_core"
 version = "0.0.1"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 edition = "2021"
+license = "Apache-2.0"
+description = "The trustfall query engine, empowering you to query everything."
+repository = "https://github.com/obi1kenobi/trustfall"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -23,7 +27,7 @@ maplit = "^1.0.2"
 camino = "1.0.2"
 lazy_static = "^1.4.0"
 smallvec = { version = "^1.6.1", features = ["serde"] }
-trustfall_filetests_macros = { path = "../trustfall_filetests_macros" }
+trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version = "0.2.0" }
 chrono = { version = "0.4.19", features = ["serde"] }
 regex = "1.5.4"
 thiserror = "1.0.30"
