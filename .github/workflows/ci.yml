@@ -51,6 +51,8 @@ jobs:
             trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
+            experiments/schemaless_wasm/target/
+            experiments/trustfall_rustdoc/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up python
@@ -142,6 +144,8 @@ jobs:
             trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
+            experiments/schemaless_wasm/target/
+            experiments/trustfall_rustdoc/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: cargo clippy
@@ -182,6 +186,8 @@ jobs:
             trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
+            experiments/schemaless_wasm/target/
+            experiments/trustfall_rustdoc/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: cargo test
@@ -217,6 +223,8 @@ jobs:
             trustfall_wasm/target/
             pytrustfall/target/
             experiments/schemaless/target/
+            experiments/schemaless_wasm/target/
+            experiments/trustfall_rustdoc/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install wasm-pack
