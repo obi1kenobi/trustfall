@@ -1,0 +1,199 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+    Crate: Crate!
+    CrateDiff: CrateDiff!
+}
+
+type CrateDiff {
+    current: Crate!
+    previous: Crate
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Crate.html
+"""
+type Crate {
+    root: String!
+    crate_version: String
+    includes_private: Boolean!
+    format_version: Int!
+
+    item: [Item!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+"""
+interface Item {
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+
+    # stringified version of the visibility struct field
+    visibility_limit: String!
+
+    span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Struct.html
+"""
+type Struct implements Item {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # own properties
+    struct_type: String!
+    fields_stripped: Boolean!
+
+    # edges from Item
+    span: Span
+
+    # own edges
+    field: StructField
+}
+
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Type.html
+"""
+type StructField implements Item {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # edges from Item
+    span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Enum.html
+"""
+type Enum implements Item {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # own properties
+    variants_stripped: Boolean!
+
+    # edges from Item
+    span: Span
+
+    # own edges
+    variant: [Variant!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+interface Variant implements Item {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # edges from Item
+    span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+type PlainVariant implements Item & Variant {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # edges from Item
+    span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+type TupleVariant implements Item & Variant {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # edges from Item
+    span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+type StructVariant implements Item & Variant {
+    # properties from Item
+    id: String!
+    crate_id: Int!
+    name: String
+    docs: String
+    attrs: [String!]!
+    visibility_limit: String!
+
+    # edges from Item
+    span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Span.html
+"""
+type Span {
+    filename: String!
+    begin_line: Int!
+    begin_column: Int!
+    end_line: Int!
+    end_column: Int!
+}
