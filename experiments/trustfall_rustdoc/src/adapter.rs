@@ -4,36 +4,90 @@ use rustdoc_types::{Crate, Item, Span, Struct, Type};
 use trustfall_core::{
     interpreter::{Adapter, DataContext, InterpretedQuery},
     ir::{EdgeParameters, Eid, FieldValue, Vid},
+    schema::Schema,
 };
 
 pub struct RustdocAdapter {
-    starting_crate: Rc<Crate>,
+    current_crate: Rc<Crate>,
+    previous_crate: Option<Rc<Crate>>,
 }
 
 impl RustdocAdapter {
-    pub fn new(starting_crate: Rc<Crate>) -> Self {
-        Self { starting_crate }
+    pub fn new(current_crate: Rc<Crate>, previous_crate: Option<Rc<Crate>>) -> Self {
+        Self {
+            current_crate,
+            previous_crate,
+        }
+    }
+
+    pub fn schema() -> Schema {
+        Schema::parse(include_str!("rustdoc.graphql")).expect("schema not valid")
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Origin {
+    CurrentCrate,
+    PreviousCrate,
+}
+
+impl Origin {
+    fn make_item_token(&self, item: &Item) -> Token {
+        Token {
+            origin: *self,
+            kind: item.into(),
+        }
+    }
+
+    fn make_span_token(&self, span: &Span) -> Token {
+        Token {
+            origin: *self,
+            kind: span.into(),
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum Token {
+pub struct Token {
+    origin: Origin,
+    kind: TokenKind,
+}
+
+impl Token {
+    fn new_crate(origin: Origin, crate_rc: Rc<Crate>) -> Self {
+        Self {
+            origin,
+            kind: TokenKind::Crate(crate_rc),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum TokenKind {
+    CrateDiff((Rc<Crate>, Rc<Crate>)),
     Crate(Rc<Crate>),
     Item(Rc<Item>),
     Span(Rc<Span>),
 }
 
 impl Token {
+    fn as_crate_diff(&self) -> Option<&(Rc<Crate>, Rc<Crate>)> {
+        match &self.kind {
+            TokenKind::CrateDiff(tuple) => Some(tuple),
+            _ => None,
+        }
+    }
+
     fn as_crate(&self) -> Option<&Crate> {
-        match self {
-            Token::Crate(c) => Some(c.as_ref()),
+        match &self.kind {
+            TokenKind::Crate(c) => Some(c.as_ref()),
             _ => None,
         }
     }
 
     fn as_item(&self) -> Option<&Item> {
-        match self {
-            Token::Item(item) => Some(item.as_ref()),
+        match &self.kind {
+            TokenKind::Item(item) => Some(item.as_ref()),
             _ => None,
         }
     }
@@ -54,26 +108,26 @@ impl Token {
     }
 
     fn as_span(&self) -> Option<&Span> {
-        match self {
-            Token::Span(s) => Some(s.as_ref()),
+        match &self.kind {
+            TokenKind::Span(s) => Some(s.as_ref()),
             _ => None,
         }
     }
 }
 
-impl From<&Item> for Token {
+impl From<&Item> for TokenKind {
     fn from(item: &Item) -> Self {
         Self::Item(Rc::from(item.clone()))
     }
 }
 
-impl From<&Crate> for Token {
+impl From<&Crate> for TokenKind {
     fn from(c: &Crate) -> Self {
         Self::Crate(Rc::from(c.clone()))
     }
 }
 
-impl From<&Span> for Token {
+impl From<&Span> for TokenKind {
     fn from(s: &Span) -> Self {
         Self::Span(Rc::from(s.clone()))
     }
@@ -164,7 +218,22 @@ impl Adapter<'static> for RustdocAdapter {
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::DataToken>> {
         match edge.as_ref() {
-            "Crate" => Box::new(std::iter::once(Token::Crate(self.starting_crate.clone()))),
+            "Crate" => Box::new(std::iter::once(Token::new_crate(
+                Origin::CurrentCrate,
+                self.current_crate.clone(),
+            ))),
+            "CrateDiff" => {
+                let current_crate = self.current_crate.clone();
+                let previous_crate = self
+                    .previous_crate
+                    .as_ref()
+                    .expect("no previous crate provided")
+                    .clone();
+                Box::new(std::iter::once(Token {
+                    origin: Origin::CurrentCrate,
+                    kind: TokenKind::CrateDiff((current_crate, previous_crate)),
+                }))
+            }
             _ => unreachable!("{edge}"),
         }
     }
@@ -197,8 +266,8 @@ impl Adapter<'static> for RustdocAdapter {
                     Box::new(data_contexts.map(|ctx| {
                         let value = match &ctx.current_token {
                             None => FieldValue::Null,
-                            Some(token) => match token {
-                                Token::Item(item) => match &item.inner {
+                            Some(token) => match token.as_item() {
+                                Some(item) => match &item.inner {
                                     rustdoc_types::ItemEnum::Struct(_) => "Struct".into(),
                                     rustdoc_types::ItemEnum::StructField(_) => "StructField".into(),
                                     _ => {
@@ -267,6 +336,41 @@ impl Adapter<'static> for RustdocAdapter {
         >,
     > {
         match current_type_name.as_ref() {
+            "CrateDiff" => match edge_name.as_ref() {
+                "current" => Box::new(data_contexts.map(move |ctx| {
+                    let neighbors: Box<dyn Iterator<Item = Self::DataToken>> =
+                        match &ctx.current_token {
+                            None => Box::new(std::iter::empty()),
+                            Some(token) => {
+                                let crate_tuple =
+                                    token.as_crate_diff().expect("token was not a CrateDiff");
+                                let neighbor =
+                                    Token::new_crate(Origin::CurrentCrate, crate_tuple.0.clone());
+                                Box::new(std::iter::once(neighbor))
+                            }
+                        };
+
+                    (ctx, neighbors)
+                })),
+                "previous" => Box::new(data_contexts.map(move |ctx| {
+                    let neighbors: Box<dyn Iterator<Item = Self::DataToken>> =
+                        match &ctx.current_token {
+                            None => Box::new(std::iter::empty()),
+                            Some(token) => {
+                                let crate_tuple =
+                                    token.as_crate_diff().expect("token was not a CrateDiff");
+                                let neighbor =
+                                    Token::new_crate(Origin::PreviousCrate, crate_tuple.1.clone());
+                                Box::new(std::iter::once(neighbor))
+                            }
+                        };
+
+                    (ctx, neighbors)
+                })),
+                _ => {
+                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                }
+            },
             "Crate" => {
                 match edge_name.as_ref() {
                     "item" => Box::new(data_contexts.map(move |ctx| {
@@ -275,6 +379,7 @@ impl Adapter<'static> for RustdocAdapter {
                         {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
+                                let origin = token.origin;
                                 let crate_token = token.as_crate().expect("token was not a Crate");
                                 let iter = crate_token
                                     .index
@@ -288,7 +393,7 @@ impl Adapter<'static> for RustdocAdapter {
                                                 | rustdoc_types::ItemEnum::StructField(_)
                                         )
                                     })
-                                    .map(|value| (&value).into());
+                                    .map(move |value| origin.make_item_token(&value));
                                 Box::new(iter)
                             }
                         };
@@ -306,9 +411,10 @@ impl Adapter<'static> for RustdocAdapter {
                         match &ctx.current_token {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
+                                let origin = token.origin;
                                 let item = token.as_item().expect("token was not an Item");
                                 if let Some(span) = &item.span {
-                                    Box::new(std::iter::once(span.into()))
+                                    Box::new(std::iter::once(origin.make_span_token(span)))
                                 } else {
                                     Box::new(std::iter::empty())
                                 }
@@ -320,18 +426,30 @@ impl Adapter<'static> for RustdocAdapter {
             }
             "Struct" => match edge_name.as_ref() {
                 "field" => {
-                    let starting_crate = self.starting_crate.clone();
+                    let current_crate = self.current_crate.clone();
+                    let previous_crate = self.previous_crate.clone();
                     Box::new(data_contexts.map(move |ctx| {
                         let neighbors: Box<dyn Iterator<Item = Self::DataToken>> =
                             match &ctx.current_token {
                                 None => Box::new(std::iter::empty()),
                                 Some(token) => {
+                                    let origin = token.origin;
                                     let (_, struct_item) =
                                         token.as_struct_item().expect("token was not a Struct");
-                                    let item_index = starting_crate.index.clone();
+
+                                    let item_index = match origin {
+                                        Origin::CurrentCrate => current_crate.index.clone(),
+                                        Origin::PreviousCrate => previous_crate
+                                            .as_ref()
+                                            .expect("no previous crate provided")
+                                            .index
+                                            .clone(),
+                                    };
                                     Box::new(struct_item.fields.clone().into_iter().map(
                                         move |field_id| {
-                                            item_index.get(&field_id).expect("missing item").into()
+                                            origin.make_item_token(
+                                                item_index.get(&field_id).expect("missing item"),
+                                            )
                                         },
                                     ))
                                 }
@@ -362,8 +480,8 @@ impl Adapter<'static> for RustdocAdapter {
                     let can_coerce = match &ctx.current_token {
                         None => false,
                         Some(token) => {
-                            let actual_type_name = match token {
-                                Token::Item(item) => match &item.inner {
+                            let actual_type_name = match token.as_item() {
+                                Some(item) => match &item.inner {
                                     rustdoc_types::ItemEnum::Struct(_) => "Struct",
                                     rustdoc_types::ItemEnum::StructField(_) => "StructField",
                                     _ => {

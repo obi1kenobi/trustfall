@@ -10,6 +10,12 @@ directive @fold on FIELD
 
 type RootSchemaQuery {
     Crate: Crate!
+    CrateDiff: CrateDiff!
+}
+
+type CrateDiff {
+    current: Crate!
+    previous: Crate
 }
 
 """
