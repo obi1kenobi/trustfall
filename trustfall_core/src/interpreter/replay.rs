@@ -519,8 +519,8 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use filetests_proc_macro::parameterize;
     use serde::{Deserialize, Serialize};
+    use trustfall_filetests_macros::parameterize;
 
     use crate::{
         filesystem_interpreter::FilesystemToken,

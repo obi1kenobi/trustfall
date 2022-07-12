@@ -1321,7 +1321,7 @@ mod tests {
         sync::Arc,
     };
 
-    use filetests_proc_macro::parameterize;
+    use trustfall_filetests_macros::parameterize;
 
     use crate::{
         interpreter::{error::QueryArgumentsError, InterpretedQuery},

@@ -727,7 +727,7 @@ mod tests {
     };
 
     use async_graphql_parser::parse_schema;
-    use filetests_proc_macro::parameterize;
+    use trustfall_filetests_macros::parameterize;
 
     use super::{error::InvalidSchemaError, Schema};
 

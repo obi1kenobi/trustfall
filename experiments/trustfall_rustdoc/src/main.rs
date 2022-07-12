@@ -243,7 +243,7 @@ fn handle_diff(diff: DiffSubcommand) -> anyhow::Result<()> {
         let end_instant = Instant::now();
         let total_time = end_instant - start_instant;
 
-        println!("< Query done: {:.2}s\n", total_time.as_secs_f32());
+        println!("< Query done: {:.3}s\n", total_time.as_secs_f32());
     }
 
     Ok(())
@@ -301,3 +301,16 @@ fn load_rustdoc_from_file(path: &PathBuf) -> anyhow::Result<Crate> {
     serde_json::from_str(&s)
         .with_context(|| format!("Failed to parse rustdoc JSON output file {:?}", path))
 }
+
+// /// Disable the recursion limit, so that we don't have issues deserializing large rustdoc outputs
+// /// on crates such as `diesel`.
+// fn deserialize_without_recursion_limit(rustdoc_json_str: &str) -> anyhow::Result<Crate> {
+//     // TODO: Look into the below to make this safer before using it:
+//     // - https://github.com/dtolnay/serde-stacker
+//     // - https://github.com/lovasoa/bad_json_parsers/issues/7
+//     // - serde_json = { version = "1.0", features = ["unbounded_depth"] }
+//     // - safely drop the data from the inside out, to avoid stack depth issues on drop()
+//     let mut deserializer = serde_json::Deserializer::from_str(rustdoc_json_str);
+//     deserializer.disable_recursion_limit();
+//     return Ok(serde::de::Deserialize::deserialize(&mut deserializer)?);
+// }

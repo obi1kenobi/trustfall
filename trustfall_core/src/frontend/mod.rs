@@ -1366,7 +1366,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use filetests_proc_macro::parameterize;
+    use trustfall_filetests_macros::parameterize;
 
     use crate::{
         frontend::make_ir_for_query,

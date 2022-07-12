@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_core"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 edition = "2021"
 
@@ -23,7 +23,7 @@ maplit = "^1.0.2"
 camino = "1.0.2"
 lazy_static = "^1.4.0"
 smallvec = { version = "^1.6.1", features = ["serde"] }
-filetests_proc_macro = { path = "../filetests_proc_macro" }
+trustfall_filetests_macros = { path = "../trustfall_filetests_macros" }
 chrono = { version = "0.4.19", features = ["serde"] }
 regex = "1.5.4"
 thiserror = "1.0.30"

@@ -683,17 +683,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "filetests_proc_macro"
-version = "0.2.0"
-dependencies = [
- "globset",
- "proc-macro2",
- "quote",
- "syn",
- "walkdir",
-]
-
-[[package]]
 name = "flate2"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3041,13 +3030,12 @@ dependencies = [
 
 [[package]]
 name = "trustfall_core"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "camino",
  "chrono",
- "filetests_proc_macro",
  "itertools",
  "lazy_static",
  "maplit",
@@ -3057,6 +3045,18 @@ dependencies = [
  "serde_json",
  "smallvec 1.8.0",
  "thiserror",
+ "trustfall_filetests_macros",
+]
+
+[[package]]
+name = "trustfall_filetests_macros"
+version = "0.2.0"
+dependencies = [
+ "globset",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "walkdir",
 ]
 
 [[package]]

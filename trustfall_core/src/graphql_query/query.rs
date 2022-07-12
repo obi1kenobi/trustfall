@@ -539,7 +539,7 @@ mod tests {
 
     use async_graphql_parser::parse_query;
 
-    use filetests_proc_macro::parameterize;
+    use trustfall_filetests_macros::parameterize;
 
     use crate::util::{TestGraphQLQuery, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult};
 

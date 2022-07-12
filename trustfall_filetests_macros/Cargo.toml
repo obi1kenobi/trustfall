@@ -1,5 +1,5 @@
 [package]
-name = "filetests_proc_macro"
+name = "trustfall_filetests_macros"
 version = "0.2.0"
 edition = "2018"
 
