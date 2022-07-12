@@ -1,6 +1,6 @@
 function run() {
-  const queryWorker = new Worker("www/adapter.js", { type: "module" });
-  const fetcherWorker = new Worker("www/fetcher.js", { type: "module" });
+  const queryWorker = new Worker("./adapter.js", { type: "module" });
+  const fetcherWorker = new Worker("./fetcher.js", { type: "module" });
   const channel = new MessageChannel();
 
   queryWorker.postMessage({ op: "init" });

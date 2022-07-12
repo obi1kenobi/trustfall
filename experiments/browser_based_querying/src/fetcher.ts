@@ -1,4 +1,4 @@
-import { SyncContext } from "./sync.js";
+import { SyncContext } from "./sync";
 
 onmessage = function (e): void {
   let data = e.data;

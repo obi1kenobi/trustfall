@@ -6,8 +6,8 @@ const moreButton = document.getElementById("more")! as HTMLButtonElement;
 
 const resultsBox = document.getElementById("results")! as HTMLTextAreaElement;
 
-const queryWorker = new Worker("www/adapter.js", { type: "module" });
-const fetcherWorker = new Worker("www/fetcher.js", { type: "module" });
+const queryWorker = new Worker(new URL("./adapter", import.meta.url), { type: "module" });
+const fetcherWorker = new Worker(new URL("./fetcher", import.meta.url), { type: "module" });
 
 function setup(then: () => void): void {
   const channel = new MessageChannel();

@@ -1,4 +1,4 @@
-import { SyncContext } from "./sync.js";
+import { SyncContext } from "./sync";
 
 export function materializeItem(fetchPort: MessagePort, itemId: number): any {
   const sync = SyncContext.makeDefault();

@@ -1,5 +1,5 @@
 import init, { Adapter, JsEdgeParameters, JsContext, ContextAndValue, ContextAndNeighborsIterator, ContextAndBool, Schema, initialize, executeQuery } from "../www2/trustfall_wasm.js";
-import { getTopItems, getLatestItems, materializeItem, materializeUser } from "./hackernews.js";
+import { getTopItems, getLatestItems, materializeItem, materializeUser } from "./hackernews";
 
 console.log("running wasm init...");
 await init();
