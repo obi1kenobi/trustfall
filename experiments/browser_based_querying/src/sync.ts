@@ -38,7 +38,7 @@ export class SyncContext {
   makeSendable(): SendableSyncContext {
     return {
       ctrlBuffer: this.ctrlBuffer,
-      contentBuffer: this.contentBuffer
+      contentBuffer: this.contentBuffer,
     };
   }
 

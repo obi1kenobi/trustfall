@@ -1,32 +1,28 @@
-const queryBox = document.getElementById("query")! as HTMLTextAreaElement;
-const varsBox = document.getElementById("vars")! as HTMLTextAreaElement;
+const queryBox = document.getElementById('query')! as HTMLTextAreaElement;
+const varsBox = document.getElementById('vars')! as HTMLTextAreaElement;
 
-const runButton = document.getElementById("run")! as HTMLButtonElement;
-const moreButton = document.getElementById("more")! as HTMLButtonElement;
+const runButton = document.getElementById('run')! as HTMLButtonElement;
+const moreButton = document.getElementById('more')! as HTMLButtonElement;
 
-const resultsBox = document.getElementById("results")! as HTMLTextAreaElement;
+const resultsBox = document.getElementById('results')! as HTMLTextAreaElement;
 
-const queryWorker = new Worker("www/adapter.js", { type: "module" });
-const fetcherWorker = new Worker("www/fetcher.js", { type: "module" });
+const queryWorker = new Worker(new URL('./adapter', import.meta.url), { type: 'module' });
+const fetcherWorker = new Worker(new URL('./fetcher', import.meta.url), { type: 'module' });
 
 function setup(then: () => void): void {
   const channel = new MessageChannel();
-  queryWorker.postMessage({ op: "init" });
+  queryWorker.postMessage({ op: 'init' });
 
-  fetcherWorker.postMessage(
-    { op: "channel", data: { port: channel.port2 } }, [channel.port2],
-  );
+  fetcherWorker.postMessage({ op: 'channel', data: { port: channel.port2 } }, [channel.port2]);
 
-  function cleanUp(): any {
+  function cleanUp() {
     queryWorker.removeEventListener('message', awaitInitConfirmation);
   }
 
   function awaitInitConfirmation(e: MessageEvent) {
-    let data = e.data;
-    if (data === "ready") {
-      queryWorker.postMessage(
-        { op: "channel", data: { port: channel.port1 } }, [channel.port1],
-      );
+    const data = e.data;
+    if (data === 'ready') {
+      queryWorker.postMessage({ op: 'channel', data: { port: channel.port1 } }, [channel.port1]);
 
       cleanUp();
       then();
@@ -49,7 +45,7 @@ function enableUI(): void {
 setup(enableUI);
 
 function runQuery(): void {
-  resultsBox.textContent = "";
+  resultsBox.textContent = '';
 
   const query = queryBox.value;
   let vars;
@@ -67,7 +63,7 @@ function runQuery(): void {
   moreButton.disabled = false;
 
   queryWorker.postMessage({
-    op: "query",
+    op: 'query',
     query,
     args: vars,
   });
@@ -75,19 +71,19 @@ function runQuery(): void {
 
 function nextResult(): void {
   queryWorker.postMessage({
-    op: "next",
+    op: 'next',
   });
 }
 
 function handleQueryMessage(e: MessageEvent): void {
-  let outcome = e.data;
+  const outcome = e.data;
   if (outcome.done) {
-    if (!resultsBox.textContent?.endsWith("***")) {
-      resultsBox.textContent += "*** no more data ***";
+    if (!resultsBox.textContent?.endsWith('***')) {
+      resultsBox.textContent += '*** no more data ***';
       moreButton.disabled = true;
     }
   } else {
-    let pretty = JSON.stringify(outcome.value, null, 2);
+    const pretty = JSON.stringify(outcome.value, null, 2);
     resultsBox.textContent += `${pretty}\n`;
   }
   resultsBox.scrollTop = resultsBox.scrollHeight;
