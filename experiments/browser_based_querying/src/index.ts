@@ -15,7 +15,7 @@ function setup(then: () => void): void {
 
   fetcherWorker.postMessage({ op: 'channel', data: { port: channel.port2 } }, [channel.port2]);
 
-  function cleanUp(): any {
+  function cleanUp() {
     queryWorker.removeEventListener('message', awaitInitConfirmation);
   }
 
