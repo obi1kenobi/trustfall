@@ -21,7 +21,7 @@ Steps:
 - Perform a `git checkout` of your crate's last published version,
   which will represent your semver baseline.
 - Generate `rustdoc` documentation in JSON format for the crate's last published version
-  by running `cargo rustdoc -- -Zunstable-options --output-format json`.
+  by running `cargo rustdoc +nightly -- -Zunstable-options --output-format json`.
 - The above command will generate a file named `doc/<your-crate-name>.json` in your crate's
   build target directory. Copy this file somewhere else -- otherwise it will be overwritten
   by the next step.
