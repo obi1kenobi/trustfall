@@ -59,6 +59,24 @@ impl From<FieldValue> for TransparentValue {
     }
 }
 
+impl From<TransparentValue> for FieldValue {
+    fn from(value: TransparentValue) -> Self {
+        match value {
+            TransparentValue::Null => FieldValue::Null,
+            TransparentValue::Int64(x) => FieldValue::Int64(x),
+            TransparentValue::Uint64(x) => FieldValue::Uint64(x),
+            TransparentValue::Float64(x) => FieldValue::Float64(x),
+            TransparentValue::String(x) => FieldValue::String(x),
+            TransparentValue::Boolean(x) => FieldValue::Boolean(x),
+            TransparentValue::DateTimeUtc(x) => FieldValue::DateTimeUtc(x),
+            TransparentValue::Enum(x) => FieldValue::Enum(x),
+            TransparentValue::List(x) => {
+                FieldValue::List(x.into_iter().map(|v| v.into()).collect())
+            }
+        }
+    }
+}
+
 impl FieldValue {
     pub fn as_i64(&self) -> Option<i64> {
         match self {
