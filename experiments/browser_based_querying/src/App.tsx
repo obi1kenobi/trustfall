@@ -1,3 +1,18 @@
+import {useState} from 'react';
+
+
+export default function App(): JSX.Element {
+  const [query, setQuery] = useState('');
+  const [vars, setVars] = useState('');
+  const [results, setResults] = useState('');
+
+  return (
+    <div>
+      <textarea css={{width: 500, height: 340}} />
+    </div>
+  )
+}
+
 const queryBox = document.getElementById('query')! as HTMLTextAreaElement;
 const varsBox = document.getElementById('vars')! as HTMLTextAreaElement;
 

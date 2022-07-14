@@ -6,7 +6,7 @@ module.exports = (env) => {
   const mode = isDev ? 'development' : 'production';
   return {
     entry: {
-      index: './src/index.ts',
+      index: './src/index.tsx',
       adapter: './src/adapter.ts',
       fetcher: './src/fetcher.ts',
     },

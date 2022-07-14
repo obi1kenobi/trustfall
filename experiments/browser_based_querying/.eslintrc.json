@@ -11,7 +11,9 @@
     "node": true
   },
   "rules": {
-    "@typescript-eslint/no-var-requires": 0
+    "@typescript-eslint/no-var-requires": 0,
+    "react/jsx-uses-react": "off",
+    "react/react-in-jsx-scope": "off"
   },
   "settings": {
     "react": {
