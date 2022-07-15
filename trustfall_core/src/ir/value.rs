@@ -299,8 +299,14 @@ impl<T: Into<FieldValue>> From<Option<T>> for FieldValue {
 }
 
 impl<T: Into<FieldValue>> From<Vec<T>> for FieldValue {
-    fn from(mut v: Vec<T>) -> FieldValue {
-        FieldValue::List(v.drain(..).map(|x| x.into()).collect())
+    fn from(v: Vec<T>) -> FieldValue {
+        FieldValue::List(v.into_iter().map(|x| x.into()).collect())
+    }
+}
+
+impl<T: Clone + Into<FieldValue>> From<&[T]> for FieldValue {
+    fn from(v: &[T]) -> FieldValue {
+        FieldValue::List(v.iter().map(|x| x.clone().into()).collect())
     }
 }
 
