@@ -18,12 +18,13 @@ export default function App(): JSX.Element {
       try {
         varsObj = JSON.parse(vars);
       } catch (e) {
-        // TODO: Error messaging
+        setResults(`Error parsing variables to JSON:\n${(e as Error).message}`)
         return;
       }
     }
 
     setHasMore(true);
+    setResults('');
 
     queryWorker.postMessage({
       op: 'query',
@@ -50,12 +51,10 @@ export default function App(): JSX.Element {
       setResults((prevResults) => prevResults + `${pretty}\n`);
       setHasMore(true);
     }
-    // TODO: Scroll results textarea to top
   }, []);
 
-  // TODO: Handle error
-  const handleQueryError = useCallback(() => {
-    console.error('ERROR');
+  const handleQueryError = useCallback((evt: MessageEvent) => {
+    setResults(`Error running query:\n${JSON.stringify(evt.data)}`)
   }, []);
 
   // Init workers
