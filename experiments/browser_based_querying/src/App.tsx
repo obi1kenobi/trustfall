@@ -101,7 +101,6 @@ export default function App(): JSX.Element {
     return () => {
       queryWorker.removeEventListener('message', handleQueryMessage);
       queryWorker.removeEventListener('message', awaitInitConfirmation);
-      queryWorker.removeEventListener('messageerror', handleQueryError);
       setReady(false);
     };
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);

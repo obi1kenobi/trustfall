@@ -391,10 +391,10 @@ function* lazyFetchMap<InT, OutT>(
   }
 }
 
-let _adapterFetchChannel: any;
-let _resultIter: any;
+let _adapterFetchChannel: MessagePort;
+let _resultIter: IterableIterator<object>;
 
-function performQuery(query: string, args: any): any {
+function performQuery(query: string, args: Record<string, any>): IterableIterator<object> {
   if (query == null || query == undefined) {
     throw new Error(`Cannot perform null/undef query.`);
   }
@@ -412,7 +412,26 @@ function performQuery(query: string, args: any): any {
   return resultIter;
 }
 
-function dispatch(e: MessageEvent): void {
+type AdapterMessage =
+  | {
+      op: 'init';
+    }
+  | {
+      op: 'channel';
+      data: {
+        port: MessagePort;
+      };
+    }
+  | {
+      op: 'query';
+      query: string;
+      args: object;
+    }
+  | {
+      op: 'next';
+    };
+
+function dispatch(e: MessageEvent<AdapterMessage>): void {
   const payload = e.data;
 
   console.log('Adapter received message:', payload);
@@ -427,10 +446,9 @@ function dispatch(e: MessageEvent): void {
 
   if (payload.op === 'query') {
     _resultIter = performQuery(payload.query, payload.args);
-    payload.op = 'next';
   }
 
-  if (payload.op === 'next') {
+  if (payload.op === 'query' || payload.op === 'next') {
     const rawResult = _resultIter.next();
     const result = {
       done: rawResult.done,

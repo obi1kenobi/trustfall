@@ -1,4 +1,12 @@
-import { SyncContext } from './sync';
+import { SendableSyncContext, SyncContext } from './sync';
+
+interface ChannelData {
+  input: string;
+  init: {
+    method: 'GET';
+  };
+  sync: SendableSyncContext;
+}
 
 onmessage = function (e): void {
   const data = e.data;
@@ -13,7 +21,7 @@ onmessage = function (e): void {
   throw new Error(data);
 };
 
-function fetchHandler(e: any): void {
+function fetchHandler(e: MessageEvent<ChannelData>): void {
   const data = e.data;
   console.log('Fetcher received channel data:', data);
 
