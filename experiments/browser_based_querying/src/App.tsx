@@ -1,10 +1,23 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
+import { css } from '@emotion/react';
+import { Button, Typography } from '@mui/material';
+
+const cssEditorContainer = css`
+    flex-grow: 1;
+    flex-shrink: 1;
+`;
+
+const cssEditor = css`
+    border: 1px solid #eee;
+    border-radius: 5px;
+`
 
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: string }>;
 
 export default function App(): JSX.Element {
-  const [query, setQuery] = useState('');
-  const [vars, setVars] = useState('');
+  const [query, setQuery] = useState<string | undefined>('');
+  const [vars, setVars] = useState<string | undefined>('');
   const [results, setResults] = useState('');
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
@@ -17,7 +30,7 @@ export default function App(): JSX.Element {
     let varsObj = {};
     if (vars !== '') {
       try {
-        varsObj = JSON.parse(vars);
+        varsObj = JSON.parse(vars ?? '');
       } catch (e) {
         setResults(`Error parsing variables to JSON:\n${(e as Error).message}`);
         return;
@@ -107,25 +120,46 @@ export default function App(): JSX.Element {
 
   return (
     <div>
-      <div>
-        <textarea
-          value={query}
-          onChange={(evt) => setQuery(evt.target.value)}
-          css={{ width: 500, height: 340 }}
-        />
-        <textarea
-          value={vars}
-          onChange={(evt) => setVars(evt.target.value)}
-          css={{ width: 200, height: 340 }}
-        ></textarea>
+      <Typography variant="h4" component="div">Trustfall in-browser query demo</Typography>
+      <div css={{ display: 'flex' }}>
+        <div css={cssEditorContainer}>
+          <Typography variant="h6" component="div">Query</Typography>
+          <Editor
+            defaultLanguage="graphql"
+            value={query}
+            onChange={setQuery}
+            height="340px"
+            options={{
+              minimap: {
+                enabled: false,
+              },
+            }}
+            css={cssEditor}
+          />
+        </div>
+        <div css={cssEditorContainer}>
+          <Typography variant="h6" component="div">Variables</Typography>
+          <Editor
+            defaultLanguage="json"
+            value={vars}
+            onChange={setVars}
+            height="340px"
+            options={{
+              minimap: {
+                enabled: false,
+              },
+            }}
+            css={cssEditor}
+          />
+        </div>
       </div>
       <div css={{ margin: 10 }}>
-        <button onClick={() => runQuery()} disabled={!ready}>
+        <Button onClick={() => runQuery()} variant="contained" disabled={!ready}>
           Run query!
-        </button>
-        <button onClick={() => queryNextResult()} disabled={!hasMore}>
+        </Button>
+        <Button onClick={() => queryNextResult()} disabled={!hasMore}>
           More results!
-        </button>
+        </Button>
       </div>
       <div>
         <textarea
