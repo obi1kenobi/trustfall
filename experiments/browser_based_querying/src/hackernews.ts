@@ -1,6 +1,10 @@
 import { SyncContext } from './sync';
 
-export function materializeItem(fetchPort: MessagePort, itemId: number): any {
+interface HackerNewsItem {
+  type: string;
+}
+
+export function materializeItem(fetchPort: MessagePort, itemId: number): HackerNewsItem {
   const sync = SyncContext.makeDefault();
 
   const url = `https://hacker-news.firebaseio.com/v0/item/${itemId}.json`;
@@ -22,7 +26,7 @@ export function materializeItem(fetchPort: MessagePort, itemId: number): any {
   return item;
 }
 
-export function materializeUser(fetchPort: MessagePort, username: string): any {
+export function materializeUser(fetchPort: MessagePort, username: string): unknown {
   const sync = SyncContext.makeDefault();
 
   const url = `https://hacker-news.firebaseio.com/v0/user/${username}.json`;
@@ -44,7 +48,7 @@ export function materializeUser(fetchPort: MessagePort, username: string): any {
   return user;
 }
 
-export function* getTopItems(fetchPort: MessagePort): any {
+export function* getTopItems(fetchPort: MessagePort): Generator<HackerNewsItem> {
   const sync = SyncContext.makeDefault();
 
   const url = 'https://hacker-news.firebaseio.com/v0/topstories.json';
@@ -80,7 +84,7 @@ export function* getTopItems(fetchPort: MessagePort): any {
   }
 }
 
-export function* getLatestItems(fetchPort: MessagePort): any {
+export function* getLatestItems(fetchPort: MessagePort): Generator<HackerNewsItem> {
   const sync = SyncContext.makeDefault();
 
   const url = 'https://hacker-news.firebaseio.com/v0/newstories.json';

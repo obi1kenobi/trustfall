@@ -91,7 +91,6 @@ export class SyncContext {
     const totalLength = Atomics.load(this.ctrl, SyncContext.CTRL_OFFSET_TOTAL_SIZE);
     const output = new Uint8Array(totalLength);
 
-    const content = new Uint8Array(this.contentBuffer);
     let writePosition = 0;
 
     let currentState = Atomics.load(this.ctrl, SyncContext.CTRL_OFFSET_STATE);

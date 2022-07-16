@@ -1,8 +1,18 @@
 {
   "compilerOptions": {
+    "strict": true,
     "lib": ["dom", "es2021"],
     "module": "ESNext",
+    // See: https://github.com/emotion-js/emotion/pull/2785
+    "moduleResolution": "node",
     "target": "es2021",
-    "strict": true
+    "jsx": "react-jsx",
+    "jsxImportSource": "@emotion/react",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowSyntheticDefaultImports": true
   }
 }
