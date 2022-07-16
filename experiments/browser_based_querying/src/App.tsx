@@ -59,8 +59,8 @@ export default function App(): JSX.Element {
     }
   }, []);
 
-  const handleQueryError = useCallback((evt: MessageEvent) => {
-    setResults(`Error running query:\n${JSON.stringify(evt.data)}`);
+  const handleQueryError = useCallback((evt: ErrorEvent) => {
+    setResults(`Error running query:\n${JSON.stringify(evt.message)}`);
   }, []);
 
   // Init workers
@@ -90,7 +90,7 @@ export default function App(): JSX.Element {
 
         queryWorker.removeEventListener('message', awaitInitConfirmation);
         queryWorker.addEventListener('message', handleQueryMessage);
-        queryWorker.addEventListener('messageerror', handleQueryError);
+        queryWorker.addEventListener('error', handleQueryError);
         setReady(true);
       } else {
         throw new Error(`Unexpected message: ${data}`);
@@ -103,7 +103,6 @@ export default function App(): JSX.Element {
       queryWorker.removeEventListener('message', awaitInitConfirmation);
       queryWorker.removeEventListener('messageerror', handleQueryError);
       setReady(false);
-      console.log('CLEANUP');
     };
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
