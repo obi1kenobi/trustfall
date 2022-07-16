@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 
 type QueryMessageEvent = MessageEvent<{done: boolean, value: string}>
 
@@ -10,6 +10,7 @@ export default function App(): JSX.Element {
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
   const [ready, setReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const resultsRef = useRef<HTMLTextAreaElement>(null)
 
   const runQuery = useCallback(() => {
     if (queryWorker == null) return;
@@ -50,6 +51,11 @@ export default function App(): JSX.Element {
       const pretty = JSON.stringify(outcome.value, null, 2);
       setResults((prevResults) => prevResults + `${pretty}\n`);
       setHasMore(true);
+    }
+    // TODO: Scroll results textarea to bottom
+    const resultsEl = resultsRef.current
+    if (resultsEl) {
+        resultsEl.scrollTo(0, resultsEl.scrollHeight);
     }
   }, []);
 
@@ -124,7 +130,7 @@ export default function App(): JSX.Element {
         </button>
       </div>
       <div>
-        <textarea value={results} css={{ width: 710, height: 300 }} readOnly></textarea>
+        <textarea ref={resultsRef} value={results} css={{ width: 710, height: 300 }} readOnly></textarea>
       </div>
     </div>
   );
