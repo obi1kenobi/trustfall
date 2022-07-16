@@ -116,7 +116,7 @@ interface Webpage {
 }
 `;
 
-const schema = Schema.parse(schemaText);
+Schema.parse(schemaText);
 console.log('Schema loaded.');
 
 postMessage('ready');

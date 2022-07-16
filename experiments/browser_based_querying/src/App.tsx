@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 
-type QueryMessageEvent = MessageEvent<{done: boolean, value: string}>
+type QueryMessageEvent = MessageEvent<{ done: boolean; value: string }>;
 
 export default function App(): JSX.Element {
   const [query, setQuery] = useState('');
@@ -10,7 +10,7 @@ export default function App(): JSX.Element {
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
   const [ready, setReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const resultsRef = useRef<HTMLTextAreaElement>(null)
+  const resultsRef = useRef<HTMLTextAreaElement>(null);
 
   const runQuery = useCallback(() => {
     if (queryWorker == null) return;
@@ -19,7 +19,7 @@ export default function App(): JSX.Element {
       try {
         varsObj = JSON.parse(vars);
       } catch (e) {
-        setResults(`Error parsing variables to JSON:\n${(e as Error).message}`)
+        setResults(`Error parsing variables to JSON:\n${(e as Error).message}`);
         return;
       }
     }
@@ -53,14 +53,14 @@ export default function App(): JSX.Element {
       setHasMore(true);
     }
     // TODO: Scroll results textarea to bottom
-    const resultsEl = resultsRef.current
+    const resultsEl = resultsRef.current;
     if (resultsEl) {
-        resultsEl.scrollTo(0, resultsEl.scrollHeight);
+      resultsEl.scrollTo(0, resultsEl.scrollHeight);
     }
   }, []);
 
   const handleQueryError = useCallback((evt: MessageEvent) => {
-    setResults(`Error running query:\n${JSON.stringify(evt.data)}`)
+    setResults(`Error running query:\n${JSON.stringify(evt.data)}`);
   }, []);
 
   // Init workers
@@ -103,7 +103,7 @@ export default function App(): JSX.Element {
       queryWorker.removeEventListener('message', awaitInitConfirmation);
       queryWorker.removeEventListener('messageerror', handleQueryError);
       setReady(false);
-      console.log("CLEANUP")
+      console.log('CLEANUP');
     };
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
@@ -130,7 +130,12 @@ export default function App(): JSX.Element {
         </button>
       </div>
       <div>
-        <textarea ref={resultsRef} value={results} css={{ width: 710, height: 300 }} readOnly></textarea>
+        <textarea
+          ref={resultsRef}
+          value={results}
+          css={{ width: 710, height: 300 }}
+          readOnly
+        ></textarea>
       </div>
     </div>
   );
