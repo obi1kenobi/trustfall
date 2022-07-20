@@ -42,7 +42,7 @@ export default function App(): JSX.Element {
   const [queryEditor, setQueryEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const varsEditorRef = useRef<HTMLDivElement>(null);
   const [varsEditor, setVarsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const resultsEditorRef = useRef<HTMLTextAreaElement>(null);
+  const resultsEditorRef = useRef<HTMLDivElement>(null);
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [results, setResults] = useState('');
 
