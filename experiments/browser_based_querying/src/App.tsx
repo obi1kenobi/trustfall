@@ -1,32 +1,56 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import Editor from '@monaco-editor/react';
+import { buildSchema } from 'graphql';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { css } from '@emotion/react';
 import { Button, Typography } from '@mui/material';
+import { HN_SCHEMA } from './adapter';
 
 const cssEditorContainer = css`
-    flex-grow: 1;
-    flex-shrink: 1;
+  flex-grow: 1;
+  flex-shrink: 1;
 `;
 
 const cssEditor = css`
-    border: 1px solid #eee;
-    border-radius: 5px;
-`
+  border: 1px solid #eee;
+  border-radius: 5px;
+`;
+
+initializeMode({
+  schemas: [
+    {
+      schema: buildSchema(HN_SCHEMA),
+      uri: 'schema.graphql',
+    },
+  ],
+});
+
+window.MonacoEnvironment = {
+  getWorker() {
+    return new Worker(new URL('monaco-graphql/dist/graphql.worker.js', import.meta.url));
+  },
+};
 
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: string }>;
 
 export default function App(): JSX.Element {
-  const [query, setQuery] = useState<string | undefined>('');
-  const [vars, setVars] = useState<string | undefined>('');
-  const [results, setResults] = useState('');
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
   const [ready, setReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const resultsRef = useRef<HTMLTextAreaElement>(null);
+  const queryEditorRef = useRef<HTMLDivElement>(null);
+  const [queryEditor, setQueryEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const varsEditorRef = useRef<HTMLDivElement>(null);
+  const [varsEditor, setVarsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const resultsEditorRef = useRef<HTMLTextAreaElement>(null);
+  const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [results, setResults] = useState('');
 
   const runQuery = useCallback(() => {
-    if (queryWorker == null) return;
+    if (queryWorker == null || queryEditor == null || varsEditor == null) return;
+    const query = queryEditor.getValue();
+    const vars = varsEditor.getValue();
+
     let varsObj = {};
     if (vars !== '') {
       try {
@@ -45,7 +69,7 @@ export default function App(): JSX.Element {
       query,
       args: varsObj,
     });
-  }, [query, queryWorker, vars]);
+  }, [queryWorker, queryEditor, varsEditor]);
 
   const queryNextResult = useCallback(() => {
     queryWorker?.postMessage({
@@ -65,8 +89,7 @@ export default function App(): JSX.Element {
       setResults((prevResults) => prevResults + `${pretty}\n`);
       setHasMore(true);
     }
-    // TODO: Scroll results textarea to bottom
-    const resultsEl = resultsRef.current;
+    const resultsEl = resultsEditorRef.current;
     if (resultsEl) {
       resultsEl.scrollTo(0, resultsEl.scrollHeight);
     }
@@ -87,6 +110,53 @@ export default function App(): JSX.Element {
         prevWorker ?? new Worker(new URL('./fetcher', import.meta.url), { type: 'module' })
     );
   }, []);
+
+  // Init editors
+  useEffect(() => {
+    if (queryEditorRef.current) {
+      setQueryEditor(
+        monaco.editor.create(queryEditorRef.current, {
+          language: 'graphql',
+          value: 'query {\n\n}',
+          minimap: {
+            enabled: false,
+          },
+        })
+      );
+    }
+
+    if (varsEditorRef.current) {
+      setVarsEditor(
+        monaco.editor.create(varsEditorRef.current, {
+          language: 'json',
+          value: '{\n\n}',
+          minimap: {
+            enabled: false,
+          },
+        })
+      );
+    }
+
+    if (resultsEditorRef.current) {
+      setResultsEditor(
+        monaco.editor.create(resultsEditorRef.current, {
+          language: 'json',
+          value: '',
+          minimap: {
+            enabled: false,
+          },
+          readOnly: true,
+        })
+      );
+    }
+  }, []);
+
+  // Update results
+  useEffect(() => {
+    if (resultsEditor) {
+      resultsEditor.setValue(results);
+    }
+  }, [results, resultsEditor])
 
   // Setup
   useEffect(() => {
@@ -120,39 +190,9 @@ export default function App(): JSX.Element {
 
   return (
     <div>
-      <Typography variant="h4" component="div">Trustfall in-browser query demo</Typography>
-      <div css={{ display: 'flex' }}>
-        <div css={cssEditorContainer}>
-          <Typography variant="h6" component="div">Query</Typography>
-          <Editor
-            defaultLanguage="graphql"
-            value={query}
-            onChange={setQuery}
-            height="340px"
-            options={{
-              minimap: {
-                enabled: false,
-              },
-            }}
-            css={cssEditor}
-          />
-        </div>
-        <div css={cssEditorContainer}>
-          <Typography variant="h6" component="div">Variables</Typography>
-          <Editor
-            defaultLanguage="json"
-            value={vars}
-            onChange={setVars}
-            height="340px"
-            options={{
-              minimap: {
-                enabled: false,
-              },
-            }}
-            css={cssEditor}
-          />
-        </div>
-      </div>
+      <Typography variant="h4" component="div">
+        Trustfall in-browser query demo
+      </Typography>
       <div css={{ margin: 10 }}>
         <Button onClick={() => runQuery()} variant="contained" disabled={!ready}>
           Run query!
@@ -161,13 +201,27 @@ export default function App(): JSX.Element {
           More results!
         </Button>
       </div>
-      <div>
-        <textarea
-          ref={resultsRef}
-          value={results}
-          css={{ width: 710, height: 300 }}
-          readOnly
-        ></textarea>
+      <div css={{ display: 'flex' }}>
+        <div css={{ display: 'flex', flexDirection: 'column' }}>
+          <div css={cssEditorContainer}>
+            <Typography variant="h6" component="div">
+              Query
+            </Typography>
+            <div ref={queryEditorRef} style={{ width: 800, height: 500 }} css={cssEditor} />
+          </div>
+          <div css={cssEditorContainer}>
+            <Typography variant="h6" component="div">
+              Variables
+            </Typography>
+            <div ref={varsEditorRef} style={{ width: 800, height: 300 }} css={cssEditor} />
+          </div>
+        </div>
+        <div>
+          <div
+            ref={resultsEditorRef}
+            css={{ width: 710, height: '100%' }}
+          />
+        </div>
       </div>
     </div>
   );

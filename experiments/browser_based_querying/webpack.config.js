@@ -48,9 +48,9 @@ module.exports = (env) => {
           type: 'asset/resource',
         },
         {
-          test: /\.graphql$/,
-          type: 'asset/source',
-        },
+          test: /\.css$/i,
+          use: ["style-loader", "css-loader"],
+        }
       ],
     },
     devServer: {
