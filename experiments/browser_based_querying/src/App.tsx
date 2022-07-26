@@ -3,15 +3,16 @@ import { buildSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { css } from '@emotion/react';
-import { Button, Typography } from '@mui/material';
+import { Button, Grid, Paper, Typography } from '@mui/material';
 import { HN_SCHEMA } from './adapter';
 
-const cssEditorContainer = css`
-  flex-grow: 1;
-  flex-shrink: 1;
-`;
-
+// Position absolute is necessary to keep the editor from growing constantly on window resize
+// This is due to the height: 100% rule, since the container is slightly smaller
 const cssEditor = css`
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
   border: 1px solid #eee;
   border-radius: 5px;
 `;
@@ -43,7 +44,9 @@ export default function App(): JSX.Element {
   const varsEditorRef = useRef<HTMLDivElement>(null);
   const [varsEditor, setVarsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const resultsEditorRef = useRef<HTMLDivElement>(null);
-  const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
+    null
+  );
   const [results, setResults] = useState('');
 
   const runQuery = useCallback(() => {
@@ -115,13 +118,37 @@ export default function App(): JSX.Element {
   useEffect(() => {
     if (queryEditorRef.current) {
       setQueryEditor(
-        monaco.editor.create(queryEditorRef.current, {
-          language: 'graphql',
-          value: 'query {\n\n}',
-          minimap: {
-            enabled: false,
+        monaco.editor.create(
+          queryEditorRef.current,
+          {
+            language: 'graphql',
+            value: 'query {\n\n}',
+            minimap: {
+              enabled: false,
+            },
+            automaticLayout: true,
           },
-        })
+          {
+            storageService: {
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              get() {},
+              // Workaround to expand suggestion docs by default. See: https://stackoverflow.com/a/59040199
+              getBoolean(key: string) {
+                if (key === 'expandSuggestionDocs') return true;
+
+                return false;
+              },
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              remove() {},
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              store() {},
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              onWillSaveState() {},
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              onDidChangeStorage() {},
+            },
+          }
+        )
       );
     }
 
@@ -133,6 +160,7 @@ export default function App(): JSX.Element {
           minimap: {
             enabled: false,
           },
+          automaticLayout: true,
         })
       );
     }
@@ -146,6 +174,7 @@ export default function App(): JSX.Element {
             enabled: false,
           },
           readOnly: true,
+          automaticLayout: true,
         })
       );
     }
@@ -156,7 +185,7 @@ export default function App(): JSX.Element {
     if (resultsEditor) {
       resultsEditor.setValue(results);
     }
-  }, [results, resultsEditor])
+  }, [results, resultsEditor]);
 
   // Setup
   useEffect(() => {
@@ -189,40 +218,48 @@ export default function App(): JSX.Element {
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
   return (
-    <div>
-      <Typography variant="h4" component="div">
-        Trustfall in-browser query demo
-      </Typography>
-      <div css={{ margin: 10 }}>
-        <Button onClick={() => runQuery()} variant="contained" disabled={!ready}>
-          Run query!
-        </Button>
-        <Button onClick={() => queryNextResult()} disabled={!hasMore}>
-          More results!
-        </Button>
-      </div>
-      <div css={{ display: 'flex' }}>
-        <div css={{ display: 'flex', flexDirection: 'column' }}>
-          <div css={cssEditorContainer}>
+    <Grid container direction="column" height="95vh" width="100vw" sx={{ flexWrap: 'nowrap' }}>
+      <Grid item xs={1}>
+        <Typography variant="h4" component="div">
+          Trustfall in-browser query demo
+        </Typography>
+        <div css={{ margin: 10 }}>
+          <Button onClick={() => runQuery()} variant="contained" disabled={!ready}>
+            Run query!
+          </Button>
+          <Button onClick={() => queryNextResult()} disabled={!hasMore}>
+            More results!
+          </Button>
+        </div>
+      </Grid>
+      <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
+          <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
             <Typography variant="h6" component="div">
               Query
             </Typography>
-            <div ref={queryEditorRef} style={{ width: 800, height: 500 }} css={cssEditor} />
-          </div>
-          <div css={cssEditorContainer}>
+            <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
+              <div ref={queryEditorRef} css={cssEditor} />
+            </Paper>
+          </Grid>
+          <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
             <Typography variant="h6" component="div">
               Variables
             </Typography>
-            <div ref={varsEditorRef} style={{ width: 800, height: 300 }} css={cssEditor} />
-          </div>
-        </div>
-        <div>
-          <div
-            ref={resultsEditorRef}
-            css={{ width: 710, height: '100%' }}
-          />
-        </div>
-      </div>
-    </div>
+            <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
+              <div ref={varsEditorRef} css={cssEditor} />
+            </Paper>
+          </Grid>
+        </Grid>
+        <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
+          <Typography variant="h6" component="div">
+            Results
+          </Typography>
+          <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
+            <div ref={resultsEditorRef} css={cssEditor} />
+          </Paper>
+        </Grid>
+      </Grid>
+    </Grid>
   );
 }
