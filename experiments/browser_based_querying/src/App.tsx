@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { css } from '@emotion/react';
 import { Button, CircularProgress, Grid, Paper, Typography } from '@mui/material';
+import { LoadingButton } from '@mui/lab';
 
 import { HN_SCHEMA } from './adapter';
 import { AsyncValue } from './types';
@@ -252,9 +253,6 @@ export default function App(): JSX.Element {
           <Button onClick={() => runQuery()} variant="contained" disabled={!ready}>
             Run query!
           </Button>
-          <Button onClick={() => queryNextResult()} disabled={!hasMore}>
-            More results!
-          </Button>
         </div>
       </Grid>
       <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
@@ -279,7 +277,15 @@ export default function App(): JSX.Element {
         <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Typography variant="h6" component="div">
             Results{' '}
-            {nextResult && nextResult.status === 'pending' && <CircularProgress size={14} />}
+            {(results != null || nextResult != null) && (
+              <LoadingButton
+                onClick={() => queryNextResult()}
+                disabled={!hasMore}
+                loading={nextResult != null && nextResult.status === 'pending'}
+              >
+                {hasMore ? "More results!" : "No more results"}
+              </LoadingButton>
+            )}
           </Typography>
           <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
             <div ref={resultsEditorRef} css={cssEditor} />
