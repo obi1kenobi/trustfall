@@ -3,11 +3,25 @@ import { buildSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { css } from '@emotion/react';
-import { Button, CircularProgress, Grid, Paper, Typography } from '@mui/material';
+import {
+  Button,
+  Grid,
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  SelectChangeEvent,
+  MenuItem,
+  Typography,
+} from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 
 import { HN_SCHEMA } from './adapter';
 import { AsyncValue } from './types';
+import parseExample from './utils/parseExample';
+import latestStoriesExample from '../example_queries/latest_stories_with_min_points_and_submitter_karma.example';
+import patio11Example from '../example_queries/patio11_commenting_on_submissions_of_his_blog_posts.example';
+import topStoriesExample from '../example_queries/top_stories_with_min_points_and_submitter_karma.example';
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
 // This is due to the height: 100% rule, since the container is slightly smaller
@@ -35,6 +49,21 @@ window.MonacoEnvironment = {
   },
 };
 
+const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
+  {
+    name: 'Latest Stories',
+    value: parseExample(latestStoriesExample),
+  },
+  {
+    name: 'Top Stories',
+    value: parseExample(topStoriesExample),
+  },
+  {
+    name: 'Comments By patio11',
+    value: parseExample(patio11Example),
+  },
+];
+
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
 
 export default function App(): JSX.Element {
@@ -42,6 +71,10 @@ export default function App(): JSX.Element {
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
   const [ready, setReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [exampleQuery, setExampleQuery] = useState<{
+    name: string;
+    value: [string, string];
+  } | null>(null);
   const queryEditorRef = useRef<HTMLDivElement>(null);
   const [queryEditor, setQueryEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const varsEditorRef = useRef<HTMLDivElement>(null);
@@ -104,6 +137,22 @@ export default function App(): JSX.Element {
       error: `Error running query:\n${JSON.stringify(evt.message)}`,
     });
   }, []);
+
+  const handleExampleQueryChange = useCallback((evt: SelectChangeEvent<string | null>) => {
+    if (evt.target.value) {
+      const example = EXAMPLE_OPTIONS.find((option) => option.name === evt.target.value) ?? null;
+      setExampleQuery(example);
+    }
+  }, []);
+
+  // Set example query
+  useEffect(() => {
+    if (exampleQuery && queryEditor && varsEditor) {
+      const [query, vars] = exampleQuery.value;
+      queryEditor.setValue(query);
+      varsEditor.setValue(vars);
+    }
+  }, [exampleQuery, queryEditor, varsEditor]);
 
   // Init workers
   useEffect(() => {
@@ -249,14 +298,35 @@ export default function App(): JSX.Element {
         <Typography variant="h4" component="div">
           Trustfall in-browser query demo
         </Typography>
-        <div css={{ margin: 10 }}>
-          <Button onClick={() => runQuery()} variant="contained" disabled={!ready}>
+        <Typography>
+          Query the HackerNews API directly from your browser with GraphQL, using{' '}
+          <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
+            Trustfall
+          </a> compiled to WebAssembly.
+        </Typography>
+        <div css={{ display: 'flex', margin: 10 }}>
+          <Button onClick={() => runQuery()} variant="contained" disabled={!ready} sx={{ mr: 2 }}>
             Run query!
           </Button>
+          <FormControl sx={{ minWidth: 300 }}>
+            <InputLabel id="example-query-label">Example Query</InputLabel>
+            <Select
+              labelId="example-query-label"
+              value={exampleQuery ? exampleQuery.name : null}
+              label="Example Query"
+              onChange={handleExampleQueryChange}
+            >
+              {EXAMPLE_OPTIONS.map((option) => (
+                <MenuItem key={option.name} value={option.name}>
+                  {option.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </div>
       </Grid>
       <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
-        <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
             <Typography variant="h6" component="div">
               Query
@@ -274,7 +344,7 @@ export default function App(): JSX.Element {
             </Paper>
           </Grid>
         </Grid>
-        <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Typography variant="h6" component="div">
             Results{' '}
             {(results != null || nextResult != null) && (
@@ -283,7 +353,7 @@ export default function App(): JSX.Element {
                 disabled={!hasMore}
                 loading={nextResult != null && nextResult.status === 'pending'}
               >
-                {hasMore ? "More results!" : "No more results"}
+                {hasMore ? 'More results!' : 'No more results'}
               </LoadingButton>
             )}
           </Typography>

@@ -1,5 +1,5 @@
-query:
-{
+# Top stories on HackerNews that have a minimum score and karma
+query {
   HackerNewsTop(max: 100) {
     ... on HackerNewsStory {
       title @output

@@ -13,6 +13,8 @@
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "exclude": ["*.example"],
+    "include": ["src", "index.d.ts"]
   }
 }
