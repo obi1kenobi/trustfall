@@ -14,7 +14,7 @@ Contents:
 
 ## Development
 
-- Install a new-ish version of Node and `npx`.
+- Install the version of node and `npm`.
 - `npm install` to install dependencies
-- `npm run start` to build and run the local server
+- `npm start` to build and run the local server
 - Open a browser to `http://localhost:8000/` and enjoy!

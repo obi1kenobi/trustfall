@@ -1,5 +1,5 @@
-query:
-{
+# Comments by patio11 on submissions of his own blog posts
+query {
   HackerNewsUser(name: "patio11") {
     submitted {
       ... on HackerNewsComment {

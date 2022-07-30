@@ -20,7 +20,7 @@ initialize();
 console.log('Query system initialized');
 
 // TODO: This is a copy of schema.graphql, find a better way to include it.
-const schemaText = `
+export const HN_SCHEMA = `
 schema {
   query: RootSchemaQuery
 }
@@ -116,7 +116,7 @@ interface Webpage {
 }
 `;
 
-Schema.parse(schemaText);
+Schema.parse(HN_SCHEMA);
 console.log('Schema loaded.');
 
 postMessage('ready');
@@ -404,7 +404,7 @@ function performQuery(query: string, args: Record<string, any>): IterableIterato
 
   // TODO: figure out why the schema object gets set to null
   //       as part of the executeQuery() call.
-  const schemaCopy = Schema.parse(schemaText);
+  const schemaCopy = Schema.parse(HN_SCHEMA);
 
   const adapter = new MyAdapter(_adapterFetchChannel);
   const resultIter = executeQuery(schemaCopy, adapter, query, args);

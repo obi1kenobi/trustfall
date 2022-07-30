@@ -1,40 +1,121 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
+import { buildSchema } from 'graphql';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { initializeMode } from 'monaco-graphql/esm/initializeMode';
+import { css } from '@emotion/react';
+import {
+  Button,
+  Grid,
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  SelectChangeEvent,
+  MenuItem,
+  Typography,
+} from '@mui/material';
+import { LoadingButton } from '@mui/lab';
 
-type QueryMessageEvent = MessageEvent<{ done: boolean; value: string }>;
+import { HN_SCHEMA } from './adapter';
+import { AsyncValue } from './types';
+import parseExample from './utils/parseExample';
+import latestStoriesExample from '../example_queries/latest_stories_with_min_points_and_submitter_karma.example';
+import patio11Example from '../example_queries/patio11_commenting_on_submissions_of_his_blog_posts.example';
+import topStoriesExample from '../example_queries/top_stories_with_min_points_and_submitter_karma.example';
+
+// Position absolute is necessary to keep the editor from growing constantly on window resize
+// This is due to the height: 100% rule, since the container is slightly smaller
+const cssEditor = css`
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #eee;
+  border-radius: 5px;
+`;
+
+initializeMode({
+  schemas: [
+    {
+      schema: buildSchema(HN_SCHEMA),
+      uri: 'schema.graphql',
+    },
+  ],
+});
+
+window.MonacoEnvironment = {
+  getWorker() {
+    return new Worker(new URL('monaco-graphql/dist/graphql.worker.js', import.meta.url));
+  },
+};
+
+const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
+  {
+    name: 'Latest Stories',
+    value: parseExample(latestStoriesExample),
+  },
+  {
+    name: 'Top Stories',
+    value: parseExample(topStoriesExample),
+  },
+  {
+    name: 'Comments By patio11',
+    value: parseExample(patio11Example),
+  },
+];
+
+type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
 
 export default function App(): JSX.Element {
-  const [query, setQuery] = useState('');
-  const [vars, setVars] = useState('');
-  const [results, setResults] = useState('');
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
   const [ready, setReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const resultsRef = useRef<HTMLTextAreaElement>(null);
+  const [exampleQuery, setExampleQuery] = useState<{
+    name: string;
+    value: [string, string];
+  } | null>(null);
+  const queryEditorRef = useRef<HTMLDivElement>(null);
+  const [queryEditor, setQueryEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const varsEditorRef = useRef<HTMLDivElement>(null);
+  const [varsEditor, setVarsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const resultsEditorRef = useRef<HTMLDivElement>(null);
+  const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
+    null
+  );
+  const [results, setResults] = useState<object[] | null>(null);
+  const [nextResult, setNextResult] = useState<AsyncValue<object> | null>(null);
 
   const runQuery = useCallback(() => {
-    if (queryWorker == null) return;
+    if (queryWorker == null || queryEditor == null || varsEditor == null) return;
+    const query = queryEditor.getValue();
+    const vars = varsEditor.getValue();
+
     let varsObj = {};
     if (vars !== '') {
       try {
-        varsObj = JSON.parse(vars);
+        varsObj = JSON.parse(vars ?? '');
       } catch (e) {
-        setResults(`Error parsing variables to JSON:\n${(e as Error).message}`);
+        setNextResult({
+          status: 'error',
+          error: `Error parsing variables to JSON:\n${(e as Error).message}`,
+        });
         return;
       }
     }
 
     setHasMore(true);
-    setResults('');
+    setNextResult({ status: 'pending' });
 
     queryWorker.postMessage({
       op: 'query',
       query,
       args: varsObj,
     });
-  }, [query, queryWorker, vars]);
+  }, [queryWorker, queryEditor, varsEditor]);
 
   const queryNextResult = useCallback(() => {
+    setNextResult({ status: 'pending' });
     queryWorker?.postMessage({
       op: 'next',
     });
@@ -43,25 +124,35 @@ export default function App(): JSX.Element {
   const handleQueryMessage = useCallback((evt: QueryMessageEvent) => {
     const outcome = evt.data;
     if (outcome.done) {
-      setResults((prevResults) =>
-        prevResults.endsWith('***') ? prevResults : prevResults + '*** no more data ***'
-      );
       setHasMore(false);
     } else {
-      const pretty = JSON.stringify(outcome.value, null, 2);
-      setResults((prevResults) => prevResults + `${pretty}\n`);
+      setNextResult({ status: 'ready', value: outcome.value });
       setHasMore(true);
-    }
-    // TODO: Scroll results textarea to bottom
-    const resultsEl = resultsRef.current;
-    if (resultsEl) {
-      resultsEl.scrollTo(0, resultsEl.scrollHeight);
     }
   }, []);
 
   const handleQueryError = useCallback((evt: ErrorEvent) => {
-    setResults(`Error running query:\n${JSON.stringify(evt.message)}`);
+    setNextResult({
+      status: 'error',
+      error: `Error running query:\n${JSON.stringify(evt.message)}`,
+    });
   }, []);
+
+  const handleExampleQueryChange = useCallback((evt: SelectChangeEvent<string | null>) => {
+    if (evt.target.value) {
+      const example = EXAMPLE_OPTIONS.find((option) => option.name === evt.target.value) ?? null;
+      setExampleQuery(example);
+    }
+  }, []);
+
+  // Set example query
+  useEffect(() => {
+    if (exampleQuery && queryEditor && varsEditor) {
+      const [query, vars] = exampleQuery.value;
+      queryEditor.setValue(query);
+      varsEditor.setValue(vars);
+    }
+  }, [exampleQuery, queryEditor, varsEditor]);
 
   // Init workers
   useEffect(() => {
@@ -74,6 +165,103 @@ export default function App(): JSX.Element {
         prevWorker ?? new Worker(new URL('./fetcher', import.meta.url), { type: 'module' })
     );
   }, []);
+
+  // Init editors
+  useEffect(() => {
+    if (queryEditorRef.current) {
+      setQueryEditor(
+        monaco.editor.create(
+          queryEditorRef.current,
+          {
+            language: 'graphql',
+            value: 'query {\n\n}',
+            minimap: {
+              enabled: false,
+            },
+            automaticLayout: true,
+          },
+          {
+            storageService: {
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              get() {},
+              // Workaround to expand suggestion docs by default. See: https://stackoverflow.com/a/59040199
+              getBoolean(key: string) {
+                if (key === 'expandSuggestionDocs') return true;
+
+                return false;
+              },
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              remove() {},
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              store() {},
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              onWillSaveState() {},
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
+              onDidChangeStorage() {},
+            },
+          }
+        )
+      );
+    }
+
+    if (varsEditorRef.current) {
+      setVarsEditor(
+        monaco.editor.create(varsEditorRef.current, {
+          language: 'json',
+          value: '{\n\n}',
+          minimap: {
+            enabled: false,
+          },
+          automaticLayout: true,
+        })
+      );
+    }
+
+    if (resultsEditorRef.current) {
+      setResultsEditor(
+        monaco.editor.create(resultsEditorRef.current, {
+          language: 'json',
+          value: '',
+          minimap: {
+            enabled: false,
+          },
+          readOnly: true,
+          automaticLayout: true,
+          lineNumbers: 'off',
+        })
+      );
+    }
+  }, []);
+
+  // Update results editor
+  useEffect(() => {
+    if (resultsEditor) {
+      if (nextResult && nextResult.status === 'error') {
+        resultsEditor.setValue(nextResult.error);
+      } else if (results == null) {
+        resultsEditor.setValue('Run a query on the left to see results here.');
+      } else {
+        resultsEditor.setValue(JSON.stringify(results, null, 2));
+      }
+
+      const resultsEl = resultsEditorRef.current;
+      if (resultsEl) {
+        resultsEl.scrollTo(0, resultsEl.scrollHeight);
+      }
+    }
+  }, [results, nextResult, resultsEditor]);
+
+  // Set results
+  useEffect(() => {
+    if (nextResult && nextResult.status === 'ready') {
+      setResults((prevResults) => {
+        const prevValue = prevResults ? prevResults : [];
+        return [...prevValue, nextResult.value];
+      });
+    } else if (nextResult == null || nextResult.status === 'error') {
+      setResults(null);
+    }
+  }, [nextResult]);
 
   // Setup
   useEffect(() => {
@@ -106,35 +294,76 @@ export default function App(): JSX.Element {
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
   return (
-    <div>
-      <div>
-        <textarea
-          value={query}
-          onChange={(evt) => setQuery(evt.target.value)}
-          css={{ width: 500, height: 340 }}
-        />
-        <textarea
-          value={vars}
-          onChange={(evt) => setVars(evt.target.value)}
-          css={{ width: 200, height: 340 }}
-        ></textarea>
-      </div>
-      <div css={{ margin: 10 }}>
-        <button onClick={() => runQuery()} disabled={!ready}>
-          Run query!
-        </button>
-        <button onClick={() => queryNextResult()} disabled={!hasMore}>
-          More results!
-        </button>
-      </div>
-      <div>
-        <textarea
-          ref={resultsRef}
-          value={results}
-          css={{ width: 710, height: 300 }}
-          readOnly
-        ></textarea>
-      </div>
-    </div>
+    <Grid container direction="column" height="95vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
+      <Grid item xs={1}>
+        <Typography variant="h4" component="div">
+          Trustfall in-browser query demo
+        </Typography>
+        <Typography>
+          Query the HackerNews API directly from your browser with GraphQL, using{' '}
+          <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
+            Trustfall
+          </a>{' '}
+          compiled to WebAssembly.
+        </Typography>
+        <div css={{ display: 'flex', margin: 10 }}>
+          <Button onClick={() => runQuery()} variant="contained" disabled={!ready} sx={{ mr: 2 }}>
+            Run query!
+          </Button>
+          <FormControl sx={{ minWidth: 300 }}>
+            <InputLabel id="example-query-label">Example Query</InputLabel>
+            <Select
+              labelId="example-query-label"
+              value={exampleQuery ? exampleQuery.name : null}
+              label="Example Query"
+              onChange={handleExampleQueryChange}
+            >
+              {EXAMPLE_OPTIONS.map((option) => (
+                <MenuItem key={option.name} value={option.name}>
+                  {option.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </div>
+      </Grid>
+      <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
+          <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
+            <Typography variant="h6" component="div">
+              Query
+            </Typography>
+            <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
+              <div ref={queryEditorRef} css={cssEditor} />
+            </Paper>
+          </Grid>
+          <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
+            <Typography variant="h6" component="div" sx={{ mt: 1 }}>
+              Variables
+            </Typography>
+            <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
+              <div ref={varsEditorRef} css={cssEditor} />
+            </Paper>
+          </Grid>
+        </Grid>
+        <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
+          <Typography variant="h6" component="div">
+            Results{' '}
+            {(results != null || nextResult != null) && (
+              <LoadingButton
+                onClick={() => queryNextResult()}
+                disabled={!hasMore}
+                loading={nextResult != null && nextResult.status === 'pending'}
+              >
+                {hasMore ? 'More results!' : 'No more results'}
+              </LoadingButton>
+            )}
+          </Typography>
+          <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
+            <div ref={resultsEditorRef} css={cssEditor} />
+          </Paper>
+        </Grid>
+      </Grid>
+    </Grid>
   );
 }
