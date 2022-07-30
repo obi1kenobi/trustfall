@@ -6,18 +6,18 @@ export default function parseExample(exampleFile: string): [string, string] {
   let query = '';
   let vars = '';
 
-  let section: "query" | "vars" = "query";
-  lines.forEach(line => {
-    if (section === "query") {
-      if (!line.startsWith("vars:")) {
-        query = `${query}${line}\n`
+  let section: 'query' | 'vars' = 'query';
+  lines.forEach((line) => {
+    if (section === 'query') {
+      if (!line.startsWith('vars:')) {
+        query = `${query}${line}\n`;
       } else {
-        section = "vars";
+        section = 'vars';
       }
     } else {
-      vars = `${vars}${line}\n`
+      vars = `${vars}${line}\n`;
     }
-  })
+  });
 
   return [query.trim(), vars.trim()];
 }

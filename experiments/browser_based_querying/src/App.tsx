@@ -302,7 +302,8 @@ export default function App(): JSX.Element {
           Query the HackerNews API directly from your browser with GraphQL, using{' '}
           <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
             Trustfall
-          </a> compiled to WebAssembly.
+          </a>{' '}
+          compiled to WebAssembly.
         </Typography>
         <div css={{ display: 'flex', margin: 10 }}>
           <Button onClick={() => runQuery()} variant="contained" disabled={!ready} sx={{ mr: 2 }}>
