@@ -210,8 +210,7 @@ export default function App(): JSX.Element {
     } else if (nextResult == null || nextResult.status === 'error') {
       setResults(null);
     }
-  }, [nextResult])
-
+  }, [nextResult]);
 
   // Setup
   useEffect(() => {
