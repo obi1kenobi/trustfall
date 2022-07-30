@@ -338,7 +338,7 @@ export default function App(): JSX.Element {
             </Paper>
           </Grid>
           <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
-            <Typography variant="h6" component="div" sx={{mt: 1}}>
+            <Typography variant="h6" component="div" sx={{ mt: 1 }}>
               Variables
             </Typography>
             <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
