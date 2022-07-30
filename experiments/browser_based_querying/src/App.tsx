@@ -3,8 +3,10 @@ import { buildSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { css } from '@emotion/react';
-import { Button, Grid, Paper, Typography } from '@mui/material';
+import { Button, CircularProgress, Grid, Paper, Typography } from '@mui/material';
+
 import { HN_SCHEMA } from './adapter';
+import { AsyncValue } from './types';
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
 // This is due to the height: 100% rule, since the container is slightly smaller
@@ -32,7 +34,7 @@ window.MonacoEnvironment = {
   },
 };
 
-type QueryMessageEvent = MessageEvent<{ done: boolean; value: string }>;
+type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
 
 export default function App(): JSX.Element {
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
@@ -47,7 +49,8 @@ export default function App(): JSX.Element {
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
-  const [results, setResults] = useState('');
+  const [results, setResults] = useState<object[] | null>(null);
+  const [nextResult, setNextResult] = useState<AsyncValue<object> | null>(null);
 
   const runQuery = useCallback(() => {
     if (queryWorker == null || queryEditor == null || varsEditor == null) return;
@@ -59,13 +62,16 @@ export default function App(): JSX.Element {
       try {
         varsObj = JSON.parse(vars ?? '');
       } catch (e) {
-        setResults(`Error parsing variables to JSON:\n${(e as Error).message}`);
+        setNextResult({
+          status: 'error',
+          error: `Error parsing variables to JSON:\n${(e as Error).message}`,
+        });
         return;
       }
     }
 
     setHasMore(true);
-    setResults('');
+    setNextResult({ status: 'pending' });
 
     queryWorker.postMessage({
       op: 'query',
@@ -75,6 +81,7 @@ export default function App(): JSX.Element {
   }, [queryWorker, queryEditor, varsEditor]);
 
   const queryNextResult = useCallback(() => {
+    setNextResult({ status: 'pending' });
     queryWorker?.postMessage({
       op: 'next',
     });
@@ -83,23 +90,18 @@ export default function App(): JSX.Element {
   const handleQueryMessage = useCallback((evt: QueryMessageEvent) => {
     const outcome = evt.data;
     if (outcome.done) {
-      setResults((prevResults) =>
-        prevResults.endsWith('***') ? prevResults : prevResults + '*** no more data ***'
-      );
       setHasMore(false);
     } else {
-      const pretty = JSON.stringify(outcome.value, null, 2);
-      setResults((prevResults) => prevResults + `${pretty}\n`);
+      setNextResult({ status: 'ready', value: outcome.value });
       setHasMore(true);
-    }
-    const resultsEl = resultsEditorRef.current;
-    if (resultsEl) {
-      resultsEl.scrollTo(0, resultsEl.scrollHeight);
     }
   }, []);
 
   const handleQueryError = useCallback((evt: ErrorEvent) => {
-    setResults(`Error running query:\n${JSON.stringify(evt.message)}`);
+    setNextResult({
+      status: 'error',
+      error: `Error running query:\n${JSON.stringify(evt.message)}`,
+    });
   }, []);
 
   // Init workers
@@ -180,12 +182,36 @@ export default function App(): JSX.Element {
     }
   }, []);
 
-  // Update results
+  // Update results editor
   useEffect(() => {
     if (resultsEditor) {
-      resultsEditor.setValue(results);
+      if (nextResult && nextResult.status === 'error') {
+        resultsEditor.setValue(nextResult.error);
+      } else if (results == null) {
+        resultsEditor.setValue('Run a query on the left to see results here.');
+      } else {
+        resultsEditor.setValue(JSON.stringify(results, null, 2));
+      }
+
+      const resultsEl = resultsEditorRef.current;
+      if (resultsEl) {
+        resultsEl.scrollTo(0, resultsEl.scrollHeight);
+      }
     }
-  }, [results, resultsEditor]);
+  }, [results, nextResult, resultsEditor]);
+
+  // Set results
+  useEffect(() => {
+    if (nextResult && nextResult.status === 'ready') {
+      setResults((prevResults) => {
+        const prevValue = prevResults ? prevResults : [];
+        return [...prevValue, nextResult.value];
+      });
+    } else if (nextResult == null || nextResult.status === 'error') {
+      setResults(null);
+    }
+  }, [nextResult])
+
 
   // Setup
   useEffect(() => {
@@ -218,7 +244,7 @@ export default function App(): JSX.Element {
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
   return (
-    <Grid container direction="column" height="95vh" width="100vw" sx={{ flexWrap: 'nowrap' }}>
+    <Grid container direction="column" height="95vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
       <Grid item xs={1}>
         <Typography variant="h4" component="div">
           Trustfall in-browser query demo
@@ -253,7 +279,8 @@ export default function App(): JSX.Element {
         </Grid>
         <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Typography variant="h6" component="div">
-            Results
+            Results{' '}
+            {nextResult && nextResult.status === 'pending' && <CircularProgress size={14} />}
           </Typography>
           <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
             <div ref={resultsEditorRef} css={cssEditor} />
