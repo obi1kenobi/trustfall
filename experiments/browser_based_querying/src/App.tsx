@@ -227,6 +227,7 @@ export default function App(): JSX.Element {
           },
           readOnly: true,
           automaticLayout: true,
+          lineNumbers: 'off',
         })
       );
     }
@@ -332,15 +333,15 @@ export default function App(): JSX.Element {
             <Typography variant="h6" component="div">
               Query
             </Typography>
-            <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
+            <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
               <div ref={queryEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
           <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
-            <Typography variant="h6" component="div">
+            <Typography variant="h6" component="div" sx={{mt: 1}}>
               Variables
             </Typography>
-            <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
+            <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
               <div ref={varsEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
@@ -358,7 +359,7 @@ export default function App(): JSX.Element {
               </LoadingButton>
             )}
           </Typography>
-          <Paper elevation={1} sx={{ flexGrow: 1, position: 'relative' }}>
+          <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
             <div ref={resultsEditorRef} css={cssEditor} />
           </Paper>
         </Grid>
