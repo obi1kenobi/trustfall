@@ -13,6 +13,7 @@ import {
   SelectChangeEvent,
   MenuItem,
   Typography,
+  SxProps,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 
@@ -28,11 +29,25 @@ import topStoriesExample from '../example_queries/top_stories_with_min_points_an
 const cssEditor = css`
   position: absolute;
   top: 0;
-  width: 100%;
-  height: 100%;
-  border: 1px solid #eee;
-  border-radius: 5px;
+  width: calc(100% - 5px);
+  height: calc(100% - 3px);
 `;
+
+const sxEditorContainer: SxProps = {
+  border: "1px solid #aaa",
+  borderRadius: "5px",
+  padding: "3px",
+}
+
+// Disable editor gutters entirely
+const disableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = {
+  lineNumbers: 'off',
+  glyphMargin: false,
+  folding: false,
+  // Undocumented see https://github.com/Microsoft/vscode/issues/30795#issuecomment-410998882
+  lineDecorationsWidth: 5,  // Leave a little padding on the left
+  lineNumbersMinChars: 0
+}
 
 initializeMode({
   schemas: [
@@ -213,6 +228,7 @@ export default function App(): JSX.Element {
             enabled: false,
           },
           automaticLayout: true,
+          ...disableGutterConfig,
         })
       );
     }
@@ -227,7 +243,7 @@ export default function App(): JSX.Element {
           },
           readOnly: true,
           automaticLayout: true,
-          lineNumbers: 'off',
+          ...disableGutterConfig,
         })
       );
     }
@@ -307,15 +323,21 @@ export default function App(): JSX.Element {
           compiled to WebAssembly.
         </Typography>
         <div css={{ display: 'flex', margin: 10 }}>
-          <Button onClick={() => runQuery()} variant="contained" disabled={!ready} sx={{ mr: 2 }}>
+          <Button
+            size="small"
+            onClick={() => runQuery()}
+            variant="contained"
+            disabled={!ready}
+            sx={{ mr: 2 }}
+          >
             Run query!
           </Button>
-          <FormControl sx={{ minWidth: 300 }}>
-            <InputLabel id="example-query-label">Example Query</InputLabel>
+          <FormControl size="small" sx={{ minWidth: 300 }}>
+            <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
             <Select
               labelId="example-query-label"
               value={exampleQuery ? exampleQuery.name : null}
-              label="Example Query"
+              label="Load an Example Query..."
               onChange={handleExampleQueryChange}
             >
               {EXAMPLE_OPTIONS.map((option) => (
@@ -333,7 +355,7 @@ export default function App(): JSX.Element {
             <Typography variant="h6" component="div">
               Query
             </Typography>
-            <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
+            <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
               <div ref={queryEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
@@ -341,7 +363,7 @@ export default function App(): JSX.Element {
             <Typography variant="h6" component="div" sx={{ mt: 1 }}>
               Variables
             </Typography>
-            <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
+            <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
               <div ref={varsEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
@@ -351,6 +373,7 @@ export default function App(): JSX.Element {
             Results{' '}
             {(results != null || nextResult != null) && (
               <LoadingButton
+                size="small"
                 onClick={() => queryNextResult()}
                 disabled={!hasMore}
                 loading={nextResult != null && nextResult.status === 'pending'}
@@ -359,7 +382,7 @@ export default function App(): JSX.Element {
               </LoadingButton>
             )}
           </Typography>
-          <Paper elevation={3} sx={{ flexGrow: 1, position: 'relative' }}>
+          <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
             <div ref={resultsEditorRef} css={cssEditor} />
           </Paper>
         </Grid>
