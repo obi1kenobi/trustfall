@@ -34,10 +34,10 @@ const cssEditor = css`
 `;
 
 const sxEditorContainer: SxProps = {
-  border: "1px solid #aaa",
-  borderRadius: "5px",
-  padding: "3px",
-}
+  border: '1px solid #aaa',
+  borderRadius: '5px',
+  padding: '3px',
+};
 
 // Disable editor gutters entirely
 const disableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = {
@@ -45,9 +45,9 @@ const disableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = 
   glyphMargin: false,
   folding: false,
   // Undocumented see https://github.com/Microsoft/vscode/issues/30795#issuecomment-410998882
-  lineDecorationsWidth: 5,  // Leave a little padding on the left
-  lineNumbersMinChars: 0
-}
+  lineDecorationsWidth: 5, // Leave a little padding on the left
+  lineNumbersMinChars: 0,
+};
 
 initializeMode({
   schemas: [
