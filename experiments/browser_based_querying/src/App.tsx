@@ -81,8 +81,8 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
 
 type Action =
-  | { type: 'APP_INITIALIZED' }
-  | { type: 'QUIT' }
+  | { type: 'ALLOW_QUERY_EXECUTION' } /* OK to execute a query */
+  | { type: 'FORBID_QUERY_EXECUTION' }
   | { type: 'INVALID_VARS_JSON'; errMessage: string }
   | { type: 'FETCH_NEW_EXECUTE' } /* New execution of query start */
   | { type: 'FETCH_CONTINUE_EXECUTE' } /* Continuing execution of an existing query */
@@ -100,12 +100,12 @@ type State = {
 
 const queryStateReducer = (state: State, action: Action): State => {
   switch (action.type) {
-    case 'APP_INITIALIZED':
+    case 'ALLOW_QUERY_EXECUTION':
       return {
         ...state,
         ready: true,
       };
-    case 'QUIT':
+    case 'FORBID_QUERY_EXECUTION':
       return {
         ...state,
         ready: false,
@@ -346,7 +346,7 @@ export default function App(): JSX.Element {
         queryWorker.removeEventListener('message', awaitInitConfirmation);
         queryWorker.addEventListener('message', handleQueryMessage);
         queryWorker.addEventListener('error', handleQueryError);
-        dispatchState({ type: 'APP_INITIALIZED' });
+        dispatchState({ type: 'ALLOW_QUERY_EXECUTION' });
       } else {
         throw new Error(`Unexpected message: ${data}`);
       }
@@ -356,7 +356,7 @@ export default function App(): JSX.Element {
     return () => {
       queryWorker.removeEventListener('message', handleQueryMessage);
       queryWorker.removeEventListener('message', awaitInitConfirmation);
-      dispatchState({ type: 'QUIT' });
+      dispatchState({ type: 'FORBID_QUERY_EXECUTION' });
     };
   }, [fetcherWorker, queryWorker]);
 
