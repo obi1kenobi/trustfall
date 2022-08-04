@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useReducer } from 'react';
 import { buildSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
@@ -18,7 +18,6 @@ import {
 import { LoadingButton } from '@mui/lab';
 
 import { HN_SCHEMA } from './adapter';
-import { AsyncValue } from './types';
 import parseExample from './utils/parseExample';
 import latestStoriesExample from '../example_queries/latest_stories_with_min_points_and_submitter_karma.example';
 import patio11Example from '../example_queries/patio11_commenting_on_submissions_of_his_blog_posts.example';
@@ -81,11 +80,82 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
 
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
 
+type Action =
+  | { type: 'APP_INITIALIZED' }
+  | { type: 'QUIT' }
+  | { type: 'INVALID_VARS_JSON'; errMessage: string }
+  | { type: 'FETCH_NEW_EXECUTE' } /* New execution of query start */
+  | { type: 'FETCH_CONTINUE_EXECUTE' } /* Continuing execution of an existing query */
+  | { type: 'FETCH_SUCCESS'; event: QueryMessageEvent }
+  | { type: 'FETCH_FAILURE'; event: ErrorEvent };
+
+type State = {
+  ready: boolean /* Enables query running button */;
+  hasMore: boolean /* Has more results that can be fetched */;
+  results: object[] | null /* List of results corresponding to the the current query */;
+  isLoading: boolean /* Query execution is pending */;
+  /* null if no error, otherwise set to error message that can be displayed. */
+  errMessage: string | null;
+};
+
+const queryStateReducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'APP_INITIALIZED':
+      return {
+        ...state,
+        ready: true,
+      };
+    case 'QUIT':
+      return {
+        ...state,
+        ready: false,
+      };
+    case 'FETCH_NEW_EXECUTE':
+      return {
+        ...state,
+        hasMore: true,
+        results: null,
+        isLoading: true,
+        errMessage: null,
+      };
+    case 'FETCH_CONTINUE_EXECUTE':
+      return {
+        ...state,
+        hasMore: true,
+        isLoading: true,
+        errMessage: null,
+      };
+    case 'FETCH_SUCCESS':
+      return {
+        ...state,
+        hasMore: !action.event.data.done,
+        results: [...(state.results || []), action.event.data.value],
+        isLoading: false,
+        errMessage: null,
+      };
+    case 'FETCH_FAILURE':
+      return {
+        ...state,
+        hasMore: false,
+        isLoading: false,
+        errMessage: `Error running query:\n${JSON.stringify(action.event.message)}`,
+      };
+
+    case 'INVALID_VARS_JSON':
+      return {
+        ...state,
+        hasMore: false,
+        isLoading: false,
+        errMessage: `Error parsing variables to JSON:\n"${action.errMessage}"`,
+      };
+    default:
+      throw new Error(`Unsupported action type ${action.type}`);
+  }
+};
+
 export default function App(): JSX.Element {
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
   const [fetcherWorker, setFetcherWorker] = useState<Worker | null>(null);
-  const [ready, setReady] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
     value: [string, string];
@@ -98,8 +168,17 @@ export default function App(): JSX.Element {
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
-  const [results, setResults] = useState<object[] | null>(null);
-  const [nextResult, setNextResult] = useState<AsyncValue<object> | null>(null);
+
+  const [{ ready, results, hasMore, isLoading, errMessage }, dispatchState] = useReducer(
+    queryStateReducer,
+    {
+      ready: false,
+      hasMore: false,
+      results: null,
+      isLoading: false,
+      errMessage: null,
+    }
+  );
 
   const runQuery = useCallback(() => {
     if (queryWorker == null || queryEditor == null || varsEditor == null) return;
@@ -111,17 +190,15 @@ export default function App(): JSX.Element {
       try {
         varsObj = JSON.parse(vars ?? '');
       } catch (e) {
-        setNextResult({
-          status: 'error',
-          error: `Error parsing variables to JSON:\n${(e as Error).message}`,
+        dispatchState({
+          type: 'INVALID_VARS_JSON',
+          errMessage: (e as Error).message,
         });
         return;
       }
     }
 
-    setHasMore(true);
-    setNextResult({ status: 'pending' });
-
+    dispatchState({ type: 'FETCH_NEW_EXECUTE' });
     queryWorker.postMessage({
       op: 'query',
       query,
@@ -130,28 +207,9 @@ export default function App(): JSX.Element {
   }, [queryWorker, queryEditor, varsEditor]);
 
   const queryNextResult = useCallback(() => {
-    setNextResult({ status: 'pending' });
-    queryWorker?.postMessage({
-      op: 'next',
-    });
+    dispatchState({ type: 'FETCH_CONTINUE_EXECUTE' });
+    queryWorker?.postMessage({ op: 'next' });
   }, [queryWorker]);
-
-  const handleQueryMessage = useCallback((evt: QueryMessageEvent) => {
-    const outcome = evt.data;
-    if (outcome.done) {
-      setHasMore(false);
-    } else {
-      setNextResult({ status: 'ready', value: outcome.value });
-      setHasMore(true);
-    }
-  }, []);
-
-  const handleQueryError = useCallback((evt: ErrorEvent) => {
-    setNextResult({
-      status: 'error',
-      error: `Error running query:\n${JSON.stringify(evt.message)}`,
-    });
-  }, []);
 
   const handleExampleQueryChange = useCallback((evt: SelectChangeEvent<string | null>) => {
     if (evt.target.value) {
@@ -168,18 +226,6 @@ export default function App(): JSX.Element {
       varsEditor.setValue(vars);
     }
   }, [exampleQuery, queryEditor, varsEditor]);
-
-  // Init workers
-  useEffect(() => {
-    setQueryWorker(
-      (prevWorker) =>
-        prevWorker ?? new Worker(new URL('./adapter', import.meta.url), { type: 'module' })
-    );
-    setFetcherWorker(
-      (prevWorker) =>
-        prevWorker ?? new Worker(new URL('./fetcher', import.meta.url), { type: 'module' })
-    );
-  }, []);
 
   // Init editors
   useEffect(() => {
@@ -252,8 +298,8 @@ export default function App(): JSX.Element {
   // Update results editor
   useEffect(() => {
     if (resultsEditor) {
-      if (nextResult && nextResult.status === 'error') {
-        resultsEditor.setValue(nextResult.error);
+      if (errMessage !== null) {
+        resultsEditor.setValue(errMessage);
       } else if (results == null) {
         resultsEditor.setValue('Run a query on the left to see results here.');
       } else {
@@ -265,27 +311,32 @@ export default function App(): JSX.Element {
         resultsEl.scrollTo(0, resultsEl.scrollHeight);
       }
     }
-  }, [results, nextResult, resultsEditor]);
+  }, [results, errMessage, resultsEditor]);
 
-  // Set results
+  // Init workers
   useEffect(() => {
-    if (nextResult && nextResult.status === 'ready') {
-      setResults((prevResults) => {
-        const prevValue = prevResults ? prevResults : [];
-        return [...prevValue, nextResult.value];
-      });
-    } else if (nextResult == null || nextResult.status === 'error') {
-      setResults(null);
-    }
-  }, [nextResult]);
+    setQueryWorker(
+      (prevWorker) =>
+        prevWorker ?? new Worker(new URL('./adapter', import.meta.url), { type: 'module' })
+    );
+    setFetcherWorker(
+      (prevWorker) =>
+        prevWorker ?? new Worker(new URL('./fetcher', import.meta.url), { type: 'module' })
+    );
+  }, []);
 
-  // Setup
+  // Configure workers
   useEffect(() => {
     if (queryWorker == null || fetcherWorker == null) return;
     const channel = new MessageChannel();
     queryWorker.postMessage({ op: 'init' });
 
     fetcherWorker.postMessage({ op: 'channel', data: { port: channel.port2 } }, [channel.port2]);
+
+    const handleQueryMessage = (evt: QueryMessageEvent) =>
+      dispatchState({ type: 'FETCH_SUCCESS', event: evt });
+    const handleQueryError = (evt: ErrorEvent) =>
+      dispatchState({ type: 'FETCH_FAILURE', event: evt });
 
     function awaitInitConfirmation(e: MessageEvent) {
       const data = e.data;
@@ -295,7 +346,7 @@ export default function App(): JSX.Element {
         queryWorker.removeEventListener('message', awaitInitConfirmation);
         queryWorker.addEventListener('message', handleQueryMessage);
         queryWorker.addEventListener('error', handleQueryError);
-        setReady(true);
+        dispatchState({ type: 'APP_INITIALIZED' });
       } else {
         throw new Error(`Unexpected message: ${data}`);
       }
@@ -305,9 +356,9 @@ export default function App(): JSX.Element {
     return () => {
       queryWorker.removeEventListener('message', handleQueryMessage);
       queryWorker.removeEventListener('message', awaitInitConfirmation);
-      setReady(false);
+      dispatchState({ type: 'QUIT' });
     };
-  }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
+  }, [fetcherWorker, queryWorker]);
 
   return (
     <Grid container direction="column" height="95vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
@@ -325,7 +376,7 @@ export default function App(): JSX.Element {
         <div css={{ display: 'flex', margin: 10 }}>
           <Button
             size="small"
-            onClick={() => runQuery()}
+            onClick={runQuery}
             variant="contained"
             disabled={!ready}
             sx={{ mr: 2 }}
@@ -371,14 +422,14 @@ export default function App(): JSX.Element {
         <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Typography variant="h6" component="div">
             Results{' '}
-            {(results != null || nextResult != null) && (
+            {(isLoading || results) && (
               <LoadingButton
                 size="small"
-                onClick={() => queryNextResult()}
+                onClick={queryNextResult}
                 disabled={!hasMore}
-                loading={nextResult != null && nextResult.status === 'pending'}
+                loading={isLoading}
               >
-                {hasMore ? 'More results!' : 'No more results'}
+                {hasMore ? 'Fetch More Results!' : 'No more results'}
               </LoadingButton>
             )}
           </Typography>
