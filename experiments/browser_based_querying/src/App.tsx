@@ -93,7 +93,7 @@ type State = {
   ready: boolean /* Enables query running button */;
   hasMore: boolean /* Has more results that can be fetched */;
   results: object[] | null /* List of results corresponding to the the current query */;
-  isLoading: boolean /* Query execution is pending */;
+  isLoading: boolean /* Query is being executed */;
   /* null if no error, otherwise set to error message that can be displayed. */
   errMessage: string | null;
 };
