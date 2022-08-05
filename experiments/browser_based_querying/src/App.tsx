@@ -121,6 +121,7 @@ export default function App(): JSX.Element {
 
     setHasMore(true);
     setNextResult({ status: 'pending' });
+    setResults(null);
 
     queryWorker.postMessage({
       op: 'query',
@@ -254,6 +255,8 @@ export default function App(): JSX.Element {
     if (resultsEditor) {
       if (nextResult && nextResult.status === 'error') {
         resultsEditor.setValue(nextResult.error);
+      } else if (results == null && nextResult && nextResult.status === 'pending') {
+        resultsEditor.setValue('Loading...');
       } else if (results == null) {
         resultsEditor.setValue('Run a query on the left to see results here.');
       } else {
