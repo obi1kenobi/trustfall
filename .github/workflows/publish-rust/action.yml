@@ -2,7 +2,7 @@ name: Publish Rust crate
 
 on:
   workflow_call:
-    github.event.inputs:
+    inputs:
       crate-name:
         required: true
         type: string
