@@ -305,12 +305,12 @@ jobs:
       - ci-everything
     steps:
       - id: trustfall_filetests_macros
-        uses: ./.github/workflows/publish-rust.yml
+        uses: ./.github/workflows/publish-rust
         with:
           crate-name: trustfall_filetests_macros
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - id: trustfall_core
-        uses: ./.github/workflows/publish-rust.yml
+        uses: ./.github/workflows/publish-rust
         with:
           crate-name: trustfall_core
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

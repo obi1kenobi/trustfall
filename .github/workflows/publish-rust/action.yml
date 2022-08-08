@@ -10,6 +10,10 @@ on:
       CARGO_REGISTRY_TOKEN:
         required: true
 
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
 jobs:
   publish:
     name: Publish to crates.io
@@ -25,7 +29,7 @@ jobs:
       - name: Tag the version
         run: |
           set -euxo pipefail
-          export CURRENT_VERSION="$(./scripts/get_current_crate_version.sh ${{ inputs.crate-name }})"
+          export CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh ${{ inputs.crate-name }})"
           git tag "${{ inputs.crate-name }}-v$CURRENT_VERSION"
           git push origin "${{ inputs.crate-name }}-v$CURRENT_VERSION"
 
@@ -46,7 +50,7 @@ jobs:
       - id: check
         run: |
           set +e
-          ./scripts/is_crate_version_already_uploaded.sh ${{ inputs.crate-name }}
+          .github/workflows/is_crate_version_already_uploaded.sh ${{ inputs.crate-name }}
           export EXIT_CODE="$?"
           set -e
           if [[ "$EXIT_CODE" == "7" ]]; then
