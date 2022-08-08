@@ -298,20 +298,30 @@ jobs:
       - name: Run linters
         run: npm run lint
 
-  attempt-publish:
-    name: Publish any crates whose versions changed
-    runs-on: ubuntu-latest
+  attempt-publish-trustfall-filetests-macros:
+    name: Attempt publishing trustfall_filetests_macros
+    uses: .github/workflows/publish-rust
+    with:
+      crate-name: trustfall_filetests_macros
+      CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+
+  attempt-publish-trustfall-core:
+    name: Attempt publishing trustfall_core
+    uses: .github/workflows/publish-rust
+    with:
+      crate-name: trustfall_core
+      CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+
     # TODO: re-enable when no longer debugging
     # needs:
     #   - ci-everything
-    steps:
-      - id: trustfall_filetests_macros
-        uses: obi1kenobi/trustfall/.github/workflows/publish-rust@automated_publishing
-        with:
-          crate-name: trustfall_filetests_macros
-          CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-      - id: trustfall_core
-        uses: obi1kenobi/trustfall/.github/workflows/publish-rust@automated_publishing
-        with:
-          crate-name: trustfall_core
-          CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+    # steps:
+    #   - id: trustfall_filetests_macros
+    #     with:
+    #       crate-name: trustfall_filetests_macros
+    #       CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+    #   - id: trustfall_core
+    #     uses: obi1kenobi/trustfall/.github/workflows/publish-rust@automated_publishing
+    #     with:
+    #       crate-name: trustfall_core
+    #       CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
