@@ -26,6 +26,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - run: |
+        echo "${{ toJSON(inputs) }}"
+        echo "${{ toJSON(github.event.inputs) }}"
+
       - name: Tag the version
         run: |
           set -euxo pipefail
