@@ -312,11 +312,9 @@ jobs:
         uses: ./.github/workflows/publish-rust
         with:
           crate-name: trustfall_filetests_macros
-        secrets:
           CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
       - id: trustfall_core
         uses: ./.github/workflows/publish-rust
         with:
           crate-name: trustfall_core
-        secrets:
           CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
