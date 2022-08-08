@@ -300,14 +300,14 @@ jobs:
 
   attempt-publish-trustfall-filetests-macros:
     name: Attempt publishing trustfall_filetests_macros
-    uses: .github/workflows/publish-rust/action.yml
+    uses: ./.github/workflows/publish-rust/action.yml
     with:
       crate-name: trustfall_filetests_macros
       CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
 
   attempt-publish-trustfall-core:
     name: Attempt publishing trustfall_core
-    uses: .github/workflows/publish-rust/action.yml
+    uses: ./.github/workflows/publish-rust/action.yml
     with:
       crate-name: trustfall_core
       CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
