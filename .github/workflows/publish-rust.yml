@@ -2,7 +2,7 @@ name: Publish Rust crate
 
 on:
   workflow_call:
-    inputs:
+    github.event.inputs:
       crate-name:
         required: true
         type: string
@@ -29,13 +29,13 @@ jobs:
       - name: Tag the version
         run: |
           set -euxo pipefail
-          export CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh ${{ inputs.crate-name }})"
-          git tag "${{ inputs.crate-name }}-v$CURRENT_VERSION"
-          git push origin "${{ inputs.crate-name }}-v$CURRENT_VERSION"
+          export CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh ${{ github.event.inputs.crate-name }})"
+          git tag "${{ github.event.inputs.crate-name }}-v$CURRENT_VERSION"
+          git push origin "${{ github.event.inputs.crate-name }}-v$CURRENT_VERSION"
 
       - name: Publish
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ github.event.secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish
 
   should-publish:
@@ -50,7 +50,7 @@ jobs:
       - id: check
         run: |
           set +e
-          .github/workflows/is_crate_version_already_uploaded.sh ${{ inputs.crate-name }}
+          .github/workflows/is_crate_version_already_uploaded.sh ${{ github.event.inputs.crate-name }}
           export EXIT_CODE="$?"
           set -e
           if [[ "$EXIT_CODE" == "7" ]]; then
@@ -75,5 +75,5 @@ jobs:
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v1
         with:
-          crate-name: ${{ inputs.crate-name }}
-          version-tag-prefix: ${{ inputs.crate-name }}-v
+          crate-name: ${{ github.event.inputs.crate-name }}
+          version-tag-prefix: ${{ github.event.inputs.crate-name }}-v
