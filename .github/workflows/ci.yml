@@ -30,7 +30,7 @@ jobs:
       - rust-tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -166,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -203,7 +203,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -304,6 +304,9 @@ jobs:
     needs:
       - ci-everything
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - id: trustfall_filetests_macros
         uses: ./.github/workflows/publish-rust
         with:
