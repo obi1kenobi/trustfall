@@ -35,14 +35,14 @@ jobs:
 
       - name: Publish
         env:
-          CARGO_REGISTRY_TOKEN: ${{ github.event.workflow_call.secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: "${{ github.event.workflow_call.secrets.CARGO_REGISTRY_TOKEN }}"
         run: cargo publish
 
   should-publish:
     name: Check if version changed
     runs-on: ubuntu-latest
     outputs:
-      is_new_version: ${{ steps.check.outputs.is_new_version }}
+      is_new_version: "${{ steps.check.outputs.is_new_version }}"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -75,5 +75,5 @@ jobs:
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v1
         with:
-          crate-name: ${{ github.event.workflow_call.inputs.crate-name }}
-          version-tag-prefix: ${{ github.event.workflow_call.inputs.crate-name }}-v
+          crate-name: "${{ github.event.workflow_call.inputs.crate-name }}"
+          version-tag-prefix: "${{ github.event.workflow_call.inputs.crate-name }}-v"
