@@ -26,7 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - run: |
+      - id: debug
+        run: |
           echo "${{ toJSON(github.event.inputs) }}"
 
       # - name: Tag the version
