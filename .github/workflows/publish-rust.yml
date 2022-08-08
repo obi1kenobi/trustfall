@@ -52,7 +52,7 @@ jobs:
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-        run: cargo publish
+        run: cargo publish -p "${{ inputs.crate-name }}"
 
   should-publish:
     name: Did version change
