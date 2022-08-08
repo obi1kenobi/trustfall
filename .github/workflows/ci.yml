@@ -297,3 +297,20 @@ jobs:
 
       - name: Run linters
         run: npm run lint
+
+  attempt-publish:
+    name: Publish any crates whose versions changed
+    runs-on: ubuntu-latest
+    needs:
+      - ci-everything
+    steps:
+      - id: trustfall_filetests_macros
+        uses: ./.github/workflows/publish-rust
+        with:
+          crate-name: trustfall_filetests_macros
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - id: trustfall_core
+        uses: ./.github/workflows/publish-rust
+        with:
+          crate-name: trustfall_core
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
