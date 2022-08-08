@@ -299,7 +299,7 @@ jobs:
         run: npm run lint
 
   attempt-publish-trustfall-filetests-macros:
-    name: Attempt publishing trustfall_filetests_macros
+    name: publish trustfall_filetests_macros
     uses: ./.github/workflows/publish-rust.yml
     with:
       crate-name: trustfall_filetests_macros
@@ -307,7 +307,9 @@ jobs:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   attempt-publish-trustfall-core:
-    name: Attempt publishing trustfall_core
+    name: publish trustfall_core
+    needs:
+      - attempt-publish-trustfall-filetests-macros
     uses: ./.github/workflows/publish-rust.yml
     with:
       crate-name: trustfall_core

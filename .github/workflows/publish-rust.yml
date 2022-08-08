@@ -43,7 +43,7 @@ jobs:
         run: cargo publish
 
   should-publish:
-    name: Check if version changed
+    name: Did version change
     runs-on: ubuntu-latest
     outputs:
       is_new_version: "${{ steps.check.outputs.is_new_version }}"
@@ -67,7 +67,7 @@ jobs:
           fi
 
   pre-publish-checks:
-    name: Check for semver compliance
+    name: Semver
     runs-on: ubuntu-latest
     needs:
       - should-publish

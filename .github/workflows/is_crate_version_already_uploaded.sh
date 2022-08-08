@@ -15,7 +15,7 @@ cd "$(git rev-parse --show-toplevel)"
 # The first argument should be the name of a crate.
 CRATE_NAME="$1"
 
-CURRENT_VERSION="$(.github/workflows/get_current_version.sh "$CRATE_NAME")" || \
+CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh "$CRATE_NAME")" || \
     (echo >&2 "No crate named $CRATE_NAME found in workspace."; exit 1)
 echo >&2 "Crate $CRATE_NAME current version: $CURRENT_VERSION"
 
