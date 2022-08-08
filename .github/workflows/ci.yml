@@ -306,12 +306,12 @@ jobs:
     #   - ci-everything
     steps:
       - id: trustfall_filetests_macros
-        uses: obi1kenobi/trustfall/.github/workflows/publish-rust@main
+        uses: obi1kenobi/trustfall/.github/workflows/publish-rust@automated_publishing
         with:
           crate-name: trustfall_filetests_macros
           CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
       - id: trustfall_core
-        uses: obi1kenobi/trustfall/.github/workflows/publish-rust@main
+        uses: obi1kenobi/trustfall/.github/workflows/publish-rust@automated_publishing
         with:
           crate-name: trustfall_core
           CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}"
