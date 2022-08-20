@@ -1,0 +1,575 @@
+schema {
+  query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+
+type RootSchemaQuery {
+  Crate: Crate!
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Crate.html
+"""
+type Crate {
+  root: String!
+  crate_version: String
+  includes_private: Boolean!
+  format_version: Int!
+
+  item: [Item!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+"""
+interface Item {
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+
+  """
+  A list of all the attributes applied to this item.
+
+  The attributes are also available through the `attribute` edge,
+  which makes certain operations easier.
+  """
+  attrs: [String!]!
+
+  # stringified version of the visibility struct field
+  visibility_limit: String!
+
+  attribute: [Attribute!]
+  span: Span
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Struct.html
+"""
+type Struct implements Item & Importable & ImplOwner {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # own properties
+  struct_type: String!
+  fields_stripped: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+
+  # edges from ImplOwner
+  """
+  Any impl for this type.
+
+  All impl kinds are included:
+  - inherent impls: `impl Foo`
+  - explicit trait implementations: `impl Bar for Foo`
+  - blanket implementations: `impl<T> Bar for T`
+  """
+  impl: [Impl!]
+
+  """
+  Only inherent impls: implementations of the type itself (`impl Foo`).
+
+  The impls pointed to here are guaranteed to have no `trait` and no `blanket` edges.
+
+  This edge is just a convenience to simplify query-writing,
+  so we don't have to keep writing "@fold @transform(...) @filter(...)" chains
+  over the `trait` and `blanket` edges.
+
+  When Trustfall supports macro edges, this should just become a macro edge.
+  """
+  inherent_impl: [Impl!]
+
+  # own edges
+  field: [StructField!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Type.html
+"""
+type StructField implements Item {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # own edges
+  raw_type: RawType
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Enum.html
+"""
+type Enum implements Item & Importable & ImplOwner {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # own properties
+  variants_stripped: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+
+  # edges from ImplOwner
+  """
+  Any impl for this type.
+
+  All impl kinds are included:
+  - inherent impls: `impl Foo`
+  - explicit trait implementations: `impl Bar for Foo`
+  - blanket implementations: `impl<T> Bar for T`
+  """
+  impl: [Impl!]
+
+  """
+  Only inherent impls: implementations of the type itself (`impl Foo`).
+
+  The impls pointed to here are guaranteed to have no `trait` and no `blanket` edges.
+
+  This edge is just a convenience to simplify query-writing,
+  so we don't have to keep writing "@fold @transform(...) @filter(...)" chains
+  over the `trait` and `blanket` edges.
+
+  When Trustfall supports macro edges, this should just become a macro edge.
+  """
+  inherent_impl: [Impl!]
+
+  # own edges
+  variant: [Variant!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+interface Variant implements Item {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+type PlainVariant implements Item & Variant {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+type TupleVariant implements Item & Variant {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.Variant.html
+"""
+type StructVariant implements Item & Variant {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Span.html
+"""
+type Span {
+  filename: String!
+  begin_line: Int!
+  begin_column: Int!
+  end_line: Int!
+  end_column: Int!
+}
+
+"""
+An item that can be imported, through one or more paths.
+"""
+interface Importable {
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+An item that can have impl blocks, like a struct or enum.
+"""
+interface ImplOwner implements Item & Importable {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+
+  # own edges
+  """
+  Any impl for this type.
+
+  All impl kinds are included:
+  - inherent impls: `impl Foo`
+  - explicit trait implementations: `impl Bar for Foo`
+  - blanket implementations: `impl<T> Bar for T`
+  """
+  impl: [Impl!]
+
+  """
+  Only inherent impls: implementations of the type itself (`impl Foo`).
+
+  The impls pointed to here are guaranteed to have no `trait` and no `blanket` edges.
+
+  This edge is just a convenience to simplify query-writing,
+  so we don't have to keep writing "@fold @transform(...) @filter(...)" chains
+  over the `trait` and `blanket` edges.
+
+  When Trustfall supports macro edges, this should just become a macro edge.
+  """
+  inherent_impl: [Impl!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/struct.Impl.html
+"""
+type Impl implements Item {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+
+  # stringified version of the visibility struct field
+  visibility_limit: String!
+
+  # own properties
+  unsafe: Boolean!
+  negative: Boolean!
+  synthetic: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # own edges
+
+  """
+  The trait being implemented. Inherent impls don't have a trait.
+
+  TODO: implement me
+  """
+  implemented_trait: ImplementedTrait
+
+  # """
+  # The generic type across which the blanket trait implementation is made.
+
+  # TODO: implement me
+  # """
+  # blanket: GenericType
+
+  """
+  Methods defined in this impl.
+  """
+  method: [Method!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/struct.Trait.html
+"""
+type Trait implements Item & Importable {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # own properties
+  variants_stripped: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+A possible way that an item could be imported.
+"""
+type ImportablePath {
+  """
+  The visibility restriction on this importable path.
+
+  For example: "public"
+  """
+  visibility_limit: String!
+
+  """
+  The path from which the item can be imported.
+
+  For example: ["foo", "bar", "Baz"] for a type importable as foo::bar::Baz
+  """
+  path: [String!]!
+}
+
+"""
+The fully-qualified path of an item including the full sequence of modules in which it is found.
+
+For example, consider a struct `Quux` in `foo/bar/mod.rs`. Its canonical path is `"foo::bar::Quux"`,
+even if `foo/mod.rs` might have a line like `pub use bar::Quux;`. The re-export is visible through
+the struct's ImportablePath neighbors.
+"""
+type Path {
+  path: [String!]!
+}
+
+"""
+A function-like entity, like a function, function pointer, or method.
+
+Combines:
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Header.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.FnDecl.html
+"""
+interface FunctionLike {
+  const: Boolean!
+  unsafe: Boolean!
+  async: Boolean!
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Function.html
+"""
+type Function implements Item & FunctionLike & Importable {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # properties from FunctionLike
+  const: Boolean!
+  unsafe: Boolean!
+  async: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Method.html
+"""
+type Method implements Item & FunctionLike {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # properties from FunctionLike
+  const: Boolean!
+  unsafe: Boolean!
+  async: Boolean!
+
+  # edge from Item
+  span: Span
+  attribute: [Attribute!]
+}
+
+"""
+A specific attribute applied to an Item.
+"""
+type Attribute {
+  """
+  The textual representation of the attribute.
+
+  For example: "#[repr(C)]"
+  """
+  value: String!
+}
+
+"""
+A type represented in the "raw" rustdoc JSON representation.
+
+Copiously detailed, but not the easiest to use due to its complexity.
+
+This interface is a temporary, perma-unstable type intended to be used
+only until the rustdoc JSON format is stabilized and until subsequently
+we are able to design a better, more permanent representation for
+Rust types in this schema.
+
+https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Type.html
+"""
+interface RawType {
+  name: String!
+}
+
+"""
+Represents a struct, enum, or trait.
+
+https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Type.html#variant.ResolvedPath
+"""
+interface ResolvedPathType implements RawType {
+  """
+  The fully-qualified canonical name of the type.
+
+  For example: "core::marker::PhantomData" or "std::marker::PhantomData"
+  """
+  name: String!
+}
+
+"""
+The trait that is being implemented in an impl block.
+
+In `impl Foo<u64> for Bar`, this is the `Foo<u64>` part.
+"""
+type ImplementedTrait {
+  name: String!
+
+  # own edges
+  """
+  In `impl Foo<u64> for Bar`, this refers to `trait Foo<T>`.
+  """
+  trait: Trait!
+}
+
+"""
+Represents a primitive type:
+fixed-size numeric types (plus int/usize/float), char, arrays, slices, and tuples.
+
+https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Type.html#variant.Primitive
+"""
+type PrimitiveType implements RawType {
+  """
+  The name of the primitive type.
+
+  For example: "usize"
+  """
+  name: String!
+}
+
+"""
+Any other type that isn't currently captured by another kind of RawType.
+
+This type is a hack, so I can get useful queries running before implementing
+the entire spectrum of possible types.
+
+No query should write "... on OtherType" because there's nothing you can do with it.
+It will eventually be removed without a major version bump.
+"""
+type OtherType implements RawType {
+  """
+  As best we can define the name of this type.
+  """
+  name: String!
+}
