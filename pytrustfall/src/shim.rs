@@ -1,4 +1,7 @@
 #![allow(unused_imports)]
+// Due to unfortunate interaction between pyo3 macros and this clippy lint:
+// https://github.com/rust-lang/rust-clippy/issues/8971
+#![allow(clippy::borrow_deref_ref)]
 
 use std::{cell::RefCell, collections::BTreeMap, fs, rc::Rc, sync::Arc};
 
