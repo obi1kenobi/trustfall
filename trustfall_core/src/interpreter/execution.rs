@@ -73,26 +73,40 @@ where
     match vertex.coerced_from_type.as_ref() {
         None => iterator,
         Some(coerced_from) => {
-            let mut adapter_ref = adapter.borrow_mut();
-            let coercion_iter = adapter_ref.can_coerce_to_type(
-                iterator,
-                coerced_from.clone(),
-                vertex.type_name.clone(),
-                query.clone(),
-                vertex.vid,
-            );
-
-            Box::new(coercion_iter.filter_map(
-                |(ctx, can_coerce)| {
-                    if can_coerce {
-                        Some(ctx)
-                    } else {
-                        None
-                    }
-                },
-            ))
+            perform_coercion(adapter, query, vertex, coerced_from.clone(), vertex.type_name.clone(), iterator)
         }
     }
+}
+
+pub(super) fn perform_coercion<'query, DataToken>(
+    adapter: &RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>,
+    query: &InterpretedQuery,
+    vertex: &IRVertex,
+    coerced_from: Arc<str>,
+    coerce_to: Arc<str>,
+    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>
+where
+    DataToken: Clone + Debug + 'query,
+{
+    let mut adapter_ref = adapter.borrow_mut();
+    let coercion_iter = adapter_ref.can_coerce_to_type(
+        iterator,
+        coerced_from,
+        coerce_to,
+        query.clone(),
+        vertex.vid,
+    );
+
+    Box::new(coercion_iter.filter_map(
+        |(ctx, can_coerce)| {
+            if can_coerce {
+                Some(ctx)
+            } else {
+                None
+            }
+        },
+    ))
 }
 
 fn compute_component<'query, DataToken>(
