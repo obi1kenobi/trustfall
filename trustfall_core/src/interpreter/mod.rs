@@ -19,6 +19,7 @@ mod filtering;
 pub mod macros;
 pub mod replay;
 pub mod trace;
+mod recursion;
 
 #[derive(Debug, Clone)]
 pub struct DataContext<DataToken: Clone + Debug> {
