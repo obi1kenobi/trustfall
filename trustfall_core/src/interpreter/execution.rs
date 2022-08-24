@@ -1041,9 +1041,9 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
 fn expand_non_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
-    component: &IRQueryComponent,
+    _component: &IRQueryComponent,
     expanding_from: &IRVertex,
-    expanding_to: &IRVertex,
+    _expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &Option<Arc<EdgeParameters>>,
