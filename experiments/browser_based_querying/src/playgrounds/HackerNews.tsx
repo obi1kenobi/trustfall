@@ -1,21 +1,6 @@
 import { useCallback, useState, useEffect, useMemo } from 'react';
 import { buildSchema } from 'graphql';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { initializeMode } from 'monaco-graphql/esm/initializeMode';
-import { css } from '@emotion/react';
-import {
-  Button,
-  Grid,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  SelectChangeEvent,
-  MenuItem,
-  Typography,
-  SxProps,
-} from '@mui/material';
-import { LoadingButton } from '@mui/lab';
+import { Box, Typography, CircularProgress, Grid } from '@mui/material';
 
 import { HN_SCHEMA } from '../adapter';
 import { AsyncValue } from '../types';
@@ -51,6 +36,24 @@ export default function HackerNewsPlayground(): JSX.Element {
   const [nextResult, setNextResult] = useState<AsyncValue<object> | null>(null);
 
   const schema = useMemo(() => buildSchema(HN_SCHEMA), []);
+
+  const header = useMemo(
+    () => (
+      <Box>
+        <Typography variant="h4" component="div">
+          Trustfall in-browser query demo
+        </Typography>
+        <Typography>
+          Query the HackerNews API directly from your browser with GraphQL, using{' '}
+          <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
+            Trustfall
+          </a>{' '}
+          compiled to WebAssembly.
+        </Typography>
+      </Box>
+    ),
+    []
+  );
 
   const runQuery = useCallback(
     (query: string, vars: string) => {
@@ -160,9 +163,23 @@ export default function HackerNewsPlayground(): JSX.Element {
     };
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
-  // TODO: Spinner
   if (!ready) {
-    return <div>Loading...</div>;
+    return (
+      <Grid
+        container
+        direction="column"
+        height="95vh"
+        width="98vw"
+        sx={{ alignItems: 'center', justifyContent: 'space-around' }}
+      >
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size="150px" sx={{ mb: 2 }} />
+          <Box>
+            <Typography variant="h5">Preparing playground...</Typography>
+          </Box>
+        </Box>
+      </Grid>
+    );
   }
 
   return (
@@ -172,6 +189,7 @@ export default function HackerNewsPlayground(): JSX.Element {
       error={nextResult && nextResult.status === 'error' ? nextResult.error : null}
       hasMore={hasMore}
       schema={schema}
+      header={header}
       exampleQueries={EXAMPLE_OPTIONS}
       onQuery={runQuery}
       onQueryNextResult={queryNextResult}

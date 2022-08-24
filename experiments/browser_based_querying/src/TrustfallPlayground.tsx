@@ -57,10 +57,21 @@ interface TrustfallPlaygroundProps {
   exampleQueries: { name: string; value: [string, string] }[];
   onQuery: (query: string, vars: string) => void;
   onQueryNextResult: () => void;
+  header: React.ReactElement;
 }
 
 export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JSX.Element {
-  const { onQuery, onQueryNextResult, results, loading, error, hasMore, schema, exampleQueries } = props;
+  const {
+    onQuery,
+    onQueryNextResult,
+    results,
+    loading,
+    error,
+    hasMore,
+    schema,
+    exampleQueries,
+    header,
+  } = props;
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
     value: [string, string];
@@ -74,12 +85,15 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     null
   );
 
-  const handleExampleQueryChange = useCallback((evt: SelectChangeEvent<string | null>) => {
-    if (evt.target.value) {
-      const example = exampleQueries.find((option) => option.name === evt.target.value) ?? null;
-      setExampleQuery(example);
-    }
-  }, [exampleQueries]);
+  const handleExampleQueryChange = useCallback(
+    (evt: SelectChangeEvent<string | null>) => {
+      if (evt.target.value) {
+        const example = exampleQueries.find((option) => option.name === evt.target.value) ?? null;
+        setExampleQuery(example);
+      }
+    },
+    [exampleQueries]
+  );
 
   const handleQuery = useCallback(() => {
     if (!queryEditor || !varsEditor) return;
@@ -201,16 +215,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   return (
     <Grid container direction="column" height="95vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
       <Grid item xs={1}>
-        <Typography variant="h4" component="div">
-          Trustfall in-browser query demo
-        </Typography>
-        <Typography>
-          Query the HackerNews API directly from your browser with GraphQL, using{' '}
-          <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
-            Trustfall
-          </a>{' '}
-          compiled to WebAssembly.
-        </Typography>
+        {header}
         <div css={{ display: 'flex', margin: 10 }}>
           <Button size="small" onClick={() => handleQuery()} variant="contained" sx={{ mr: 2 }}>
             Run query!
