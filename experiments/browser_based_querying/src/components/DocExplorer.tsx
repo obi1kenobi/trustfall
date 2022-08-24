@@ -1,17 +1,26 @@
-/** Adapted from https://github.com/graphql/graphiql **/
-import React, { ReactNode } from "react";
-import { GraphQLSchema, isType } from "graphql";
-import { useExplorerContext, useSchemaContext } from "@graphiql/react";
-import { Grid, Typography } from "@mui/material";
-import Button from "@mui/material/Button";
+/**
+ *  Copyright (c) 2022 GraphQL Contributors.
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
+ *
+ *  This code has been slightly adapted to change the styling of elements.
+ *  Original code is available here:
+ *  Adapted from https://github.com/graphql/graphiql
+ */
+import { useExplorerContext, useSchemaContext } from '@graphiql/react';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
+import { Grid, Typography } from '@mui/material';
+import Button from '@mui/material/Button';
+import { GraphQLSchema, isType } from 'graphql';
+import { ReactNode } from 'react';
 
-import FieldDoc from "./DocExplorer/FieldDoc";
-import SchemaDoc from "./DocExplorer/SchemaDoc";
-import SearchBox from "./DocExplorer/SearchBox";
-import SearchResults from "./DocExplorer/SearchResults";
-import TypeDoc from "./DocExplorer/TypeDoc";
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import FieldDoc from './DocExplorer/FieldDoc';
+import SchemaDoc from './DocExplorer/SchemaDoc';
+import SearchBox from './DocExplorer/SearchBox';
+import SearchResults from './DocExplorer/SearchResults';
+import TypeDoc from './DocExplorer/TypeDoc';
 
 type DocExplorerProps = {
   onClose?(): void;
@@ -51,11 +60,7 @@ export function DocExplorer(props: DocExplorerProps) {
   if (fetchError) {
     content = <Typography>Error fetching schema</Typography>;
   } else if (validationErrors.length > 0) {
-    content = (
-      <Typography >
-        Schema is invalid: {validationErrors[0].message}
-      </Typography>
-    );
+    content = <Typography>Schema is invalid: {validationErrors[0].message}</Typography>;
   } else if (isFetching) {
     // Schema is undefined when it is being loaded via introspection.
     content = (
@@ -78,8 +83,7 @@ export function DocExplorer(props: DocExplorerProps) {
   }
 
   const shouldSearchBoxAppear =
-    explorerNavStack.length === 1 ||
-    (isType(navItem.def) && "getFields" in navItem.def);
+    explorerNavStack.length === 1 || (isType(navItem.def) && 'getFields' in navItem.def);
 
   let prevName;
   if (explorerNavStack.length > 1) {
@@ -93,37 +97,40 @@ export function DocExplorer(props: DocExplorerProps) {
       key={navItem.name}
       direction="column"
       spacing={2}
-      sx={{mt: 1}}
+      sx={{ mt: 1 }}
     >
       <Grid item>
-        <Grid container direction="row" spacing={2} alignItems="center" justifyContent={"space-between"}>
-          <Grid item xs={2}>
-          {prevName && (
-            <Button
-              variant="text"
-              startIcon={<ArrowBackIosNewIcon/>}
-              onClick={pop}
-              aria-label={`Go back to ${prevName}`}
-              sx={{textTransform: 'none'}}
-            >
-              {prevName}
-            </Button>
-          )}
+        <Grid
+          container
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          justifyContent={'space-around'}
+        >
+          <Grid container item xs={1}>
+            {prevName && (
+              <Button
+                variant="text"
+                startIcon={<ArrowBackIosNewIcon />}
+                onClick={pop}
+                aria-label={`Go back to ${prevName}`}
+                sx={{ textTransform: 'none' }}
+              >
+                {prevName}
+              </Button>
+            )}
           </Grid>
-
-          <Grid item>
-            <Typography variant="h6">
-              {navItem.title || navItem.name}
-            </Typography>
+          <Grid container item xs={3}>
+            <Typography variant="h6">{navItem.title || navItem.name}</Typography>
           </Grid>
-          <Grid item>
+          <Grid item xs={1}>
             <Button
               type="button"
               onClick={() => {
                 hide();
                 props.onClose?.();
               }}
-              startIcon={<SearchOffIcon/>}
+              startIcon={<SearchOffIcon />}
               variant="text"
               size="small"
               aria-label="Close Documentation Explorer"

@@ -1,13 +1,22 @@
-/** Adapted from https://github.com/graphql/graphiql **/
-import React from "react";
-import { GraphQLArgument, DirectiveNode, isType } from "graphql";
-import { useExplorerContext } from "@graphiql/react";
-import { Typography, List, ListItem } from "@mui/material";
+/**
+ *  Copyright (c) 2022 GraphQL Contributors.
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file.
+ *
+ *  This code has been slightly adapted to change the styling of elements.
+ *  Original code is available here:
+ *  Adapted from https://github.com/graphql/graphiql
+ */
+import React from 'react';
+import { GraphQLArgument, DirectiveNode, isType } from 'graphql';
+import { useExplorerContext } from '@graphiql/react';
+import { Typography, List, ListItem } from '@mui/material';
 
-import Argument from "./Argument";
-import Directive from "./Directive";
-import MarkdownContent from "./MarkdownContent";
-import TypeLink from "./TypeLink";
+import Argument from './Argument';
+import Directive from './Directive';
+import MarkdownContent from './MarkdownContent';
+import TypeLink from './TypeLink';
 
 export default function FieldDoc() {
   const { explorerNavStack } = useExplorerContext({ nonNull: true });
@@ -21,38 +30,37 @@ export default function FieldDoc() {
 
   let argsDef;
   let deprecatedArgsDef;
-  if (field && "args" in field && field.args.length > 0) {
+  if (field && 'args' in field && field.args.length > 0) {
     argsDef = (
       <div id="doc-args" className="doc-category">
-        <div className="doc-category-title"><Typography fontWeight="bold" sx={{mt: 1}}>arguments</Typography></div>
+        <div className="doc-category-title">
+          <Typography fontWeight="bold" sx={{ mt: 1 }}>
+            arguments
+          </Typography>
+        </div>
         <List dense>
-        {field.args
-          .filter((arg) => !arg.deprecationReason)
-          .map((arg: GraphQLArgument) => (
-            <ListItem>
-            <div key={arg.name} className="doc-category-item">
-              <div>
-                <Argument arg={arg} />
-              </div>
-              <MarkdownContent
-                className="doc-value-description"
-                markdown={arg.description}
-              />
-              {arg && "deprecationReason" in arg && (
-                <MarkdownContent
-                  className="doc-deprecation"
-                  markdown={arg?.deprecationReason}
-                />
-              )}
-            </div>
-            </ListItem>
-          ))}
-          </List>
+          {field.args
+            .filter((arg) => !arg.deprecationReason)
+            .map((arg: GraphQLArgument) => (
+              <ListItem>
+                <div key={arg.name} className="doc-category-item">
+                  <div>
+                    <Argument arg={arg} />
+                  </div>
+                  <MarkdownContent className="doc-value-description" markdown={arg.description} />
+                  {arg && 'deprecationReason' in arg && (
+                    <MarkdownContent
+                      className="doc-deprecation"
+                      markdown={arg?.deprecationReason}
+                    />
+                  )}
+                </div>
+              </ListItem>
+            ))}
+        </List>
       </div>
     );
-    const deprecatedArgs = field.args.filter((arg) =>
-      Boolean(arg.deprecationReason)
-    );
+    const deprecatedArgs = field.args.filter((arg) => Boolean(arg.deprecationReason));
     if (deprecatedArgs.length > 0) {
       deprecatedArgsDef = (
         <div id="doc-deprecated-args" className="doc-category">
@@ -71,15 +79,9 @@ export default function FieldDoc() {
                 <div>
                   <Argument arg={arg} />
                 </div>
-                <MarkdownContent
-                  className="doc-value-description"
-                  markdown={arg.description}
-                />
-                {arg && "deprecationReason" in arg && (
-                  <MarkdownContent
-                    className="doc-deprecation"
-                    markdown={arg?.deprecationReason}
-                  />
+                <MarkdownContent className="doc-value-description" markdown={arg.description} />
+                {arg && 'deprecationReason' in arg && (
+                  <MarkdownContent className="doc-deprecation" markdown={arg?.deprecationReason} />
                 )}
               </div>
             ))
@@ -109,17 +111,16 @@ export default function FieldDoc() {
     <div>
       <MarkdownContent
         className="doc-type-description"
-        markdown={field.description || "No Description"}
+        markdown={field.description || 'No Description'}
       />
-      {field && "deprecationReason" in field && (
-        <MarkdownContent
-          className="doc-deprecation"
-          markdown={field.deprecationReason}
-        />
+      {field && 'deprecationReason' in field && (
+        <MarkdownContent className="doc-deprecation" markdown={field.deprecationReason} />
       )}
       <div className="doc-category">
         <div className="doc-category-title">
-          <Typography fontWeight="bold" display="inline">type: </Typography>
+          <Typography fontWeight="bold" display="inline">
+            type:{' '}
+          </Typography>
           <TypeLink type={field.type} />
         </div>
       </div>

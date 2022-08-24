@@ -1,12 +1,21 @@
-/** Adapted from https://github.com/graphql/graphiql **/
+/**
+ *  Copyright (c) 2022 GraphQL Contributors.
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file.
+ *
+ *  This code has been slightly adapted to change the styling of elements.
+ *  Original code is available here:
+ *  Adapted from https://github.com/graphql/graphiql
+ */
+import { Divider, List, ListItem, Typography } from "@mui/material";
 import React, { ReactNode } from "react";
-import { ListItem, List, Typography, Divider } from "@mui/material";
 
-import Argument from "./Argument";
-import TypeLink from "./TypeLink";
 import { useExplorerContext, useSchemaContext } from "@graphiql/react";
+import Argument from "./Argument";
 import FieldLink from "./FieldLink";
 import styles from "./Styles";
+import TypeLink from "./TypeLink";
 
 const CategoryTitle: React.FC<{ title: string | null }> = ({ title }) => {
   return (

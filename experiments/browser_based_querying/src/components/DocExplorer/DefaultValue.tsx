@@ -1,7 +1,15 @@
-/** Adapted from https://github.com/graphql/graphiql **/
-import React from 'react';
-import { astFromValue, print, ValueNode } from 'graphql';
+/**
+ *  Copyright (c) 2022 GraphQL Contributors.
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file.
+ *
+ *  This code has been slightly adapted to change the styling of elements.
+ *  Original code is available here:
+ *  Adapted from https://github.com/graphql/graphiql
+ */
 import { ExplorerFieldDef } from '@graphiql/react';
+import { astFromValue, print, ValueNode } from 'graphql';
 
 const printDefault = (ast?: ValueNode | null): string => {
   if (!ast) {

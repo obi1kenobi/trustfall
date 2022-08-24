@@ -1,8 +1,17 @@
-/** Adapted from https://github.com/graphql/graphiql **/
-import { useExplorerContext } from "@graphiql/react";
+/**
+ *  Copyright (c) 2022 GraphQL Contributors.
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file.
+ *
+ *  This code has been slightly adapted to change the styling of elements.
+ *  Original code is available here:
+ *  Adapted from https://github.com/graphql/graphiql
+ */
+import { useExplorerContext } from '@graphiql/react';
 import { Link } from '@mui/material';
-import { GraphQLType, isListType, isNonNullType } from "graphql";
-import styles from "./Styles";
+import { GraphQLType, isListType, isNonNullType } from 'graphql';
+import styles from './Styles';
 
 type TypeLinkProps = {
   type: GraphQLType;
