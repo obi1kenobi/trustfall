@@ -17,7 +17,7 @@ import { GraphQLSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import StaticDocExplorer from './components/StaticDocExplorer';
+import SimpleDocExplorer from './components/SimpleDocExplorer';
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
 // This is due to the height: 100% rule, since the container is slightly smaller
@@ -281,7 +281,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             Documentation Explorer
           </Typography>
           <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden', mt: 2 }}>
-            <StaticDocExplorer schema={schema} />
+            <SimpleDocExplorer schema={schema} />
           </Box>
         </Grid>
       </Grid>
