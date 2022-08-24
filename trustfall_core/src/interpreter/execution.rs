@@ -72,9 +72,14 @@ where
 {
     match vertex.coerced_from_type.as_ref() {
         None => iterator,
-        Some(coerced_from) => {
-            perform_coercion(adapter, query, vertex, coerced_from.clone(), vertex.type_name.clone(), iterator)
-        }
+        Some(coerced_from) => perform_coercion(
+            adapter,
+            query,
+            vertex,
+            coerced_from.clone(),
+            vertex.type_name.clone(),
+            iterator,
+        ),
     }
 }
 
@@ -1074,8 +1079,6 @@ fn expand_non_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
         x
     }))
 }
-
-
 
 #[allow(clippy::too_many_arguments)]
 fn expand_recursive_edge2<'query, DataToken: Clone + Debug + 'query>(

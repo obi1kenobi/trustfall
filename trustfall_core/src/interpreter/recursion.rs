@@ -6,7 +6,7 @@ use std::{cell::RefCell, sync::Arc};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
-use super::execution::{perform_coercion};
+use super::execution::perform_coercion;
 use super::{Adapter, DataContext, InterpretedQuery};
 
 // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=7f560f5f73145a8a2dc2714784c208ed
@@ -111,28 +111,30 @@ impl<'a, T: Clone + 'a> Iterator for BundleMonad<'a, T> {
     }
 }
 
-struct Rec<'a, 'func, T, F>
+struct Rec<'a, T, F1, F2>
 where
-    F: Fn(
+    F1: Fn(
+        Box<dyn Iterator<Item = T> + 'a>,
+    ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
+    F2: Fn(
         Box<dyn Iterator<Item = T> + 'a>,
     ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
 {
     from: Option<IterBundle<'a, T>>,
-    initial_neighbor_fn: &'func F,
-    subsequent_neighbor_fn: &'func F,
+    initial_neighbor_fn: F1,
+    subsequent_neighbor_fn: F2,
 }
 
-impl<'a, 'func, T, F> Rec<'a, 'func, T, F>
+impl<'a, T, F1, F2> Rec<'a, T, F1, F2>
 where
-    F: Fn(
+    F1: Fn(
+        Box<dyn Iterator<Item = T> + 'a>,
+    ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
+    F2: Fn(
         Box<dyn Iterator<Item = T> + 'a>,
     ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
 {
-    fn new(
-        from: IterBundle<'a, T>,
-        initial_neighbor_fn: &'func F,
-        subsequent_neighbor_fn: &'func F,
-    ) -> Self {
+    fn new(from: IterBundle<'a, T>, initial_neighbor_fn: F1, subsequent_neighbor_fn: F2) -> Self {
         Self {
             from: Some(from),
             initial_neighbor_fn,
@@ -141,9 +143,12 @@ where
     }
 }
 
-impl<'a, 'func, T: Clone + 'a, F> Iterator for Rec<'a, 'func, T, F>
+impl<'a, T: Clone + 'a, F1, F2> Iterator for Rec<'a, T, F1, F2>
 where
-    F: Fn(
+    F1: Fn(
+        Box<dyn Iterator<Item = T> + 'a>,
+    ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
+    F2: Fn(
         Box<dyn Iterator<Item = T> + 'a>,
     ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
 {
@@ -162,15 +167,14 @@ where
                 ..
             } = bundle
             {
-                let neighbors_fn = if bundle.is_initial {
-                    self.initial_neighbor_fn
-                } else {
-                    self.subsequent_neighbor_fn
-                };
-
+                let is_initial = bundle.is_initial;
                 let taken_from = self.from.take().expect("'from' peek showed non-empty");
-                let iter: Box<dyn Iterator<Item = Bundle<'a, T>>> =
-                    Box::new(BundleMonad::bind(taken_from, neighbors_fn));
+
+                let iter: Box<dyn Iterator<Item = Bundle<'a, T>>> = if is_initial {
+                    Box::new(BundleMonad::bind(taken_from, &self.initial_neighbor_fn))
+                } else {
+                    Box::new(BundleMonad::bind(taken_from, &self.subsequent_neighbor_fn))
+                };
                 self.from = Some(iter.peekable());
             } else {
                 break;
@@ -301,7 +305,57 @@ where
 
     Box::new(edge_iterator.map(|(context, neighbor_iterator)| {
         let neighbor_base = context.clone();
-        let independent_neighbor_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> = Box::new(
+        let independent_neighbor_contexts: Box<
+            dyn Iterator<Item = DataContext<DataToken>> + 'query,
+        > = Box::new(
+            neighbor_iterator
+                .map(move |neighbor| neighbor_base.split_and_move_to_token(Some(neighbor))),
+        );
+        (context, independent_neighbor_contexts)
+    }))
+}
+
+#[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
+fn resolve_initial_neighbors<'query, DataToken>(
+    adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
+    query: &InterpretedQuery,
+    _component: &IRQueryComponent,
+    expanding_from: &IRVertex,
+    _expanding_to: &IRVertex,
+    edge_id: Eid,
+    edge_name: &Arc<str>,
+    edge_parameters: &Option<Arc<EdgeParameters>>,
+    _recursive: &Recursive,
+    data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+) -> Box<
+    dyn Iterator<
+            Item = (
+                DataContext<DataToken>,
+                Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+            ),
+        > + 'query,
+>
+where
+    DataToken: Clone + Debug + 'query,
+{
+    let mut adapter_ref = adapter.borrow_mut();
+    let edge_iterator = adapter_ref.project_neighbors(
+        data_contexts,
+        expanding_from.type_name.clone(),
+        edge_name.clone(),
+        edge_parameters.clone(),
+        query.clone(),
+        expanding_from.vid,
+        edge_id,
+    );
+    drop(adapter_ref);
+
+    Box::new(edge_iterator.map(|(context, neighbor_iterator)| {
+        let neighbor_base = context.clone();
+        let independent_neighbor_contexts: Box<
+            dyn Iterator<Item = DataContext<DataToken>> + 'query,
+        > = Box::new(
             neighbor_iterator
                 .map(move |neighbor| neighbor_base.split_and_move_to_token(Some(neighbor))),
         );
@@ -326,5 +380,63 @@ pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     recursive: &Recursive,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    todo!()
+    // TODO: Fix the function signatures so that we don't need all this aggressive cloning.
+
+    let cloned_adapter = adapter.clone();
+    let cloned_query = query.clone();
+    let cloned_component = component.clone();
+    let cloned_expanding_from = expanding_from.clone();
+    let cloned_expanding_to = expanding_to.clone();
+    let cloned_edge_name = edge_name.clone();
+    let cloned_edge_parameters = edge_parameters.clone();
+    let cloned_recursive = recursive.clone();
+
+    let initial_neighbors_fn = move |ctxs| {
+        resolve_initial_neighbors(
+            cloned_adapter.clone(),
+            &cloned_query,
+            &cloned_component,
+            &cloned_expanding_from,
+            &cloned_expanding_to,
+            edge_id,
+            &cloned_edge_name,
+            &cloned_edge_parameters,
+            &cloned_recursive,
+            ctxs,
+        )
+    };
+
+    let cloned_adapter = adapter.clone();
+    let cloned_query = query.clone();
+    let cloned_component = component.clone();
+    let cloned_expanding_from = expanding_from.clone();
+    let cloned_expanding_to = expanding_to.clone();
+    let cloned_edge_name = edge_name.clone();
+    let cloned_edge_parameters = edge_parameters.clone();
+    let cloned_recursive = recursive.clone();
+
+    let subsequent_neighbors_fn = move |ctxs| {
+        coerce_and_resolve_neighbors(
+            cloned_adapter.clone(),
+            &cloned_query,
+            &cloned_component,
+            &cloned_expanding_from,
+            &cloned_expanding_to,
+            edge_id,
+            &cloned_edge_name,
+            &cloned_edge_parameters,
+            &cloned_recursive,
+            ctxs,
+        )
+    };
+
+    let initial_bundle = Bundle::new(Next::Nodes(iterator));
+    let initial_iter: Box<dyn Iterator<Item = _>> = Box::new(std::iter::once(initial_bundle));
+    let rec = Rec::new(
+        initial_iter.peekable(),
+        initial_neighbors_fn,
+        subsequent_neighbors_fn,
+    );
+
+    Box::new(rec)
 }
