@@ -9,8 +9,7 @@
  *  Adapted from https://github.com/graphql/graphiql
  */
 import { useExplorerContext, useSchemaContext } from '@graphiql/react';
-import SearchOffIcon from '@mui/icons-material/SearchOff';
-import { Grid, Typography, Tooltip } from '@mui/material';
+import { Grid, Typography } from '@mui/material';
 import Button from '@mui/material/Button';
 import { GraphQLSchema, isType } from 'graphql';
 import { ReactNode } from 'react';
@@ -110,11 +109,13 @@ export function DocExplorer(props: DocExplorerProps) {
           </Button>
         </Grid>
         <Grid item>
-          <Typography variant="body1" color="dimgray">{navItem.name}</Typography>
+          <Typography variant="body1" color="dimgray">
+            {navItem.name}
+          </Typography>
         </Grid>
       </Grid>
       <Grid item container direction="column">
-        <Grid item>
+        <Grid item sx={{ m: 1 }}>
           {shouldSearchBoxAppear && (
             <SearchBox
               value={navItem.search}
