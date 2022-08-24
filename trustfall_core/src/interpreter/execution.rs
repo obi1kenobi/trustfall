@@ -220,6 +220,7 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
         let context_field = &ir_query.root_component.outputs[output_name];
         let vertex_id = context_field.vertex_id;
         let moved_iterator = Box::new(output_iterator.map(move |context| {
+            dbg!(&context.tokens);
             let new_token = context.tokens[&vertex_id].clone();
             context.move_to_token(new_token)
         }));
@@ -1000,7 +1001,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     if let Some(recursive) = &edge.recursive {
-        expand_recursive_edge(
+        expand_recursive_edge2(
             adapter,
             query,
             component,
@@ -1042,7 +1043,6 @@ fn expand_non_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expanding_from_vid = expanding_from.vid;
-    let expanding_to_vid = expanding_to.vid;
     let expanding_vertex_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
 
@@ -1059,26 +1059,39 @@ fn expand_non_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     );
     drop(adapter_ref);
 
-    let mut iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
+    let iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
         Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
             EdgeExpander::new(context, neighbor_iterator, is_optional)
         }));
 
-    iterator = coerce_if_needed(adapter.as_ref(), query, expanding_to, iterator);
+    perform_entry_into_new_vertex(adapter, query, component, expanding_to, iterator)
+}
 
-    for filter_expr in expanding_to.filters.iter() {
+/// Apply all the operations needed at entry into a new vertex:
+/// - coerce the type, if needed
+/// - apply all local filters
+/// - record the token at this Vid in the context
+fn perform_entry_into_new_vertex<'query, DataToken: Clone + Debug + 'query>(
+    adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
+    query: &InterpretedQuery,
+    component: &IRQueryComponent,
+    vertex: &IRVertex,
+    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
+    let vertex_id = vertex.vid;
+    let mut iterator = coerce_if_needed(adapter.as_ref(), query, vertex, iterator);
+    for filter_expr in vertex.filters.iter() {
         iterator = apply_local_field_filter(
             adapter.as_ref(),
             query,
             component,
-            expanding_to_vid,
+            vertex_id,
             filter_expr,
             iterator,
         );
     }
-
     Box::new(iterator.map(move |mut x| {
-        x.record_token(expanding_to_vid);
+        x.record_token(vertex_id);
         x
     }))
 }
@@ -1303,8 +1316,7 @@ fn post_process_recursive_expansion<'query, DataToken: Clone + Debug + 'query>(
     expanding_to: &IRVertex,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    let expanding_to_vid = expanding_to.vid;
-    let mut filtering_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
+    let iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
         Box::new(
             iterator
                 .flat_map(|context| unpack_piggyback(context))
@@ -1314,24 +1326,7 @@ fn post_process_recursive_expansion<'query, DataToken: Clone + Debug + 'query>(
                 }),
         );
 
-    filtering_iterator =
-        coerce_if_needed(adapter.as_ref(), query, expanding_to, filtering_iterator);
-
-    for filter_expr in expanding_to.filters.iter() {
-        filtering_iterator = apply_local_field_filter(
-            adapter.as_ref(),
-            query,
-            component,
-            expanding_to.vid,
-            filter_expr,
-            filtering_iterator,
-        );
-    }
-
-    Box::new(filtering_iterator.map(move |mut x| {
-        x.record_token(expanding_to_vid);
-        x
-    }))
+    perform_entry_into_new_vertex(adapter, query, component, expanding_to, iterator)
 }
 
 #[cfg(test)]
