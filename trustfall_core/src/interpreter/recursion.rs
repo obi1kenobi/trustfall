@@ -35,13 +35,6 @@ impl<'a, T> Bundle<'a, T> {
     fn new_at_depth(next: Next<'a, T>, depth: usize) -> Self {
         Self { next_: next, depth }
     }
-
-    fn subsequent(&self, next: Next<'a, T>) -> Self {
-        Self {
-            next_: next,
-            depth: self.depth + 1,
-        }
-    }
 }
 
 type IterBundle<'a, T> = Peekable<Box<dyn Iterator<Item = Bundle<'a, T>> + 'a>>;
@@ -393,7 +386,6 @@ pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
         )
     };
 
-    let cloned_adapter = adapter.clone();
     let cloned_query = query.clone();
     let cloned_component = component.clone();
     let cloned_expanding_from = expanding_from.clone();
@@ -404,7 +396,7 @@ pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
 
     let subsequent_neighbors_fn = move |ctxs| {
         coerce_and_resolve_neighbors(
-            cloned_adapter.clone(),
+            adapter.clone(),
             &cloned_query,
             &cloned_component,
             &cloned_expanding_from,

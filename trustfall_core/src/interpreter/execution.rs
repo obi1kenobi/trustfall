@@ -25,7 +25,10 @@ use crate::{
     util::BTreeMapTryInsertExt,
 };
 
-use super::{error::QueryArgumentsError, Adapter, DataContext, InterpretedQuery};
+use super::{
+    error::QueryArgumentsError, recursion::expand_recursive_edge, Adapter, DataContext,
+    InterpretedQuery,
+};
 
 #[allow(clippy::type_complexity)]
 pub fn interpret_ir<'query, DataToken>(
@@ -997,7 +1000,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     if let Some(recursive) = &edge.recursive {
-        expand_recursive_edge2(
+        expand_recursive_edge(
             adapter,
             query,
             component,
