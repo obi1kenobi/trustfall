@@ -276,8 +276,11 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <div ref={resultsEditorRef} css={cssEditor} />
           </Paper>
         </Grid>
-        <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
-          <Box sx={{ flexGrow: 1, position: 'relative' }}>
+        <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
+          <Typography variant="h6" component="div">
+            Documentation Explorer
+          </Typography>
+          <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden', mt: 2 }}>
             <StaticDocExplorer schema={schema} />
           </Box>
         </Grid>

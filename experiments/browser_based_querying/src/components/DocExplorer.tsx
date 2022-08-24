@@ -10,7 +10,7 @@
  */
 import { useExplorerContext, useSchemaContext } from '@graphiql/react';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
-import { Grid, Typography } from '@mui/material';
+import { Grid, Typography, Tooltip } from '@mui/material';
 import Button from '@mui/material/Button';
 import { GraphQLSchema, isType } from 'graphql';
 import { ReactNode } from 'react';
@@ -63,11 +63,7 @@ export function DocExplorer(props: DocExplorerProps) {
     content = <Typography>Schema is invalid: {validationErrors[0].message}</Typography>;
   } else if (isFetching) {
     // Schema is undefined when it is being loaded via introspection.
-    content = (
-      <div className="spinner-container">
-        <div className="spinner" />
-      </div>
-    );
+    content = <Typography>Loading</Typography>;
   } else if (!schema) {
     // Schema is null when it explicitly does not exist, typically due to
     // an error during introspection.
@@ -81,6 +77,8 @@ export function DocExplorer(props: DocExplorerProps) {
   } else if (navItem.def) {
     content = <FieldDoc />;
   }
+
+  console.log(explorerNavStack);
 
   const shouldSearchBoxAppear =
     explorerNavStack.length === 1 || (isType(navItem.def) && 'getFields' in navItem.def);
@@ -96,57 +94,38 @@ export function DocExplorer(props: DocExplorerProps) {
       aria-label="Documentation Explorer"
       key={navItem.name}
       direction="column"
-      spacing={2}
-      sx={{ mt: 1 }}
+      spacing={1}
     >
-      <Grid item>
-        <Grid
-          container
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          justifyContent={'space-around'}
-        >
-          <Grid container item xs={1}>
-            {prevName && (
-              <Button
-                variant="text"
-                startIcon={<ArrowBackIosNewIcon />}
-                onClick={pop}
-                aria-label={`Go back to ${prevName}`}
-                sx={{ textTransform: 'none' }}
-              >
-                {prevName}
-              </Button>
-            )}
-          </Grid>
-          <Grid container item xs={3}>
-            <Typography variant="h6">{navItem.title || navItem.name}</Typography>
-          </Grid>
-          <Grid item xs={1}>
-            <Button
-              type="button"
-              onClick={() => {
-                hide();
-                props.onClose?.();
-              }}
-              startIcon={<SearchOffIcon />}
-              variant="text"
-              size="small"
-              aria-label="Close Documentation Explorer"
-            />
-          </Grid>
+      <Grid container item direction="row" alignItems="center">
+        <Grid item>
+          <Button
+            variant="text"
+            startIcon={<ArrowBackIosNewIcon />}
+            onClick={pop}
+            aria-label={prevName ? `Go back to ${prevName}` : ''}
+            sx={{ textTransform: 'none' }}
+            disabled={prevName ? false : true}
+          >
+            {prevName ? '' : ''}
+          </Button>
+        </Grid>
+        <Grid item>
+          <Typography variant="body1" color="dimgray">{navItem.name}</Typography>
         </Grid>
       </Grid>
-      <Grid item>
-        {shouldSearchBoxAppear && (
-          <SearchBox
-            value={navItem.search}
-            placeholder={`Search ${navItem.name}...`}
-            onSearch={showSearch}
-          />
-        )}
-        {content}
+      <Grid item container direction="column">
+        <Grid item>
+          {shouldSearchBoxAppear && (
+            <SearchBox
+              value={navItem.search}
+              placeholder={`Search ${navItem.name}...`}
+              onSearch={showSearch}
+            />
+          )}
+        </Grid>
+        <Grid item container direction="column">
+          {content}
+        </Grid>
       </Grid>
     </Grid>
   );
