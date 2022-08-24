@@ -1000,9 +1000,9 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     edge: &IREdge,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    if let Some(recursive) = &edge.recursive {
+    let expanded_iterator = if let Some(recursive) = &edge.recursive {
         expand_recursive_edge2(
-            adapter,
+            adapter.clone(),
             query,
             component,
             &component.vertices[&expanding_from_vid],
@@ -1015,7 +1015,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
         )
     } else {
         expand_non_recursive_edge(
-            adapter,
+            adapter.clone(),
             query,
             component,
             &component.vertices[&expanding_from_vid],
@@ -1026,7 +1026,15 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
             edge.optional,
             iterator,
         )
-    }
+    };
+
+    perform_entry_into_new_vertex(
+        adapter,
+        query,
+        component,
+        &component.vertices[&expanding_to_vid],
+        expanded_iterator,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1059,12 +1067,9 @@ fn expand_non_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     );
     drop(adapter_ref);
 
-    let iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
-        Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
-            EdgeExpander::new(context, neighbor_iterator, is_optional)
-        }));
-
-    perform_entry_into_new_vertex(adapter, query, component, expanding_to, iterator)
+    Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
+        EdgeExpander::new(context, neighbor_iterator, is_optional)
+    }))
 }
 
 /// Apply all the operations needed at entry into a new vertex:
@@ -1177,7 +1182,7 @@ fn expand_recursive_edge2<'query, DataToken: Clone + Debug + 'query>(
         );
     }
 
-    post_process_recursive_expansion(adapter, query, component, expanding_to, recursion_iterator)
+    post_process_recursive_expansion(recursion_iterator)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1310,23 +1315,16 @@ fn unpack_piggyback_inner<DataToken: Debug + Clone>(
 }
 
 fn post_process_recursive_expansion<'query, DataToken: Clone + Debug + 'query>(
-    adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
-    query: &InterpretedQuery,
-    component: &IRQueryComponent,
-    expanding_to: &IRVertex,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    let iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
-        Box::new(
-            iterator
-                .flat_map(|context| unpack_piggyback(context))
-                .map(|context| {
-                    assert!(context.piggyback.is_none());
-                    context.ensure_unsuspended()
-                }),
-        );
-
-    perform_entry_into_new_vertex(adapter, query, component, expanding_to, iterator)
+    Box::new(
+        iterator
+            .flat_map(|context| unpack_piggyback(context))
+            .map(|context| {
+                assert!(context.piggyback.is_none());
+                context.ensure_unsuspended()
+            }),
+    )
 }
 
 #[cfg(test)]
