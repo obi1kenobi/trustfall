@@ -11,6 +11,8 @@
 import ClearIcon from '@mui/icons-material/Clear';
 import { Grid, TextField } from '@mui/material';
 import IconButton from '@mui/material/IconButton';
+import SearchIcon from '@mui/icons-material/Search';
+import InputAdornment from '@mui/material/InputAdornment';
 import React, { ChangeEventHandler } from 'react';
 
 function debounce<F extends (...args: any[]) => any>(duration: number, fn: F) {
@@ -49,25 +51,32 @@ export default class SearchBox extends React.Component<SearchBoxProps, SearchBox
 
   render() {
     return (
-        <Grid container spacing={1}>
-          <Grid item>
-            <TextField
-              value={this.state.value}
-              onChange={this.handleChange}
-              label="Search schema"
-              type="text"
-              placeholder={this.props.placeholder}
-              aria-label={this.props.placeholder}
-            />
-          </Grid>
-          <Grid item>
-            {this.state.value && (
-              <IconButton aria-label="Clear search input" onClick={this.handleClear}>
+      <TextField
+        value={this.state.value}
+        onChange={this.handleChange}
+        label={this.props.placeholder}
+        type="text"
+        aria-label={this.props.placeholder}
+        InputProps={{
+          disableUnderline: false,
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton
+                aria-label="Clear search input"
+                onClick={this.handleClear}
+                disabled={!this.state.value}
+              >
                 <ClearIcon />
               </IconButton>
-            )}
-          </Grid>
-        </Grid>
+            </InputAdornment>
+          ),
+        }}
+      />
     );
   }
 

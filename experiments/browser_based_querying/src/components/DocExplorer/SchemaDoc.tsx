@@ -8,11 +8,11 @@
  *  Original code is available here:
  *  Adapted from https://github.com/graphql/graphiql
  */
-import React from "react";
-import TypeLink from "./TypeLink";
-import MarkdownContent from "./MarkdownContent";
-import { useSchemaContext } from "@graphiql/react";
-import { Grid, Typography } from "@mui/material";
+import React from 'react';
+import TypeLink from './TypeLink';
+import MarkdownContent from './MarkdownContent';
+import { useSchemaContext } from '@graphiql/react';
+import { Grid, Typography } from '@mui/material';
 
 // Render the top level Schema
 export default function SchemaDoc() {
@@ -31,8 +31,7 @@ export default function SchemaDoc() {
       <MarkdownContent
         className="doc-type-description"
         markdown={
-          schema.description ||
-          "A GraphQL schema provides a root type for each kind of operation."
+          schema.description || 'A GraphQL schema provides a root type for each kind of operation.'
         }
       />
       <div className="doc-category">

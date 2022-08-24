@@ -8,19 +8,19 @@
  *  Original code is available here:
  *  Adapted from https://github.com/graphql/graphiql
  */
-import { Divider, List, ListItem, Typography } from "@mui/material";
-import React, { ReactNode } from "react";
+import { Divider, List, ListItem, Typography } from '@mui/material';
+import React, { ReactNode } from 'react';
 
-import { useExplorerContext, useSchemaContext } from "@graphiql/react";
-import Argument from "./Argument";
-import FieldLink from "./FieldLink";
-import styles from "./Styles";
-import TypeLink from "./TypeLink";
+import { useExplorerContext, useSchemaContext } from '@graphiql/react';
+import Argument from './Argument';
+import FieldLink from './FieldLink';
+import styles from './Styles';
+import TypeLink from './TypeLink';
 
 const CategoryTitle: React.FC<{ title: string | null }> = ({ title }) => {
   return (
-    <div style={{ textTransform: "uppercase" }}>
-      <Typography sx={styles.searchResultTitles}>{title || ""}</Typography>
+    <div style={{ textTransform: 'uppercase' }}>
+      <Typography sx={styles.searchResultTitles}>{title || ''}</Typography>
       <Divider />
     </div>
   );
@@ -53,10 +53,7 @@ export default function SearchResults() {
   }
 
   for (const typeName of typeNames) {
-    if (
-      matchedWithin.length + matchedTypes.length + matchedFields.length >=
-      100
-    ) {
+    if (matchedWithin.length + matchedTypes.length + matchedFields.length >= 100) {
       break;
     }
 
@@ -69,17 +66,15 @@ export default function SearchResults() {
       );
     }
 
-    if (type && "getFields" in type) {
+    if (type && 'getFields' in type) {
       const fields = type.getFields();
       Object.keys(fields).forEach((fieldName) => {
         const field = fields[fieldName];
         let matchingArgs;
 
         if (!isMatch(fieldName, searchValue)) {
-          if ("args" in field && field.args.length) {
-            matchingArgs = field.args.filter((arg) =>
-              isMatch(arg.name, searchValue)
-            );
+          if ('args' in field && field.args.length) {
+            matchingArgs = field.args.filter((arg) => isMatch(arg.name, searchValue));
             if (matchingArgs.length === 0) {
               return;
             }
@@ -89,17 +84,17 @@ export default function SearchResults() {
         }
 
         const match = (
-          <ListItem key={typeName + "." + fieldName}>
-            {withinType !== type && [<TypeLink key="type" type={type} />, "."]}
+          <ListItem key={typeName + '.' + fieldName}>
+            {withinType !== type && [<TypeLink key="type" type={type} />, '.']}
             <FieldLink field={field} />
             {matchingArgs && [
-              "(",
+              '(',
               <span key="args">
                 {matchingArgs.map((arg) => (
                   <Argument key={arg.name} arg={arg} showDefaultValue={false} />
                 ))}
               </span>,
-              ")",
+              ')',
             ]}
           </ListItem>
         );
@@ -115,9 +110,7 @@ export default function SearchResults() {
 
   if (matchedWithin.length + matchedTypes.length + matchedFields.length === 0) {
     return (
-      <Typography sx={{ m: 1, fontWeight: "bold", color: "dimgray" }}>
-        No results found
-      </Typography>
+      <Typography sx={{ m: 1, fontWeight: 'bold', color: 'dimgray' }}>No results found</Typography>
     );
   }
 
@@ -145,8 +138,8 @@ export default function SearchResults() {
 
 function isMatch(sourceText: string, searchValue: string) {
   try {
-    const escaped = searchValue.replace(/[^_0-9A-Za-z]/g, (ch) => "\\" + ch);
-    return sourceText.search(new RegExp(escaped, "i")) !== -1;
+    const escaped = searchValue.replace(/[^_0-9A-Za-z]/g, (ch) => '\\' + ch);
+    return sourceText.search(new RegExp(escaped, 'i')) !== -1;
   } catch (e) {
     return sourceText.toLowerCase().indexOf(searchValue.toLowerCase()) !== -1;
   }

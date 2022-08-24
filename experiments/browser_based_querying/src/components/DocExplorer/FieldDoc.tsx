@@ -33,28 +33,19 @@ export default function FieldDoc() {
   if (field && 'args' in field && field.args.length > 0) {
     argsDef = (
       <div id="doc-args" className="doc-category">
-        <div className="doc-category-title">
-          <Typography fontWeight="bold" sx={{ mt: 1 }}>
-            arguments
-          </Typography>
-        </div>
+        <Typography fontWeight="bold" sx={{ mt: 1 }}>
+          arguments
+        </Typography>
         <List dense>
           {field.args
             .filter((arg) => !arg.deprecationReason)
             .map((arg: GraphQLArgument) => (
-              <ListItem>
-                <div key={arg.name} className="doc-category-item">
-                  <div>
-                    <Argument arg={arg} />
-                  </div>
-                  <MarkdownContent className="doc-value-description" markdown={arg.description} />
-                  {arg && 'deprecationReason' in arg && (
-                    <MarkdownContent
-                      className="doc-deprecation"
-                      markdown={arg?.deprecationReason}
-                    />
-                  )}
-                </div>
+              <ListItem key={arg.name}>
+                <Argument arg={arg} />
+                <MarkdownContent className="doc-value-description" markdown={arg.description} />
+                {arg && 'deprecationReason' in arg && (
+                  <MarkdownContent className="doc-deprecation" markdown={arg?.deprecationReason} />
+                )}
               </ListItem>
             ))}
         </List>
@@ -64,7 +55,7 @@ export default function FieldDoc() {
     if (deprecatedArgs.length > 0) {
       deprecatedArgsDef = (
         <div id="doc-deprecated-args" className="doc-category">
-          <div className="doc-category-title">deprecated arguments</div>
+          <Typography>deprecated arguments</Typography>
           {!showDeprecated ? (
             <button
               type="button"
