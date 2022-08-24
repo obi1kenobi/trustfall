@@ -1,21 +1,23 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { css } from '@emotion/react';
+import { LoadingButton } from '@mui/lab';
+import {
+  Box,
+  Button,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  SelectChangeEvent,
+  SxProps,
+  Typography,
+} from '@mui/material';
 import { GraphQLSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
-import { css } from '@emotion/react';
-import {
-  Button,
-  Grid,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  SelectChangeEvent,
-  MenuItem,
-  Typography,
-  SxProps,
-} from '@mui/material';
-import { LoadingButton } from '@mui/lab';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import StaticDocExplorer from './components/StaticDocExplorer';
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
 // This is due to the height: 100% rule, since the container is slightly smaller
@@ -273,6 +275,11 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
             <div ref={resultsEditorRef} css={cssEditor} />
           </Paper>
+        </Grid>
+        <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
+          <Box sx={{ flexGrow: 1, position: 'relative' }}>
+            <StaticDocExplorer schema={schema} />
+          </Box>
         </Grid>
       </Grid>
     </Grid>
