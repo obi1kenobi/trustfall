@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::iter::Peekable;
+use std::num::NonZeroUsize;
 use std::rc::Rc;
 use std::{cell::RefCell, sync::Arc};
 
@@ -20,21 +21,25 @@ enum Next<'a, T> {
 
 struct Bundle<'a, T> {
     next_: Next<'a, T>,
-    is_initial: bool,
+    depth: usize,
 }
 
 impl<'a, T> Bundle<'a, T> {
     fn new(next: Next<'a, T>) -> Self {
         Self {
             next_: next,
-            is_initial: true,
+            depth: 0,
         }
     }
 
-    fn new_subsequent(next: Next<'a, T>) -> Self {
+    fn new_at_depth(next: Next<'a, T>, depth: usize) -> Self {
+        Self { next_: next, depth }
+    }
+
+    fn subsequent(&self, next: Next<'a, T>) -> Self {
         Self {
             next_: next,
-            is_initial: false,
+            depth: self.depth + 1,
         }
     }
 }
@@ -44,10 +49,11 @@ type IterBundle<'a, T> = Peekable<Box<dyn Iterator<Item = Bundle<'a, T>> + 'a>>;
 struct BundleMonad<'a, T: 'a> {
     inner: Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
     queue: Rc<RefCell<VecDeque<Bundle<'a, T>>>>,
+    generates_depth: usize,
 }
 
 impl<'a, T: Clone + 'a> BundleMonad<'a, T> {
-    fn bind<F>(from: IterBundle<'a, T>, neighbors: &F) -> Self
+    fn bind<F>(from: IterBundle<'a, T>, generates_depth: usize, neighbors: &F) -> Self
     where
         F: Fn(
             Box<dyn Iterator<Item = T> + 'a>,
@@ -59,7 +65,7 @@ impl<'a, T: Clone + 'a> BundleMonad<'a, T> {
             Next::Done(x) => {
                 queue
                     .borrow_mut()
-                    .push_back(Bundle::new_subsequent(Next::Done(x)));
+                    .push_back(Bundle::new_at_depth(Next::Done(x), bundle.depth));
                 let iter: Box<dyn Iterator<Item = T> + 'a> = Box::new(vec![].into_iter());
                 iter
             }
@@ -68,7 +74,7 @@ impl<'a, T: Clone + 'a> BundleMonad<'a, T> {
                 let iter: Box<dyn Iterator<Item = T> + 'a> = Box::new(nodes.map(move |node| {
                     queue_clone
                         .borrow_mut()
-                        .push_back(Bundle::new_subsequent(Next::Done(node.clone())));
+                        .push_back(Bundle::new_at_depth(Next::Done(node.clone()), bundle.depth));
                     node
                 }));
                 iter
@@ -78,6 +84,7 @@ impl<'a, T: Clone + 'a> BundleMonad<'a, T> {
         Self {
             inner: processed,
             queue: queue_clone,
+            generates_depth,
         }
     }
 }
@@ -96,9 +103,10 @@ impl<'a, T: Clone + 'a> Iterator for BundleMonad<'a, T> {
         // need to be returned first. If not, we will infinite-loop on
         // infinite-depth graphs.
         if let Some((_, neighbors_iter)) = self.inner.next() {
-            self.queue
-                .borrow_mut()
-                .push_back(Bundle::new_subsequent(Next::Nodes(neighbors_iter)));
+            self.queue.borrow_mut().push_back(Bundle::new_at_depth(
+                Next::Nodes(neighbors_iter),
+                self.generates_depth,
+            ));
         }
 
         // Try reading from the queue again, since pulling
@@ -123,6 +131,7 @@ where
     from: Option<IterBundle<'a, T>>,
     initial_neighbor_fn: F1,
     subsequent_neighbor_fn: F2,
+    max_depth: NonZeroUsize,
 }
 
 impl<'a, T, F1, F2> Rec<'a, T, F1, F2>
@@ -134,11 +143,17 @@ where
         Box<dyn Iterator<Item = T> + 'a>,
     ) -> Box<dyn Iterator<Item = (T, Box<dyn Iterator<Item = T> + 'a>)> + 'a>,
 {
-    fn new(from: IterBundle<'a, T>, initial_neighbor_fn: F1, subsequent_neighbor_fn: F2) -> Self {
+    fn new(
+        from: IterBundle<'a, T>,
+        initial_neighbor_fn: F1,
+        subsequent_neighbor_fn: F2,
+        max_depth: NonZeroUsize,
+    ) -> Self {
         Self {
             from: Some(from),
             initial_neighbor_fn,
             subsequent_neighbor_fn,
+            max_depth,
         }
     }
 }
@@ -167,14 +182,39 @@ where
                 ..
             } = bundle
             {
-                let is_initial = bundle.is_initial;
+                let depth = bundle.depth;
                 let taken_from = self.from.take().expect("'from' peek showed non-empty");
 
-                let iter: Box<dyn Iterator<Item = Bundle<'a, T>>> = if is_initial {
-                    Box::new(BundleMonad::bind(taken_from, &self.initial_neighbor_fn))
-                } else {
-                    Box::new(BundleMonad::bind(taken_from, &self.subsequent_neighbor_fn))
-                };
+                let iter: Box<dyn Iterator<Item = Bundle<'a, T>>> =
+                    if depth == usize::from(self.max_depth) {
+                        Box::new(taken_from.flat_map(move |bundle| {
+                            let next = &bundle.next_;
+                            if let Next::Done(..) = next {
+                                let boxed: Box<dyn Iterator<Item = _>> =
+                                    Box::new(std::iter::once(bundle));
+                                boxed
+                            } else {
+                                match bundle.next_ {
+                                    Next::Nodes(nodes) => Box::new(nodes.map(move |item| {
+                                        Bundle::new_at_depth(Next::Done(item), depth)
+                                    })),
+                                    _ => unreachable!("should have been handled earlier"),
+                                }
+                            }
+                        }))
+                    } else if depth == 0 {
+                        Box::new(BundleMonad::bind(
+                            taken_from,
+                            depth + 1,
+                            &self.initial_neighbor_fn,
+                        ))
+                    } else {
+                        Box::new(BundleMonad::bind(
+                            taken_from,
+                            depth + 1,
+                            &self.subsequent_neighbor_fn,
+                        ))
+                    };
                 self.from = Some(iter.peekable());
             } else {
                 break;
@@ -191,59 +231,6 @@ where
             })
     }
 }
-
-// fn visit_self_and_neighbors<'query, DataToken: Clone + Debug + 'query>(
-//     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
-//     query: &InterpretedQuery,
-//     _component: &IRQueryComponent,
-//     expanding_from_type: Arc<str>,
-//     expanding_from: &IRVertex,
-//     _expanding_to: &IRVertex,
-//     edge_id: Eid,
-//     edge_name: &Arc<str>,
-//     edge_parameters: &Option<Arc<EdgeParameters>>,
-//     source: IterBundle<'query, DataContext<DataToken>>,
-// ) -> IterBundle<'query, DataContext<DataToken>> {
-//     let iter = source.flat_map(move |b| -> Box<dyn Iterator<Item=Bundle<DataContext<DataToken>>> + 'query> {
-//         match b.next_ {
-//             Next::Done(x) => {
-//                 Box::new(std::iter::once(Bundle {
-//                     next_: Next::Done(x),
-//                 }))
-//             }
-//             Next::Nodes(nodes) => {
-//                 let mut adapter_ref = adapter.borrow_mut();
-//                 let edge_iterator = adapter_ref.project_neighbors(
-//                     nodes,
-//                     expanding_from_type.clone(),
-//                     edge_name.clone(),
-//                     edge_parameters.clone(),
-//                     query.clone(),
-//                     expanding_from.vid,
-//                     edge_id,
-//                 );
-//                 drop(adapter_ref);
-
-//                 Box::new(edge_iterator.flat_map(move |(ctx, neighbors)| {
-//                     let this_ctx = ctx.clone();
-//                     let neighbors = Box::new(neighbors.map(move |node| {
-//                         this_ctx.split_and_move_to_token(Some(node))
-//                     }));
-//                     [
-//                         Bundle {
-//                             next_: Next::Done(ctx),
-//                         },
-//                         Bundle {
-//                             next_: Next::Nodes(neighbors),
-//                         },
-//                     ]
-//                 }))
-//             }
-//         }
-//     });
-//     let iter: Box<dyn Iterator<Item=Bundle<DataContext<DataToken>>> + 'query> = Box::new(iter);
-//     iter.peekable()
-// }
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::too_many_arguments)]
@@ -436,6 +423,7 @@ pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
         initial_iter.peekable(),
         initial_neighbors_fn,
         subsequent_neighbors_fn,
+        recursive.depth,
     );
 
     Box::new(rec)
