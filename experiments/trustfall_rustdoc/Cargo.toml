@@ -5,9 +5,29 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
 [dependencies]
-rustdoc-types = "0.11.0"
+rustdoc-types = "0.14.0"
 clap = { version = "3.2.8", features = ["derive"] }
 trustfall_core = { path = "../../trustfall_core" }
+trustfall_wasm = { path = "../../trustfall_wasm" }
 serde_json = "1.0.82"
 anyhow = "1.0.58"
+wasm-bindgen = "0.2.80"
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.7", optional = true }
+js-sys = "0.3.57"
+web-sys = { version = "0.3", features = ["console"] }
+ouroboros = "0.15.2"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.30"

@@ -255,12 +255,14 @@ impl QueryResultItem {
     }
 }
 
-#[wasm_bindgen]
 impl QueryResultIterator {
-    pub(super) fn new(iter: Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>>>) -> Self {
+    pub fn new(iter: Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>>>) -> Self {
         Self { iter }
     }
+}
 
+#[wasm_bindgen]
+impl QueryResultIterator {
     #[wasm_bindgen(js_name = "next")]
     pub fn advance(&mut self) -> QueryResultItem {
         let next = self.iter.next();
