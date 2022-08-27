@@ -16,5 +16,6 @@ Contents:
 
 - Install the version of node and `npm`.
 - `npm install` to install dependencies
+- `npm run build:rustdoc` to build the `trustfall_rustdoc` crate to wasm
 - `npm start` to build and run the local server
 - Open a browser to `http://localhost:8000/` and enjoy!

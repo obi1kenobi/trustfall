@@ -13,6 +13,7 @@ import {
   SelectChangeEvent,
   MenuItem,
   Typography,
+  Theme,
   SxProps,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -52,12 +53,14 @@ interface TrustfallPlaygroundProps {
   results: object[] | null;
   loading: boolean;
   error: string | null;
-  hasMore: boolean;
   schema: GraphQLSchema;
   exampleQueries: { name: string; value: [string, string] }[];
   onQuery: (query: string, vars: string) => void;
-  onQueryNextResult: () => void;
-  header: React.ReactElement;
+  hasMore?: boolean;
+  // Omit to hide "next result" button
+  onQueryNextResult?: () => void;
+  header?: React.ReactElement;
+  sx?: SxProps<Theme>;
 }
 
 export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JSX.Element {
@@ -71,6 +74,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     schema,
     exampleQueries,
     header,
+    sx,
   } = props;
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
@@ -213,7 +217,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   }, [results, resultsEditor, loading, error]);
 
   return (
-    <Grid container direction="column" height="95vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
+    <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {})}}>
       <Grid item xs={1}>
         {header}
         <div css={{ display: 'flex', margin: 10 }}>
@@ -259,7 +263,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Typography variant="h6" component="div">
             Results{' '}
-            {results != null && (
+            {onQueryNextResult && results != null && (
               <LoadingButton
                 size="small"
                 onClick={() => onQueryNextResult()}
