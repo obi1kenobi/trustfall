@@ -141,7 +141,7 @@ export default function Rustdoc(): JSX.Element {
             options={CRATE_OPTIONS}
             renderInput={(params) => <TextField {...params} label="Choose a Crate" />}
             size="small"
-            sx={{ width: 250 }}
+            sx={{ mt: 1, width: 250 }}
             onChange={handleCrateChange}
           />
         </Box>
@@ -168,7 +168,7 @@ export default function Rustdoc(): JSX.Element {
   }, [crateInfo, asyncCrateJson]);
 
   return (
-    <Grid container direction="column" height="98vh" width="98vw" sx={{flexWrap: "nowrap"}}>
+    <Grid container direction="column" height="97vh" width="98vw" sx={{flexWrap: "nowrap"}}>
       <Grid item xs={1}>
         {header}
       </Grid>

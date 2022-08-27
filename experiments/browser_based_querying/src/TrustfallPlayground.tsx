@@ -244,7 +244,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
         <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
-            <Typography variant="h6" component="div">
+            <Typography variant="overline" component="div">
               Query
             </Typography>
             <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
@@ -252,7 +252,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             </Paper>
           </Grid>
           <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
-            <Typography variant="h6" component="div" sx={{ mt: 1 }}>
+            <Typography variant="overline" component="div" sx={{ mt: 1 }}>
               Variables
             </Typography>
             <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
@@ -261,7 +261,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           </Grid>
         </Grid>
         <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
-          <Typography variant="h6" component="div">
+          <Typography variant="overline" component="div">
             Results{' '}
             {onQueryNextResult && results != null && (
               <LoadingButton
