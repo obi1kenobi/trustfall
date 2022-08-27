@@ -1,4 +1,4 @@
-import { SendableSyncContext, SyncContext } from './sync';
+import { SendableSyncContext, SyncContext } from '../sync';
 
 interface ChannelData {
   input: string;

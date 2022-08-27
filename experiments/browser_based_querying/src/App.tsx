@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 
-const HackerNewsPlayground = lazy(() => import('./playgrounds/HackerNews'));
+const HackerNewsPlayground = lazy(() => import('./hackernews/Playground'));
 const RustdocPlayground = lazy(() => import('./playgrounds/Rustdoc'));
 
 export default function App() {
