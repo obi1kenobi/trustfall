@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 
 const HackerNewsPlayground = lazy(() => import('./hackernews/Playground'));
-const RustdocPlayground = lazy(() => import('./playgrounds/Rustdoc'));
+const RustdocPlayground = lazy(() => import('./rustdoc/Playground'));
 
 export default function App() {
   return (
