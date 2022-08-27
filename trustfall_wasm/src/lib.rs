@@ -75,12 +75,9 @@ pub fn execute_query(
 
     let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
 
-    let results_iter = trustfall_core::interpreter::execution::interpret_ir(
-        wrapped_adapter,
-        query,
-        args,
-    )
-    .map_err(|e| e.to_string())?;
+    let results_iter =
+        trustfall_core::interpreter::execution::interpret_ir(wrapped_adapter, query, args)
+            .map_err(|e| e.to_string())?;
 
     Ok(QueryResultIterator::new(results_iter))
 }
