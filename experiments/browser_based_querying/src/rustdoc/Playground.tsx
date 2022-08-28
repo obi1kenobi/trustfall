@@ -119,6 +119,22 @@ export default function Rustdoc(): JSX.Element {
     }
   }, []);
 
+  const disabledMessage = useMemo(() => {
+    if (!asyncLoadedCrate) {
+      return 'First select a crate to query against'
+    }
+
+    if (asyncLoadedCrate.status === 'pending') {
+      return 'Loading crate info...'
+    }
+
+    if (asyncLoadedCrate.status === 'error') {
+      return 'Error loading crate, please try again'
+    }
+
+    return null
+  }, [asyncLoadedCrate]);
+
   useEffect(() => {
     setQueryWorker(
       (prevWorker) =>
@@ -184,11 +200,7 @@ export default function Rustdoc(): JSX.Element {
         {queryWorker && (
           <Playground
             queryWorker={queryWorker}
-            disabled={
-              !asyncLoadedCrate || asyncLoadedCrate.status !== 'ready'
-                ? 'First select a crate to query against'
-                : null
-            }
+            disabled={disabledMessage}
           />
         )}
       </Grid>
