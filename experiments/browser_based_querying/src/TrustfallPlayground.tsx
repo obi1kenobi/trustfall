@@ -223,11 +223,11 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {}) }}>
       <Grid item xs={1}>
         {header}
-        <div css={{ display: 'flex', margin: 10 }}>
+        <div css={{ display: 'flex', alignItems: 'center', margin: 10 }}>
           <Tooltip title={disabled ? disabled : ''} placement="bottom">
             <span>
               <Button
-                size="medium"
+                size="small"
                 onClick={() => handleQuery()}
                 variant="contained"
                 sx={{ mr: 2 }}
@@ -279,11 +279,12 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             {onQueryNextResult && results != null && (
               <LoadingButton
                 size="small"
+                variant="outlined"
                 onClick={() => onQueryNextResult()}
                 disabled={!hasMore || Boolean(disabled)}
                 loading={loading}
               >
-                {hasMore ? 'More results!' : 'No more results'}
+                {hasMore ? 'More!' : 'No more results'}
               </LoadingButton>
             )}
           </Typography>

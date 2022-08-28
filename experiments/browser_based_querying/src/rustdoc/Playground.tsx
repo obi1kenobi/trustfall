@@ -186,7 +186,7 @@ export default function Rustdoc(): JSX.Element {
             queryWorker={queryWorker}
             disabled={
               !asyncLoadedCrate || asyncLoadedCrate.status !== 'ready'
-                ? 'First select a crate to query against.'
+                ? 'First select a crate to query against'
                 : null
             }
           />
