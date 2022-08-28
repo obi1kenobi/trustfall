@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { buildSchema } from 'graphql';
-import { Autocomplete, Box, CircularProgress, Grid, TextField, Typography } from '@mui/material';
+import { Autocomplete, Box, Grid, TextField, Typography } from '@mui/material';
 
 import { AsyncValue } from '../types';
 import TrustfallPlayground from '../TrustfallPlayground';
@@ -25,10 +25,11 @@ const CRATE_OPTIONS = crateNames.map((name) => ({ label: fmtCrateName(name), val
 
 interface PlaygroundProps {
   queryWorker: Worker;
+  disabled: string | null;
 }
 
 function Playground(props: PlaygroundProps): JSX.Element {
-  const { queryWorker } = props;
+  const { queryWorker, disabled } = props;
   const [results, setResults] = useState<object[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +90,7 @@ function Playground(props: PlaygroundProps): JSX.Element {
       exampleQueries={[]}
       onQuery={handleQuery}
       sx={{ height: '100%' }}
+      disabled={disabled}
     />
   );
 }
@@ -164,7 +166,7 @@ export default function Rustdoc(): JSX.Element {
               options={CRATE_OPTIONS}
               renderInput={(params) => <TextField {...params} label="Choose a Crate" />}
               size="small"
-              sx={{ mt: 1, width: 250 }}
+              sx={{ mt: 2, width: 250 }}
               onChange={handleCrateChange}
             />
           </Box>
@@ -173,31 +175,22 @@ export default function Rustdoc(): JSX.Element {
     );
   }, [queryWorker, handleCrateChange]);
 
-  const playground = useMemo(() => {
-    if (asyncLoadedCrate == null) return;
-
-    if (asyncLoadedCrate.status === 'pending' || !queryWorker) {
-      return <CircularProgress />;
-    }
-
-    if (asyncLoadedCrate.status === 'error') {
-      return <Box sx={{ textAlign: 'center' }}>{asyncLoadedCrate.error}</Box>;
-    }
-
-    if (asyncLoadedCrate.status === 'ready') {
-      return <Playground queryWorker={queryWorker} />;
-    }
-
-    return null;
-  }, [queryWorker, asyncLoadedCrate]);
-
   return (
     <Grid container direction="column" height="97vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
       <Grid item xs={1}>
         {header}
       </Grid>
       <Grid container direction="column" item xs={11}>
-        {playground}
+        {queryWorker && (
+          <Playground
+            queryWorker={queryWorker}
+            disabled={
+              !asyncLoadedCrate || asyncLoadedCrate.status !== 'ready'
+                ? 'First select a crate to query against.'
+                : null
+            }
+          />
+        )}
       </Grid>
     </Grid>
   );

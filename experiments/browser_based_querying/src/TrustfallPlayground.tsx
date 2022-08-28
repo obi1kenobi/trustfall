@@ -15,6 +15,7 @@ import {
   Typography,
   Theme,
   SxProps,
+  Tooltip,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 
@@ -61,6 +62,7 @@ interface TrustfallPlaygroundProps {
   onQueryNextResult?: () => void;
   header?: React.ReactElement;
   sx?: SxProps<Theme>;
+  disabled?: string | null; // Message to display if disabled
 }
 
 export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JSX.Element {
@@ -75,6 +77,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     exampleQueries,
     header,
     sx,
+    disabled,
   } = props;
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
@@ -217,13 +220,23 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   }, [results, resultsEditor, loading, error]);
 
   return (
-    <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {})}}>
+    <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {}) }}>
       <Grid item xs={1}>
         {header}
         <div css={{ display: 'flex', margin: 10 }}>
-          <Button size="small" onClick={() => handleQuery()} variant="contained" sx={{ mr: 2 }}>
-            Run query!
-          </Button>
+          <Tooltip title={disabled ? disabled : ''} placement="bottom">
+            <span>
+              <Button
+                size="medium"
+                onClick={() => handleQuery()}
+                variant="contained"
+                sx={{ mr: 2 }}
+                disabled={Boolean(disabled)}
+              >
+                Run query!
+              </Button>
+            </span>
+          </Tooltip>
           <FormControl size="small" sx={{ minWidth: 300 }}>
             <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
             <Select
@@ -267,7 +280,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               <LoadingButton
                 size="small"
                 onClick={() => onQueryNextResult()}
-                disabled={!hasMore}
+                disabled={!hasMore || Boolean(disabled)}
                 loading={loading}
               >
                 {hasMore ? 'More results!' : 'No more results'}
