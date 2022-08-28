@@ -4,18 +4,12 @@ import { Autocomplete, Box, CircularProgress, Grid, TextField, Typography } from
 
 import { AsyncValue } from '../types';
 import TrustfallPlayground from '../TrustfallPlayground';
-import { CrateInfo, makeCrateInfo, runQuery } from '../../pkg/trustfall_rustdoc';
 import rustdocSchema from '../../../trustfall_rustdoc/src/rustdoc_schema.graphql';
+import { RustdocWorkerResponse } from './types';
 
 const RUSTDOC_SCHEMA = buildSchema(rustdocSchema);
 
 import crateNames from '../rustdocCrates';
-
-function fetchCrateJson(filename: string): Promise<string> {
-  return fetch(
-    `https://raw.githubusercontent.com/obi1kenobi/crates-rustdoc/main/max_version/${filename}.json`
-  ).then((response) => response.text());
-}
 
 const fmtCrateName = (name: string): string => {
   const split = name.split('-');
@@ -30,38 +24,60 @@ interface CrateOption {
 const CRATE_OPTIONS = crateNames.map((name) => ({ label: fmtCrateName(name), value: name }));
 
 interface PlaygroundProps {
-  crateInfo: CrateInfo;
+  queryWorker: Worker;
 }
 
 function Playground(props: PlaygroundProps): JSX.Element {
-  const { crateInfo } = props;
+  const { queryWorker } = props;
   const [results, setResults] = useState<object[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleQuery = useCallback((query: string, vars: string) => {
-    let varsObj = {};
-    if (vars !== '') {
-      try {
-        varsObj = JSON.parse(vars ?? '');
-      } catch (e) {
-        setError(
-          `Error parsing variables to JSON:\n${(e as Error).message}`,
-        );
-        return;
+  const handleQuery = useCallback(
+    (query: string, vars: string) => {
+      let varsObj = {};
+      if (vars !== '') {
+        try {
+          varsObj = JSON.parse(vars ?? '');
+        } catch (e) {
+          setError(`Error parsing variables to JSON:\n${(e as Error).message}`);
+          return;
+        }
       }
-    }
 
-    setLoading(true);
-    // TODO: Run in a worker to avoid blocking the main thread;
-    try {
-      const results = runQuery(crateInfo, query, varsObj);
-      setResults(results);
-    } catch (message) {
-      setError(`Error running query:\n${message}`)
+      setLoading(true);
+      queryWorker.postMessage({ op: 'query', query, vars: varsObj });
+    },
+    [queryWorker]
+  );
+
+  const handleQueryMessage = useCallback((evt: MessageEvent<RustdocWorkerResponse>) => {
+    const msg = evt.data;
+    switch (msg.type) {
+      case 'query-ready':
+        setResults(msg.results);
+        break;
+      case 'query-error':
+        setError(msg.message);
+        break;
     }
     setLoading(false);
-  }, [crateInfo])
+  }, []);
+
+  const handleQueryError = useCallback((evt: ErrorEvent) => {
+    setError(evt.message);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    queryWorker.addEventListener('message', handleQueryMessage);
+    queryWorker.addEventListener('error', handleQueryError);
+
+    () => {
+      queryWorker.removeEventListener('message', handleQueryMessage);
+      queryWorker.removeEventListener('error', handleQueryError);
+    };
+  }, [handleQueryError, handleQueryMessage, queryWorker]);
 
   return (
     <TrustfallPlayground
@@ -72,21 +88,15 @@ function Playground(props: PlaygroundProps): JSX.Element {
       schema={RUSTDOC_SCHEMA}
       exampleQueries={[]}
       onQuery={handleQuery}
-      sx={{height: "100%"}}
+      sx={{ height: '100%' }}
     />
   );
 }
 
 export default function Rustdoc(): JSX.Element {
+  const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
   const [selectedCrate, setSelectedCrate] = useState<string | null>(null);
-  const [asyncCrateJson, setAsyncCrateJson] = useState<AsyncValue<string> | null>(null);
-
-  const crateInfo = useMemo(() => {
-    if (asyncCrateJson?.status === 'ready') {
-      return makeCrateInfo(asyncCrateJson.value);
-    }
-    return null;
-  }, [asyncCrateJson]);
+  const [asyncLoadedCrate, setAsyncLoadedCrate] = useState<AsyncValue<string> | null>(null);
 
   const handleCrateChange = useCallback(
     (_evt: React.SyntheticEvent, option: CrateOption | null) => {
@@ -95,33 +105,45 @@ export default function Rustdoc(): JSX.Element {
     []
   );
 
-  useEffect(() => {
-    let current = true;
-    if (selectedCrate != null) {
-      setAsyncCrateJson({ status: 'pending' });
-
-      fetchCrateJson(selectedCrate)
-        .then((crateJson) => {
-          if (current) {
-            setAsyncCrateJson({ status: 'ready', value: crateJson });
-          }
-        })
-        .catch(() => {
-          if (current) {
-            setAsyncCrateJson({
-              status: 'error',
-              error: 'Something went wrong while fetching crate info.',
-            });
-          }
-        });
-    } else {
-      setAsyncCrateJson(null);
+  const handleWorkerMessage = useCallback((evt: MessageEvent<RustdocWorkerResponse>) => {
+    const msg = evt.data;
+    switch (msg.type) {
+      case 'load-crate-ready':
+        setAsyncLoadedCrate({ status: 'ready', value: msg.name });
+        break;
+      case 'load-crate-error':
+        setAsyncLoadedCrate({ status: 'error', error: msg.message });
+        break;
     }
+  }, []);
 
-    return () => {
-      current = false;
+  useEffect(() => {
+    setQueryWorker(
+      (prevWorker) =>
+        prevWorker ?? new Worker(new URL('./queryWorker', import.meta.url), { type: 'module' })
+    );
+  }, []);
+
+  useEffect(() => {
+    if (queryWorker && selectedCrate) {
+      setAsyncLoadedCrate({ status: 'pending' });
+      queryWorker.postMessage({
+        op: 'load-crate',
+        name: selectedCrate,
+      });
+    } else {
+      setAsyncLoadedCrate(null);
+    }
+  }, [queryWorker, selectedCrate]);
+
+  useEffect(() => {
+    if (!queryWorker) return;
+
+    queryWorker.addEventListener('message', handleWorkerMessage);
+    () => {
+      queryWorker.removeEventListener('message', handleWorkerMessage);
     };
-  }, [selectedCrate]);
+  }, [handleWorkerMessage, queryWorker]);
 
   const header = useMemo(() => {
     return (
@@ -136,39 +158,41 @@ export default function Rustdoc(): JSX.Element {
           </a>{' '}
           compiled to WebAssembly.
         </Typography>
-        <Box>
-          <Autocomplete
-            options={CRATE_OPTIONS}
-            renderInput={(params) => <TextField {...params} label="Choose a Crate" />}
-            size="small"
-            sx={{ mt: 1, width: 250 }}
-            onChange={handleCrateChange}
-          />
-        </Box>
+        {queryWorker && (
+          <Box>
+            <Autocomplete
+              options={CRATE_OPTIONS}
+              renderInput={(params) => <TextField {...params} label="Choose a Crate" />}
+              size="small"
+              sx={{ mt: 1, width: 250 }}
+              onChange={handleCrateChange}
+            />
+          </Box>
+        )}
       </Box>
     );
-  }, [handleCrateChange]);
+  }, [queryWorker, handleCrateChange]);
 
   const playground = useMemo(() => {
-    if (asyncCrateJson == null) return;
+    if (asyncLoadedCrate == null) return;
 
-    if (asyncCrateJson.status === 'pending') {
+    if (asyncLoadedCrate.status === 'pending' || !queryWorker) {
       return <CircularProgress />;
     }
 
-    if (asyncCrateJson.status === 'error') {
-      return <Box sx={{ textAlign: 'center' }}>{asyncCrateJson.error}</Box>;
+    if (asyncLoadedCrate.status === 'error') {
+      return <Box sx={{ textAlign: 'center' }}>{asyncLoadedCrate.error}</Box>;
     }
 
-    if (crateInfo) {
-      return <Playground crateInfo={crateInfo} />;
+    if (asyncLoadedCrate.status === 'ready') {
+      return <Playground queryWorker={queryWorker} />;
     }
 
     return null;
-  }, [crateInfo, asyncCrateJson]);
+  }, [queryWorker, asyncLoadedCrate]);
 
   return (
-    <Grid container direction="column" height="97vh" width="98vw" sx={{flexWrap: "nowrap"}}>
+    <Grid container direction="column" height="97vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
       <Grid item xs={1}>
         {header}
       </Grid>
