@@ -1,23 +1,25 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
-import { GraphQLSchema } from 'graphql';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { css } from '@emotion/react';
+import { LoadingButton } from '@mui/lab';
 import {
+  Box,
   Button,
-  Grid,
-  Paper,
   FormControl,
+  Grid,
   InputLabel,
+  MenuItem,
+  Paper,
   Select,
   SelectChangeEvent,
-  MenuItem,
   Typography,
   Theme,
   SxProps,
   Tooltip,
 } from '@mui/material';
-import { LoadingButton } from '@mui/lab';
+import { GraphQLSchema } from 'graphql';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { initializeMode } from 'monaco-graphql/esm/initializeMode';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import SimpleDocExplorer from './components/SimpleDocExplorer';
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
 // This is due to the height: 100% rule, since the container is slightly smaller
@@ -291,6 +293,14 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
             <div ref={resultsEditorRef} css={cssEditor} />
           </Paper>
+        </Grid>
+        <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
+          <Typography variant="h6" component="div">
+            Documentation Explorer
+          </Typography>
+          <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden', mt: 2 }}>
+            <SimpleDocExplorer schema={schema} />
+          </Box>
         </Grid>
       </Grid>
     </Grid>
