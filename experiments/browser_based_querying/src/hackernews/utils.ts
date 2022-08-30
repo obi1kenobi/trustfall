@@ -1,4 +1,4 @@
-import { SyncContext } from './sync';
+import { SyncContext } from '../sync';
 
 interface HackerNewsItem {
   type: string;

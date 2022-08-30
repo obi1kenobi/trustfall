@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",
+    "build:rustdoc": "wasm-pack build ../trustfall_rustdoc --out-dir=../browser_based_querying/pkg",
     "start": "webpack-dev-server",
     "lint": "tsc && eslint --ext=tsx,ts,js . && prettier --check .",
     "fix": "eslint --fix --ext=js,jsx,ts,tsx . && prettier --write ."
@@ -36,7 +37,8 @@
     "monaco-editor": "^0.20.0",
     "monaco-graphql": "^1.1.2",
     "react": "^18.1.0",
-    "react-dom": "^18.1.0"
+    "react-dom": "^18.1.0",
+    "react-router-dom": "^6.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.18.6",
@@ -59,6 +61,7 @@
     "prettier": "^2.6.2",
     "style-loader": "^3.3.1",
     "typescript": "^4.7.4",
+    "wasm-pack": "^0.10.3",
     "webpack": "^5.72.1",
     "webpack-cli": "^4.9.2",
     "webpack-dev-server": "^4.9.0"

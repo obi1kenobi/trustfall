@@ -2,13 +2,14 @@ import { useCallback, useState, useEffect, useMemo } from 'react';
 import { buildSchema } from 'graphql';
 import { Box, Typography, CircularProgress, Grid } from '@mui/material';
 
-import { HN_SCHEMA } from '../adapter';
 import { AsyncValue } from '../types';
 import parseExample from '../utils/parseExample';
 import TrustfallPlayground from '../TrustfallPlayground';
 import latestStoriesExample from '../../example_queries/latest_stories_with_min_points_and_submitter_karma.example';
 import patio11Example from '../../example_queries/patio11_commenting_on_submissions_of_his_blog_posts.example';
 import topStoriesExample from '../../example_queries/top_stories_with_min_points_and_submitter_karma.example';
+
+import { HN_SCHEMA } from './adapter';
 
 const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
@@ -113,11 +114,11 @@ export default function HackerNewsPlayground(): JSX.Element {
   useEffect(() => {
     setQueryWorker(
       (prevWorker) =>
-        prevWorker ?? new Worker(new URL('../adapter', import.meta.url), { type: 'module' })
+        prevWorker ?? new Worker(new URL('./adapter', import.meta.url), { type: 'module' })
     );
     setFetcherWorker(
       (prevWorker) =>
-        prevWorker ?? new Worker(new URL('../fetcher', import.meta.url), { type: 'module' })
+        prevWorker ?? new Worker(new URL('./fetcher', import.meta.url), { type: 'module' })
     );
   }, []);
 
@@ -193,6 +194,7 @@ export default function HackerNewsPlayground(): JSX.Element {
       exampleQueries={EXAMPLE_OPTIONS}
       onQuery={runQuery}
       onQueryNextResult={queryNextResult}
+      sx={{ height: '97vh', width: '98vw' }}
     />
   );
 }

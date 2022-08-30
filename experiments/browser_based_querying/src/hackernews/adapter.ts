@@ -8,8 +8,8 @@ import init, {
   Schema,
   initialize,
   executeQuery,
-} from '../www2/trustfall_wasm.js';
-import { getTopItems, getLatestItems, materializeItem, materializeUser } from './hackernews';
+} from '../../www2/trustfall_wasm.js';
+import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
 
 console.log('running wasm init...');
 await init();
