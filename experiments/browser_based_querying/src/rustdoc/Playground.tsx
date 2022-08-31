@@ -122,18 +122,18 @@ export default function Rustdoc(): JSX.Element {
 
   const disabledMessage = useMemo(() => {
     if (!asyncLoadedCrate) {
-      return 'First select a crate to query against'
+      return 'First select a crate to query against';
     }
 
     if (asyncLoadedCrate.status === 'pending') {
-      return 'Loading crate info...'
+      return 'Loading crate info...';
     }
 
     if (asyncLoadedCrate.status === 'error') {
-      return 'Error loading crate, please try again'
+      return 'Error loading crate, please try again';
     }
 
-    return null
+    return null;
   }, [asyncLoadedCrate]);
 
   useEffect(() => {
@@ -198,12 +198,7 @@ export default function Rustdoc(): JSX.Element {
         {header}
       </Grid>
       <Grid container direction="column" item xs={11}>
-        {queryWorker && (
-          <Playground
-            queryWorker={queryWorker}
-            disabled={disabledMessage}
-          />
-        )}
+        {queryWorker && <Playground queryWorker={queryWorker} disabled={disabledMessage} />}
       </Grid>
     </Grid>
   );
