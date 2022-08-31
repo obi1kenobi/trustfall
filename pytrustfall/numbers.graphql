@@ -1,12 +1,35 @@
 schema {
     query: RootSchemaQuery
 }
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
+directive @filter(
+    """Name of the filter operation to perform."""
+    op: String!
+    """List of string operands for the operator."""
+    value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """Name to apply to the given property field."""
+    name: String
+) on FIELD
+directive @output(
+    """What to designate the output field generated from this property field."""
+    name: String
+) on FIELD
 directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
 directive @fold on FIELD
+directive @transform(
+    """
+    Name of the transformation operation to perform.
+    """
+    op: String!
+) on FIELD
 
 type RootSchemaQuery {
     Number(max: Int!): [Number!]
