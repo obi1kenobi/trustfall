@@ -23,6 +23,7 @@ directive @recurse(
     """
     depth: Int!
 ) on FIELD
+directive @fold on FIELD
 directive @transform(
     """
     Name of the transformation operation to perform.
