@@ -57,9 +57,10 @@ function Playground(props: PlaygroundProps): JSX.Element {
     switch (msg.type) {
       case 'query-ready':
         setResults(msg.results);
+        setError(null);
         break;
       case 'query-error':
-        setError(msg.message);
+        setError(`Error: ${msg.message}`);
         break;
     }
     setLoading(false);
