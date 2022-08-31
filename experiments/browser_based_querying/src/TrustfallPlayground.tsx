@@ -3,8 +3,6 @@ import { css } from '@emotion/react';
 import { LoadingButton } from '@mui/lab';
 import {
   Box,
-  Button,
-  Drawer,
   FormControl,
   Grid,
   InputLabel,
@@ -12,6 +10,8 @@ import {
   Paper,
   Select,
   SelectChangeEvent,
+  Tabs,
+  Tab,
   Typography,
   Theme,
   SxProps,
@@ -71,6 +71,23 @@ window.MonacoEnvironment = {
   },
 };
 
+type ResultsTab = 'results' | 'docs';
+
+interface TabPanelProps {
+  selected: boolean;
+  children: React.ReactNode;
+  sx?: SxProps;
+}
+
+function TabPanel(props: TabPanelProps): JSX.Element {
+  const { selected, children, sx } = props;
+  return (
+    <Box sx={sx} hidden={!selected}>
+      {children}
+    </Box>
+  );
+}
+
 interface TrustfallPlaygroundProps {
   results: object[] | null;
   loading: boolean;
@@ -126,7 +143,11 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<ResultsTab>('results');
+
+  const handleTabChange = useCallback((_evt: React.SyntheticEvent, value: ResultsTab) => {
+    setSelectedTab(value);
+  }, []);
 
   const handleExampleQueryChange = useCallback(
     (evt: SelectChangeEvent<string | null>) => {
@@ -145,6 +166,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     const vars = varsEditor.getValue();
 
     onQuery(query, vars);
+    setSelectedTab('results');
   }, [queryEditor, varsEditor, onQuery]);
 
   useEffect(() => {
@@ -280,17 +302,29 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         <div css={{ display: 'flex', alignItems: 'center', margin: 10 }}>
           <Tooltip title={disabled ? disabled : ''} placement="bottom">
             <span>
-              <Button
+              <LoadingButton
                 size="small"
                 onClick={() => handleQuery()}
                 variant="contained"
                 sx={{ mr: 2 }}
                 disabled={Boolean(disabled)}
+                loading={loading}
               >
                 Run query!
-              </Button>
+              </LoadingButton>
             </span>
           </Tooltip>
+          {onQueryNextResult && results != null && (
+            <LoadingButton
+              size="small"
+              variant="outlined"
+              onClick={() => onQueryNextResult()}
+              disabled={!hasMore || Boolean(disabled)}
+              loading={loading}
+            >
+              {hasMore ? 'More!' : 'No more results'}
+            </LoadingButton>
+          )}
           <FormControl size="small" sx={{ minWidth: 300 }}>
             <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
             <Select
@@ -311,19 +345,9 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
         <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
-            <Typography
-              variant="overline"
-              component="div"
-            >
+            {/* Use padding to align query section with results */}
+            <Typography variant="overline" component="div" sx={{ pt: '1.5rem' }}>
               Query
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => setIsDrawerOpen((prev) => !prev)}
-                sx={{ml: 2}}
-              >
-                {isDrawerOpen ? "Hide Docs" : "Show Docs"}
-              </Button>
             </Typography>
             <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
               <div ref={queryEditorRef} css={cssEditor} />
@@ -339,34 +363,26 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           </Grid>
         </Grid>
         <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
-          <Typography variant="overline" component="div">
-            Results{' '}
-            {onQueryNextResult && results != null && (
-              <LoadingButton
-                size="small"
-                variant="outlined"
-                onClick={() => onQueryNextResult()}
-                disabled={!hasMore || Boolean(disabled)}
-                loading={loading}
-              >
-                {hasMore ? 'More!' : 'No more results'}
-              </LoadingButton>
-            )}
-          </Typography>
-          <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
-            <div ref={resultsEditorRef} css={cssEditor} />
-          </Paper>
-        </Grid>
-        <Drawer variant="persistent" open={isDrawerOpen} anchor="right">
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" component="div">
-              Documentation Explorer
-            </Typography>
-            <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden', mt: 2 }}>
+          <Box>
+            <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
+              <Tab value="results" label="Results" />
+              <Tab value="docs" label="Docs" />
+            </Tabs>
+          </Box>
+          <TabPanel
+            selected={selectedTab === 'results'}
+            sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
+          >
+            <Paper elevation={0}>
+              <div ref={resultsEditorRef} css={cssEditor} />
+            </Paper>
+          </TabPanel>
+          <TabPanel selected={selectedTab === 'docs'}>
+            <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden' }}>
               <SimpleDocExplorer schema={schema} />
             </Box>
-          </Box>
-        </Drawer>
+          </TabPanel>
+        </Grid>
       </Grid>
     </Grid>
   );
