@@ -25,7 +25,7 @@ function dispatch(evt: MessageEvent<RustdocWorkerMessage>) {
         const results = runQuery(crateInfo, msg.query, msg.vars);
         send({ type: 'query-ready', results });
       } catch (message) {
-        throw new Error(message as string);
+        send({ type: 'query-error', message: message as string });
       }
       break;
 
