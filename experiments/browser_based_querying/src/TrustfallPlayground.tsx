@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { css } from '@emotion/react';
 import { LoadingButton } from '@mui/lab';
 import {
@@ -18,8 +19,25 @@ import {
 import { GraphQLSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { NumberParam, StringParam, useQueryParams } from 'use-query-params';
+
 import SimpleDocExplorer from './components/SimpleDocExplorer';
+
+const DEFAULT_ENCODING_FORMAT = 1;
+const DEFAULT_QUERY = 'query {\n\n}';
+const DEFAULT_VARS = '{\n\n}';
+
+function decodeB64(str: string): string | null {
+  try {
+    return decodeURIComponent(escape(window.atob(str)));
+  } catch {
+    return null;
+  }
+}
+
+function encodeB64(str: string): string {
+  return window.btoa(unescape(encodeURIComponent(str)));
+}
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
 // This is due to the height: 100% rule, since the container is slightly smaller
@@ -81,6 +99,20 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     sx,
     disabled,
   } = props;
+  const [queryParams, setQueryParams] = useQueryParams({
+    f: NumberParam, // Format
+    q: StringParam, // Query
+    v: StringParam, // Vars
+  });
+  const { q: encodedQuery, v: encodedVars } = queryParams;
+
+  // Use useState to grab the first value and cache it (unlike useMemo, which will update)
+  const [initialQuery, _setInitialQuery] = useState<string>(
+    () => decodeB64(encodedQuery ?? '') || DEFAULT_QUERY
+  );
+  const [initialVars, _setInitialVars] = useState<string>(
+    () => decodeB64(encodedVars ?? '') || DEFAULT_VARS
+  );
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
     value: [string, string];
@@ -135,57 +167,51 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
 
   // Init editors
   useEffect(() => {
-    if (queryEditorRef.current) {
-      setQueryEditor(
-        monaco.editor.create(
-          queryEditorRef.current,
-          {
-            language: 'graphql',
-            value: 'query {\n\n}',
-            minimap: {
-              enabled: false,
-            },
-            automaticLayout: true,
-          },
-          {
-            storageService: {
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
-              get() {},
-              // Workaround to expand suggestion docs by default. See: https://stackoverflow.com/a/59040199
-              getBoolean(key: string) {
-                if (key === 'expandSuggestionDocs') return true;
-
-                return false;
-              },
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
-              remove() {},
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
-              store() {},
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
-              onWillSaveState() {},
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
-              onDidChangeStorage() {},
-            },
-          }
-        )
-      );
-    }
-
-    if (varsEditorRef.current) {
-      setVarsEditor(
-        monaco.editor.create(varsEditorRef.current, {
-          language: 'json',
-          value: '{\n\n}',
+    if (queryEditorRef.current && varsEditorRef.current && resultsEditorRef.current) {
+      const queryEditor = monaco.editor.create(
+        queryEditorRef.current,
+        {
+          language: 'graphql',
+          value: initialQuery,
           minimap: {
             enabled: false,
           },
           automaticLayout: true,
-          ...disableGutterConfig,
-        })
-      );
-    }
+        },
+        {
+          storageService: {
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            get() {},
+            // Workaround to expand suggestion docs by default. See: https://stackoverflow.com/a/59040199
+            getBoolean(key: string) {
+              if (key === 'expandSuggestionDocs') return true;
 
-    if (resultsEditorRef.current) {
+              return false;
+            },
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            remove() {},
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            store() {},
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            onWillSaveState() {},
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            onDidChangeStorage() {},
+          },
+        }
+      );
+
+      const varsEditor = monaco.editor.create(varsEditorRef.current, {
+        language: 'json',
+        value: initialVars,
+        minimap: {
+          enabled: false,
+        },
+        automaticLayout: true,
+        ...disableGutterConfig,
+      });
+
+      setQueryEditor(queryEditor);
+      setVarsEditor(varsEditor);
       setResultsEditor(
         monaco.editor.create(resultsEditorRef.current, {
           language: 'json',
@@ -198,8 +224,32 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           ...disableGutterConfig,
         })
       );
+
+      // Define inside effect to avoid infinite loop
+      const updateQueryParams = () => {
+        if (queryEditor && varsEditor) {
+          setQueryParams(
+            {
+              f: DEFAULT_ENCODING_FORMAT,
+              q: encodeB64(queryEditor.getValue()),
+              v: encodeB64(varsEditor.getValue()),
+            },
+            'replaceIn'
+          );
+        }
+      };
+
+      updateQueryParams();
+      const queryListener = queryEditor.onDidChangeModelContent(updateQueryParams);
+      const varsListener = varsEditor.onDidChangeModelContent(updateQueryParams);
+      return () => {
+        queryListener.dispose();
+        varsListener.dispose();
+      };
     }
-  }, []);
+
+    return () => {}; // eslint-disable-line @typescript-eslint/no-empty-function
+  }, [initialQuery, initialVars, setQueryParams]);
 
   // Update results editor
   useEffect(() => {

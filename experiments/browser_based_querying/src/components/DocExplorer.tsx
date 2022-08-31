@@ -77,7 +77,6 @@ export function DocExplorer(props: DocExplorerProps) {
     content = <FieldDoc />;
   }
 
-  console.log(explorerNavStack);
 
   const shouldSearchBoxAppear =
     explorerNavStack.length === 1 || (isType(navItem.def) && 'getFields' in navItem.def);
