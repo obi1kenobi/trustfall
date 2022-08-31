@@ -220,7 +220,6 @@ fn construct_outputs<'query, DataToken: Clone + Debug + 'query>(
         let context_field = &ir_query.root_component.outputs[output_name];
         let vertex_id = context_field.vertex_id;
         let moved_iterator = Box::new(output_iterator.map(move |context| {
-            dbg!(&context.tokens);
             let new_token = context.tokens[&vertex_id].clone();
             context.move_to_token(new_token)
         }));
