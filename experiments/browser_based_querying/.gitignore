@@ -2,3 +2,4 @@ trustfall_wasm.tar.gz
 **/node_modules
 **/www
 **/__pycache__
+**/dist

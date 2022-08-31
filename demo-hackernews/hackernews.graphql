@@ -23,6 +23,12 @@ directive @recurse(
     """
     depth: Int!
 ) on FIELD
+directive @transform(
+    """
+    Name of the transformation operation to perform.
+    """
+    op: String!
+) on FIELD
 
 type RootSchemaQuery {
     FrontPage: [Item!]!
