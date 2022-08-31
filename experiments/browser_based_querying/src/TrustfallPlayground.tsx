@@ -314,13 +314,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <Typography
               variant="overline"
               component="div"
-              sx={{ display: 'flex', justifyContent: 'space-between' }}
             >
               Query
               <Button
-                variant="outlined"
+                variant="text"
                 size="small"
                 onClick={() => setIsDrawerOpen((prev) => !prev)}
+                sx={{ml: 2}}
               >
                 {isDrawerOpen ? "Hide Docs" : "Show Docs"}
               </Button>
