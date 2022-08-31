@@ -4,6 +4,7 @@ import { LoadingButton } from '@mui/lab';
 import {
   Box,
   Button,
+  Drawer,
   FormControl,
   Grid,
   InputLabel,
@@ -125,6 +126,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleExampleQueryChange = useCallback(
     (evt: SelectChangeEvent<string | null>) => {
@@ -309,8 +311,19 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
         <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
-            <Typography variant="overline" component="div">
+            <Typography
+              variant="overline"
+              component="div"
+              sx={{ display: 'flex', justifyContent: 'space-between' }}
+            >
               Query
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setIsDrawerOpen((prev) => !prev)}
+              >
+                {isDrawerOpen ? "Hide Docs" : "Show Docs"}
+              </Button>
             </Typography>
             <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
               <div ref={queryEditorRef} css={cssEditor} />
@@ -344,14 +357,16 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <div ref={resultsEditorRef} css={cssEditor} />
           </Paper>
         </Grid>
-        <Grid container item xs={4} direction="column" sx={{ flexWrap: 'nowrap' }}>
-          <Typography variant="h6" component="div">
-            Documentation Explorer
-          </Typography>
-          <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden', mt: 2 }}>
-            <SimpleDocExplorer schema={schema} />
+        <Drawer variant="persistent" open={isDrawerOpen} anchor="right">
+          <Box sx={{ p: 2 }}>
+            <Typography variant="h6" component="div">
+              Documentation Explorer
+            </Typography>
+            <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden', mt: 2 }}>
+              <SimpleDocExplorer schema={schema} />
+            </Box>
           </Box>
-        </Grid>
+        </Drawer>
       </Grid>
     </Grid>
   );

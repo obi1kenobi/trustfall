@@ -76,6 +76,7 @@ export default class SearchBox extends React.Component<SearchBoxProps, SearchBox
             </InputAdornment>
           ),
         }}
+        fullWidth
       />
     );
   }
