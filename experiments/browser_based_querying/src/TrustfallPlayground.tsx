@@ -234,6 +234,8 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         ...disableGutterConfig,
       });
 
+      queryEditor.getModel()?.updateOptions({ tabSize: 2 })
+      varsEditor.getModel()?.updateOptions({ tabSize: 2 })
       setQueryEditor(queryEditor);
       setVarsEditor(varsEditor);
       setResultsEditor(
