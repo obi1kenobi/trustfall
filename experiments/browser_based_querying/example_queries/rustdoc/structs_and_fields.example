@@ -1,0 +1,19 @@
+# Structs and a list of their field names.
+query {
+  Crate {
+    item {
+      ... on Struct {
+        name @output  # by default, outputs use the name of their field
+
+        field @fold {
+          fields: name @output  # renamed output to avoid name collision
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}

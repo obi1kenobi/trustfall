@@ -1,0 +1,21 @@
+# Structs whose names end in "Iter": not all crates have them,
+# so try one of these crates: aho_corasick, arrayvec, indexmap, itertools
+query {
+  Crate {
+    item {
+      ... on Struct {
+        name @output @filter(op: "has_suffix", value: ["$suffix"])
+
+        span {
+          filename @output
+          first_line: begin_line @output
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+  "suffix": "Iter"
+}

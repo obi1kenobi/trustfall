@@ -1,0 +1,24 @@
+# Items where lints were allowed. Not all crates have these,
+# try one of: anyhow, clap, http, httparse, hyper, itertools.
+query {
+  Crate {
+    item {
+      name @output
+
+      attribute {
+        attr: value @output
+                    @filter(op: "regex", value: ["$pattern"])
+      }
+
+      span {
+        filename @output
+        begin_line @output
+      }
+    }
+  }
+}
+
+vars:
+{
+  "pattern": "#\\[allow\\(.+\\)\\]"
+}

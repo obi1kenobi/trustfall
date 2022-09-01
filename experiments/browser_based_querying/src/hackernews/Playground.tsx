@@ -5,9 +5,9 @@ import { Box, Typography, CircularProgress, Grid } from '@mui/material';
 import { AsyncValue } from '../types';
 import parseExample from '../utils/parseExample';
 import TrustfallPlayground from '../TrustfallPlayground';
-import latestStoriesExample from '../../example_queries/latest_stories_with_min_points_and_submitter_karma.example';
-import patio11Example from '../../example_queries/patio11_commenting_on_submissions_of_his_blog_posts.example';
-import topStoriesExample from '../../example_queries/top_stories_with_min_points_and_submitter_karma.example';
+import latestStoriesExample from '../../example_queries/hackernews/latest_stories_with_min_points_and_submitter_karma.example';
+import patio11Example from '../../example_queries/hackernews/patio11_commenting_on_submissions_of_his_blog_posts.example';
+import topStoriesExample from '../../example_queries/hackernews/top_stories_with_min_points_and_submitter_karma.example';
 
 import HN_SCHEMA from './schema.graphql';
 

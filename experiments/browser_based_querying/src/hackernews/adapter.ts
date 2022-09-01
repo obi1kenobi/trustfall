@@ -8,7 +8,7 @@ import {
   Schema,
   initialize,
   executeQuery,
-} from '../../www2/trustfall_wasm.js';
+} from '../../www2/trustfall_wasm';
 import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
 import HN_SCHEMA from './schema.graphql';
 

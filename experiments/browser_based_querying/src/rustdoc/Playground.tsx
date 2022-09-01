@@ -6,8 +6,37 @@ import { AsyncValue } from '../types';
 import TrustfallPlayground from '../TrustfallPlayground';
 import rustdocSchema from '../../../trustfall_rustdoc/src/rustdoc_schema.graphql';
 import { RustdocWorkerResponse } from './types';
+import parseExample from '../utils/parseExample';
+import structNamesAndSpans from '../../example_queries/rustdoc/struct_names_and_spans.example';
+import iterStructs from '../../example_queries/rustdoc/iter_structs.example';
+import structsAndFields from '../../example_queries/rustdoc/structs_and_fields.example';
+import enumsWithTupleVariants from '../../example_queries/rustdoc/enums_with_tuple_variants.example';
+import itemsWithAllowedLints from '../../example_queries/rustdoc/items_with_allowed_lints.example';
 
 const RUSTDOC_SCHEMA = buildSchema(rustdocSchema);
+
+const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
+  {
+    name: 'Where Are Structs Defined?',
+    value: parseExample(structNamesAndSpans),
+  },
+  {
+    name: 'Structs Ending In "Iter"',
+    value: parseExample(iterStructs),
+  },
+  {
+    name: 'Listing Fields of Structs',
+    value: parseExample(structsAndFields),
+  },
+  {
+    name: 'Enums With Tuple Variants',
+    value: parseExample(enumsWithTupleVariants),
+  },
+  {
+    name: 'Items With Allowed Lints',
+    value: parseExample(itemsWithAllowedLints),
+  },
+];
 
 import crateNames from '../rustdocCrates';
 
@@ -88,7 +117,7 @@ function Playground(props: PlaygroundProps): JSX.Element {
       error={error}
       hasMore={false}
       schema={RUSTDOC_SCHEMA}
-      exampleQueries={[]}
+      exampleQueries={EXAMPLE_OPTIONS}
       onQuery={handleQuery}
       sx={{ height: '100%' }}
       disabled={disabled}
