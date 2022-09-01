@@ -152,7 +152,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     }
 
     if (noQuery) {
-      return 'Write a query or choose an example one from the right';
+      return 'Write a query or load an example';
     }
 
     return '';
