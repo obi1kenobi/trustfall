@@ -1,4 +1,4 @@
-import init, {
+import {
   Adapter,
   JsEdgeParameters,
   JsContext,
@@ -12,7 +12,7 @@ import init, {
 import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
 
 console.log('running wasm init...');
-await init();
+// await init();
 console.log('wasm init complete');
 
 console.log('Query system init...');
@@ -116,7 +116,7 @@ interface Webpage {
 }
 `;
 
-Schema.parse(HN_SCHEMA);
+const SCHEMA = Schema.parse(HN_SCHEMA);
 console.log('Schema loaded.');
 
 postMessage('ready');
@@ -402,12 +402,8 @@ function performQuery(query: string, args: Record<string, any>): IterableIterato
     throw new Error(`Cannot perform query with null/undef args.`);
   }
 
-  // TODO: figure out why the schema object gets set to null
-  //       as part of the executeQuery() call.
-  const schemaCopy = Schema.parse(HN_SCHEMA);
-
   const adapter = new MyAdapter(_adapterFetchChannel);
-  const resultIter = executeQuery(schemaCopy, adapter, query, args);
+  const resultIter = executeQuery(SCHEMA, adapter, query, args);
 
   return resultIter;
 }

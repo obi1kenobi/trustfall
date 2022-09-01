@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",
+    "build:trustfall": "wasm-pack build ../../trustfall_wasm --no-typescript --out-dir=../experiments/browser_based_querying/www2 && cp ../../trustfall_wasm/src/trustfall_wasm.d.ts ./www2/",
     "build:rustdoc": "wasm-pack build ../trustfall_rustdoc --out-dir=../browser_based_querying/pkg",
     "start": "webpack-dev-server",
     "lint": "tsc && eslint --ext=tsx,ts,js . && prettier --check .",

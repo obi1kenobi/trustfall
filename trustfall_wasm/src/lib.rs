@@ -63,7 +63,7 @@ pub fn from_js_args(args: JsValue) -> Result<Arc<BTreeMap<Arc<str>, FieldValue>>
 
 #[wasm_bindgen(js_name = "executeQuery")]
 pub fn execute_query(
-    schema: Schema,
+    schema: &Schema,
     adapter: JsAdapter,
     query: &str,
     args: JsValue,
@@ -71,7 +71,7 @@ pub fn execute_query(
     // TODO: add a proper error type
     let args = from_js_args(args)?;
 
-    let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
+    let query = trustfall_core::frontend::parse(schema, query).map_err(|e| e.to_string())?;
 
     let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
 
