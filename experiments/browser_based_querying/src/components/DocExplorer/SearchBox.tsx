@@ -9,7 +9,7 @@
  *  Adapted from https://github.com/graphql/graphiql
  */
 import ClearIcon from '@mui/icons-material/Clear';
-import { Grid, TextField } from '@mui/material';
+import { TextField } from '@mui/material';
 import IconButton from '@mui/material/IconButton';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -76,6 +76,7 @@ export default class SearchBox extends React.Component<SearchBoxProps, SearchBox
             </InputAdornment>
           ),
         }}
+        fullWidth
       />
     );
   }

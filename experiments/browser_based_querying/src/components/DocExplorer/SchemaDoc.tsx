@@ -35,7 +35,7 @@ export default function SchemaDoc() {
         }
       />
       <div className="doc-category">
-        <Typography fontWeight="bold">root types</Typography>
+        <Typography fontWeight="bold">Root Types</Typography>
         {queryType ? (
           <div className="doc-category-item">
             <Typography display="inline">query: </Typography>

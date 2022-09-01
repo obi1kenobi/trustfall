@@ -46,7 +46,7 @@ export function DocExplorer(props: DocExplorerProps) {
     schema: schemaFromContext,
     validationErrors,
   } = useSchemaContext({ nonNull: true });
-  const { explorerNavStack, hide, pop, showSearch } = useExplorerContext({
+  const { explorerNavStack, pop, showSearch } = useExplorerContext({
     nonNull: true,
   });
 
@@ -93,6 +93,7 @@ export function DocExplorer(props: DocExplorerProps) {
       key={navItem.name}
       direction="column"
       spacing={1}
+      sx={{overflowY: 'auto', overflowX: 'hidden', flexWrap: 'nowrap'}}
     >
       <Grid container item direction="row" alignItems="center">
         <Grid item>
@@ -108,7 +109,7 @@ export function DocExplorer(props: DocExplorerProps) {
           </Button>
         </Grid>
         <Grid item>
-          <Typography variant="body1" color="dimgray">
+          <Typography variant="body1" color="dimgray" sx={{textAlign: 'center'}}>
             {navItem.name}
           </Typography>
         </Grid>
