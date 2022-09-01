@@ -10,111 +10,11 @@ import init, {
   executeQuery,
 } from '../../www2/trustfall_wasm.js';
 import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
+import HN_SCHEMA from './schema.graphql';
 
-console.log('running wasm init...');
-await init();
-console.log('wasm init complete');
-
-console.log('Query system init...');
-initialize();
-console.log('Query system initialized');
-
-// TODO: This is a copy of schema.graphql, find a better way to include it.
-export const HN_SCHEMA = `
-schema {
-  query: RootSchemaQuery
-}
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
-directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
-directive @fold on FIELD
-
-type RootSchemaQuery {
-  HackerNewsFrontPage: [HackerNewsItem!]!
-  HackerNewsTop(max: Int): [HackerNewsItem!]!
-  HackerNewsLatestStories(max: Int): [HackerNewsStory!]!
-  HackerNewsUser(name: String!): HackerNewsUser
-}
-
-interface HackerNewsItem {
-  id: Int!
-  unixTime: Int!
-  ownUrl: String!
-}
-
-type HackerNewsJob implements HackerNewsItem {
-  # properties from HackerNewsItem
-  id: Int!
-  unixTime: Int!
-  ownUrl: String!
-
-  # own properties
-  title: String!
-  score: Int!
-  url: String!
-
-  # edges
-  link: Webpage!
-}
-
-type HackerNewsStory implements HackerNewsItem {
-  # properties from HackerNewsItem
-  id: Int!
-  unixTime: Int!
-  ownUrl: String!
-
-  # own properties
-  byUsername: String!
-  score: Int!
-  text: String
-  title: String!
-  url: String
-  commentsCount: Int!
-
-  # edges
-  byUser: HackerNewsUser!
-  comment: [HackerNewsComment!]
-  link: Webpage
-}
-
-type HackerNewsComment implements HackerNewsItem {
-  # properties from HackerNewsItem
-  id: Int!
-  unixTime: Int!
-  ownUrl: String!
-
-  # own properties
-  text: String!
-  byUsername: String!
-
-  # edges
-  byUser: HackerNewsUser!
-  reply: [HackerNewsComment!]
-  parent: HackerNewsItem!  # either a parent comment or the story being commented on
-
-  # not implemented yet
-  # topmostAncestor: HackerNewsItem!  # the ultimate ancestor of this item: a story or job
-}
-
-type HackerNewsUser {
-  id: String!
-  karma: Int!
-  about: String
-  unixCreatedAt: Int!
-
-  # The HackerNews API treats submissions of comments and stories the same way.
-  # The way to get only a user's submitted stories is to use this edge then
-  # apply a type coercion on the \`HackerNewsItem\` vertex on edge endpoint:
-  # \`...on HackerNewsStory\`
-  submitted: [HackerNewsItem!]
-}
-
-interface Webpage {
-  url: String!
-}
-`;
+// We need both of these!
+await init();  // WASM system init.
+initialize();  // Trustfall query system init.
 
 Schema.parse(HN_SCHEMA);
 console.log('Schema loaded.');
@@ -454,7 +354,6 @@ function dispatch(e: MessageEvent<AdapterMessage>): void {
       done: rawResult.done,
       value: rawResult.value,
     };
-    console.log('Adapter posting:', result);
     postMessage(result);
     return;
   }

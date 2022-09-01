@@ -21,7 +21,6 @@ export function materializeItem(fetchPort: MessagePort, itemId: number): HackerN
 
   const result = new TextDecoder().decode(sync.receive());
   const item = JSON.parse(result);
-  console.log('materialized item:', item);
 
   return item;
 }
@@ -43,7 +42,6 @@ export function materializeUser(fetchPort: MessagePort, username: string): unkno
 
   const result = new TextDecoder().decode(sync.receive());
   const user = JSON.parse(result);
-  console.log('materialized user:', user);
 
   return user;
 }
@@ -54,10 +52,8 @@ export function* getTopItems(fetchPort: MessagePort): Generator<HackerNewsItem> 
   const url = 'https://hacker-news.firebaseio.com/v0/topstories.json';
   const fetchOptions = {
     method: 'GET',
-    // "credentials": "omit",
   };
 
-  console.log('posting to fetcher');
   const message = {
     sync: sync.makeSendable(),
     input: url,
@@ -65,12 +61,8 @@ export function* getTopItems(fetchPort: MessagePort): Generator<HackerNewsItem> 
   };
   fetchPort.postMessage(message);
 
-  console.log('waiting (1) for fetcher');
-
   const result = new TextDecoder().decode(sync.receive());
-  console.log('result=', result);
   const storyIds = JSON.parse(result);
-  console.log('storyIds=', storyIds);
 
   for (const id of storyIds) {
     const item = materializeItem(fetchPort, id);
@@ -90,10 +82,8 @@ export function* getLatestItems(fetchPort: MessagePort): Generator<HackerNewsIte
   const url = 'https://hacker-news.firebaseio.com/v0/newstories.json';
   const fetchOptions = {
     method: 'GET',
-    // "credentials": "omit",
   };
 
-  console.log('posting to fetcher');
   const message = {
     sync: sync.makeSendable(),
     input: url,
@@ -101,12 +91,8 @@ export function* getLatestItems(fetchPort: MessagePort): Generator<HackerNewsIte
   };
   fetchPort.postMessage(message);
 
-  console.log('waiting (1) for fetcher');
-
   const result = new TextDecoder().decode(sync.receive());
-  console.log('result=', result);
   const storyIds = JSON.parse(result);
-  console.log('storyIds=', storyIds);
 
   for (const id of storyIds) {
     const item = materializeItem(fetchPort, id);

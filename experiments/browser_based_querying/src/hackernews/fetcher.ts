@@ -10,7 +10,6 @@ interface ChannelData {
 
 onmessage = function (e): void {
   const data = e.data;
-  console.log('Fetcher received data:', data);
 
   if (data.op === 'channel') {
     const inputChannel = data.data.port;
@@ -23,13 +22,11 @@ onmessage = function (e): void {
 
 function fetchHandler(e: MessageEvent<ChannelData>): void {
   const data = e.data;
-  console.log('Fetcher received channel data:', data);
 
   const sync = new SyncContext(data.sync);
 
   fetch(data.input, data.init)
     .then((response) => {
-      console.log('worker fetch complete:', response.ok, response.status);
       if (!response.ok) {
         console.log('non-ok response:', response.status);
         sync.sendError(`non-ok response: ${response.status}`);
