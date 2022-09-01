@@ -10,13 +10,11 @@ import init, {
   executeQuery,
 } from '../../www2/trustfall_wasm.js';
 import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
-import schema from './schema.graphql';
+import HN_SCHEMA from './schema.graphql';
 
 // We need both of these!
 await init();  // WASM system init.
 initialize();  // Trustfall query system init.
-
-export const HN_SCHEMA = schema;
 
 Schema.parse(HN_SCHEMA);
 console.log('Schema loaded.');
