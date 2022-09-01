@@ -42,14 +42,18 @@ export default function HackerNewsPlayground(): JSX.Element {
     () => (
       <Box>
         <Typography variant="h4" component="div">
-          Trustfall in-browser query demo
+          HackerNews API — Trustfall Playground
         </Typography>
         <Typography>
-          Query the HackerNews API directly from your browser with GraphQL, using{' '}
+          Query HackerNews directly from your browser with{' '}
           <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
             Trustfall
           </a>{' '}
           compiled to WebAssembly.
+        </Typography>
+        <Typography>
+          Results are computed one at a time to conserve data and API rate limits.
+          Even so, querying from a mobile data plan is not recommended.
         </Typography>
       </Box>
     ),
