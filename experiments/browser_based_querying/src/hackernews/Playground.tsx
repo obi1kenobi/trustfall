@@ -34,7 +34,7 @@ export default function HackerNewsPlayground(): JSX.Element {
   const [ready, setReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [results, setResults] = useState<object[] | null>(null);
-  const [nextResult, setNextResult] = useState<AsyncValue<object> | null>(null);
+  const [nextResult, setNextResult] = useState<AsyncValue<object | null> | null>(null);
 
   const schema = useMemo(() => buildSchema(HN_SCHEMA), []);
 
@@ -97,6 +97,7 @@ export default function HackerNewsPlayground(): JSX.Element {
     const outcome = evt.data;
     if (outcome.done) {
       setHasMore(false);
+      setNextResult({ status: 'ready', value: null });
     } else {
       setNextResult({ status: 'ready', value: outcome.value });
       setHasMore(true);
@@ -124,10 +125,11 @@ export default function HackerNewsPlayground(): JSX.Element {
 
   // Set results
   useEffect(() => {
-    if (nextResult && nextResult.status === 'ready') {
+    if (nextResult && nextResult.status === 'ready' && nextResult.value != null) {
+      const nextValue = nextResult.value;
       setResults((prevResults) => {
         const prevValue = prevResults ? prevResults : [];
-        return [...prevValue, nextResult.value];
+        return [...prevValue, nextValue];
       });
     } else if (nextResult == null || nextResult.status === 'error') {
       setResults(null);
