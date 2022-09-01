@@ -321,6 +321,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               onClick={() => onQueryNextResult()}
               disabled={!hasMore || Boolean(disabled)}
               loading={loading}
+              sx={{mr: 2}}
             >
               {hasMore ? 'More!' : 'No more results'}
             </LoadingButton>
