@@ -16,6 +16,7 @@ Contents:
 
 - Install the version of node and `npm`.
 - `npm install` to install dependencies
-- `npm run build:rustdoc` to build the `trustfall_rustdoc` crate to wasm
+- `npm run build:trustfall` to build the `trustfall_wasm` crate to WASM
+- `npm run build:rustdoc` to build the `trustfall_rustdoc` crate to WASM
 - `npm start` to build and run the local server
 - Open a browser to `http://localhost:8000/hackernews` or `/rustdoc` and enjoy!
