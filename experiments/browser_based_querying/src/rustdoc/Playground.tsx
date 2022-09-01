@@ -168,14 +168,19 @@ export default function Rustdoc(): JSX.Element {
     return (
       <Box>
         <Typography variant="h4" component="div">
-          Trustfall in-browser query demo
+          Rust crates — Trustfall Playground
         </Typography>
         <Typography>
-          Query rustdocs directly from your browser with GraphQL, using{' '}
+          Query a crate's rustdoc directly from your browser with{' '}
           <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
             Trustfall
           </a>{' '}
           compiled to WebAssembly.
+        </Typography>
+        <Typography>
+          Selecting a crate downloads a few MB of data;
+          you might not want to do this from a mobile data plan.
+          If your favorite crate is missing, <a href="https://github.com/obi1kenobi/crates-rustdoc/issues/new/choose">let us know</a>!
         </Typography>
         {queryWorker && (
           <Box>
