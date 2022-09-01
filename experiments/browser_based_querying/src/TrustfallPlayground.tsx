@@ -347,7 +347,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         item
         xs={11}
         spacing={2}
-        sx={{ flexShrink: 1, flexWrap: 'nowrap', overflowY: 'hidden' }}
+        sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}
       >
         <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
@@ -388,7 +388,6 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             sx={{
               display: selectedTab ==='docs' ? 'flex' : 'none',
               flexDirection: 'column',
-              flex: 1,
               overflowY: 'hidden',
               overflowX: 'hidden',
             }}
