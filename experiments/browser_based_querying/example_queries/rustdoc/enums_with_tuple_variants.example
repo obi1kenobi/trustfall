@@ -1,0 +1,25 @@
+# Enums with tuple variants, and their associated information.
+query {
+  Crate {
+    item {
+      ... on Enum {
+        enum_name: name @output
+
+        variant_: variant {  # set "variant_" prefix for outputs within
+          ... on TupleVariant {  # discard all non-tuple enum variants
+            name @output
+            docs @output
+
+            # override output prefixes by explicitly naming outputs
+            attrs @output(name: "attributes")
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}

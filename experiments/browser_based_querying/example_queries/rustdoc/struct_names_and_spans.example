@@ -1,0 +1,20 @@
+# Structs in this crate and where (file + line number) they were defined
+query {
+  Crate {
+    item {
+      ... on Struct {
+        name @output
+
+        span {
+          filename @output
+          first_line: begin_line @output
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}
