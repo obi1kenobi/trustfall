@@ -342,7 +342,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           </FormControl>
         </div>
       </Grid>
-      <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap' }}>
+      <Grid
+        container
+        item
+        xs={11}
+        spacing={2}
+        sx={{ flexShrink: 1, flexWrap: 'nowrap', overflowY: 'hidden' }}
+      >
         <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
             {/* Use padding to align query section with results */}
@@ -377,10 +383,17 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               <div ref={resultsEditorRef} css={cssEditor} />
             </Paper>
           </TabPanel>
-          <TabPanel selected={selectedTab === 'docs'}>
-            <Box sx={{ maxHeight: '85vh', overflowY: 'overlay', overflowX: 'hidden' }}>
-              <SimpleDocExplorer schema={schema} />
-            </Box>
+          <TabPanel
+            selected={selectedTab === 'docs'}
+            sx={{
+              display: selectedTab ==='docs' ? 'flex' : 'none',
+              flexDirection: 'column',
+              flex: 1,
+              overflowY: 'hidden',
+              overflowX: 'hidden',
+            }}
+          >
+            <SimpleDocExplorer schema={schema} />
           </TabPanel>
         </Grid>
       </Grid>

@@ -93,6 +93,7 @@ export function DocExplorer(props: DocExplorerProps) {
       key={navItem.name}
       direction="column"
       spacing={1}
+      sx={{overflowY: 'auto', overflowX: 'hidden', flexWrap: 'nowrap'}}
     >
       <Grid container item direction="row" alignItems="center">
         <Grid item>

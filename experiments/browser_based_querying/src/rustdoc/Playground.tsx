@@ -197,7 +197,7 @@ export default function Rustdoc(): JSX.Element {
       <Grid item xs={1}>
         {header}
       </Grid>
-      <Grid container direction="column" item xs={11}>
+      <Grid container direction="column" item xs={11} sx={{flexShrink: 1, overflowY: 'hidden'}}>
         {queryWorker && <Playground queryWorker={queryWorker} disabled={disabledMessage} />}
       </Grid>
     </Grid>
