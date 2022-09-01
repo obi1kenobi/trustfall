@@ -9,7 +9,7 @@ import latestStoriesExample from '../../example_queries/latest_stories_with_min_
 import patio11Example from '../../example_queries/patio11_commenting_on_submissions_of_his_blog_posts.example';
 import topStoriesExample from '../../example_queries/top_stories_with_min_points_and_submitter_karma.example';
 
-import { HN_SCHEMA } from './adapter';
+import HN_SCHEMA from './schema.graphql';
 
 const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {

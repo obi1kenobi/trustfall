@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { css } from '@emotion/react';
 import { LoadingButton } from '@mui/lab';
 import {
@@ -25,7 +25,7 @@ import { NumberParam, StringParam, useQueryParams } from 'use-query-params';
 import SimpleDocExplorer from './components/SimpleDocExplorer';
 
 const DEFAULT_ENCODING_FORMAT = 1;
-const DEFAULT_QUERY = 'query {\n\n}';
+const DEFAULT_QUERY = '';
 const DEFAULT_VARS = '{\n\n}';
 
 function decodeB64(str: string): string | null {
@@ -126,10 +126,10 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
 
   // Use useState to grab the first value and cache it (unlike useMemo, which will update)
   const [initialQuery, _setInitialQuery] = useState<string>(
-    () => decodeB64(encodedQuery ?? '') || DEFAULT_QUERY
+    () => decodeB64(encodedQuery ?? '') || (exampleQueries[0]?.value[0] ?? DEFAULT_QUERY)
   );
   const [initialVars, _setInitialVars] = useState<string>(
-    () => decodeB64(encodedVars ?? '') || DEFAULT_VARS
+    () => decodeB64(encodedVars ?? '') || (exampleQueries[0]?.value[1] ?? DEFAULT_VARS)
   );
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
@@ -144,6 +144,19 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     null
   );
   const [selectedTab, setSelectedTab] = useState<ResultsTab>('results');
+
+  const noQuery = encodedQuery === '';
+  const disabledMessage = useMemo(() => {
+    if (disabled) {
+      return disabled;
+    }
+
+    if (noQuery) {
+      return 'Write a query or load an example';
+    }
+
+    return '';
+  }, [disabled, noQuery]);
 
   const handleTabChange = useCallback((_evt: React.SyntheticEvent, value: ResultsTab) => {
     setSelectedTab(value);
@@ -233,11 +246,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         automaticLayout: true,
         ...disableGutterConfig,
       });
-
-      setQueryEditor(queryEditor);
-      setVarsEditor(varsEditor);
-      setResultsEditor(
-        monaco.editor.create(resultsEditorRef.current, {
+      const resultsEditor = monaco.editor.create(resultsEditorRef.current, {
           language: 'json',
           value: '',
           minimap: {
@@ -247,7 +256,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           automaticLayout: true,
           ...disableGutterConfig,
         })
-      );
+
+      queryEditor.getModel()?.updateOptions({ tabSize: 2 })
+      varsEditor.getModel()?.updateOptions({ tabSize: 2 })
+      resultsEditor.getModel()?.updateOptions({ tabSize: 2 })
+      setQueryEditor(queryEditor);
+      setVarsEditor(varsEditor);
+      setResultsEditor(resultsEditor);
 
       // Define inside effect to avoid infinite loop
       const updateQueryParams = () => {
@@ -300,14 +315,14 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       <Grid item xs={1}>
         {header}
         <div css={{ display: 'flex', alignItems: 'center', margin: 10 }}>
-          <Tooltip title={disabled ? disabled : ''} placement="bottom">
+          <Tooltip title={disabledMessage} placement="bottom">
             <span>
               <LoadingButton
                 size="small"
                 onClick={() => handleQuery()}
                 variant="contained"
                 sx={{ mr: 2 }}
-                disabled={Boolean(disabled)}
+                disabled={Boolean(disabled) || noQuery}
                 loading={loading}
               >
                 Run query!
@@ -321,7 +336,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               onClick={() => onQueryNextResult()}
               disabled={!hasMore || Boolean(disabled)}
               loading={loading}
-              sx={{mr: 2}}
+              sx={{ mr: 2 }}
             >
               {hasMore ? 'More!' : 'No more results'}
             </LoadingButton>
@@ -343,13 +358,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           </FormControl>
         </div>
       </Grid>
-      <Grid
-        container
-        item
-        xs={11}
-        spacing={2}
-        sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}
-      >
+      <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}>
         <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
             {/* Use padding to align query section with results */}
@@ -387,7 +396,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           <TabPanel
             selected={selectedTab === 'docs'}
             sx={{
-              display: selectedTab ==='docs' ? 'flex' : 'none',
+              display: selectedTab === 'docs' ? 'flex' : 'none',
               flexDirection: 'column',
               overflowY: 'hidden',
               overflowX: 'hidden',
