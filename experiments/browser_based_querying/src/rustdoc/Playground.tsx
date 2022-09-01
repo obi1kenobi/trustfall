@@ -178,7 +178,7 @@ export default function Rustdoc(): JSX.Element {
           compiled to WebAssembly.
         </Typography>
         <Typography>
-          Selecting a crate downloads a few MB of data;
+          Selecting a crate downloads a few MB of data, so {' '}
           you might not want to do this from a mobile data plan.
           If your favorite crate is missing, <a href="https://github.com/obi1kenobi/crates-rustdoc/issues/new/choose">let us know</a>!
         </Typography>
