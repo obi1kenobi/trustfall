@@ -246,13 +246,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         automaticLayout: true,
         ...disableGutterConfig,
       });
-
-      queryEditor.getModel()?.updateOptions({ tabSize: 2 })
-      varsEditor.getModel()?.updateOptions({ tabSize: 2 })
-      setQueryEditor(queryEditor);
-      setVarsEditor(varsEditor);
-      setResultsEditor(
-        monaco.editor.create(resultsEditorRef.current, {
+      const resultsEditor = monaco.editor.create(resultsEditorRef.current, {
           language: 'json',
           value: '',
           minimap: {
@@ -262,7 +256,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           automaticLayout: true,
           ...disableGutterConfig,
         })
-      );
+
+      queryEditor.getModel()?.updateOptions({ tabSize: 2 })
+      varsEditor.getModel()?.updateOptions({ tabSize: 2 })
+      resultsEditor.getModel()?.updateOptions({ tabSize: 2 })
+      setQueryEditor(queryEditor);
+      setVarsEditor(varsEditor);
+      setResultsEditor(resultsEditor);
 
       // Define inside effect to avoid infinite loop
       const updateQueryParams = () => {
