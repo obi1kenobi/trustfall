@@ -4,9 +4,9 @@
   "description": "a WASM web demo of browser-based querying using the Trustfall engine.",
   "main": "index.js",
   "scripts": {
-    "build": "webpack --config webpack.config.js",
-    "build:trustfall": "wasm-pack build ../../trustfall_wasm --no-typescript --out-dir=../experiments/browser_based_querying/www2 && cp ../../trustfall_wasm/src/trustfall_wasm.d.ts ./www2/",
-    "build:rustdoc": "wasm-pack build ../trustfall_rustdoc --out-dir=../browser_based_querying/pkg",
+    "build": "rm -r dist/* 2>/dev/null; webpack --config webpack.config.js",
+    "build:trustfall": "export CARGO_PROFILE_RELEASE_LTO=true && export CARGO_PROFILE_RELEASE_OPT_LEVEL=3 && export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 && wasm-pack build ../../trustfall_wasm --release --no-typescript --out-dir=../experiments/browser_based_querying/www2 && cp ../../trustfall_wasm/src/trustfall_wasm.d.ts ./www2/",
+    "build:rustdoc": "export CARGO_PROFILE_RELEASE_LTO=true && export CARGO_PROFILE_RELEASE_OPT_LEVEL=3 && export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 && wasm-pack build ../trustfall_rustdoc --release --out-dir=../browser_based_querying/pkg",
     "start": "webpack-dev-server",
     "lint": "tsc && eslint --ext=tsx,ts,js . && prettier --check .",
     "fix": "eslint --fix --ext=js,jsx,ts,tsx . && prettier --write ."
