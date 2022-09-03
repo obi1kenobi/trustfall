@@ -90,6 +90,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
+directive @transform(op: String!) on FIELD
 ";
 
     pub fn parse(input: impl AsRef<str>) -> Result<Self, InvalidSchemaError> {
