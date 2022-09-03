@@ -31,6 +31,16 @@ interface Number implements Named {
     multiple(max: Int!): [Composite!]
 }
 
+type Neither implements Number & Named {
+  name: String
+  value: Int
+  vowelsInName: [String]
+
+  predecessor: Number
+  successor: Number!
+  multiple(max: Int!): [Composite!]
+}
+
 type Prime implements Number & Named {
     name: String
     value: Int

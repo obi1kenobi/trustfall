@@ -18,6 +18,14 @@ use self::types::{
 };
 pub use self::value::{FieldValue, TransparentValue};
 
+pub(crate) const TYPENAME_META_FIELD: &str = "__typename";
+
+lazy_static! {
+    pub(crate) static ref TYPENAME_META_FIELD_NAME: Name = Name::new(TYPENAME_META_FIELD);
+    pub(crate) static ref TYPENAME_META_FIELD_TYPE: Type = Type::new("String").unwrap();
+    pub(crate) static ref TYPENAME_META_FIELD_ARC: Arc<str> = Arc::from(TYPENAME_META_FIELD);
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Vid(pub(crate) NonZeroUsize); // vertex ID
 
