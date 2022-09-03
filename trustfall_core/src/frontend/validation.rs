@@ -39,6 +39,14 @@ fn validate_field<'a>(
     assert_eq!(connection.alias, node.alias);
 
     if node.name.as_ref() == TYPENAME_META_FIELD {
+        // This is a meta field of scalar "String!" type that is guaranteed to exist.
+        // We just have to make sure that it's used as a property, and not as an edge.
+        if !node.connections.is_empty() {
+            return Err(FrontendError::PropertyMetaFieldUsedAsEdge(
+                TYPENAME_META_FIELD.to_string(),
+            ));
+        }
+
         return Ok(());
     }
 

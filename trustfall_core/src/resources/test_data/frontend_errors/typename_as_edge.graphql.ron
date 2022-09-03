@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        __typename {
+            foo @output
+        }
+    }
+}"#,
+    arguments: {},
+)

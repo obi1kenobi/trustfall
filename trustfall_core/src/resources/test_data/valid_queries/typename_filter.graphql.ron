@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 1, max: 2) {
+        __typename @filter(op: "=", value: ["$type"])
+        value @output
+    }
+}"#,
+    arguments: {
+        "type": String("Prime"),
+    },
+)

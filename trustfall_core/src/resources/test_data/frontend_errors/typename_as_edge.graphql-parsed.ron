@@ -1,0 +1,52 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "__typename",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "__typename",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "foo",
+            ), FieldNode(
+              position: Pos(
+                line: 5,
+                column: 13,
+              ),
+              name: "foo",
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))
