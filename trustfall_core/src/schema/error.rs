@@ -98,6 +98,18 @@ pub enum InvalidSchemaError {
         the root query type of this schema, which is not supported."
     )]
     EdgePointsToRootQueryType(String, String, String),
+
+    #[error(
+        "Type \"{0}\" defines field \"{1}\", but the field prefix \"__\" is reserved \
+        for internal use and cannot be used in schemas."
+    )]
+    ReservedFieldName(String, String),
+
+    #[error(
+        "Type \"{0}\" uses the prefix \"__\" which is reserved \
+        for internal use and cannot be used in schemas."
+    )]
+    ReservedTypeName(String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {

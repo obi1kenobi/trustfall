@@ -80,6 +80,8 @@ lazy_static! {
     };
 }
 
+const RESERVED_PREFIX: &str = "__";
+
 impl Schema {
     pub const ALL_DIRECTIVE_DEFINITIONS: &'static str = "
 directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
@@ -196,7 +198,9 @@ directive @fold on FIELD
         if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
             errors.extend(e.into_iter());
         }
-        if let Err(e) = check_property_and_edge_invariants(query_type_definition, &vertex_types) {
+        if let Err(e) =
+            check_type_and_property_and_edge_invariants(query_type_definition, &vertex_types)
+        {
             errors.extend(e.into_iter());
         }
         if let Err(e) =
@@ -266,18 +270,29 @@ fn check_root_query_type_invariants(
     }
 }
 
-fn check_property_and_edge_invariants(
+fn check_type_and_property_and_edge_invariants(
     query_type_definition: &TypeDefinition,
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
     for (type_name, type_defn) in vertex_types {
+        if type_name.as_ref().starts_with(RESERVED_PREFIX) {
+            errors.push(InvalidSchemaError::ReservedTypeName(type_name.to_string()));
+        }
+
         let type_fields = get_vertex_type_fields(type_defn);
 
         for defn in type_fields {
             let field_defn = &defn.node;
             let field_type = &field_defn.ty.node;
+
+            if field_defn.name.node.as_ref().starts_with(RESERVED_PREFIX) {
+                errors.push(InvalidSchemaError::ReservedFieldName(
+                    type_name.to_string(),
+                    field_defn.name.node.to_string(),
+                ));
+            }
 
             let base_named_type = get_base_named_type(field_type);
             if BUILTIN_SCALARS.contains(base_named_type) {
