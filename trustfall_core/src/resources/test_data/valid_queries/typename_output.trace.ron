@@ -1,0 +1,91 @@
+TestInterpreterOutputTrace(
+  schema_name: "numbers",
+  trace: Trace(
+    ops: {
+      Opid(1): TraceOp(
+        opid: Opid(1),
+        parent_opid: None,
+        content: Call(GetStartingTokens(Vid(1))),
+      ),
+      Opid(2): TraceOp(
+        opid: Opid(2),
+        parent_opid: None,
+        content: Call(ProjectProperty(Vid(1), "Number", "__typename")),
+      ),
+      Opid(3): TraceOp(
+        opid: Opid(3),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(4): TraceOp(
+        opid: Opid(4),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(GetStartingTokens(Neither(NeitherNumber(0)))),
+      ),
+      Opid(5): TraceOp(
+        opid: Opid(5),
+        parent_opid: Some(Opid(2)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Neither(NeitherNumber(0))),
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+          },
+        )),
+      ),
+      Opid(6): TraceOp(
+        opid: Opid(6),
+        parent_opid: Some(Opid(2)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: Some(Neither(NeitherNumber(0))),
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+          },
+        ), String("Neither"))),
+      ),
+      Opid(7): TraceOp(
+        opid: Opid(7),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(8): TraceOp(
+        opid: Opid(8),
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(9): TraceOp(
+        opid: Opid(9),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(10): TraceOp(
+        opid: Opid(10),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+    },
+    ir_query: IRQuery(
+      root_name: "Zero",
+      root_component: IRQueryComponent(
+        root: Vid(1),
+        vertices: {
+          Vid(1): IRVertex(
+            vid: Vid(1),
+            type_name: "Number",
+          ),
+        },
+        outputs: {
+          "__typename": ContextField(
+            vertex_id: Vid(1),
+            field_name: "__typename",
+            field_type: "String!",
+          ),
+        },
+      ),
+    ),
+  ),
+  results: [
+    {
+      "__typename": String("Neither"),
+    },
+  ],
+)

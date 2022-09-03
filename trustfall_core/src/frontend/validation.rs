@@ -4,6 +4,7 @@ use async_graphql_parser::types::TypeKind;
 
 use crate::{
     graphql_query::query::{FieldConnection, FieldNode, Query},
+    ir::TYPENAME_META_FIELD,
     schema::Schema,
 };
 
@@ -36,6 +37,18 @@ fn validate_field<'a>(
     // TODO: Maybe consider a better representation that doesn't have this duplication?
     assert_eq!(connection.name, node.name);
     assert_eq!(connection.alias, node.alias);
+
+    if node.name.as_ref() == TYPENAME_META_FIELD {
+        // This is a meta field of scalar "String!" type that is guaranteed to exist.
+        // We just have to make sure that it's used as a property, and not as an edge.
+        if !node.connections.is_empty() {
+            return Err(FrontendError::PropertyMetaFieldUsedAsEdge(
+                TYPENAME_META_FIELD.to_string(),
+            ));
+        }
+
+        return Ok(());
+    }
 
     let old_path_length = path.len();
     let field_def = schema

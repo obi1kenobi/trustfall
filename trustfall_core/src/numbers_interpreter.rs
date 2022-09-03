@@ -17,6 +17,8 @@ pub(crate) enum NumbersToken {
 }
 
 trait Number {
+    fn typename(&self) -> &'static str;
+
     fn value(&self) -> i64;
 
     fn name(&self) -> Option<&'static str> {
@@ -62,6 +64,10 @@ trait Number {
 pub(crate) struct NeitherNumber(i64);
 
 impl Number for NeitherNumber {
+    fn typename(&self) -> &'static str {
+        "Neither"
+    }
+
     fn value(&self) -> i64 {
         self.0
     }
@@ -71,6 +77,10 @@ impl Number for NeitherNumber {
 pub(crate) struct PrimeNumber(i64);
 
 impl Number for PrimeNumber {
+    fn typename(&self) -> &'static str {
+        "Prime"
+    }
+
     fn value(&self) -> i64 {
         self.0
     }
@@ -80,6 +90,10 @@ impl Number for PrimeNumber {
 pub(crate) struct CompositeNumber(i64, BTreeSet<i64>);
 
 impl Number for CompositeNumber {
+    fn typename(&self) -> &'static str {
+        "Composite"
+    }
+
     fn value(&self) -> i64 {
         self.0
     }
@@ -201,6 +215,9 @@ impl Adapter<'static> for NumbersAdapter {
                                 None => FieldValue::Null,
                                 Some(v) => FieldValue::List(v.into_iter().map(FieldValue::String).collect_vec()),
                             }
+                        }),
+                        (__typename, token, {
+                            token.typename().into()
                         })
                     ],
                 }

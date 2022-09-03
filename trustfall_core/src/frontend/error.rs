@@ -94,6 +94,9 @@ pub enum FrontendError {
     )]
     EdgeRecursionNeedingMultipleCoercions(String),
 
+    #[error("Meta field \"{0}\" is a property but the query uses it as an edge.")]
+    PropertyMetaFieldUsedAsEdge(String),
+
     #[error("The query failed to validate against the schema.")]
     ValidationError(#[from] ValidationError),
 

@@ -20,7 +20,8 @@ use crate::{
         types::{intersect_types, is_argument_type_valid, NamedTypedValue},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, LocalField,
-        Operation, Recursive, TransformationKind, VariableRef, Vid,
+        Operation, Recursive, TransformationKind, VariableRef, Vid, TYPENAME_META_FIELD,
+        TYPENAME_META_FIELD_ARC, TYPENAME_META_FIELD_NAME, TYPENAME_META_FIELD_TYPE,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -67,6 +68,15 @@ fn get_field_name_and_type_from_schema<'a>(
     defined_fields: &'a [Positioned<FieldDefinition>],
     field_node: &FieldNode,
 ) -> (&'a Name, Arc<str>, Arc<str>, &'a Type) {
+    if field_node.name.as_ref() == TYPENAME_META_FIELD {
+        return (
+            &TYPENAME_META_FIELD_NAME,
+            TYPENAME_META_FIELD_ARC.clone(),
+            TYPENAME_META_FIELD_ARC.clone(),
+            &TYPENAME_META_FIELD_TYPE,
+        );
+    }
+
     for defined_field in defined_fields {
         let field_name = &defined_field.node.name.node;
         let field_raw_type = &defined_field.node.ty.node;
@@ -1126,6 +1136,7 @@ where
             || schema
                 .scalars
                 .contains_key(subfield_post_coercion_type.as_ref())
+            || subfield_name.as_ref() == TYPENAME_META_FIELD
         {
             // Processing a property.
 
@@ -1204,7 +1215,7 @@ where
                 }
             }
         } else {
-            unreachable!();
+            unreachable!("field name: {}", subfield_name.as_ref());
         }
     }
 
