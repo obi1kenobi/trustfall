@@ -25,7 +25,7 @@ module.exports = (env) => {
     },
     plugins: [
       new HTMLPlugin({
-        title: 'Trustfall in-browser query demo',
+        title: 'Trustfall Query Playground',
         chunks: ['index'],
         meta: {
           viewport: 'minimum-scale=1, initial-scale=1, width=device-width',
