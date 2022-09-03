@@ -14,7 +14,7 @@ Ok(TestIRQuery(
         "__typename": ContextField(
           vertex_id: Vid(1),
           field_name: "__typename",
-          field_type: "String",
+          field_type: "String!",
         ),
       },
     ),
