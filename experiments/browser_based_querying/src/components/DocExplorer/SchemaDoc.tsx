@@ -8,11 +8,10 @@
  *  Original code is available here:
  *  Adapted from https://github.com/graphql/graphiql
  */
-import React from 'react';
-import TypeLink from './TypeLink';
-import MarkdownContent from './MarkdownContent';
 import { useSchemaContext } from '@graphiql/react';
 import { Grid, Typography } from '@mui/material';
+import MarkdownContent from './MarkdownContent';
+import TypeLink from './TypeLink';
 
 // Render the top level Schema
 export default function SchemaDoc() {
