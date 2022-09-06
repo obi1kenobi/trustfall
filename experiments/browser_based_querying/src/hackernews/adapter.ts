@@ -29,7 +29,7 @@ const HNItemFieldMappings: Record<string, string> = {
   url: 'url',
   byUsername: 'by',
   text: 'text',
-  commentsCount: 'descendants',
+  // commentsCount: 'descendants',
 };
 
 const HNUserFieldMappings: Record<string, string> = {
