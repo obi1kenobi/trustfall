@@ -35,7 +35,7 @@ function run() {
       query: `
 {
   HackerNewsTop(max: 30) {
-    ... on HackerNewsStory {
+    ... on Story {
       title @output
       byUsername @output
       url @output
@@ -62,7 +62,7 @@ function run() {
       op: 'query',
       query: `
 {
-  HackerNewsLatestStories(max: 30) {
+  Latest(max: 30) {
     title @output
     byUsername @output
     url @output
@@ -88,7 +88,7 @@ function run() {
       op: 'query',
       query: `
 {
-  HackerNewsUser(name: "patio11") {
+  User(name: "patio11") {
     karma @output
     about @output
 
@@ -107,7 +107,7 @@ function run() {
       op: 'query',
       query: `
 {
-  HackerNewsUser(name: "hopefullynonexistentsoicantestthis") {
+  User(name: "hopefullynonexistentsoicantestthis") {
     karma @output
     about @output
   }
