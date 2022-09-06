@@ -7,6 +7,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
+directive @transform(op: String!) on FIELD
 
 type RootSchemaQuery {
     Base: [[[Base]]]
