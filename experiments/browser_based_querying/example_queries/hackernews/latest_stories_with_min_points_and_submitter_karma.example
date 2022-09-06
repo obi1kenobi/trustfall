@@ -1,6 +1,6 @@
 # Latest stories on HackerNews that have a minimum score and karma
 query {
-  HackerNewsLatestStories(max: 100) {
+  Latest(max: 100) {
     title @output
     byUsername @output
     url @output

@@ -58,9 +58,9 @@ export class MyAdapter implements Adapter<Vertex> {
   }
 
   *getStartingTokens(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
-    if (edge === 'HackerNewsFrontPage') {
+    if (edge === 'FrontPage') {
       return limitIterator(getTopItems(this.fetchPort), 30);
-    } else if (edge === 'HackerNewsTop') {
+    } else if (edge === 'Top') {
       const limit = parameters['max'];
       const iter = getTopItems(this.fetchPort);
       if (limit == undefined) {
@@ -68,7 +68,7 @@ export class MyAdapter implements Adapter<Vertex> {
       } else {
         yield* limitIterator(iter, limit as number);
       }
-    } else if (edge === 'HackerNewsLatestStories') {
+    } else if (edge === 'Latest') {
       const limit = parameters['max'];
       const iter = getLatestItems(this.fetchPort);
       if (limit == undefined) {
@@ -76,7 +76,7 @@ export class MyAdapter implements Adapter<Vertex> {
       } else {
         yield* limitIterator(iter, limit as number);
       }
-    } else if (edge === 'HackerNewsUser') {
+    } else if (edge === 'User') {
       const username = parameters['name'];
       if (username == undefined) {
         throw new Error(`No username given: ${edge} ${parameters}`);
@@ -97,10 +97,10 @@ export class MyAdapter implements Adapter<Vertex> {
     field_name: string
   ): IterableIterator<ContextAndValue> {
     if (
-      current_type_name === 'HackerNewsItem' ||
-      current_type_name === 'HackerNewsStory' ||
-      current_type_name === 'HackerNewsJob' ||
-      current_type_name === 'HackerNewsComment'
+      current_type_name === 'Item' ||
+      current_type_name === 'Story' ||
+      current_type_name === 'Job' ||
+      current_type_name === 'Comment'
     ) {
       if (field_name == 'ownUrl') {
         for (const ctx of data_contexts) {
@@ -131,7 +131,7 @@ export class MyAdapter implements Adapter<Vertex> {
           };
         }
       }
-    } else if (current_type_name === 'HackerNewsUser') {
+    } else if (current_type_name === 'User') {
       const fieldKey = HNUserFieldMappings[field_name];
       if (fieldKey == undefined) {
         throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
@@ -168,9 +168,9 @@ export class MyAdapter implements Adapter<Vertex> {
     parameters: JsEdgeParameters
   ): IterableIterator<ContextAndNeighborsIterator<Vertex>> {
     if (
-      current_type_name === 'HackerNewsStory' ||
-      current_type_name === 'HackerNewsJob' ||
-      current_type_name === 'HackerNewsComment'
+      current_type_name === 'Story' ||
+      current_type_name === 'Job' ||
+      current_type_name === 'Comment'
     ) {
       if (edge_name === 'link') {
         for (const ctx of data_contexts) {
@@ -226,7 +226,7 @@ export class MyAdapter implements Adapter<Vertex> {
       } else {
         throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
       }
-    } else if (current_type_name === 'HackerNewsUser') {
+    } else if (current_type_name === 'User') {
       if (edge_name === 'submitted') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
@@ -249,13 +249,13 @@ export class MyAdapter implements Adapter<Vertex> {
     current_type_name: string,
     coerce_to_type_name: string
   ): IterableIterator<ContextAndBool> {
-    if (current_type_name === 'HackerNewsItem') {
+    if (current_type_name === 'Item') {
       let targetType;
-      if (coerce_to_type_name === 'HackerNewsStory') {
+      if (coerce_to_type_name === 'Story') {
         targetType = 'story';
-      } else if (coerce_to_type_name === 'HackerNewsJob') {
+      } else if (coerce_to_type_name === 'Job') {
         targetType = 'job';
-      } else if (coerce_to_type_name === 'HackerNewsComment') {
+      } else if (coerce_to_type_name === 'Comment') {
         targetType = 'comment';
       } else {
         throw new Error(`Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`);

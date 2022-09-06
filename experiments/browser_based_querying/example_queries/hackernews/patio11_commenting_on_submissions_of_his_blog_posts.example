@@ -1,13 +1,13 @@
 # Comments by patio11 on submissions of his own blog posts
 query {
-  HackerNewsUser(name: "patio11") {
+  User(name: "patio11") {
     submitted {
-      ... on HackerNewsComment {
+      ... on Comment {
         text @output
         commentUrl: ownUrl @output
 
         parent @recurse(depth: 5) {
-          ... on HackerNewsStory {
+          ... on Story {
             url @filter(op: "has_substring", value: ["$url"])
                 @output
             submitter: byUsername @output

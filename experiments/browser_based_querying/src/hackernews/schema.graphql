@@ -40,20 +40,20 @@ directive @transform(
 ) on FIELD
 
 type RootSchemaQuery {
-  HackerNewsFrontPage: [HackerNewsItem!]!
-  HackerNewsTop(max: Int): [HackerNewsItem!]!
-  HackerNewsLatestStories(max: Int): [HackerNewsStory!]!
-  HackerNewsUser(name: String!): HackerNewsUser
+  FrontPage: [Item!]!
+  Top(max: Int): [Item!]!
+  Latest(max: Int): [Story!]!
+  User(name: String!): User
 }
 
-interface HackerNewsItem {
+interface Item {
   id: Int!
   unixTime: Int!
   ownUrl: String!
 }
 
-type HackerNewsJob implements HackerNewsItem {
-  # properties from HackerNewsItem
+type Job implements Item {
+  # properties from Item
   id: Int!
   unixTime: Int!
   ownUrl: String!
@@ -67,8 +67,8 @@ type HackerNewsJob implements HackerNewsItem {
   link: Webpage!
 }
 
-type HackerNewsStory implements HackerNewsItem {
-  # properties from HackerNewsItem
+type Story implements Item {
+  # properties from Item
   id: Int!
   unixTime: Int!
   ownUrl: String!
@@ -82,13 +82,13 @@ type HackerNewsStory implements HackerNewsItem {
   commentsCount: Int!
 
   # edges
-  byUser: HackerNewsUser!
-  comment: [HackerNewsComment!]
+  byUser: User!
+  comment: [Comment!]
   link: Webpage
 }
 
-type HackerNewsComment implements HackerNewsItem {
-  # properties from HackerNewsItem
+type Comment implements Item {
+  # properties from Item
   id: Int!
   unixTime: Int!
   ownUrl: String!
@@ -98,13 +98,13 @@ type HackerNewsComment implements HackerNewsItem {
   byUsername: String!
 
   # edges
-  byUser: HackerNewsUser!
-  reply: [HackerNewsComment!]
-  parent: HackerNewsItem! # either a parent comment or the story being commented on
-  topmostAncestor: HackerNewsItem! # the ultimate ancestor of this item: a story or job
+  byUser: User!
+  reply: [Comment!]
+  parent: Item! # either a parent comment or the story being commented on
+  topmostAncestor: Item! # the ultimate ancestor of this item: a story or job
 }
 
-type HackerNewsUser {
+type User {
   id: String!
   karma: Int!
   about: String
@@ -112,9 +112,9 @@ type HackerNewsUser {
 
   # The HackerNews API treats submissions of comments and stories the same way.
   # The way to get only a user's submitted stories is to use this edge then
-  # apply a type coercion on the `HackerNewsItem` vertex on edge endpoint:
-  # `... on HackerNewsStory`
-  submitted: [HackerNewsItem!]
+  # apply a type coercion on the `Item` vertex on edge endpoint:
+  # `... on Story`
+  submitted: [Item!]
 }
 
 interface Webpage {
