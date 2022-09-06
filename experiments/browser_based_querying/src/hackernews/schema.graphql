@@ -39,84 +39,271 @@ directive @transform(
   op: String!
 ) on FIELD
 
+"""
+All the possible data types where querying can begin in this API.
+"""
 type RootSchemaQuery {
+  """
+  Items on the front page of HackerNews. Equivalent to Top(max: 30).
+  """
   FrontPage: [Item!]!
+
+  """
+  The top items on HackerNews. Items on the front page are the top 30.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of topmost items. Otherwise, queries will continue fetching top items
+  as deep as the HackerNews API allows.
+  """
   Top(max: Int): [Item!]!
+
+  """
+  Latest story submissions on HackerNews.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching latest stories
+  as deep as the HackerNews API allows.
+  """
   Latest(max: Int): [Story!]!
+
+  """
+  Look up a user by their username.
+  """
   User(name: String!): User
 }
 
+"""
+One of the kinds of items on HackerNews: a story, job, comment, etc.
+"""
 interface Item {
+  """
+  The item's unique identifier.
+  """
   id: Int!
+
+  """
+  The item's timestamp, as a number in Unix time.
+  """
   unixTime: Int!
+
+  """
+  The item's URL on HackerNews.
+  """
   ownUrl: String!
 }
 
+"""
+A HackerNews job posting linking to the job opening site.
+"""
 type Job implements Item {
   # properties from Item
+  """
+  The item's unique identifier.
+  """
   id: Int!
+
+  """
+  The item's timestamp, as a number in Unix time.
+  """
   unixTime: Int!
+
+  """
+  The item's URL on HackerNews.
+  """
   ownUrl: String!
 
   # own properties
+  """
+  The job posting's title: the one-liner seen on the front page, for example.
+  """
   title: String!
+
+  """
+  The total number of points this submission has received.
+  """
   score: Int!
+
+  """
+  The URL this job posting points to.
+  """
   url: String!
 
   # edges
+  """
+  The web page this job posting links to.
+  """
   link: Webpage!
 }
 
+"""
+A story submitted to HackerNews: either a link, or a text submission like Show HN.
+"""
 type Story implements Item {
   # properties from Item
+  """
+  The item's unique identifier.
+  """
   id: Int!
+
+  """
+  The item's timestamp, as a number in Unix time.
+  """
   unixTime: Int!
+
+  """
+  The item's URL on HackerNews.
+  """
   ownUrl: String!
 
   # own properties
+  """
+  The display name of the user that submitted this story.
+  """
   byUsername: String!
+
+  """
+  The current score of this story submission.
+  """
   score: Int!
+
+  """
+  For text submissions, contains the submitted text.
+  For link submissions, this field is null.
+  """
   text: String
+
+  """
+  The story's title: the one-liner seen on the front page, for example.
+  """
   title: String!
+
+  """
+  For link submissions, contains the submitted link.
+  For text submissions, this field is null.
+  """
   url: String
-  commentsCount: Int!
 
   # edges
+  """
+  The profile of the user that submitted this story.
+  """
   byUser: User!
+
+  """
+  The top-level comments on this story.
+  """
   comment: [Comment!]
+
+  """
+  The web page this story links to, if any.
+  """
   link: Webpage
 }
 
+"""
+A comment submitted, for example, on a HackerNews story or job submission.
+"""
 type Comment implements Item {
   # properties from Item
+  """
+  The item's unique identifier.
+  """
   id: Int!
+
+  """
+  The item's timestamp, as a number in Unix time.
+  """
   unixTime: Int!
+
+  """
+  The item's URL on HackerNews.
+  """
   ownUrl: String!
 
   # own properties
+  """
+  The HTML text contained in the comment.
+  """
   text: String!
+
+  """
+  The name of the user that submitted this comment.
+  """
   byUsername: String!
 
   # edges
+  """
+  The profile of the user that submitted this comment.
+  """
   byUser: User!
+
+  """
+  The replies to this comment, if any.
+  """
   reply: [Comment!]
+
+  """
+  The parent item: for top-level comments, this is the story or job
+  where the comment was submitted, and for replies it's the comment
+  which is being replied to.
+  """
   parent: Item! # either a parent comment or the story being commented on
+  """
+  The ultimate ancestor of this comment: the story or job submission
+  being commented on.
+  """
   topmostAncestor: Item! # the ultimate ancestor of this item: a story or job
 }
 
+"""
+The profile of a HackerNews user.
+"""
 type User {
+  """
+  The username of this user.
+  """
   id: String!
+
+  """
+  The user's accumulated karma points.
+  """
   karma: Int!
+
+  """
+  The text the user has set in their "About" section, if any.
+  """
   about: String
+
+  """
+  The timestamp when the user account was created, as a number in Unix time.
+  """
   unixCreatedAt: Int!
 
   # The HackerNews API treats submissions of comments and stories the same way.
   # The way to get only a user's submitted stories is to use this edge then
   # apply a type coercion on the `Item` vertex on edge endpoint:
   # `... on Story`
+  """
+  All submissions of this user, including all their stories and comments.
+
+  To get a user's submitted stories, apply a type coercion to the edge:
+  ```
+  submitted {
+    ... on Story {
+      < query submitted stories here >
+    }
+  }
+  ```
+  """
   submitted: [Item!]
 }
 
+"""
+A web page.
+"""
 interface Webpage {
+  """
+  The URL of the web page.
+  """
   url: String!
 }
