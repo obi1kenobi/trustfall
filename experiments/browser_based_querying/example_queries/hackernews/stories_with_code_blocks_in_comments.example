@@ -1,19 +1,19 @@
 # Top stories with code blocks in comments,
 # including reply comments up to 3 levels deep.
 query {
-  Top(max: 1000) {
+  Top {
     ... on Story {
       title @output
       byUsername @output
-      url @output
+      submittedUrl @output
       score @output
-      storyUrl: ownUrl @output
+      storyUrl: url @output
 
       comment {
         reply @recurse(depth: 3) {
           textHtml @filter(op: "has_substring", value: ["$substr"])
           text: textPlain @output
-          ownUrl @output
+          commentUrl: url @output
         }
       }
     }

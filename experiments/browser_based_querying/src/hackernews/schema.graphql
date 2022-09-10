@@ -75,7 +75,7 @@ type RootSchemaQuery {
 """
 One of the kinds of items on HackerNews: a story, job, comment, etc.
 """
-interface Item {
+interface Item implements Webpage {
   """
   The item's unique identifier.
   """
@@ -89,13 +89,13 @@ interface Item {
   """
   The item's URL on HackerNews.
   """
-  ownUrl: String!
+  url: String!
 }
 
 """
 A HackerNews job posting linking to the job opening site.
 """
-type Job implements Item {
+type Job implements Item & Webpage {
   # properties from Item
   """
   The item's unique identifier.
@@ -110,7 +110,7 @@ type Job implements Item {
   """
   The item's URL on HackerNews.
   """
-  ownUrl: String!
+  url: String!
 
   # own properties
   """
@@ -126,7 +126,7 @@ type Job implements Item {
   """
   The URL this job posting points to.
   """
-  url: String!
+  submittedUrl: String!
 
   # edges
   """
@@ -138,7 +138,7 @@ type Job implements Item {
 """
 A story submitted to HackerNews: either a link, or a text submission like Show HN.
 """
-type Story implements Item {
+type Story implements Item & Webpage {
   # properties from Item
   """
   The item's unique identifier.
@@ -153,7 +153,7 @@ type Story implements Item {
   """
   The item's URL on HackerNews.
   """
-  ownUrl: String!
+  url: String!
 
   # own properties
   """
@@ -187,7 +187,7 @@ type Story implements Item {
   For link submissions, contains the submitted link.
   For text submissions, this field is null.
   """
-  url: String
+  submittedUrl: String
 
   # edges
   """
@@ -202,14 +202,16 @@ type Story implements Item {
 
   """
   The web page this story links to, if any.
+  For link submissions, this is the submitted link.
+  For text submissions, this includes all links in the text.
   """
-  link: Webpage
+  link: [Webpage!]
 }
 
 """
 A comment submitted, for example, on a HackerNews story or job submission.
 """
-type Comment implements Item {
+type Comment implements Item & Webpage {
   # properties from Item
   """
   The item's unique identifier.
@@ -224,7 +226,7 @@ type Comment implements Item {
   """
   The item's URL on HackerNews.
   """
-  ownUrl: String!
+  url: String!
 
   # own properties
   """
@@ -252,6 +254,11 @@ type Comment implements Item {
   The replies to this comment, if any.
   """
   reply: [Comment!]
+
+  """
+  Links contained within the comment, if any.
+  """
+  link: [Webpage!]
 
   """
   The parent item: for top-level comments, this is the story or job

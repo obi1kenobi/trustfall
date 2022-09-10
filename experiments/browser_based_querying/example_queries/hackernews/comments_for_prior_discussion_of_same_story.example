@@ -1,0 +1,34 @@
+# Comments that link to prior times the same story
+# has been discussed, showing current and prior titles,
+# who pointed out the prior discussion,
+# and who submitted the story each time.
+query {
+  Top {
+    ... on Story {
+      title @output
+      storyUrl: url @output
+      submittedUrl @output @tag(name: "url")
+      storySubmitter: byUsername @output
+
+      comment {
+        commentUrl: url @output
+        comment: textPlain @output
+        commentUser: byUsername @output
+
+        link {
+          ... on Story {
+            submittedUrl @filter(op: "=", value: ["%url"])
+            commentLinksTo: url @output
+            linkedTitle: title @output
+            linkedSubmitter: byUsername @output
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}
