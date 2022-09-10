@@ -1,3 +1,4 @@
+import { decode } from 'html-entities';
 import {
   Adapter,
   JsEdgeParameters,
@@ -12,7 +13,7 @@ import {
 import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
 import HN_SCHEMA from './schema.graphql';
 
-initialize();  // Trustfall query system init.
+initialize(); // Trustfall query system init.
 
 const SCHEMA = Schema.parse(HN_SCHEMA);
 console.log('Schema loaded.');
@@ -28,7 +29,7 @@ const HNItemFieldMappings: Record<string, string> = {
   score: 'score',
   url: 'url',
   byUsername: 'by',
-  text: 'text',
+  textHtml: 'text',
   // commentsCount: 'descendants',
 };
 
@@ -47,6 +48,17 @@ function* limitIterator<T>(iter: IterableIterator<T>, limit: number): IterableIt
     if (count == limit) {
       break;
     }
+  }
+}
+
+function extractPlainTextFromHnMarkup(hnText: string | null): string | null {
+  // HN comments are not-quite-HTML: they support italics, links, paragraphs,
+  // and preformatted text (code blocks), and use HTML escape sequences.
+  // Docs: https://news.ycombinator.com/formatdoc
+  if (hnText) {
+    return decode(hnText.replaceAll(/<\/?(?:i|pre|code)>/g, '').replaceAll('<p>', '\n'));
+  } else {
+    return null;
   }
 }
 
@@ -109,6 +121,22 @@ export class MyAdapter implements Adapter<Vertex> {
           let value = null;
           if (vertex) {
             value = `https://news.ycombinator.com/item?id=${vertex.id}`;
+          }
+
+          yield {
+            localId: ctx.localId,
+            value: value,
+          };
+        }
+      } else if (field_name == 'textPlain') {
+        const fieldKey = HNItemFieldMappings.textHtml;
+
+        for (const ctx of data_contexts) {
+          const vertex = ctx.currentToken;
+
+          let value = null;
+          if (vertex) {
+            value = extractPlainTextFromHnMarkup(vertex[fieldKey]);
           }
 
           yield {
