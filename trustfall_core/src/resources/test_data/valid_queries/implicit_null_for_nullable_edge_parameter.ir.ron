@@ -1,0 +1,26 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "NumberImplicitNullDefault",
+    root_parameters: Some(EdgeParameters({
+      "max": Int64(1),
+      "min": Null,
+    })),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+        ),
+      },
+      outputs: {
+        "value": ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        ),
+      },
+    ),
+  ),
+))

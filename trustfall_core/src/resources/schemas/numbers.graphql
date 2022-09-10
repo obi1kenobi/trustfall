@@ -10,7 +10,12 @@ directive @fold on FIELD
 directive @transform(op: String!) on FIELD
 
 type RootSchemaQuery {
-    Number(min: Int = 0, max: Int!): [Number!]
+    Number(min: Int! = 0, max: Int!): [Number!]
+
+    # same as Number(min, max), just testing
+    # the "implicit null default" behavior for nullable edge parameters
+    NumberImplicitNullDefault(min: Int, max: Int!): [Number!]
+
     Zero: Number!
     One: Number!
     Two: Prime!

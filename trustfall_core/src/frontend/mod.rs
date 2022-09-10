@@ -150,16 +150,29 @@ fn make_edge_parameters(
         let arg_name = arg.node.name.node.as_ref();
         let specified_value = match specified_arguments.get(arg_name) {
             None => {
-                // Argument value was not specified, try to use a default if there is one.
-                arg.node.default_value.as_ref().map(|v| {
-                    let value = FieldValue::try_from(&v.node).unwrap();
+                // Argument value was not specified.
+                // If there's an explicit default defined in the schema, use it.
+                // Otherwise, if the parameter is nullable, use an implicit "null" default.
+                // All other cases are an error.
+                arg.node
+                    .default_value
+                    .as_ref()
+                    .map(|v| {
+                        let value = FieldValue::try_from(&v.node).unwrap();
 
-                    // The default value must be a valid type for the parameter,
-                    // otherwise the schema itself is invalid.
-                    assert!(is_argument_type_valid(&arg.node.ty.node, &value));
+                        // The default value must be a valid type for the parameter,
+                        // otherwise the schema itself is invalid.
+                        assert!(is_argument_type_valid(&arg.node.ty.node, &value));
 
-                    value
-                })
+                        value
+                    })
+                    .or({
+                        if arg.node.ty.node.nullable {
+                            Some(FieldValue::Null)
+                        } else {
+                            None
+                        }
+                    })
             }
             Some(value) => {
                 // Type-check the supplied value against the schema.
