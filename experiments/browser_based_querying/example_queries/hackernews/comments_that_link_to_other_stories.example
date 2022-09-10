@@ -1,0 +1,28 @@
+# Comments that link to other HackerNews stories
+query {
+  Top {
+    ... on Story {
+      title @output
+      storyUrl: url @output
+      submittedUrl @output
+
+      comment {
+        commentUrl: url @output
+        comment: textPlain @output
+
+        link {
+          ... on Story {
+            commentLinksTo: url @output
+            linkedSubmittedUrl: submittedUrl @output
+            linkedTitle: title @output
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}

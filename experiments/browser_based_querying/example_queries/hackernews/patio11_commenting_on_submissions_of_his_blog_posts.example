@@ -5,15 +5,15 @@ query {
     submitted {
       ... on Comment {
         textPlain @output
-        commentUrl: ownUrl @output
+        commentUrl: url @output
 
         parent @recurse(depth: 5) {
           ... on Story {
-            blogUrl: url @filter(op: "has_substring", value: ["$url"])
+            submittedUrl @filter(op: "has_substring", value: ["$url"])
                          @output
             submitter: byUsername @output
             score @output
-            storyUrl: ownUrl @output
+            storyUrl: url @output
           }
         }
       }

@@ -27,7 +27,7 @@ const HNItemFieldMappings: Record<string, string> = {
   unixTime: 'time',
   title: 'title',
   score: 'score',
-  url: 'url',
+  submittedUrl: 'url',
   byUsername: 'by',
   textHtml: 'text',
   // commentsCount: 'descendants',
@@ -51,12 +51,45 @@ function* limitIterator<T>(iter: IterableIterator<T>, limit: number): IterableIt
   }
 }
 
+function* linksInHnMarkup(fetchPort: MessagePort, hnText: string | null): IterableIterator<Vertex> {
+  if (hnText) {
+    const itemPattern = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
+    const userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
+
+    const matches = hnText.matchAll(/<a [^>]*href="([^"]+)"[^>]*>/g);
+    for (const match of matches) {
+      // We matched the HTML-escaped URL. Decode the HTML entities.
+      const url = decode(match[1]);
+      const itemMatch = url.match(itemPattern);
+      if (itemMatch) {
+        // This is an item.
+        yield materializeItem(fetchPort, parseInt(itemMatch[1]));
+      } else {
+        const userMatch = url.match(userPattern);
+        if (userMatch) {
+          // This is a user.
+          yield materializeUser(fetchPort, userMatch[1]);
+        } else {
+          // This is some other type of webpage that we don't have a more specific type for.
+          yield { url };
+        }
+      }
+    }
+  }
+}
+
 function extractPlainTextFromHnMarkup(hnText: string | null): string | null {
   // HN comments are not-quite-HTML: they support italics, links, paragraphs,
   // and preformatted text (code blocks), and use HTML escape sequences.
   // Docs: https://news.ycombinator.com/formatdoc
   if (hnText) {
-    return decode(hnText.replaceAll(/<\/?(?:i|pre|code)>/g, '').replaceAll('<p>', '\n'));
+    return decode(
+      hnText
+        .replaceAll('</a>', '') // remove closing link tags
+        .replaceAll(/<a[^>]*>/g, '') // remove opening link tags
+        .replaceAll(/<\/?(?:i|pre|code)>/g, '') // remove formatting tags
+        .replaceAll('<p>', '\n') // turn paragraph tags into newlines
+    );
   } else {
     return null;
   }
@@ -114,7 +147,7 @@ export class MyAdapter implements Adapter<Vertex> {
       current_type_name === 'Job' ||
       current_type_name === 'Comment'
     ) {
-      if (field_name == 'ownUrl') {
+      if (field_name == 'url') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
 
@@ -201,16 +234,58 @@ export class MyAdapter implements Adapter<Vertex> {
       current_type_name === 'Comment'
     ) {
       if (edge_name === 'link') {
-        for (const ctx of data_contexts) {
-          const vertex = ctx.currentToken;
-          let neighbors: Vertex[] = [];
-          if (vertex) {
-            neighbors = [{ url: vertex.url }];
+        if (current_type_name === 'Story') {
+          // Link submission stories have the submitted URL as a link.
+          // Text submission stories can have multiple links in the text.
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
+            let neighbors: IterableIterator<Vertex>;
+            if (vertex) {
+              if (vertex.url) {
+                // link submission
+                neighbors = [{ url: vertex.url }][Symbol.iterator]();
+              } else {
+                // text submission
+                neighbors = linksInHnMarkup(this.fetchPort, vertex.text);
+              }
+            } else {
+              neighbors = [][Symbol.iterator]();
+            }
+            yield {
+              localId: ctx.localId,
+              neighbors,
+            };
           }
-          yield {
-            localId: ctx.localId,
-            neighbors: neighbors[Symbol.iterator](),
-          };
+        } else if (current_type_name === 'Comment') {
+          // Comments can only have links in their text content.
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
+            let neighbors: IterableIterator<Vertex>;
+            if (vertex) {
+              neighbors = linksInHnMarkup(this.fetchPort, vertex.text);
+            } else {
+              neighbors = [][Symbol.iterator]();
+            }
+            yield {
+              localId: ctx.localId,
+              neighbors,
+            };
+          }
+        } else if (current_type_name === 'Job') {
+          // Jobs only have the submitted URL as a link.
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
+            let neighbors: Vertex[] = [];
+            if (vertex) {
+              neighbors = [{ url: vertex.url }];
+            }
+            yield {
+              localId: ctx.localId,
+              neighbors: neighbors[Symbol.iterator](),
+            };
+          }
+        } else {
+          throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
         }
       } else if (edge_name === 'byUser') {
         for (const ctx of data_contexts) {
@@ -277,24 +352,38 @@ export class MyAdapter implements Adapter<Vertex> {
     current_type_name: string,
     coerce_to_type_name: string
   ): IterableIterator<ContextAndBool> {
-    if (current_type_name === 'Item') {
-      let targetType;
-      if (coerce_to_type_name === 'Story') {
-        targetType = 'story';
-      } else if (coerce_to_type_name === 'Job') {
-        targetType = 'job';
-      } else if (coerce_to_type_name === 'Comment') {
-        targetType = 'comment';
+    if (current_type_name === 'Item' || current_type_name === 'Webpage') {
+      if (coerce_to_type_name === 'Item') {
+        // The Item type is abstract, we need to check if the vertex is any of the Item subtypes.
+        for (const ctx of data_contexts) {
+          const vertex = ctx.currentToken;
+          const type = vertex?.type;
+          yield {
+            localId: ctx.localId,
+            value: type === 'story' || type === 'job' || type === 'comment',
+          };
+        }
       } else {
-        throw new Error(`Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`);
-      }
+        let targetType;
+        if (coerce_to_type_name === 'Story') {
+          targetType = 'story';
+        } else if (coerce_to_type_name === 'Job') {
+          targetType = 'job';
+        } else if (coerce_to_type_name === 'Comment') {
+          targetType = 'comment';
+        } else {
+          throw new Error(
+            `Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`
+          );
+        }
 
-      for (const ctx of data_contexts) {
-        const vertex = ctx.currentToken;
-        yield {
-          localId: ctx.localId,
-          value: vertex?.type === targetType,
-        };
+        for (const ctx of data_contexts) {
+          const vertex = ctx.currentToken;
+          yield {
+            localId: ctx.localId,
+            value: vertex?.type === targetType,
+          };
+        }
       }
     } else {
       throw new Error(`Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`);

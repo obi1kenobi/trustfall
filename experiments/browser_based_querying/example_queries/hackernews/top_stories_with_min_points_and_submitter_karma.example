@@ -4,9 +4,9 @@ query {
     ... on Story {
       title @output
       byUsername @output
-      url @output
+      submittedUrl @output
       score @output @filter(op: ">=", value: ["$minScore"])
-      storyUrl: ownUrl @output
+      storyUrl: url @output
 
       byUser {
         karma @output @filter(op: ">=", value: ["$minKarma"])

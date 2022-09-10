@@ -9,6 +9,8 @@ import latestStoriesExample from '../../example_queries/hackernews/latest_storie
 import patio11Example from '../../example_queries/hackernews/patio11_commenting_on_submissions_of_his_blog_posts.example';
 import topStoriesExample from '../../example_queries/hackernews/top_stories_with_min_points_and_submitter_karma.example';
 import commentsWithCodeBlocks from '../../example_queries/hackernews/stories_with_code_blocks_in_comments.example';
+import commentsLinkToStories from '../../example_queries/hackernews/comments_that_link_to_other_stories.example';
+import commentsPriorDiscussionSameStory from '../../example_queries/hackernews/comments_for_prior_discussion_of_same_story.example';
 
 import HN_SCHEMA from './schema.graphql';
 
@@ -28,7 +30,15 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
     name: 'Code Blocks in Comments',
     value: parseExample(commentsWithCodeBlocks),
-  }
+  },
+  {
+    name: 'Comments With Links to HackerNews Stories',
+    value: parseExample(commentsLinkToStories),
+  },
+  {
+    name: 'Comments Linking Prior Discussion of Same Story',
+    value: parseExample(commentsPriorDiscussionSameStory),
+  },
 ];
 
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
@@ -57,8 +67,8 @@ export default function HackerNewsPlayground(): JSX.Element {
           compiled to WebAssembly.
         </Typography>
         <Typography>
-          Results are computed one at a time to conserve data and API rate limits.
-          Even so, querying from a mobile data plan is not recommended.
+          Results are computed one at a time to conserve data and API rate limits. Even so, querying
+          from a mobile data plan is not recommended.
         </Typography>
       </Box>
     ),
