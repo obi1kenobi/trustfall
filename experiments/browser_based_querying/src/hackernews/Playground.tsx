@@ -8,6 +8,7 @@ import TrustfallPlayground from '../TrustfallPlayground';
 import latestStoriesExample from '../../example_queries/hackernews/latest_stories_with_min_points_and_submitter_karma.example';
 import patio11Example from '../../example_queries/hackernews/patio11_commenting_on_submissions_of_his_blog_posts.example';
 import topStoriesExample from '../../example_queries/hackernews/top_stories_with_min_points_and_submitter_karma.example';
+import commentsWithCodeBlocks from '../../example_queries/hackernews/stories_with_code_blocks_in_comments.example';
 
 import HN_SCHEMA from './schema.graphql';
 
@@ -21,9 +22,13 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
     value: parseExample(topStoriesExample),
   },
   {
-    name: 'Comments By patio11',
+    name: 'patio11 Comments About His Own Blog',
     value: parseExample(patio11Example),
   },
+  {
+    name: 'Code Blocks in Comments',
+    value: parseExample(commentsWithCodeBlocks),
+  }
 ];
 
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;

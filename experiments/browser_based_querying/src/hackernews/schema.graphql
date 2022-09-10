@@ -167,10 +167,16 @@ type Story implements Item {
   score: Int!
 
   """
-  For text submissions, contains the submitted text.
+  For text submissions, contains the submitted text as HTML.
   For link submissions, this field is null.
   """
-  text: String
+  textHtml: String
+
+  """
+  For text submissions, contains the submitted text as plain text,
+  stripped of any HTML tags. For link submissions, this field is null.
+  """
+  textPlain: String
 
   """
   The story's title: the one-liner seen on the front page, for example.
@@ -222,9 +228,14 @@ type Comment implements Item {
 
   # own properties
   """
-  The HTML text contained in the comment.
+  The text contained in the comment, represented as HTML.
   """
-  text: String!
+  textHtml: String!
+
+  """
+  The text contained in the comment, as plain text with HTML tags removed.
+  """
+  textPlain: String!
 
   """
   The name of the user that submitted this comment.
@@ -248,11 +259,6 @@ type Comment implements Item {
   which is being replied to.
   """
   parent: Item! # either a parent comment or the story being commented on
-  """
-  The ultimate ancestor of this comment: the story or job submission
-  being commented on.
-  """
-  topmostAncestor: Item! # the ultimate ancestor of this item: a story or job
 }
 
 """

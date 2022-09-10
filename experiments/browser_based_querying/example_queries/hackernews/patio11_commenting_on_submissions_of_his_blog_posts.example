@@ -1,15 +1,16 @@
-# Comments by patio11 on submissions of his own blog posts
+# Comments by patio11 (Patrick McKenzie, https://twitter.com/patio11)
+# on HackerNews stories about his own blog posts
 query {
   User(name: "patio11") {
     submitted {
       ... on Comment {
-        text @output
+        textPlain @output
         commentUrl: ownUrl @output
 
         parent @recurse(depth: 5) {
           ... on Story {
-            url @filter(op: "has_substring", value: ["$url"])
-                @output
+            blogUrl: url @filter(op: "has_substring", value: ["$url"])
+                         @output
             submitter: byUsername @output
             score @output
             storyUrl: ownUrl @output
