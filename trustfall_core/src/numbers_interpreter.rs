@@ -168,9 +168,12 @@ impl Adapter<'static> for NumbersAdapter {
             "One" => Box::new(std::iter::once(make_number_token(&mut primes, 1))),
             "Two" => Box::new(std::iter::once(make_number_token(&mut primes, 2))),
             "Four" => Box::new(std::iter::once(make_number_token(&mut primes, 4))),
-            "Number" => {
+            "Number" | "NumberImplicitNullDefault" => {
                 let parameters = &parameters.unwrap().0;
-                let min_value = parameters.get("min").and_then(FieldValue::as_i64).unwrap();
+                let min_value = parameters
+                    .get("min")
+                    .and_then(FieldValue::as_i64)
+                    .unwrap_or(0);
                 let max_value = parameters.get("max").and_then(FieldValue::as_i64).unwrap();
 
                 if min_value > max_value {
