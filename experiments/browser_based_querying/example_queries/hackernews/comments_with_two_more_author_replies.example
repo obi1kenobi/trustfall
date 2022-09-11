@@ -1,0 +1,46 @@
+# Comments on top stories, where the comment author
+# also posted at least two more replies under their own comment.
+query {
+  Top {
+    ... on Story {
+      title @output
+      submittedUrl @output
+      storyUrl: url @output
+
+      comment {
+        commenter: byUsername @tag
+        comment: textPlain @output
+        commentUrl: url @output
+
+        # This is the "at least two more replies" logic:
+        # - @fold is like "array_agg()" in Postgres,
+        #   it aggregates data into lists.
+        # - The @transform counts the elements in the list.
+        # - The @filter ensures the count is >= 2.
+        # - The @output produces the count in our results.
+        reply @fold
+              @transform(op: "count")
+              @filter(op: ">=", value: ["$minCount"])
+              @output(name: "ownReplyCount") {
+
+          # Recursion always starts at depth 0, i.e. with
+          # the vertex from which we're starting to recurse.
+          reply @recurse(depth: 4) {
+
+            # Only include comments from the author that
+            # posted the top-level comment in this comment tree.
+            byUsername @filter(op: "=", value: ["%commenter"])
+
+            reply: textPlain @output
+            replyUrl: url @output
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+  "minCount": 2
+}
