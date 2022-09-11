@@ -11,6 +11,7 @@ import topStoriesExample from '../../example_queries/hackernews/top_stories_with
 import commentsWithCodeBlocks from '../../example_queries/hackernews/stories_with_code_blocks_in_comments.example';
 import commentsLinkToStories from '../../example_queries/hackernews/comments_that_link_to_other_stories.example';
 import commentsPriorDiscussionSameStory from '../../example_queries/hackernews/comments_for_prior_discussion_of_same_story.example';
+import commentsWithTwoAuthorReplies from '../../example_queries/hackernews/comments_with_two_more_author_replies.example';
 
 import HN_SCHEMA from './schema.graphql';
 
@@ -38,6 +39,10 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
     name: 'Comments Linking Prior Discussion of Same Story',
     value: parseExample(commentsPriorDiscussionSameStory),
+  },
+  {
+    name: 'Discussions With 2+ Replies From Same Author',
+    value: parseExample(commentsWithTwoAuthorReplies),
   },
 ];
 
