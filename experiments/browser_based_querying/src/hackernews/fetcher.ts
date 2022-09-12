@@ -35,7 +35,13 @@ function fetchHandler(e: MessageEvent<ChannelData>): void {
           .blob()
           .then((blob) => blob.arrayBuffer())
           .then((buffer) => {
-            sync.send(new Uint8Array(buffer));
+            // The buffer we've received might not be a SharedArrayBuffer.
+            // Defensively copy its contents into a new SharedArrayBuffer of appropriate size.
+            const length = buffer.byteLength;
+            const sharedArr = new Uint8Array(new SharedArrayBuffer(length));
+            sharedArr.set(new Uint8Array(buffer), 0);
+
+            sync.send(sharedArr);
           })
           .catch((reason) => {
             console.log('blob error:', response.status, reason);
