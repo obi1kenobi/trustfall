@@ -71,7 +71,7 @@ window.MonacoEnvironment = {
   },
 };
 
-type ResultsTab = 'results' | 'docs';
+type ResultsTab = 'results' | 'schema';
 
 interface TabPanelProps {
   selected: boolean;
@@ -382,7 +382,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           <Box>
             <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
               <Tab value="results" label="Results" />
-              <Tab value="docs" label="Docs" />
+              <Tab value="schema" label="Schema" />
             </Tabs>
           </Box>
           <TabPanel
@@ -394,9 +394,9 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             </Paper>
           </TabPanel>
           <TabPanel
-            selected={selectedTab === 'docs'}
+            selected={selectedTab === 'schema'}
             sx={{
-              display: selectedTab === 'docs' ? 'flex' : 'none',
+              display: selectedTab === 'schema' ? 'flex' : 'none',
               flexDirection: 'column',
               overflowY: 'hidden',
               overflowX: 'hidden',
