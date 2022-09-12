@@ -38,7 +38,7 @@ function fetchHandler(e: MessageEvent<ChannelData>): void {
             sync.send(new Uint8Array(buffer));
           })
           .catch((reason) => {
-            console.log('blob error:', response.status);
+            console.log('blob error:', response.status, reason);
             sync.sendError(`blob error: ${reason}`);
           });
       }
