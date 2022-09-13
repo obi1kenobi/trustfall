@@ -34,6 +34,7 @@
     "@mui/lab": "^5.0.0-alpha.92",
     "@mui/material": "^5.8.0",
     "core-js": "^3.22.5",
+    "detect-browser": "^5.3.0",
     "graphiql": "^1.11.5",
     "monaco-editor": "^0.20.0",
     "monaco-graphql": "^1.1.2",
