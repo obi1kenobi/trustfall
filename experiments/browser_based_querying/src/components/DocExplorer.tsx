@@ -125,8 +125,8 @@ export function DocExplorer(props: DocExplorerProps) {
           )}
         </Grid>
         <Grid item container direction="column">
-          <Typography>
-            {content}
+          <Typography component="div">
+          {content}
           </Typography>
         </Grid>
       </Grid>
