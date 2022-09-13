@@ -10,13 +10,14 @@ import {
   initialize,
   executeQuery,
 } from '../../www2/trustfall_wasm';
+import debug from "../utils/debug";
 import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
 import HN_SCHEMA from './schema.graphql';
 
 initialize(); // Trustfall query system init.
 
 const SCHEMA = Schema.parse(HN_SCHEMA);
-console.log('Schema loaded.');
+debug('Schema loaded.');
 
 postMessage('ready');
 
@@ -445,7 +446,7 @@ type AdapterMessage =
 function dispatch(e: MessageEvent<AdapterMessage>): void {
   const payload = e.data;
 
-  console.log('Adapter received message:', payload);
+  debug('Adapter received message:', payload);
   if (payload.op === 'init') {
     return;
   }
