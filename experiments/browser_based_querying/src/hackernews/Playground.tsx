@@ -225,7 +225,7 @@ export default function HackerNewsPlayground(): JSX.Element {
               >
                 open issue
               </Link>{' '}
-              in the Webkit engine, this demo does not work in the Safari browser.
+              in the Webkit engine, this demo does not work in Safari.
             </p>
             <p>Please use a supported browser, such as Firefox or Chrome.</p>
           </Typography>
