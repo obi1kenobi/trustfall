@@ -1,3 +1,4 @@
+import debug from "../utils/debug";
 import { SendableSyncContext, SyncContext } from '../sync';
 
 interface ChannelData {
@@ -25,10 +26,11 @@ function fetchHandler(e: MessageEvent<ChannelData>): void {
 
   const sync = new SyncContext(data.sync);
 
+  debug('Fetcher received message:', data);
   fetch(data.input, data.init)
     .then((response) => {
       if (!response.ok) {
-        console.log('non-ok response:', response.status);
+        debug('non-ok response:', response.status);
         sync.sendError(`non-ok response: ${response.status}`);
       } else {
         response
@@ -38,13 +40,13 @@ function fetchHandler(e: MessageEvent<ChannelData>): void {
             sync.send(new Uint8Array(buffer));
           })
           .catch((reason) => {
-            console.log('blob error:', response.status, reason);
+            debug('blob error:', response.status, reason);
             sync.sendError(`blob error: ${reason}`);
           });
       }
     })
     .catch((reason) => {
-      console.log('fetch error:', reason);
+      debug('fetch error:', reason);
       sync.sendError(`fetch error: ${reason}`);
     });
 }

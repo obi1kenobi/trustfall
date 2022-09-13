@@ -345,7 +345,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
             <Select
               labelId="example-query-label"
-              value={exampleQuery ? exampleQuery.name : null}
+              value={exampleQuery ? exampleQuery.name : ""}
               label="Load an Example Query..."
               onChange={handleExampleQueryChange}
             >
