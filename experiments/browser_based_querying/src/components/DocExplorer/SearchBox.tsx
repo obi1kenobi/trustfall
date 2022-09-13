@@ -58,7 +58,6 @@ export default class SearchBox extends React.Component<SearchBoxProps, SearchBox
         type="text"
         aria-label={this.props.placeholder}
         InputProps={{
-          disableUnderline: false,
           startAdornment: (
             <InputAdornment position="start">
               <SearchIcon />
