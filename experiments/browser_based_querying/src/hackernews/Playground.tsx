@@ -1,6 +1,8 @@
-import { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { buildSchema } from 'graphql';
-import { Box, Typography, CircularProgress, Grid } from '@mui/material';
+import { Box, Link, Typography, CircularProgress, Grid } from '@mui/material';
+import { WebAssetOff } from '@mui/icons-material';
+import { detect } from 'detect-browser';
 
 import { AsyncValue } from '../types';
 import parseExample from '../utils/parseExample';
@@ -14,6 +16,8 @@ import commentsPriorDiscussionSameStory from '../../example_queries/hackernews/c
 import commentsWithTwoAuthorReplies from '../../example_queries/hackernews/comments_with_two_more_author_replies.example';
 
 import HN_SCHEMA from './schema.graphql';
+
+const BROWSER = detect();
 
 const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
@@ -45,6 +49,21 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
     value: parseExample(commentsWithTwoAuthorReplies),
   },
 ];
+
+function PlaygroundNonIdealState(props: { children: React.ReactNode }): JSX.Element {
+  const { children } = props;
+  return (
+    <Grid
+      container
+      direction="column"
+      height="95vh"
+      width="98vw"
+      sx={{ alignItems: 'center', justifyContent: 'space-around' }}
+    >
+      <Box sx={{ textAlign: 'center' }}>{children}</Box>
+    </Grid>
+  );
+}
 
 type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
 
@@ -190,22 +209,41 @@ export default function HackerNewsPlayground(): JSX.Element {
     };
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
+  if (BROWSER && BROWSER.name === 'safari') {
+    return (
+      <PlaygroundNonIdealState>
+        <Box>
+          <WebAssetOff sx={{ fontSize: '100px' }} />
+          <Typography variant="h5">Safari is not supported</Typography>
+          <Typography variant="body1">
+            <p>
+              Due to an{' '}
+              <Link
+                href="https://bugs.webkit.org/show_bug.cgi?id=238442"
+                target="_blank"
+                rel="noreferrer"
+              >
+                open issue
+              </Link>{' '}
+              in the Webkit engine, this demo does not work in the Safari browser.
+            </p>
+            <p>Please use a supported browser, such as Firefox or Chrome.</p>
+          </Typography>
+        </Box>
+      </PlaygroundNonIdealState>
+    );
+  }
+
   if (!ready) {
     return (
-      <Grid
-        container
-        direction="column"
-        height="95vh"
-        width="98vw"
-        sx={{ alignItems: 'center', justifyContent: 'space-around' }}
-      >
-        <Box sx={{ textAlign: 'center' }}>
+      <PlaygroundNonIdealState>
+        <Box>
           <CircularProgress size="150px" sx={{ mb: 2 }} />
           <Box>
             <Typography variant="h5">Preparing playground...</Typography>
           </Box>
         </Box>
-      </Grid>
+      </PlaygroundNonIdealState>
     );
   }
 
