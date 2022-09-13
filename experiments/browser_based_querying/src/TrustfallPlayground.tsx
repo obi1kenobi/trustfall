@@ -66,8 +66,19 @@ const disableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = 
 };
 
 window.MonacoEnvironment = {
-  getWorker() {
-    return new Worker(new URL('monaco-graphql/dist/graphql.worker.js', import.meta.url));
+  getWorker(_workerId: string, label: string) {
+    switch (label) {
+      case 'graphql':
+        return new Worker(new URL('monaco-graphql/dist/graphql.worker.js', import.meta.url));
+      case 'json':
+        return new Worker(
+          new URL('monaco-editor/esm/vs/language/json/json.worker', import.meta.url)
+        );
+      case 'editorWorkerService':
+        return new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url));
+      default:
+        throw new Error(`No known worker for label ${label}`);
+    }
   },
 };
 
@@ -247,19 +258,19 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         ...disableGutterConfig,
       });
       const resultsEditor = monaco.editor.create(resultsEditorRef.current, {
-          language: 'json',
-          value: '',
-          minimap: {
-            enabled: false,
-          },
-          readOnly: true,
-          automaticLayout: true,
-          ...disableGutterConfig,
-        })
+        language: 'json',
+        value: '',
+        minimap: {
+          enabled: false,
+        },
+        readOnly: true,
+        automaticLayout: true,
+        ...disableGutterConfig,
+      });
 
-      queryEditor.getModel()?.updateOptions({ tabSize: 2 })
-      varsEditor.getModel()?.updateOptions({ tabSize: 2 })
-      resultsEditor.getModel()?.updateOptions({ tabSize: 2 })
+      queryEditor.getModel()?.updateOptions({ tabSize: 2 });
+      varsEditor.getModel()?.updateOptions({ tabSize: 2 });
+      resultsEditor.getModel()?.updateOptions({ tabSize: 2 });
       setQueryEditor(queryEditor);
       setVarsEditor(varsEditor);
       setResultsEditor(resultsEditor);
@@ -345,7 +356,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
             <Select
               labelId="example-query-label"
-              value={exampleQuery ? exampleQuery.name : ""}
+              value={exampleQuery ? exampleQuery.name : ''}
               label="Load an Example Query..."
               onChange={handleExampleQueryChange}
             >
