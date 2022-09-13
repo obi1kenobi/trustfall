@@ -213,7 +213,7 @@ export default function HackerNewsPlayground(): JSX.Element {
     return (
       <PlaygroundNonIdealState>
         <Box>
-          <WebAssetOff sx={{ fontSize: '100px' }} />
+          <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
           <Typography variant="h5">Safari is not supported</Typography>
           <Typography variant="body1">
             <p>
