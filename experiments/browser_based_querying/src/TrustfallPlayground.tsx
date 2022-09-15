@@ -16,6 +16,7 @@ import {
   Theme,
   SxProps,
   Tooltip,
+  useMediaQuery,
 } from '@mui/material';
 import { GraphQLSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
@@ -323,55 +324,61 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
 
   return (
     <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {}) }}>
-      <Grid item xs={1}>
+      <Grid item md={1}>
         {header}
-        <div css={{ display: 'flex', alignItems: 'center', margin: 10 }}>
-          <Tooltip title={disabledMessage} placement="bottom">
-            <span>
+        <Grid container item direction="row" sx={{ alignItems: 'center' }}>
+          <Grid item sx={{ margin: "10px" }}>
+            <Tooltip title={disabledMessage} placement="bottom">
+              <span>
+                <LoadingButton
+                  size="small"
+                  onClick={() => handleQuery()}
+                  variant="contained"
+                  sx={{ mr: 2 }}
+                  disabled={Boolean(disabled) || noQuery}
+                  loading={loading}
+                >
+                  Run query!
+                </LoadingButton>
+              </span>
+            </Tooltip>
+          </Grid>
+          {onQueryNextResult && results != null && (
+            <Grid item sx={{ margin: "10px" }}>
               <LoadingButton
                 size="small"
-                onClick={() => handleQuery()}
-                variant="contained"
-                sx={{ mr: 2 }}
-                disabled={Boolean(disabled) || noQuery}
+                variant="outlined"
+                onClick={() => onQueryNextResult()}
+                disabled={!hasMore || Boolean(disabled)}
                 loading={loading}
+                sx={{ mr: 2 }}
               >
-                Run query!
+                {hasMore ? 'More!' : 'No more results'}
               </LoadingButton>
-            </span>
-          </Tooltip>
-          {onQueryNextResult && results != null && (
-            <LoadingButton
-              size="small"
-              variant="outlined"
-              onClick={() => onQueryNextResult()}
-              disabled={!hasMore || Boolean(disabled)}
-              loading={loading}
-              sx={{ mr: 2 }}
-            >
-              {hasMore ? 'More!' : 'No more results'}
-            </LoadingButton>
+            </Grid>
           )}
-          <FormControl size="small" sx={{ minWidth: 300 }}>
-            <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
-            <Select
-              labelId="example-query-label"
-              value={exampleQuery ? exampleQuery.name : ''}
-              label="Load an Example Query..."
-              onChange={handleExampleQueryChange}
-            >
-              {exampleQueries.map((option) => (
-                <MenuItem key={option.name} value={option.name}>
-                  {option.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </div>
+          <Grid item sx={{ margin: "10px" }}>
+            <FormControl size="small" sx={{ minWidth: 300 }}>
+              <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
+              <Select
+                labelId="example-query-label"
+                value={exampleQuery ? exampleQuery.name : ''}
+                label="Load an Example Query..."
+                onChange={handleExampleQueryChange}
+              >
+                {exampleQueries.map((option) => (
+                  <MenuItem key={option.name} value={option.name}>
+                    {option.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
       </Grid>
-      <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}>
-        <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
-          <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
+      <Grid container item md={11} spacing={2} sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}>
+        <Grid container item direction="column" md={7} sx={{ flexWrap: 'nowrap' }}>
+          <Grid container item direction="column" md={8} sx={{ flexWrap: 'nowrap' }}>
             {/* Use padding to align query section with results */}
             <Typography variant="overline" component="div" sx={{ pt: '1.5rem' }}>
               Query
@@ -380,7 +387,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               <div ref={queryEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
-          <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
+          <Grid container item direction="column" md={4} sx={{ flexWrap: 'nowrap' }}>
             <Typography variant="overline" component="div" sx={{ mt: 1 }}>
               Variables
             </Typography>
@@ -389,7 +396,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             </Paper>
           </Grid>
         </Grid>
-        <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item md={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Box>
             <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
               <Tab value="results" label="Results" />
