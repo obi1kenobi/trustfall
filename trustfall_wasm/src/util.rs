@@ -46,11 +46,12 @@ macro_rules! log {
 }
 
 #[wasm_bindgen(inline_js = "
-    export function iterify(obj) {
+    function iterify(obj) {
         obj[Symbol.iterator] = function () {
             return this;
         };
     }
+    module.exports.iterify = iterify;
 ")]
 extern "C" {
     pub fn iterify(obj: &Object);
