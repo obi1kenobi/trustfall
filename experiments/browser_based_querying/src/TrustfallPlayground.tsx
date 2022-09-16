@@ -18,6 +18,7 @@ import {
   Tooltip,
   useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { GraphQLSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
@@ -155,6 +156,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [selectedTab, setSelectedTab] = useState<ResultsTab>('results');
 
   const noQuery = encodedQuery === '';
@@ -190,6 +192,9 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     const query = queryEditor.getValue();
     const vars = varsEditor.getValue();
 
+    if (tabsContainerRef.current) {
+      tabsContainerRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
     onQuery(query, vars);
     setSelectedTab('results');
   }, [queryEditor, varsEditor, onQuery]);
@@ -322,11 +327,14 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     }
   }, [results, resultsEditor, loading, error]);
 
+  const theme = useTheme();
+  const mdUp = useMediaQuery(theme.breakpoints.up('md'));
+
   return (
-    <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {}) }}>
+    <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(mdUp ? sx ?? {} : {}) }}>
       <Grid item md={1}>
         {header}
-        <Grid container item direction="row" sx={{ alignItems: 'center' }}>
+        <Grid container item direction="row" sx={{ position: 'sticky', top: 0, alignItems: 'center' }}>
           <Grid item sx={{ margin: "10px" }}>
             <Tooltip title={disabledMessage} placement="bottom">
               <span>
@@ -376,14 +384,14 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           </Grid>
         </Grid>
       </Grid>
-      <Grid container item md={11} spacing={2} sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}>
+      <Grid container item md={11} spacing={2} sx={mdUp ? { flexWrap: 'nowrap', overflowY: 'hidden' } : {}}>
         <Grid container item direction="column" md={7} sx={{ flexWrap: 'nowrap' }}>
           <Grid container item direction="column" md={8} sx={{ flexWrap: 'nowrap' }}>
             {/* Use padding to align query section with results */}
-            <Typography variant="overline" component="div" sx={{ pt: '1.5rem' }}>
+            <Typography variant="overline" component="div" sx={[{ pt: '1.5rem' }, false]}>
               Query
             </Typography>
-            <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
+            <Paper elevation={0} sx={[{ flexGrow: 1, position: 'relative', ...sxEditorContainer }, !mdUp && {minHeight: '200px'}]}>
               <div ref={queryEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
@@ -391,12 +399,12 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <Typography variant="overline" component="div" sx={{ mt: 1 }}>
               Variables
             </Typography>
-            <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
+            <Paper elevation={0} sx={[{ flexGrow: 1, position: 'relative', ...sxEditorContainer }, !mdUp && {minHeight: '150px'}]}>
               <div ref={varsEditorRef} css={cssEditor} />
             </Paper>
           </Grid>
         </Grid>
-        <Grid container item md={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item md={5} direction="column" sx={[{ flexWrap: 'nowrap' }, !mdUp && { height: "100vh" }]} ref={tabsContainerRef}>
           <Box>
             <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
               <Tab value="results" label="Results" />
@@ -407,7 +415,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             selected={selectedTab === 'results'}
             sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
           >
-            <Paper elevation={0}>
+            <Paper elevation={0} sx={{minHeight: "250px"}}>
               <div ref={resultsEditorRef} css={cssEditor} />
             </Paper>
           </TabPanel>
