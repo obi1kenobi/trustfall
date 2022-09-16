@@ -4,7 +4,15 @@ interface Item {
   type: string;
 }
 
-export function materializeItem(fetchPort: MessagePort, itemId: number): Item {
+interface User {
+  id: string;
+  created: number;
+  karma: number;
+  about: string | null; // HTML content
+  submitted: number[] | null;
+}
+
+export function materializeItem(fetchPort: MessagePort, itemId: number): Item | null {
   const sync = SyncContext.makeDefault();
 
   const url = `https://hacker-news.firebaseio.com/v0/item/${itemId}.json`;
@@ -25,7 +33,7 @@ export function materializeItem(fetchPort: MessagePort, itemId: number): Item {
   return item;
 }
 
-export function materializeUser(fetchPort: MessagePort, username: string): unknown {
+export function materializeUser(fetchPort: MessagePort, username: string): User | null {
   const sync = SyncContext.makeDefault();
 
   const url = `https://hacker-news.firebaseio.com/v0/user/${username}.json`;
@@ -66,12 +74,12 @@ export function* getTopItems(fetchPort: MessagePort): Generator<Item> {
 
   for (const id of storyIds) {
     const item = materializeItem(fetchPort, id);
-    const itemType = item['type'];
+    const itemType = item?.['type'];
 
     // Ignore polls. They are very rarely made on HackerNews,
     // and they are not supported in our query schema.
     if (itemType === 'story' || itemType === 'job') {
-      yield item;
+      yield item as Item;
     }
   }
 }
@@ -96,12 +104,12 @@ export function* getLatestItems(fetchPort: MessagePort): Generator<Item> {
 
   for (const id of storyIds) {
     const item = materializeItem(fetchPort, id);
-    const itemType = item['type'];
+    const itemType = item?.['type'];
 
     // Ignore polls. They are very rarely made on HackerNews,
     // and they are not supported in our query schema.
     if (itemType === 'story' || itemType === 'job') {
-      yield item;
+      yield item as Item;
     }
   }
 }
