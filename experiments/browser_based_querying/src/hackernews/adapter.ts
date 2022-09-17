@@ -13,11 +13,13 @@ import {
 import debug from "../utils/debug";
 import {
   getAskStories,
+  getBestItems,
   getShowStories,
   getJobItems,
-  getBestItems,
   getTopItems,
   getLatestItems,
+  getUpdatedUserProfiles,
+  getUpdatedItems,
   materializeItem,
   materializeUser,
 } from './utils';
@@ -184,7 +186,9 @@ export class MyAdapter implements Adapter<Vertex> {
       edge === 'Best' ||
       edge === 'AskHN' ||
       edge === 'ShowHN' ||
-      edge === 'RecentJob'
+      edge === 'RecentJob' ||
+      edge === 'UpdatedItem' ||
+      edge === 'UpdatedUserProfile'
     ) {
       const limit = parameters['max'] as number | undefined;
       let fetcher: (fetchPort: MessagePort) => IterableIterator<Vertex>;
@@ -207,17 +211,25 @@ export class MyAdapter implements Adapter<Vertex> {
         case 'RecentJob':
           fetcher = getJobItems;
           break;
+        case 'UpdatedItem':
+          fetcher = getUpdatedItems;
+          break;
+        case 'UpdatedUserProfile':
+          fetcher = getUpdatedUserProfiles;
+          break;
       }
-      yield* resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
+      yield * resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
     } else if (edge === 'User') {
-      const username = parameters['name'];
-      if (username == undefined) {
-        throw new Error(`No username given: ${edge} ${parameters}`);
-      }
-
-      const user = materializeUser(this.fetchPort, username as string);
+      const username = parameters['name'] as string;
+      const user = materializeUser(this.fetchPort, username);
       if (user != null) {
         yield user;
+      }
+    } else if (edge === 'Item') {
+      const id = parameters['id'] as number;
+      const item = materializeItem(this.fetchPort, id);
+      if (item != null) {
+        yield item;
       }
     } else {
       throw new Error(`Unexpected edge ${edge} with params ${parameters}`);

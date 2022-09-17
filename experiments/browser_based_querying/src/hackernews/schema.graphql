@@ -106,6 +106,29 @@ type RootSchemaQuery {
   Look up a user by their username.
   """
   User(name: String!): User
+
+  """
+  Look up an item by its ID number.
+  """
+  Item(id: Int!): Item
+
+  """
+  Most-recently updated items, such as stories or job postings.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching items
+  as deep as the HackerNews API allows.
+  """
+  UpdatedItem(max: Int): [Item!]!
+
+  """
+  Most-recently updated user profiles.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching items
+  as deep as the HackerNews API allows.
+  """
+  UpdatedUserProfile(max: Int): [User!]!
 }
 
 """
