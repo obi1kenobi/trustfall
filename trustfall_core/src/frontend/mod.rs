@@ -257,11 +257,13 @@ fn infer_variable_type(
             // the property needs to be a list. If it's not a list, this is a bad filter.
             let inner_type = match &property_type.base {
                 BaseType::Named(_) => {
-                    return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
-                        operation.operation_name().to_string(),
-                        property_name.to_string(),
-                        property_type.to_string(),
-                    )))
+                    return Err(Box::new(
+                        FilterTypeError::ListFilterOperationOnNonListField(
+                            operation.operation_name().to_string(),
+                            property_name.to_string(),
+                            property_type.to_string(),
+                        ),
+                    ))
                 }
                 BaseType::List(inner) => inner.as_ref(),
             };
@@ -348,7 +350,8 @@ fn make_filter_expr<LeftT: NamedTypedValue>(
                             left_operand.named(),
                             left_operand.typed(),
                             &filter_directive.operation,
-                        ).map_err(|e| *e)?,
+                        )
+                        .map_err(|e| *e)?,
                     }),
                     OperatorArgument::TagRef(tag_name) => {
                         let defined_tag = match tags.reference_tag(
