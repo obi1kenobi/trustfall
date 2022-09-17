@@ -141,3 +141,48 @@ export function* getJobItems(fetchPort: MessagePort): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/jobstories.json';
   yield* resolveListOfItems(fetchPort, url);
 }
+
+export function* getUpdatedItems(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/updates.json';
+  const sync = SyncContext.makeDefault();
+  const fetchOptions = {
+    method: 'GET',
+  };
+
+  const message = {
+    sync: sync.makeSendable(),
+    input: url,
+    init: fetchOptions,
+  };
+  fetchPort.postMessage(message);
+
+  const result = new TextDecoder().decode(sync.receive());
+  const itemIds = JSON.parse(result)?.items;
+
+  yield* yieldMaterializedItems(fetchPort, itemIds);
+}
+
+export function* getUpdatedUserProfiles(fetchPort: MessagePort): Generator<User> {
+  const url = 'https://hacker-news.firebaseio.com/v0/updates.json';
+  const sync = SyncContext.makeDefault();
+  const fetchOptions = {
+    method: 'GET',
+  };
+
+  const message = {
+    sync: sync.makeSendable(),
+    input: url,
+    init: fetchOptions,
+  };
+  fetchPort.postMessage(message);
+
+  const result = new TextDecoder().decode(sync.receive());
+  const userIds = JSON.parse(result)?.profiles;
+
+  for (const username of userIds) {
+    const user = materializeUser(fetchPort, username);
+    if (user) {
+      yield user;
+    }
+  }
+}
