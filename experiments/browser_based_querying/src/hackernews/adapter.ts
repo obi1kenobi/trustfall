@@ -11,7 +11,16 @@ import {
   executeQuery,
 } from '../../www2/trustfall_wasm';
 import debug from "../utils/debug";
-import { getTopItems, getLatestItems, materializeItem, materializeUser } from './utils';
+import {
+  getAskStories,
+  getShowStories,
+  getJobItems,
+  getBestItems,
+  getTopItems,
+  getLatestItems,
+  materializeItem,
+  materializeUser,
+} from './utils';
 import HN_SCHEMA from './schema.graphql';
 
 initialize(); // Trustfall query system init.
@@ -148,6 +157,17 @@ function extractPlainTextFromHnMarkup(hnText: string | null): string | null {
   }
 }
 
+function* resolvePossiblyLimitedIterator(
+  iter: IterableIterator<Vertex>,
+  limit: number | undefined
+): IterableIterator<Vertex> {
+  if (limit == undefined) {
+    yield* iter;
+  } else {
+    yield* limitIterator(iter, limit as number);
+  }
+}
+
 export class MyAdapter implements Adapter<Vertex> {
   fetchPort: MessagePort;
 
@@ -158,22 +178,37 @@ export class MyAdapter implements Adapter<Vertex> {
   *getStartingTokens(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
     if (edge === 'FrontPage') {
       return limitIterator(getTopItems(this.fetchPort), 30);
-    } else if (edge === 'Top') {
-      const limit = parameters['max'];
-      const iter = getTopItems(this.fetchPort);
-      if (limit == undefined) {
-        yield* iter;
-      } else {
-        yield* limitIterator(iter, limit as number);
+    } else if (
+      edge === 'Top' ||
+      edge === 'Latest' ||
+      edge === 'Best' ||
+      edge === 'AskHN' ||
+      edge === 'ShowHN' ||
+      edge === 'RecentJob'
+    ) {
+      const limit = parameters['max'] as number | undefined;
+      let fetcher: (fetchPort: MessagePort) => IterableIterator<Vertex>;
+      switch (edge) {
+        case 'Top':
+          fetcher = getTopItems;
+          break;
+        case 'Latest':
+          fetcher = getLatestItems;
+          break;
+        case 'Best':
+          fetcher = getBestItems;
+          break;
+        case 'AskHN':
+          fetcher = getAskStories;
+          break;
+        case 'ShowHN':
+          fetcher = getShowStories;
+          break;
+        case 'RecentJob':
+          fetcher = getJobItems;
+          break;
       }
-    } else if (edge === 'Latest') {
-      const limit = parameters['max'];
-      const iter = getLatestItems(this.fetchPort);
-      if (limit == undefined) {
-        yield* iter;
-      } else {
-        yield* limitIterator(iter, limit as number);
-      }
+      yield* resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
     } else if (edge === 'User') {
       const username = parameters['name'];
       if (username == undefined) {

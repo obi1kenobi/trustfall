@@ -67,6 +67,42 @@ type RootSchemaQuery {
   Latest(max: Int): [Story!]!
 
   """
+  Best (recent & most highly-rated) story submissions on HackerNews.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching stories
+  as deep as the HackerNews API allows.
+  """
+  Best(max: Int): [Story!]!
+
+  """
+  Most recent "Ask HN" story submissions.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching stories
+  as deep as the HackerNews API allows.
+  """
+  AskHN(max: Int): [Story!]!
+
+  """
+  Most recent "Show HN" story submissions.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching stories
+  as deep as the HackerNews API allows.
+  """
+  ShowHN(max: Int): [Story!]!
+
+  """
+  Most recent Job submissions.
+
+  The `max` parameter can be used to limit queries to the selected number
+  of latest items. Otherwise, queries will continue fetching jobs
+  as deep as the HackerNews API allows.
+  """
+  RecentJob(max: Int): [Story!]!
+
+  """
   Look up a user by their username.
   """
   User(name: String!): User
