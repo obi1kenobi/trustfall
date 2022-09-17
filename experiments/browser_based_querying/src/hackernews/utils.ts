@@ -1,10 +1,12 @@
 import { SyncContext } from '../sync';
 
 interface Item {
+  __typename: string;
   type: string;
 }
 
 interface User {
+  __typename: string;
   id: string;
   created: number;
   karma: number;
@@ -30,6 +32,26 @@ export function materializeItem(fetchPort: MessagePort, itemId: number): Item | 
   const result = new TextDecoder().decode(sync.receive());
   const item = JSON.parse(result);
 
+  if (item) {
+    switch (item.type) {
+      case 'comment': {
+        item.__typename = 'Comment';
+        break;
+      }
+      case 'story': {
+        item.__typename = 'Story';
+        break;
+      }
+      case 'job': {
+        item.__typename = 'Job';
+        break;
+      }
+      default: {
+        item.__typename = 'Item';
+      }
+    }
+  }
+
   return item;
 }
 
@@ -50,6 +72,10 @@ export function materializeUser(fetchPort: MessagePort, username: string): User 
 
   const result = new TextDecoder().decode(sync.receive());
   const user = JSON.parse(result);
+
+  if (user) {
+    user.__typename = 'User';
+  }
 
   return user;
 }

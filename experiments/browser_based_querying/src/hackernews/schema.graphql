@@ -201,7 +201,7 @@ type Story implements Item & Webpage {
   comment: [Comment!]
 
   """
-  The web page this story links to, if any.
+  The web pages this story links to, if any.
   For link submissions, this is the submitted link.
   For text submissions, this includes all links in the text.
   """
@@ -271,7 +271,7 @@ type Comment implements Item & Webpage {
 """
 The profile of a HackerNews user.
 """
-type User {
+type User implements Webpage {
   """
   The username of this user.
   """
@@ -283,14 +283,25 @@ type User {
   karma: Int!
 
   """
-  The text the user has set in their "About" section, if any.
+  The HTML text the user has set in their "About" section, if any.
   """
-  about: String
+  aboutHtml: String
+
+  """
+  The text the user has set in their "About" section, if any,
+  as plain text with HTML tags removed.
+  """
+  aboutPlain: String
 
   """
   The timestamp when the user account was created, as a number in Unix time.
   """
   unixCreatedAt: Int!
+
+  """
+  The URL of the user's HackerNews profile page.
+  """
+  url: String!
 
   # The HackerNews API treats submissions of comments and stories the same way.
   # The way to get only a user's submitted stories is to use this edge then
@@ -309,6 +320,11 @@ type User {
   ```
   """
   submitted: [Item!]
+
+  """
+  The web pages this user's "about" profile section links to, if any.
+  """
+  link: [Webpage!]
 }
 
 """
