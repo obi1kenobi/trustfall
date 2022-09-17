@@ -1,0 +1,41 @@
+# Find comments from users who link to their Twitter or GitHub
+# in their HackerNews profile.
+query {
+  Top {
+    ... on Story {
+      title @output
+      submittedUrl @output
+      storyUrl: url @output
+
+      comment {
+        # We look up to 5 levels of comments deep.
+        reply @recurse(depth: 5) {
+          comment: textPlain @output
+          commentUrl: url @output
+
+          byUser {
+            user: id @output
+            userAbout: aboutPlain @output
+
+            # The profile must have at least one
+            # link that points to either GitHub or Twitter.
+            link
+              @fold
+              @transform(op: "count")
+              @filter(op: ">=", value: ["$minProfiles"])
+            {
+              userProfiles: url @filter(op: "regex", value: ["$pattern"])
+                                @output
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+  "minProfiles": 1,
+  "pattern": "(github|twitter)\\.com/"
+}

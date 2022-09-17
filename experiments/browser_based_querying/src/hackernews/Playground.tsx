@@ -14,6 +14,7 @@ import commentsWithCodeBlocks from '../../example_queries/hackernews/stories_wit
 import commentsLinkToStories from '../../example_queries/hackernews/comments_that_link_to_other_stories.example';
 import commentsPriorDiscussionSameStory from '../../example_queries/hackernews/comments_for_prior_discussion_of_same_story.example';
 import commentsWithTwoAuthorReplies from '../../example_queries/hackernews/comments_with_two_more_author_replies.example';
+import linksInUserAboutSection from '../../example_queries/hackernews/links_in_user_about_section.example';
 
 import HN_SCHEMA from './schema.graphql';
 
@@ -43,6 +44,10 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
     name: 'Comments Linking Prior Discussion of Same Story',
     value: parseExample(commentsPriorDiscussionSameStory),
+  },
+  {
+    name: "Twitter or GitHub Linked In Commenter's Profile",
+    value: parseExample(linksInUserAboutSection),
   },
   {
     name: 'Discussions With 2+ Replies From Same Author',

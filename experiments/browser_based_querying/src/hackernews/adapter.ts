@@ -24,6 +24,7 @@ postMessage('ready');
 type Vertex = any;
 
 const HNItemFieldMappings: Record<string, string> = {
+  __typename: '__typename',
   id: 'id',
   unixTime: 'time',
   title: 'title',
@@ -35,9 +36,10 @@ const HNItemFieldMappings: Record<string, string> = {
 };
 
 const HNUserFieldMappings: Record<string, string> = {
+  __typename: '__typename',
   id: 'id',
   karma: 'karma',
-  about: 'about',
+  aboutHtml: 'about',
   unixCreatedAt: 'created',
 };
 
@@ -52,33 +54,83 @@ function* limitIterator<T>(iter: IterableIterator<T>, limit: number): IterableIt
   }
 }
 
+const _itemPattern = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
+const _userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
+
+function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null {
+  const itemMatch = url.match(_itemPattern);
+  if (itemMatch) {
+    // This is an item.
+    return materializeItem(fetchPort, parseInt(itemMatch[1]));
+  } else {
+    const userMatch = url.match(_userPattern);
+    if (userMatch) {
+      // This is a user.
+      return materializeUser(fetchPort, userMatch[1]);
+    } else {
+      // This is some other type of webpage that we don't have a more specific type for.
+      return {
+        __typename: 'Website',
+        url,
+      };
+    }
+  }
+}
+
 function* linksInHnMarkup(fetchPort: MessagePort, hnText: string | null): IterableIterator<Vertex> {
   if (hnText) {
-    const itemPattern = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
-    const userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
-
     const matches = hnText.matchAll(/<a [^>]*href="([^"]+)"[^>]*>/g);
     for (const match of matches) {
       // We matched the HTML-escaped URL. Decode the HTML entities.
       const url = decode(match[1]);
-      const itemMatch = url.match(itemPattern);
-      if (itemMatch) {
-        // This is an item.
-        yield materializeItem(fetchPort, parseInt(itemMatch[1]));
-      } else {
-        const userMatch = url.match(userPattern);
-        if (userMatch) {
-          // This is a user.
-          yield materializeUser(fetchPort, userMatch[1]);
-        } else {
-          // This is some other type of webpage that we don't have a more specific type for.
-          yield { url };
+      const vertex = materializeWebsite(fetchPort, url);
+      if (vertex) {
+        yield vertex;
+      }
+    }
+  }
+}
+
+function* linksInAboutPage(
+  fetchPort: MessagePort,
+  aboutHtml: string | null
+): IterableIterator<Vertex> {
+  if (aboutHtml) {
+    let processedLinks: Record<string, boolean> = {};
+
+    const matches1 = aboutHtml.matchAll(/<a [^>]*href="([^"]+)"[^>]*>/g);
+    for (const match of matches1) {
+      // We matched the HTML-escaped URL. Decode the HTML entities.
+      const url = decode(match[1]);
+
+      if (!processedLinks[url]) {
+        processedLinks[url] = true;
+        const vertex = materializeWebsite(fetchPort, url);
+        if (vertex) {
+          yield vertex;
+        }
+      }
+    }
+
+    const aboutPlain = extractPlainTextFromHnMarkup(aboutHtml);
+    const matches2 = aboutPlain.matchAll(/http[s]?:\/\/[^ \n\t]*[^ \n\t\.);,\]}]/g);
+    for (const match of matches2) {
+      // We matched the unescaped URL.
+      const url = match[0];
+
+      if (!processedLinks[url]) {
+        processedLinks[url] = true;
+        const vertex = materializeWebsite(fetchPort, url);
+        if (vertex) {
+          yield vertex;
         }
       }
     }
   }
 }
 
+function extractPlainTextFromHnMarkup(hnText: null): null;
+function extractPlainTextFromHnMarkup(hnText: string): string;
 function extractPlainTextFromHnMarkup(hnText: string | null): string | null {
   // HN comments are not-quite-HTML: they support italics, links, paragraphs,
   // and preformatted text (code blocks), and use HTML escape sequences.
@@ -142,69 +194,123 @@ export class MyAdapter implements Adapter<Vertex> {
     current_type_name: string,
     field_name: string
   ): IterableIterator<ContextAndValue> {
+    if (field_name === '__typename') {
+      for (const ctx of data_contexts) {
+        yield {
+          localId: ctx.localId,
+          value: ctx.currentToken?.__typename || null,
+        };
+      }
+      return;
+    }
+
     if (
       current_type_name === 'Item' ||
       current_type_name === 'Story' ||
       current_type_name === 'Job' ||
       current_type_name === 'Comment'
     ) {
-      if (field_name == 'url') {
-        for (const ctx of data_contexts) {
-          const vertex = ctx.currentToken;
+      switch (field_name) {
+        case 'url': {
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
 
-          let value = null;
-          if (vertex) {
-            value = `https://news.ycombinator.com/item?id=${vertex.id}`;
+            let value = null;
+            if (vertex) {
+              value = `https://news.ycombinator.com/item?id=${vertex.id}`;
+            }
+
+            yield {
+              localId: ctx.localId,
+              value: value,
+            };
+          }
+          break;
+        }
+        case 'textPlain': {
+          const fieldKey = HNItemFieldMappings.textHtml;
+
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
+
+            let value = null;
+            if (vertex) {
+              value = extractPlainTextFromHnMarkup(vertex[fieldKey]);
+            }
+
+            yield {
+              localId: ctx.localId,
+              value: value,
+            };
+          }
+          break;
+        }
+        default: {
+          const fieldKey = HNItemFieldMappings[field_name];
+          if (fieldKey == undefined) {
+            throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
           }
 
-          yield {
-            localId: ctx.localId,
-            value: value,
-          };
-        }
-      } else if (field_name == 'textPlain') {
-        const fieldKey = HNItemFieldMappings.textHtml;
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
 
-        for (const ctx of data_contexts) {
-          const vertex = ctx.currentToken;
-
-          let value = null;
-          if (vertex) {
-            value = extractPlainTextFromHnMarkup(vertex[fieldKey]);
+            yield {
+              localId: ctx.localId,
+              value: vertex?.[fieldKey] || null,
+            };
           }
-
-          yield {
-            localId: ctx.localId,
-            value: value,
-          };
-        }
-      } else {
-        const fieldKey = HNItemFieldMappings[field_name];
-        if (fieldKey == undefined) {
-          throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
-        }
-
-        for (const ctx of data_contexts) {
-          const vertex = ctx.currentToken;
-
-          yield {
-            localId: ctx.localId,
-            value: vertex ? vertex[fieldKey] || null : null,
-          };
         }
       }
     } else if (current_type_name === 'User') {
-      const fieldKey = HNUserFieldMappings[field_name];
-      if (fieldKey == undefined) {
-        throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
-      }
+      switch (field_name) {
+        case 'url': {
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
 
-      for (const ctx of data_contexts) {
-        const vertex = ctx.currentToken;
-        yield {
-          localId: ctx.localId,
-          value: vertex ? vertex[fieldKey] || null : null,
-        };
+            let value = null;
+            if (vertex) {
+              value = `https://news.ycombinator.com/user?id=${vertex.id}`;
+            }
+
+            yield {
+              localId: ctx.localId,
+              value: value,
+            };
+          }
+          break;
+        }
+        case 'aboutPlain': {
+          const fieldKey = HNUserFieldMappings.aboutHtml;
+
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
+
+            let value = null;
+            if (vertex) {
+              value = extractPlainTextFromHnMarkup(vertex[fieldKey]);
+            }
+
+            yield {
+              localId: ctx.localId,
+              value: value,
+            };
+          }
+          break;
+        }
+        default: {
+          const fieldKey = HNUserFieldMappings[field_name];
+          if (fieldKey == undefined) {
+            throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
+          }
+
+          for (const ctx of data_contexts) {
+            const vertex = ctx.currentToken;
+            yield {
+              localId: ctx.localId,
+              value: vertex?.[fieldKey] || null,
+            };
+          }
+        }
       }
     } else if (current_type_name === 'Webpage') {
       if (field_name === 'url') {
@@ -244,7 +350,12 @@ export class MyAdapter implements Adapter<Vertex> {
             if (vertex) {
               if (vertex.url) {
                 // link submission
-                neighbors = [{ url: vertex.url }][Symbol.iterator]();
+                const neighbor = materializeWebsite(this.fetchPort, vertex.url);
+                if (neighbor) {
+                  neighbors = [neighbor][Symbol.iterator]();
+                } else {
+                  neighbors = [][Symbol.iterator]();
+                }
               } else {
                 // text submission
                 neighbors = linksInHnMarkup(this.fetchPort, vertex.text);
@@ -276,13 +387,16 @@ export class MyAdapter implements Adapter<Vertex> {
           // Jobs only have the submitted URL as a link.
           for (const ctx of data_contexts) {
             const vertex = ctx.currentToken;
-            let neighbors: Vertex[] = [];
+            let neighbors: IterableIterator<Vertex> = [][Symbol.iterator]();
             if (vertex) {
-              neighbors = [{ url: vertex.url }];
+              const neighbor = materializeWebsite(this.fetchPort, vertex.url);
+              if (neighbor) {
+                neighbors = [neighbor][Symbol.iterator]();
+              }
             }
             yield {
               localId: ctx.localId,
-              neighbors: neighbors[Symbol.iterator](),
+              neighbors,
             };
           }
         } else {
@@ -340,6 +454,19 @@ export class MyAdapter implements Adapter<Vertex> {
             neighbors: lazyFetchMap(this.fetchPort, submitted, materializeItem),
           };
         }
+      } else if (edge_name === 'link') {
+        for (const ctx of data_contexts) {
+          const vertex = ctx.currentToken;
+          let neighbors: IterableIterator<Vertex> = [][Symbol.iterator]();
+          const aboutHtml = vertex?.about;
+          if (aboutHtml) {
+            neighbors = linksInAboutPage(this.fetchPort, aboutHtml);
+          }
+          yield {
+            localId: ctx.localId,
+            neighbors,
+          };
+        }
       } else {
         throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
       }
@@ -358,31 +485,18 @@ export class MyAdapter implements Adapter<Vertex> {
         // The Item type is abstract, we need to check if the vertex is any of the Item subtypes.
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
-          const type = vertex?.type;
+          const type = vertex?.__typename;
           yield {
             localId: ctx.localId,
-            value: type === 'story' || type === 'job' || type === 'comment',
+            value: type === 'Story' || type === 'Job' || type === 'Comment',
           };
         }
       } else {
-        let targetType;
-        if (coerce_to_type_name === 'Story') {
-          targetType = 'story';
-        } else if (coerce_to_type_name === 'Job') {
-          targetType = 'job';
-        } else if (coerce_to_type_name === 'Comment') {
-          targetType = 'comment';
-        } else {
-          throw new Error(
-            `Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`
-          );
-        }
-
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
           yield {
             localId: ctx.localId,
-            value: vertex?.type === targetType,
+            value: vertex?.__typename === coerce_to_type_name,
           };
         }
       }
