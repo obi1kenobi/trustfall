@@ -80,25 +80,8 @@ export function materializeUser(fetchPort: MessagePort, username: string): User 
   return user;
 }
 
-export function* getTopItems(fetchPort: MessagePort): Generator<Item> {
-  const sync = SyncContext.makeDefault();
-
-  const url = 'https://hacker-news.firebaseio.com/v0/topstories.json';
-  const fetchOptions = {
-    method: 'GET',
-  };
-
-  const message = {
-    sync: sync.makeSendable(),
-    input: url,
-    init: fetchOptions,
-  };
-  fetchPort.postMessage(message);
-
-  const result = new TextDecoder().decode(sync.receive());
-  const storyIds = JSON.parse(result);
-
-  for (const id of storyIds) {
+function* yieldMaterializedItems(fetchPort: MessagePort, itemIds: number[]): Generator<Item> {
+  for (const id of itemIds) {
     const item = materializeItem(fetchPort, id);
     const itemType = item?.['type'];
 
@@ -110,10 +93,8 @@ export function* getTopItems(fetchPort: MessagePort): Generator<Item> {
   }
 }
 
-export function* getLatestItems(fetchPort: MessagePort): Generator<Item> {
+function* resolveListOfItems(fetchPort: MessagePort, url: string): Generator<Item> {
   const sync = SyncContext.makeDefault();
-
-  const url = 'https://hacker-news.firebaseio.com/v0/newstories.json';
   const fetchOptions = {
     method: 'GET',
   };
@@ -126,16 +107,37 @@ export function* getLatestItems(fetchPort: MessagePort): Generator<Item> {
   fetchPort.postMessage(message);
 
   const result = new TextDecoder().decode(sync.receive());
-  const storyIds = JSON.parse(result);
+  const itemIds = JSON.parse(result);
 
-  for (const id of storyIds) {
-    const item = materializeItem(fetchPort, id);
-    const itemType = item?.['type'];
+  yield* yieldMaterializedItems(fetchPort, itemIds);
+}
 
-    // Ignore polls. They are very rarely made on HackerNews,
-    // and they are not supported in our query schema.
-    if (itemType === 'story' || itemType === 'job') {
-      yield item as Item;
-    }
-  }
+export function* getTopItems(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/topstories.json';
+  yield* resolveListOfItems(fetchPort, url);
+}
+
+export function* getLatestItems(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/newstories.json';
+  yield* resolveListOfItems(fetchPort, url);
+}
+
+export function* getBestItems(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/beststories.json';
+  yield* resolveListOfItems(fetchPort, url);
+}
+
+export function* getAskStories(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/askstories.json';
+  yield* resolveListOfItems(fetchPort, url);
+}
+
+export function* getShowStories(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/showstories.json';
+  yield* resolveListOfItems(fetchPort, url);
+}
+
+export function* getJobItems(fetchPort: MessagePort): Generator<Item> {
+  const url = 'https://hacker-news.firebaseio.com/v0/jobstories.json';
+  yield* resolveListOfItems(fetchPort, url);
 }
