@@ -186,3 +186,59 @@ export function* getUpdatedUserProfiles(fetchPort: MessagePort): Generator<User>
     }
   }
 }
+
+function* getSearchResults(
+  fetchPort: MessagePort,
+  endpoint: string,
+  query: string
+): Generator<Item> {
+  const hitsPerPage = '50';
+  let page = 0;
+
+  while (true) {
+    page += 1;
+    const params = new URLSearchParams([
+      ['query', query],
+      ['page', page.toString()],
+      ['hitsPerPage', hitsPerPage],
+    ]);
+    const url = `https://hn.algolia.com/api/v1/${endpoint}?${params}`;
+
+    const sync = SyncContext.makeDefault();
+    const fetchOptions = {
+      method: 'GET',
+    };
+
+    const message = {
+      sync: sync.makeSendable(),
+      input: url,
+      init: fetchOptions,
+    };
+    fetchPort.postMessage(message);
+
+    const result = new TextDecoder().decode(sync.receive());
+    const hits = JSON.parse(result)?.hits;
+
+    if (hits?.length) {
+      for (const hit of hits) {
+        const itemId = hit.objectID;
+        if (itemId) {
+          const item = materializeItem(fetchPort, itemId);
+          if (item) {
+            yield item;
+          }
+        }
+      }
+    } else {
+      break;
+    }
+  }
+}
+
+export function* getRelevanceSearchResults(fetchPort: MessagePort, query: string): Generator<Item> {
+  yield* getSearchResults(fetchPort, 'search', query);
+}
+
+export function* getDateSearchResults(fetchPort: MessagePort, query: string): Generator<Item> {
+  yield* getSearchResults(fetchPort, 'search_by_date', query);
+}

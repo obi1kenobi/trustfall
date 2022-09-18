@@ -14,12 +14,14 @@ import debug from "../utils/debug";
 import {
   getAskStories,
   getBestItems,
-  getShowStories,
+  getDateSearchResults,
   getJobItems,
-  getTopItems,
   getLatestItems,
-  getUpdatedUserProfiles,
+  getRelevanceSearchResults,
+  getShowStories,
+  getTopItems,
   getUpdatedItems,
+  getUpdatedUserProfiles,
   materializeItem,
   materializeUser,
 } from './utils';
@@ -193,30 +195,38 @@ export class MyAdapter implements Adapter<Vertex> {
       const limit = parameters['max'] as number | undefined;
       let fetcher: (fetchPort: MessagePort) => IterableIterator<Vertex>;
       switch (edge) {
-        case 'Top':
+        case 'Top': {
           fetcher = getTopItems;
           break;
-        case 'Latest':
+        }
+        case 'Latest': {
           fetcher = getLatestItems;
           break;
-        case 'Best':
+        }
+        case 'Best': {
           fetcher = getBestItems;
           break;
-        case 'AskHN':
+        }
+        case 'AskHN': {
           fetcher = getAskStories;
           break;
-        case 'ShowHN':
+        }
+        case 'ShowHN': {
           fetcher = getShowStories;
           break;
-        case 'RecentJob':
+        }
+        case 'RecentJob': {
           fetcher = getJobItems;
           break;
-        case 'UpdatedItem':
+        }
+        case 'UpdatedItem': {
           fetcher = getUpdatedItems;
           break;
-        case 'UpdatedUserProfile':
+        }
+        case 'UpdatedUserProfile': {
           fetcher = getUpdatedUserProfiles;
           break;
+        }
       }
       yield * resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
     } else if (edge === 'User') {
@@ -230,6 +240,18 @@ export class MyAdapter implements Adapter<Vertex> {
       const item = materializeItem(this.fetchPort, id);
       if (item != null) {
         yield item;
+      }
+    } else if (edge === 'SearchByRelevance' || edge === 'SearchByDate') {
+      const query = parameters['query'] as string;
+      switch (edge) {
+        case 'SearchByRelevance': {
+          yield* getRelevanceSearchResults(this.fetchPort, query);
+          break;
+        }
+        case 'SearchByDate': {
+          yield* getDateSearchResults(this.fetchPort, query);
+          break;
+        }
       }
     } else {
       throw new Error(`Unexpected edge ${edge} with params ${parameters}`);

@@ -129,6 +129,24 @@ type RootSchemaQuery {
   as deep as the HackerNews API allows.
   """
   UpdatedUserProfile(max: Int): [User!]!
+
+  """
+  Use HackerNews search to find items (stories, comments, etc.) based on the given query string.
+
+  Items are returned sorted by relevance, then points, then number of comments.
+
+  Search API docs: https://hn.algolia.com/api
+  """
+  SearchByRelevance(query: String!): [Item!]
+
+  """
+  Use HackerNews search to find items (stories, comments, etc.) based on the given query string.
+
+  Items are returned sorted by date, more recent first.
+
+  Search API docs: https://hn.algolia.com/api
+  """
+  SearchByDate(query: String!): [Item!]
 }
 
 """
