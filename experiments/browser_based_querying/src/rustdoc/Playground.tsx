@@ -227,11 +227,11 @@ export default function Rustdoc(): JSX.Element {
   }, [queryWorker, handleCrateChange]);
 
   return (
-    <Grid container direction="column" spacing={0} height="97vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
-      <Grid item xs={1} sx={{ padding: '10px' }}>
+    <Grid container direction="column" spacing={0} height="98vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
+      <Grid item xs={1} sx={{ pt: 1, pl: 1, pr: 1 }}>
         {header}
       </Grid>
-      <Grid container direction="column" item xs={11} sx={{flexShrink: 1, overflowY: 'hidden'}}>
+      <Grid container direction="column" item xs={11} spacing={0} sx={{flexShrink: 1, overflowY: 'hidden'}}>
         {queryWorker && <Playground queryWorker={queryWorker} disabled={disabledMessage} />}
       </Grid>
     </Grid>
