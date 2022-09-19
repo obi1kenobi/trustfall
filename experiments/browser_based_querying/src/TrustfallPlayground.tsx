@@ -404,8 +404,10 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   );
 
   // TODO: For some reason, portal only renders after resize window (probably need to trigger relayout manually)
-  const mdDownContent = useMemo(
-    () => (
+  const mdDownContent = useMemo(() => {
+    const isQueryRelatedTab = selectedTab === 'query' || selectedTab === 'vars';
+    const tabColor = isQueryRelatedTab ? 'secondary' : 'primary';
+    return (
       <Grid
         container
         item
@@ -415,7 +417,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         sx={{ flexGrow: '1 !important', flexWrap: 'nowrap', overflowY: 'hidden' }}
       >
         <Box>
-          <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
+          <Tabs
+            value={selectedTab}
+            onChange={handleTabChange}
+            textColor={tabColor}
+            indicatorColor={tabColor}
+            sx={{ pb: 1 }}
+          >
             <Tab value="query" label="Query" />
             <Tab value="vars" label="Variables" />
             <Tab value="results" label="Results" />
@@ -459,9 +467,8 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           <SimpleDocExplorer schema={schema} />
         </TabPanel>
       </Grid>
-    ),
-    [handleTabChange, selectedTab, schema, queryPortalNode, varsPortalNode, resultsPortalNode]
-  );
+    );
+  }, [handleTabChange, selectedTab, schema, queryPortalNode, varsPortalNode, resultsPortalNode]);
 
   return (
     <Grid
