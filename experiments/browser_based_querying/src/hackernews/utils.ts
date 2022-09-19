@@ -193,15 +193,15 @@ function* getSearchResults(
   query: string
 ): Generator<Item> {
   const hitsPerPage = '50';
-  let page = 0;
+  let nextPage = 0;
 
   while (true) {
-    page += 1;
     const params = new URLSearchParams([
       ['query', query],
-      ['page', page.toString()],
+      ['page', nextPage.toString()],
       ['hitsPerPage', hitsPerPage],
     ]);
+    nextPage += 1;
     const url = `https://hn.algolia.com/api/v1/${endpoint}?${params}`;
 
     const sync = SyncContext.makeDefault();
