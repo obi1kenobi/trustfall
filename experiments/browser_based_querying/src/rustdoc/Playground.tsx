@@ -231,7 +231,7 @@ export default function Rustdoc(): JSX.Element {
       container
       direction="column"
       spacing={0}
-      height="98vh"
+      height="99vh"
       width="100vw"
       sx={{ flexWrap: 'nowrap' }}
     >
