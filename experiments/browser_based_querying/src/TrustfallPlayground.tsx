@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { css } from '@emotion/react';
 import { LoadingButton } from '@mui/lab';
 import {
@@ -74,7 +74,7 @@ const enableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = {
   folding: true,
   lineDecorationsWidth: 5,
   lineNumbersMinChars: 2,
-}
+};
 
 window.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -235,7 +235,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           minimap: {
             enabled: false,
           },
-          automaticLayout: true
+          automaticLayout: true,
         },
         {
           storageService: {
@@ -482,11 +482,11 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     if (!queryEditor) return;
 
     if (isMdUp) {
-      queryEditor.updateOptions(enableGutterConfig)
+      queryEditor.updateOptions(enableGutterConfig);
     } else {
       queryEditor.updateOptions(disableGutterConfig);
     }
-  }, [isMdUp, queryEditor])
+  }, [isMdUp, queryEditor]);
 
   return (
     <Grid
@@ -499,7 +499,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       <Grid item md={1}>
         {header}
         <Grid container item direction="row" spacing={0} sx={{ alignItems: 'center' }}>
-          <Grid item sx={{ mr: '10px' }}>
+          <Grid item sx={{ mt: 1, mr: '10px' }}>
             <Tooltip title={disabledMessage} placement="bottom">
               <span>
                 <LoadingButton
@@ -516,7 +516,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             </Tooltip>
           </Grid>
           {onQueryNextResult && results != null && (
-            <Grid item sx={{ mr: '10px' }}>
+            <Grid item sx={{ mt: 1, mr: '10px' }}>
               <LoadingButton
                 size="small"
                 variant="outlined"
@@ -529,7 +529,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               </LoadingButton>
             </Grid>
           )}
-          <Grid item sx={{ mr: '10px' }}>
+          <Grid item sx={{ mt: 1, mr: '10px' }}>
             <FormControl size="small" sx={{ minWidth: 300 }}>
               <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
               <Select

@@ -200,16 +200,16 @@ export default function Rustdoc(): JSX.Element {
           Rust crates — Trustfall Playground
         </Typography>
         <Typography>
-          Query a crate's rustdoc directly from your browser with{' '}
+          Query a crate&apos;s rustdoc directly from your browser with{' '}
           <a href="https://github.com/obi1kenobi/trustfall" target="_blank" rel="noreferrer">
             Trustfall
           </a>{' '}
           compiled to WebAssembly.
         </Typography>
         <Typography>
-          Selecting a crate downloads a few MB of data, so {' '}
-          you might not want to do this from a mobile data plan.
-          If your favorite crate is missing, <a href="https://github.com/obi1kenobi/crates-rustdoc/issues/new/choose">let us know</a>!
+          Selecting a crate downloads a few MB of data, so you might not want to do this from a
+          mobile data plan. If your favorite crate is missing,{' '}
+          <a href="https://github.com/obi1kenobi/crates-rustdoc/issues/new/choose">let us know</a>!
         </Typography>
         {queryWorker && (
           <Box>
@@ -227,11 +227,25 @@ export default function Rustdoc(): JSX.Element {
   }, [queryWorker, handleCrateChange]);
 
   return (
-    <Grid container direction="column" spacing={0} height="98vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
+    <Grid
+      container
+      direction="column"
+      spacing={0}
+      height="98vh"
+      width="100vw"
+      sx={{ flexWrap: 'nowrap' }}
+    >
       <Grid item xs={1} sx={{ pt: 1, pl: 1, pr: 1 }}>
         {header}
       </Grid>
-      <Grid container direction="column" item xs={11} spacing={0} sx={{flexShrink: 1, overflowY: 'hidden'}}>
+      <Grid
+        container
+        direction="column"
+        item
+        xs={11}
+        spacing={0}
+        sx={{ flexShrink: 1, overflowY: 'hidden' }}
+      >
         {queryWorker && <Playground queryWorker={queryWorker} disabled={disabledMessage} />}
       </Grid>
     </Grid>

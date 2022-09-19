@@ -258,7 +258,7 @@ export default function HackerNewsPlayground(): JSX.Element {
       exampleQueries={EXAMPLE_OPTIONS}
       onQuery={runQuery}
       onQueryNextResult={queryNextResult}
-      sx={{ height: '99vh', width: '98vw' }}
+      sx={{ height: '99vh', width: '100vw' }}
     />
   );
 }
