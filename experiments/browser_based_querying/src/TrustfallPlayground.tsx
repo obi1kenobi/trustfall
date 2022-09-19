@@ -68,6 +68,14 @@ const disableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = 
   lineNumbersMinChars: 0,
 };
 
+const enableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = {
+  lineNumbers: 'on',
+  glyphMargin: true,
+  folding: true,
+  lineDecorationsWidth: 5,
+  lineNumbersMinChars: 2,
+}
+
 window.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
     switch (label) {
@@ -227,7 +235,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           minimap: {
             enabled: false,
           },
-          automaticLayout: true,
+          automaticLayout: true
         },
         {
           storageService: {
@@ -469,6 +477,16 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       </Grid>
     );
   }, [handleTabChange, selectedTab, schema, queryPortalNode, varsPortalNode, resultsPortalNode]);
+
+  useEffect(() => {
+    if (!queryEditor) return;
+
+    if (isMdUp) {
+      queryEditor.updateOptions(enableGutterConfig)
+    } else {
+      queryEditor.updateOptions(disableGutterConfig);
+    }
+  }, [isMdUp, queryEditor])
 
   return (
     <Grid
