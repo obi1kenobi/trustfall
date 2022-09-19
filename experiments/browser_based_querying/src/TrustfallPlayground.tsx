@@ -266,6 +266,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         minimap: {
           enabled: false,
         },
+        wordWrap: 'on',
         readOnly: true,
         automaticLayout: true,
         ...disableGutterConfig,
@@ -330,13 +331,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     switch (selectedTab) {
       case 'query':
         queryEditor.layout();
-        return
+        return;
       case 'vars':
         varsEditor.layout();
-        return
+        return;
       case 'results':
         resultsEditor.layout();
-        return
+        return;
     }
   }, [queryEditor, varsEditor, resultsEditor, selectedTab]);
 
@@ -405,7 +406,14 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   // TODO: For some reason, portal only renders after resize window (probably need to trigger relayout manually)
   const mdDownContent = useMemo(
     () => (
-      <Grid container item xs={11} spacing={0} direction="column" sx={{ flexWrap: 'nowrap' }}>
+      <Grid
+        container
+        item
+        xs={11}
+        spacing={0}
+        direction="column"
+        sx={{ flexGrow: '1 !important', flexWrap: 'nowrap', overflowY: 'hidden' }}
+      >
         <Box>
           <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
             <Tab value="query" label="Query" />
@@ -416,7 +424,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </Box>
         <TabPanel
           selected={selectedTab === 'query'}
-          sx={{ height: '100%', position: 'relative', ...sxEditorContainer }}
+          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
         >
           <Paper elevation={0}>
             <OutPortal node={queryPortalNode} />
@@ -424,7 +432,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </TabPanel>
         <TabPanel
           selected={selectedTab === 'vars'}
-          sx={{ height: '100%', position: 'relative', ...sxEditorContainer }}
+          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
         >
           <Paper elevation={0}>
             <OutPortal node={varsPortalNode} />
@@ -432,7 +440,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </TabPanel>
         <TabPanel
           selected={selectedTab === 'results'}
-          sx={{ height: '100%', position: 'relative', ...sxEditorContainer }}
+          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
         >
           <Paper elevation={0}>
             <OutPortal node={resultsPortalNode} />
@@ -443,7 +451,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           sx={{
             display: selectedTab === 'schema' ? 'flex' : 'none',
             flexDirection: 'column',
-            height: '100%',
+            flexGrow: 1,
             overflowY: 'hidden',
             overflowX: 'hidden',
           }}
@@ -456,7 +464,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   );
 
   return (
-    <Grid container item direction="column" spacing={0} sx={{ padding: '10px', flexWrap: 'nowrap', ...sx }}>
+    <Grid
+      container
+      item
+      direction="column"
+      spacing={0}
+      sx={{ padding: '10px', flexWrap: 'nowrap', ...sx }}
+    >
       <Grid item md={1}>
         {header}
         <Grid container item direction="row" spacing={0} sx={{ alignItems: 'center' }}>
