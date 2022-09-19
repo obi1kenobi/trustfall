@@ -227,8 +227,8 @@ export default function Rustdoc(): JSX.Element {
   }, [queryWorker, handleCrateChange]);
 
   return (
-    <Grid container direction="column" height="97vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
-      <Grid item xs={1}>
+    <Grid container direction="column" spacing={0} height="97vh" width="98vw" sx={{ flexWrap: 'nowrap' }}>
+      <Grid item xs={1} sx={{ padding: '10px' }}>
         {header}
       </Grid>
       <Grid container direction="column" item xs={11} sx={{flexShrink: 1, overflowY: 'hidden'}}>
