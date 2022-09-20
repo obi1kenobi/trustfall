@@ -16,11 +16,14 @@ import {
   Theme,
   SxProps,
   Tooltip,
+  useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { GraphQLSchema } from 'graphql';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initializeMode } from 'monaco-graphql/esm/initializeMode';
 import { NumberParam, StringParam, useQueryParams } from 'use-query-params';
+import { InPortal, OutPortal, createHtmlPortalNode } from 'react-reverse-portal';
 
 import SimpleDocExplorer from './components/SimpleDocExplorer';
 
@@ -65,6 +68,14 @@ const disableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = 
   lineNumbersMinChars: 0,
 };
 
+const enableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = {
+  lineNumbers: 'on',
+  glyphMargin: true,
+  folding: true,
+  lineDecorationsWidth: 5,
+  lineNumbersMinChars: 2,
+};
+
 window.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
     switch (label) {
@@ -82,7 +93,7 @@ window.MonacoEnvironment = {
   },
 };
 
-type ResultsTab = 'results' | 'schema';
+type PlaygroundTab = 'query' | 'vars' | 'results' | 'schema';
 
 interface TabPanelProps {
   selected: boolean;
@@ -120,9 +131,9 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     onQueryNextResult,
     results,
     loading,
+    schema,
     error,
     hasMore,
-    schema,
     exampleQueries,
     header,
     sx,
@@ -146,6 +157,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     name: string;
     value: [string, string];
   } | null>(null);
+  const [selectedTab, setSelectedTab] = useState<PlaygroundTab>('query');
   const queryEditorRef = useRef<HTMLDivElement>(null);
   const [queryEditor, setQueryEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const varsEditorRef = useRef<HTMLDivElement>(null);
@@ -154,7 +166,6 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const [resultsEditor, setResultsEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
-  const [selectedTab, setSelectedTab] = useState<ResultsTab>('results');
 
   const noQuery = encodedQuery === '';
   const disabledMessage = useMemo(() => {
@@ -168,10 +179,6 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
 
     return '';
   }, [disabled, noQuery]);
-
-  const handleTabChange = useCallback((_evt: React.SyntheticEvent, value: ResultsTab) => {
-    setSelectedTab(value);
-  }, []);
 
   const handleExampleQueryChange = useCallback(
     (evt: SelectChangeEvent<string | null>) => {
@@ -192,6 +199,10 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     onQuery(query, vars);
     setSelectedTab('results');
   }, [queryEditor, varsEditor, onQuery]);
+
+  const handleTabChange = useCallback((_evt: React.SyntheticEvent, value: PlaygroundTab) => {
+    setSelectedTab(value);
+  }, []);
 
   useEffect(() => {
     initializeMode({
@@ -263,6 +274,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         minimap: {
           enabled: false,
         },
+        wordWrap: 'on',
         readOnly: true,
         automaticLayout: true,
         ...disableGutterConfig,
@@ -321,75 +333,51 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     }
   }, [results, resultsEditor, loading, error]);
 
-  return (
-    <Grid container item direction="column" sx={{ flexWrap: 'nowrap', ...(sx ?? {}) }}>
-      <Grid item xs={1}>
-        {header}
-        <div css={{ display: 'flex', alignItems: 'center', margin: 10 }}>
-          <Tooltip title={disabledMessage} placement="bottom">
-            <span>
-              <LoadingButton
-                size="small"
-                onClick={() => handleQuery()}
-                variant="contained"
-                sx={{ mr: 2 }}
-                disabled={Boolean(disabled) || noQuery}
-                loading={loading}
-              >
-                Run query!
-              </LoadingButton>
-            </span>
-          </Tooltip>
-          {onQueryNextResult && results != null && (
-            <LoadingButton
-              size="small"
-              variant="outlined"
-              onClick={() => onQueryNextResult()}
-              disabled={!hasMore || Boolean(disabled)}
-              loading={loading}
-              sx={{ mr: 2 }}
-            >
-              {hasMore ? 'More!' : 'No more results'}
-            </LoadingButton>
-          )}
-          <FormControl size="small" sx={{ minWidth: 300 }}>
-            <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
-            <Select
-              labelId="example-query-label"
-              value={exampleQuery ? exampleQuery.name : ''}
-              label="Load an Example Query..."
-              onChange={handleExampleQueryChange}
-            >
-              {exampleQueries.map((option) => (
-                <MenuItem key={option.name} value={option.name}>
-                  {option.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </div>
-      </Grid>
-      <Grid container item xs={11} spacing={2} sx={{ flexWrap: 'nowrap', overflowY: 'hidden' }}>
-        <Grid container item direction="column" xs={7} sx={{ flexWrap: 'nowrap' }}>
-          <Grid container item direction="column" xs={8} sx={{ flexWrap: 'nowrap' }}>
+  // Force editors to re-render on tab change, necessary due to portals
+  useEffect(() => {
+    if (!queryEditor || !varsEditor || !resultsEditor) return;
+    switch (selectedTab) {
+      case 'query':
+        queryEditor.layout();
+        return;
+      case 'vars':
+        varsEditor.layout();
+        return;
+      case 'results':
+        resultsEditor.layout();
+        return;
+    }
+  }, [queryEditor, varsEditor, resultsEditor, selectedTab]);
+
+  const queryPortalNode = useMemo(() => createHtmlPortalNode(), []);
+  const varsPortalNode = useMemo(() => createHtmlPortalNode(), []);
+  const resultsPortalNode = useMemo(() => createHtmlPortalNode(), []);
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+
+  const mdUpContent = useMemo(
+    () => (
+      <>
+        <Grid container item direction="column" md={7} sx={{ flexWrap: 'nowrap' }}>
+          <Grid container item direction="column" md={8} sx={{ flexWrap: 'nowrap' }}>
             {/* Use padding to align query section with results */}
-            <Typography variant="overline" component="div" sx={{ pt: '1.5rem' }}>
+            <Typography variant="overline" component="div" sx={[{ pt: '1.5rem' }, false]}>
               Query
             </Typography>
             <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
-              <div ref={queryEditorRef} css={cssEditor} />
+              <OutPortal node={queryPortalNode} />
             </Paper>
           </Grid>
-          <Grid container item direction="column" xs={4} sx={{ flexWrap: 'nowrap' }}>
+          <Grid container item direction="column" md={4} sx={{ flexWrap: 'nowrap' }}>
             <Typography variant="overline" component="div" sx={{ mt: 1 }}>
               Variables
             </Typography>
             <Paper elevation={0} sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
-              <div ref={varsEditorRef} css={cssEditor} />
+              <OutPortal node={varsPortalNode} />
             </Paper>
           </Grid>
         </Grid>
-        <Grid container item xs={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
+        <Grid container item md={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Box>
             <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
               <Tab value="results" label="Results" />
@@ -397,11 +385,13 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             </Tabs>
           </Box>
           <TabPanel
-            selected={selectedTab === 'results'}
+            selected={
+              selectedTab === 'results' || selectedTab === 'query' || selectedTab === 'vars'
+            }
             sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
           >
-            <Paper elevation={0}>
-              <div ref={resultsEditorRef} css={cssEditor} />
+            <Paper elevation={0} sx={{ minHeight: '250px' }}>
+              <OutPortal node={resultsPortalNode} />
             </Paper>
           </TabPanel>
           <TabPanel
@@ -416,7 +406,180 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <SimpleDocExplorer schema={schema} />
           </TabPanel>
         </Grid>
+      </>
+    ),
+    [handleTabChange, queryPortalNode, varsPortalNode, resultsPortalNode, schema, selectedTab]
+  );
+
+  // TODO: For some reason, portal only renders after resize window (probably need to trigger relayout manually)
+  const mdDownContent = useMemo(() => {
+    const isQueryRelatedTab = selectedTab === 'query' || selectedTab === 'vars';
+    const tabColor = isQueryRelatedTab ? 'secondary' : 'primary';
+    return (
+      <Grid
+        container
+        item
+        xs={11}
+        spacing={0}
+        direction="column"
+        sx={{ flexGrow: '1 !important', flexWrap: 'nowrap', overflowY: 'hidden' }}
+      >
+        <Box>
+          <Tabs
+            value={selectedTab}
+            onChange={handleTabChange}
+            textColor={tabColor}
+            indicatorColor={tabColor}
+            sx={{ pb: 1 }}
+          >
+            <Tab value="query" label="Query" />
+            <Tab value="vars" label="Variables" />
+            <Tab value="results" label="Results" />
+            <Tab value="schema" label="Schema" />
+          </Tabs>
+        </Box>
+        <TabPanel
+          selected={selectedTab === 'query'}
+          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
+        >
+          <Paper elevation={0}>
+            <OutPortal node={queryPortalNode} />
+          </Paper>
+        </TabPanel>
+        <TabPanel
+          selected={selectedTab === 'vars'}
+          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
+        >
+          <Paper elevation={0}>
+            <OutPortal node={varsPortalNode} />
+          </Paper>
+        </TabPanel>
+        <TabPanel
+          selected={selectedTab === 'results'}
+          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
+        >
+          <Paper elevation={0}>
+            <OutPortal node={resultsPortalNode} />
+          </Paper>
+        </TabPanel>
+        <TabPanel
+          selected={selectedTab === 'schema'}
+          sx={{
+            display: selectedTab === 'schema' ? 'flex' : 'none',
+            flexDirection: 'column',
+            flexGrow: 1,
+            overflowY: 'hidden',
+            overflowX: 'hidden',
+          }}
+        >
+          <SimpleDocExplorer schema={schema} />
+        </TabPanel>
       </Grid>
+    );
+  }, [handleTabChange, selectedTab, schema, queryPortalNode, varsPortalNode, resultsPortalNode]);
+
+  useEffect(() => {
+    if (!queryEditor) return;
+
+    if (isMdUp) {
+      queryEditor.updateOptions(enableGutterConfig);
+    } else {
+      queryEditor.updateOptions(disableGutterConfig);
+    }
+  }, [isMdUp, queryEditor]);
+
+  return (
+    <Grid
+      container
+      item
+      direction="column"
+      spacing={0}
+      sx={{ padding: '10px', flexWrap: 'nowrap', ...sx }}
+    >
+      <Grid item md={1}>
+        {header}
+        <Grid container item direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+          <Grid item sx={{ mt: 1, mr: '10px' }}>
+            <Tooltip title={disabledMessage} placement="bottom">
+              <span>
+                <LoadingButton
+                  size="small"
+                  onClick={() => handleQuery()}
+                  variant="contained"
+                  sx={{ mr: 2 }}
+                  disabled={Boolean(disabled) || noQuery}
+                  loading={loading}
+                >
+                  Run query!
+                </LoadingButton>
+              </span>
+            </Tooltip>
+          </Grid>
+          {onQueryNextResult && results != null && (
+            <Grid item sx={{ mt: 1, mr: '10px' }}>
+              <LoadingButton
+                size="small"
+                variant="outlined"
+                onClick={() => onQueryNextResult()}
+                disabled={!hasMore || Boolean(disabled)}
+                loading={loading}
+                sx={{ mr: 2 }}
+              >
+                {hasMore ? 'More!' : 'No more results'}
+              </LoadingButton>
+            </Grid>
+          )}
+          <Grid item sx={{ mt: 1, mr: '10px' }}>
+            <FormControl size="small" sx={{ minWidth: 300 }}>
+              <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
+              <Select
+                labelId="example-query-label"
+                value={exampleQuery ? exampleQuery.name : ''}
+                label="Load an Example Query..."
+                onChange={handleExampleQueryChange}
+              >
+                {exampleQueries.map((option) => (
+                  <MenuItem key={option.name} value={option.name}>
+                    {option.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Grid>
+      {/* Use portals to prevent editors from being unmounted and remounted */}
+      <InPortal node={queryPortalNode}>
+        <div ref={queryEditorRef} css={cssEditor} />
+      </InPortal>
+      <InPortal node={varsPortalNode}>
+        <div ref={varsEditorRef} css={cssEditor} />
+      </InPortal>
+      <InPortal node={resultsPortalNode}>
+        <div ref={resultsEditorRef} css={cssEditor} />
+      </InPortal>
+      {isMdUp ? (
+        <Grid
+          container
+          item
+          md={11}
+          spacing={2}
+          sx={isMdUp ? { flexWrap: 'nowrap', overflowY: 'hidden' } : {}}
+        >
+          {mdUpContent}
+        </Grid>
+      ) : (
+        <Grid
+          container
+          item
+          xs={11}
+          spacing={0}
+          direction="column"
+          sx={{ flexWrap: 'nowrap', flexGrow: 1, overflowY: 'hidden' }}
+        >
+          {mdDownContent}
+        </Grid>
+      )}
     </Grid>
   );
 }
