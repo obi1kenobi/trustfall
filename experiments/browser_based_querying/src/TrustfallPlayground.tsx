@@ -93,7 +93,11 @@ window.MonacoEnvironment = {
   },
 };
 
-type PlaygroundTab = 'query' | 'vars' | 'results' | 'schema';
+const OUTPUT_TABS = ['results', 'schema'] as const;
+const INPUT_TABS = ['query', 'vars'] as const;
+const TABS = [...INPUT_TABS, ...OUTPUT_TABS] as const;
+
+type PlaygroundTab = typeof TABS[number];
 
 interface TabPanelProps {
   selected: boolean;
@@ -185,6 +189,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
       if (evt.target.value) {
         const example = exampleQueries.find((option) => option.name === evt.target.value) ?? null;
         setExampleQuery(example);
+        setSelectedTab('query');
       }
     },
     [exampleQueries]
@@ -355,6 +360,27 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
 
+  const moreButton = useMemo(() => {
+    if (onQueryNextResult && results != null) {
+      return (
+        <Grid item sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
+          <LoadingButton
+            size="small"
+            variant="outlined"
+            onClick={() => onQueryNextResult()}
+            disabled={!hasMore || Boolean(disabled)}
+            loading={loading}
+            sx={{ mr: 2 }}
+          >
+            {hasMore ? 'Fetch another result' : 'No more results'}
+          </LoadingButton>
+        </Grid>
+      );
+    }
+
+    return null;
+  }, [disabled, hasMore, loading, onQueryNextResult, results]);
+
   const mdUpContent = useMemo(
     () => (
       <>
@@ -379,20 +405,33 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </Grid>
         <Grid container item md={5} direction="column" sx={{ flexWrap: 'nowrap' }}>
           <Box>
-            <Tabs value={selectedTab} onChange={handleTabChange} sx={{ pb: 1 }}>
+            <Tabs
+              value={
+                (OUTPUT_TABS as readonly string[]).includes(selectedTab) ? selectedTab : 'results'
+              }
+              onChange={handleTabChange}
+              sx={{ pb: 1 }}
+            >
               <Tab value="results" label="Results" />
               <Tab value="schema" label="Schema" />
             </Tabs>
           </Box>
           <TabPanel
             selected={
-              selectedTab === 'results' || selectedTab === 'query' || selectedTab === 'vars'
+              (INPUT_TABS as readonly string[]).includes(selectedTab) || selectedTab === 'results'
             }
-            sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
+            sx={{ flexGrow: 1 }}
           >
-            <Paper elevation={0} sx={{ minHeight: '250px' }}>
-              <OutPortal node={resultsPortalNode} />
-            </Paper>
+            <Box
+              sx={{ height: '100%', display: 'flex', flexDirection: 'column', flexWrap: 'nowrap' }}
+            >
+              {moreButton}
+              <Box sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
+                <Paper elevation={0}>
+                  <OutPortal node={resultsPortalNode} />
+                </Paper>
+              </Box>
+            </Box>
           </TabPanel>
           <TabPanel
             selected={selectedTab === 'schema'}
@@ -408,10 +447,17 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </Grid>
       </>
     ),
-    [handleTabChange, queryPortalNode, varsPortalNode, resultsPortalNode, schema, selectedTab]
+    [
+      handleTabChange,
+      queryPortalNode,
+      varsPortalNode,
+      resultsPortalNode,
+      schema,
+      selectedTab,
+      moreButton,
+    ]
   );
 
-  // TODO: For some reason, portal only renders after resize window (probably need to trigger relayout manually)
   const mdDownContent = useMemo(() => {
     const isQueryRelatedTab = selectedTab === 'query' || selectedTab === 'vars';
     const tabColor = isQueryRelatedTab ? 'secondary' : 'primary';
@@ -454,13 +500,17 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             <OutPortal node={varsPortalNode} />
           </Paper>
         </TabPanel>
-        <TabPanel
-          selected={selectedTab === 'results'}
-          sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}
-        >
-          <Paper elevation={0}>
-            <OutPortal node={resultsPortalNode} />
-          </Paper>
+        <TabPanel selected={selectedTab === 'results'} sx={{ flexGrow: 1 }}>
+          <Box
+            sx={{ height: '100%', display: 'flex', flexDirection: 'column', flexWrap: 'nowrap' }}
+          >
+            {moreButton}
+            <Box sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
+              <Paper elevation={0}>
+                <OutPortal node={resultsPortalNode} />
+              </Paper>
+            </Box>
+          </Box>
         </TabPanel>
         <TabPanel
           selected={selectedTab === 'schema'}
@@ -476,7 +526,15 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </TabPanel>
       </Grid>
     );
-  }, [handleTabChange, selectedTab, schema, queryPortalNode, varsPortalNode, resultsPortalNode]);
+  }, [
+    handleTabChange,
+    selectedTab,
+    schema,
+    queryPortalNode,
+    varsPortalNode,
+    resultsPortalNode,
+    moreButton,
+  ]);
 
   useEffect(() => {
     if (!queryEditor) return;
@@ -515,20 +573,6 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
               </span>
             </Tooltip>
           </Grid>
-          {onQueryNextResult && results != null && (
-            <Grid item sx={{ mt: 1, mr: '10px' }}>
-              <LoadingButton
-                size="small"
-                variant="outlined"
-                onClick={() => onQueryNextResult()}
-                disabled={!hasMore || Boolean(disabled)}
-                loading={loading}
-                sx={{ mr: 2 }}
-              >
-                {hasMore ? 'More!' : 'No more results'}
-              </LoadingButton>
-            </Grid>
-          )}
           <Grid item sx={{ mt: 1, mr: '10px' }}>
             <FormControl size="small" sx={{ minWidth: 300 }}>
               <InputLabel id="example-query-label">Load an Example Query...</InputLabel>
