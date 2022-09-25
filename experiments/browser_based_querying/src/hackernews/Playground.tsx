@@ -173,11 +173,15 @@ export default function HackerNewsPlayground(): JSX.Element {
 
   // Set results
   useEffect(() => {
-    if (nextResult && nextResult.status === 'ready' && nextResult.value != null) {
+    if (nextResult && nextResult.status === 'ready') {
       const nextValue = nextResult.value;
       setResults((prevResults) => {
-        const prevValue = prevResults ? prevResults : [];
-        return [...prevValue, nextValue];
+        const prevValue = prevResults ?? [];
+        if (nextValue != null) {
+          return [...prevValue, nextValue];
+        } else {
+          return prevValue;
+        }
       });
     } else if (nextResult == null || nextResult.status === 'error') {
       setResults(null);
