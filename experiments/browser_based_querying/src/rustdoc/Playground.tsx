@@ -199,7 +199,7 @@ export default function Rustdoc(): JSX.Element {
   }, [handleWorkerMessage, queryWorker]);
 
   const header = useMemo(() => {
-    const selectedCrateOption = CRATE_OPTIONS.find((option) => option.value === selectedCrate);
+    const selectedCrateOption = CRATE_OPTIONS.find((option) => option.value === selectedCrate) ?? null;
     return (
       <Box>
         <Typography variant="h4" component="div">
