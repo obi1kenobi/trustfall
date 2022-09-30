@@ -52,10 +52,18 @@ const cssEditor = css`
   height: calc(100% - 3px);
 `;
 
-const sxEditorContainer: SxProps = {
+const sxEditorBorder: SxProps = {
   border: '1px solid #aaa',
   borderRadius: '5px',
+}
+
+const sxEditorPadding: SxProps = {
   padding: '3px',
+}
+
+const sxEditorContainer: SxProps = {
+  ...sxEditorBorder,
+  ...sxEditorPadding,
 };
 
 // Disable editor gutters entirely
@@ -363,18 +371,20 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const moreButton = useMemo(() => {
     if (onQueryNextResult && results != null) {
       return (
-        <Grid item sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
-          <LoadingButton
-            size="small"
-            variant="outlined"
-            onClick={() => onQueryNextResult()}
-            disabled={!hasMore || Boolean(disabled)}
-            loading={loading}
-            sx={{ mr: 2 }}
-          >
-            {hasMore ? 'Fetch another result' : 'No more results'}
-          </LoadingButton>
-        </Grid>
+        <Box sx={{...sxEditorPadding, borderBottom: '1px solid #aaa'}}>
+          <Grid item sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
+            <LoadingButton
+              size="small"
+              variant="outlined"
+              onClick={() => onQueryNextResult()}
+              disabled={!hasMore || Boolean(disabled)}
+              loading={loading}
+              sx={{ mr: 2 }}
+            >
+              {hasMore ? 'Fetch another result' : 'No more results'}
+            </LoadingButton>
+          </Grid>
+        </Box>
       );
     }
 
@@ -423,10 +433,16 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
             sx={{ flexGrow: 1 }}
           >
             <Box
-              sx={{ height: '100%', display: 'flex', flexDirection: 'column', flexWrap: 'nowrap' }}
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                flexWrap: 'nowrap',
+                ...sxEditorBorder,
+              }}
             >
               {moreButton}
-              <Box sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
+              <Box sx={{ flexGrow: 1, position: 'relative', ...sxEditorPadding }}>
                 <Paper elevation={0}>
                   <OutPortal node={resultsPortalNode} />
                 </Paper>
@@ -502,10 +518,16 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
         </TabPanel>
         <TabPanel selected={selectedTab === 'results'} sx={{ flexGrow: 1 }}>
           <Box
-            sx={{ height: '100%', display: 'flex', flexDirection: 'column', flexWrap: 'nowrap' }}
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              flexWrap: 'nowrap',
+              ...sxEditorBorder,
+            }}
           >
             {moreButton}
-            <Box sx={{ flexGrow: 1, position: 'relative', ...sxEditorContainer }}>
+            <Box sx={{ flexGrow: 1, position: 'relative', ...sxEditorPadding }}>
               <Paper elevation={0}>
                 <OutPortal node={resultsPortalNode} />
               </Paper>
