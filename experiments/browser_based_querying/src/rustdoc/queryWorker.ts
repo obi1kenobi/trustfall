@@ -52,3 +52,4 @@ function dispatch(evt: MessageEvent<RustdocWorkerMessage>) {
 }
 
 onmessage = dispatch;
+send({ type: 'ready' })
