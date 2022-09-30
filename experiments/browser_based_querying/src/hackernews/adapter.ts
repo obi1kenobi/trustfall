@@ -109,7 +109,7 @@ function* linksInAboutPage(
   aboutHtml: string | null
 ): IterableIterator<Vertex> {
   if (aboutHtml) {
-    let processedLinks: Record<string, boolean> = {};
+    const processedLinks: Record<string, boolean> = {};
 
     const matches1 = aboutHtml.matchAll(/<a [^>]*href="([^"]+)"[^>]*>/g);
     for (const match of matches1) {

@@ -55,11 +55,11 @@ const cssEditor = css`
 const sxEditorBorder: SxProps = {
   border: '1px solid #aaa',
   borderRadius: '5px',
-}
+};
 
 const sxEditorPadding: SxProps = {
   padding: '3px',
-}
+};
 
 const sxEditorContainer: SxProps = {
   ...sxEditorBorder,
@@ -371,7 +371,7 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
   const moreButton = useMemo(() => {
     if (onQueryNextResult && results != null) {
       return (
-        <Box sx={{...sxEditorPadding, borderBottom: '1px solid #aaa'}}>
+        <Box sx={{ ...sxEditorPadding, borderBottom: '1px solid #aaa' }}>
           <Grid item sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
             <LoadingButton
               size="small"
