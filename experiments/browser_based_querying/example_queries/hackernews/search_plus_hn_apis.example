@@ -1,0 +1,46 @@
+# Find comments on stories about "openai.com"
+# where the commenter has at least one GitHub or Twitter link
+# in their HackerNews bio.
+query {
+  # This hits the Algolia search API for HackerNews.
+  # The stories/comments/users data is from the Firebase HN API.
+  # The transition is seamless -- it isn't visible from the query.
+  SearchByDate(query: "openai.com") {
+    ... on Story {
+      # All data from here onward is from the Firebase API.
+      storyTitle: title @output
+      storyLink: url @output
+      story: submittedUrl @output
+                          @filter(op: "regex", value: ["$sitePattern"])
+
+      comment {
+        reply @recurse(depth: 5) {
+          comment: textPlain @output
+
+          byUser {
+            commenter: id @output
+            commenterBio: aboutPlain @output
+
+            # The profile must have at least one
+            # link that points to either GitHub or Twitter.
+            link
+              @fold
+              @transform(op: "count")
+              @filter(op: ">=", value: ["$minProfiles"])
+            {
+              commenterIDs: url @filter(op: "regex", value: ["$socialPattern"])
+                                @output
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+  "sitePattern": "http[s]://([^.]*\\.)*openai.com/.*",
+  "minProfiles": 1,
+  "socialPattern": "(github|twitter)\\.com/"
+}
