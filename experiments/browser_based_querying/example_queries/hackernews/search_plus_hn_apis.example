@@ -1,6 +1,6 @@
-# Find comments on stories about "openai.com"
-# where the commenter has at least one GitHub or Twitter link
-# in their HackerNews bio.
+# Cross API query (Algolia + Firebase):
+# Find comments on stories about "openai.com" where
+# the commenter's bio has at least one GitHub or Twitter link
 query {
   # This hits the Algolia search API for HackerNews.
   # The stories/comments/users data is from the Firebase HN API.
