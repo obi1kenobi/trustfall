@@ -167,7 +167,7 @@ where
         debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth));
     }
 
-    /// The context value is about to be produced from the Iterator::next() method.
+    /// The given context value is about to be produced from the Iterator::next() method.
     /// Ensure elements are produced in the correct order: if there are other contexts
     /// that need to be produced first, queue this context and return one from the queue instead.
     fn reorder_output(
@@ -178,6 +178,9 @@ where
         let mut returned_ctx = ctx;
 
         if level > 0 {
+            // We must never have prepared more items than we have attempted to pull.
+            assert!(self.levels[level].total_pulls() >= self.levels[level - 1].total_prepared());
+
             while self.levels[level].total_pulls() > self.levels[level - 1].total_prepared() {
                 // N.B.: Do not reorder these lines!
                 //       Lots of tricky interactions through Rc<RefCell<...>> here.
@@ -232,7 +235,7 @@ where
             }
         }
 
-        // Unless next_from is at the bottom level of the recursion,
+        // Unless next_from is past the deepest level of the recursion,
         // we need to prepare an item from the next_from level.
         //
         // We have 1 output prepared at level self.next_from - 1
@@ -249,9 +252,8 @@ where
         }
 
         // If prepare(1) at this level returned None, it's not safe to
-        // try again since we don't have inputs prepared anymore. Try to
-        // prepare using prepare(0). Move up the stack until we find
-        // something.
+        // try again since we don't have any more prepared inputs.
+        // Try to prepare using prepare(0). Move up the stack until we find something.
         while self.next_from > 0 {
             if let Some(ctx) = self.levels[self.next_from - 1].prepare(0) {
                 return Some(self.reorder_output(self.next_from - 1, ctx));
