@@ -261,7 +261,20 @@ where
             self.next_from -= 1;
         }
 
-        None
+        // If we've reached this point, then all the active neighbor iterators
+        // at all recursion levels have run dry. We'll prepare an element from
+        // the top-level of the recursion and allow it to pull from the parent.
+        debug_assert_eq!(self.next_from, 0);
+        let maybe_ctx = self
+            .levels
+            .first_mut()
+            .expect("first level of recursion must exist")
+            .prepare(1);
+        if maybe_ctx.is_some() {
+            self.next_from += 1;
+        }
+
+        maybe_ctx
     }
 }
 
