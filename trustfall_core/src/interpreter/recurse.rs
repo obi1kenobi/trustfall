@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{cell::RefCell, collections::VecDeque, fmt::Debug, num::NonZeroUsize, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
@@ -10,34 +10,28 @@ type NeighborsBundle<'token, Token> = Box<
 >;
 
 /// Arguments for the project_neighbors() calls.
-pub(super) struct RecursiveEdgeData<'a> {
-    initial_type_name: Arc<str>,
-    type_name_after_first_step: Arc<str>,
+pub(super) struct RecursiveEdgeData {
     edge_name: Arc<str>,
     parameters: Option<Arc<EdgeParameters>>,
     recursive_info: Recursive,
     query_hint: InterpretedQuery,
-    expanding_from: &'a IRVertex,
-    expanding_to: &'a IRVertex,
+    expanding_from: IRVertex,
+    expanding_to: IRVertex,
     edge_hint: Eid,
 }
 
-impl<'a> RecursiveEdgeData<'a> {
+impl RecursiveEdgeData {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
-        initial_type_name: Arc<str>,
-        type_name_after_first_step: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         recursive_info: Recursive,
         query_hint: InterpretedQuery,
-        expanding_from: &'a IRVertex,
-        expanding_to: &'a IRVertex,
+        expanding_from: IRVertex,
+        expanding_to: IRVertex,
         edge_hint: Eid,
     ) -> Self {
         Self {
-            initial_type_name,
-            type_name_after_first_step,
             edge_name,
             parameters,
             recursive_info,
@@ -55,7 +49,7 @@ impl<'a> RecursiveEdgeData<'a> {
     ) -> NeighborsBundle<'token, AdapterT::DataToken> {
         adapter.borrow_mut().project_neighbors(
             data_contexts,
-            self.initial_type_name.clone(),
+            self.expanding_from.type_name.clone(),
             self.edge_name.clone(),
             self.parameters.clone(),
             self.query_hint.clone(),
@@ -82,7 +76,7 @@ impl<'a> RecursiveEdgeData<'a> {
                     perform_coercion(
                         adapter,
                         &self.query_hint,
-                        self.expanding_to,
+                        &self.expanding_to,
                         edge_endpoint_type.clone(),
                         coerce_to.clone(),
                         data_contexts,
@@ -104,19 +98,17 @@ impl<'a> RecursiveEdgeData<'a> {
     }
 }
 
-pub(super) struct RecurseStack<'query, 'token, AdapterT>
+pub(super) struct RecurseStack<'token, AdapterT>
 where
     AdapterT: Adapter<'token> + 'token,
 {
     adapter: Rc<RefCell<AdapterT>>,
-    starting_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>>>,
-
+    // starting_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>>>,
     /// Recursive neighbor expansion args.
-    edge_data: RecursiveEdgeData<'query>,
+    edge_data: RecursiveEdgeData,
 
-    /// The maximum depth of the recursion; None means unbounded i.e. "as long as there's data."
-    max_depth: Option<NonZeroUsize>,
-
+    // /// The maximum depth of the recursion; None means unbounded i.e. "as long as there's data."
+    // max_depth: Option<NonZeroUsize>,
     /// Data structures that keep track of data at each recursion level.
     levels: Vec<RcBundleReader<'token, AdapterT::DataToken>>,
 
@@ -128,26 +120,22 @@ where
     next_from: usize,
 }
 
-impl<'query, 'token, AdapterT> RecurseStack<'query, 'token, AdapterT>
+impl<'token, AdapterT> RecurseStack<'token, AdapterT>
 where
     AdapterT: Adapter<'token> + 'token,
 {
     pub(super) fn new(
         adapter: Rc<RefCell<AdapterT>>,
-        data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>>>,
-        edge_data: RecursiveEdgeData<'query>,
-        max_depth: Option<NonZeroUsize>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
+        edge_data: RecursiveEdgeData,
     ) -> Self {
-        let levels = vec![
-
-            // RcBundleReader::new(a.nei(a.root())),
-        ];
+        let initial_bundle = edge_data.expand_initial_edge(adapter.as_ref(), data_contexts);
+        let levels = vec![RcBundleReader::new(initial_bundle)];
         Self {
-            starting_contexts: data_contexts,
+            // starting_contexts: data_contexts,
             levels,
             adapter,
             edge_data,
-            max_depth,
             reorder_queue: VecDeque::new(),
             next_from: 0,
         }
@@ -165,6 +153,7 @@ where
                 .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer)),
         );
         self.levels.push(new_recursion_layer);
+        debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth));
     }
 
     /// The context value is about to be produced from the Iterator::next() method.
@@ -207,6 +196,59 @@ where
         }
 
         returned_ctx
+    }
+}
+
+impl<'token, AdapterT> Iterator for RecurseStack<'token, AdapterT>
+where
+    AdapterT: Adapter<'token> + 'token,
+{
+    type Item = DataContext<AdapterT::DataToken>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let maybe_ctx = self.reorder_queue.pop_front();
+        if maybe_ctx.is_some() {
+            return maybe_ctx;
+        }
+
+        debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth));
+
+        // Have we reached the maximum recursion depth?
+        if self.levels.len() < usize::from(self.edge_data.recursive_info.depth) {
+            // Add a new recursion level if necessary.
+            if self.next_from == self.levels.len() {
+                self.increase_recursion_depth();
+            }
+        }
+
+        // Unless next_from is at the bottom level of the recursion,
+        // we need to prepare an item from the next_from level.
+        //
+        // We have 1 output prepared at level self.next_from - 1
+        // because of the self.next_from invariant, so it's safe
+        // to prepare(1).
+        if let Some(ctx) = self
+            .levels
+            .get_mut(self.next_from)
+            .and_then(|level| level.prepare(1))
+        {
+            // Increment so that the search behaves like depth-first search.
+            self.next_from += 1;
+            return Some(self.reorder_output(self.next_from - 1, ctx));
+        }
+
+        // If prepare(1) at this level returned None, it's not safe to
+        // try again since we don't have inputs prepared anymore. Try to
+        // prepare using prepare(0). Move up the stack until we find
+        // something.
+        while self.next_from > 0 {
+            if let Some(ctx) = self.levels[self.next_from - 1].prepare(0) {
+                return Some(self.reorder_output(self.next_from - 1, ctx));
+            }
+            self.next_from -= 1;
+        }
+
+        None
     }
 }
 
@@ -423,5 +465,17 @@ pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     recursive: &Recursive,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    todo!()
+    let edge_data = RecursiveEdgeData::new(
+        edge_name.clone(),
+        edge_parameters.clone(),
+        recursive.clone(),
+        query.clone(),
+        expanding_from.clone(), // these shouldn't have to be cloned
+        expanding_to.clone(),   // these shouldn't have to be cloned
+        edge_id,
+    );
+
+    let stack = RecurseStack::new(adapter, iterator, edge_data);
+
+    Box::new(stack)
 }

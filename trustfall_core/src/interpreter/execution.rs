@@ -997,7 +997,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expanded_iterator = if let Some(recursive) = &edge.recursive {
-        expand_recursive_edge(
+        super::recurse::expand_recursive_edge(
             adapter.clone(),
             query,
             component,
@@ -1098,7 +1098,7 @@ fn perform_entry_into_new_vertex<'query, DataToken: Clone + Debug + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
+fn expand_recursive_edge2<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     component: &IRQueryComponent,
