@@ -103,7 +103,8 @@ where
     AdapterT: Adapter<'token> + 'token,
 {
     adapter: Rc<RefCell<AdapterT>>,
-    // starting_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>>>,
+    starting_contexts: Option<Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>>,
+
     /// Recursive neighbor expansion args.
     edge_data: RecursiveEdgeData,
 
@@ -129,11 +130,9 @@ where
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
         edge_data: RecursiveEdgeData,
     ) -> Self {
-        let initial_bundle = edge_data.expand_initial_edge(adapter.as_ref(), data_contexts);
-        let levels = vec![RcBundleReader::new(initial_bundle)];
         Self {
-            // starting_contexts: data_contexts,
-            levels,
+            starting_contexts: Some(data_contexts),
+            levels: vec![],
             adapter,
             edge_data,
             reorder_queue: VecDeque::new(),
@@ -142,17 +141,29 @@ where
     }
 
     fn increase_recursion_depth(&mut self) {
-        let last_recursion_layer = RcBundleReader::clone(
-            self.levels
-                .last()
-                .as_ref()
-                .expect("no recursion levels found"),
-        );
-        let new_recursion_layer = RcBundleReader::new(
-            self.edge_data
-                .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer)),
-        );
-        self.levels.push(new_recursion_layer);
+        if self.levels.is_empty() {
+            self.levels.push(RcBundleReader::new(
+                self.edge_data.expand_initial_edge(
+                    self.adapter.as_ref(),
+                    self.starting_contexts
+                        .take()
+                        .expect("levels was empty but the starting contexts was None"),
+                ),
+            ))
+        } else {
+            let last_recursion_layer = RcBundleReader::clone(
+                self.levels
+                    .last()
+                    .as_ref()
+                    .expect("no recursion levels found"),
+            );
+            let new_recursion_layer = RcBundleReader::new(
+                self.edge_data
+                    .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer)),
+            );
+            self.levels.push(new_recursion_layer);
+        }
+
         debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth));
     }
 
