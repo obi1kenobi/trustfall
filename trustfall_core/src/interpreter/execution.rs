@@ -83,7 +83,7 @@ where
     }
 }
 
-fn perform_coercion<'query, DataToken>(
+pub(super) fn perform_coercion<'query, DataToken>(
     adapter: &RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>,
     query: &InterpretedQuery,
     vertex: &IRVertex,

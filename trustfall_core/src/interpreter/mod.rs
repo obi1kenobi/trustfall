@@ -17,6 +17,7 @@ pub mod error;
 pub mod execution;
 mod filtering;
 pub mod macros;
+mod recurse;
 pub mod replay;
 pub mod trace;
 
