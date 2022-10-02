@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
 
+use itertools::{Tee, Itertools};
+
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
 use super::{execution::perform_coercion, Adapter, DataContext, InterpretedQuery};
@@ -103,6 +105,11 @@ where
     AdapterT: Adapter<'token> + 'token,
 {
     adapter: Rc<RefCell<AdapterT>>,
+
+    // Two views into the input iterator:
+    // - one used for outputting depth 0 results into the recurse results,
+    // - and one used to drive the depth 1 level of the recursion
+    depth_zero_contexts: Tee<Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>>,
     starting_contexts: Option<Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>>,
 
     /// Recursive neighbor expansion args.
@@ -119,6 +126,8 @@ where
     /// Largest index which is guaranteed to have data which
     /// we can peek() without advancing the parent level's iterator.
     next_from: usize,
+
+    depth_zero_advanced: bool,
 }
 
 impl<'token, AdapterT> RecurseStack<'token, AdapterT>
@@ -130,13 +139,16 @@ where
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
         edge_data: RecursiveEdgeData,
     ) -> Self {
+        let (first, second) = data_contexts.tee();
         Self {
-            starting_contexts: Some(data_contexts),
+            depth_zero_contexts: first,
+            starting_contexts: Some(Box::new(second)),
             levels: vec![],
             adapter,
             edge_data,
             reorder_queue: VecDeque::new(),
             next_from: 0,
+            depth_zero_advanced: false,
         }
     }
 
@@ -220,6 +232,11 @@ where
     type Item = DataContext<AdapterT::DataToken>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if !self.depth_zero_advanced {
+            self.depth_zero_advanced = true;
+            return self.depth_zero_contexts.next();
+        }
+
         let maybe_ctx = self.reorder_queue.pop_front();
         if maybe_ctx.is_some() {
             return maybe_ctx;
@@ -262,19 +279,9 @@ where
         }
 
         // If we've reached this point, then all the active neighbor iterators
-        // at all recursion levels have run dry. We'll prepare an element from
-        // the top-level of the recursion and allow it to pull from the parent.
+        // at all recursion levels have run dry. Then it's time for a depth-0 element.
         debug_assert_eq!(self.next_from, 0);
-        let maybe_ctx = self
-            .levels
-            .first_mut()
-            .expect("first level of recursion must exist")
-            .prepare(1);
-        if maybe_ctx.is_some() {
-            self.next_from += 1;
-        }
-
-        maybe_ctx
+        self.depth_zero_contexts.next()
     }
 }
 
