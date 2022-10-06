@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { buildSchema } from 'graphql';
 import { Autocomplete, Box, Grid, TextField, Typography } from '@mui/material';
-import { StringParam, useQueryParam } from 'use-query-params';
+import { StringParam, useQueryParam, withDefault } from 'use-query-params';
 
 import { AsyncValue } from '../types';
 import TrustfallPlayground from '../TrustfallPlayground';
@@ -52,6 +52,8 @@ interface CrateOption {
 }
 
 const CRATE_OPTIONS = crateNames.map((name) => ({ label: fmtCrateName(name), value: name }));
+
+const CrateParam = withDefault(StringParam, 'itertools-0.10.3')
 
 interface PlaygroundProps {
   queryWorker: Worker;
@@ -128,13 +130,13 @@ function Playground(props: PlaygroundProps): JSX.Element {
 
 export default function Rustdoc(): JSX.Element {
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
-  const [selectedCrate, setSelectedCrate] = useQueryParam('crate', StringParam);
+  const [selectedCrate, setSelectedCrate] = useQueryParam('crate', CrateParam);
   const [asyncLoadedCrate, setAsyncLoadedCrate] = useState<AsyncValue<string> | null>(null);
   const [workerReady, setWorkerReady] = useState(false);
 
   const handleCrateChange = useCallback(
     (_evt: React.SyntheticEvent, option: CrateOption | null) => {
-      setSelectedCrate(option?.value ?? null);
+      setSelectedCrate(option?.value ?? null, 'replaceIn');
     },
     [setSelectedCrate]
   );
