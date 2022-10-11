@@ -190,6 +190,9 @@ directive @transform(op: String!) on FIELD
         let field_origins = get_field_origins(&vertex_types)?;
 
         let mut errors = vec![];
+        if let Err(e) = check_required_transitive_implementations(&vertex_types) {
+            errors.extend(e.into_iter());
+        }
         if let Err(e) = check_field_type_narrowing(&vertex_types, &fields) {
             errors.extend(e.into_iter());
         }
@@ -458,6 +461,45 @@ fn check_ambiguous_field_origins(
                 field_type,
                 ancestors.iter().map(|x| x.to_string()).collect(),
             ))
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// If type X implements interface A, and A implements interface B,
+/// then X must also implement B by transitivity.
+fn check_required_transitive_implementations(
+    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
+) -> Result<(), Vec<InvalidSchemaError>> {
+    let mut errors: Vec<InvalidSchemaError> = vec![];
+
+    for (type_name, type_defn) in vertex_types {
+        let implementations: BTreeSet<&str> = get_vertex_type_implements(type_defn)
+            .iter()
+            .map(|x| x.node.as_ref())
+            .collect();
+
+        for impl_name in implementations.iter().copied() {
+            let implementation_defn = vertex_types.get(impl_name).expect("implemented interface was not defined in schema; bug since it should have been caught earlier");
+
+            for expected_impl in get_vertex_type_implements(implementation_defn) {
+                let expected_impl_name = expected_impl.node.as_ref();
+
+                if implementations.get(expected_impl_name).is_none() {
+                    errors.push(
+                        InvalidSchemaError::MissingTransitiveInterfaceImplementation(
+                            type_name.to_string(),
+                            impl_name.to_string(),
+                            expected_impl_name.to_string(),
+                        ),
+                    );
+                }
+            }
         }
     }
 
