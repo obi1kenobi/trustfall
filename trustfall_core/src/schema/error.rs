@@ -56,6 +56,12 @@ pub enum InvalidSchemaError {
     CircularImplementsRelationships(Vec<String>),
 
     #[error(
+        "Type \"{0}\" fails to implement interface \"{2}\", which is required since \"{0}\" \
+        implements \"{1}\" which in turn implements \"{2}\"."
+    )]
+    MissingTransitiveInterfaceImplementation(String, String, String),
+
+    #[error(
         "Type \"{0}\" implements interface \"{1}\", but is missing field \"{2}\" of type {3} \
         which is required by that interface."
     )]
