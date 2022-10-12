@@ -227,6 +227,29 @@ directive @transform(op: String!) on FIELD
         }
     }
 
+    /// If the named type is defined, iterate through the names of its subtypes including itself.
+    /// Otherwise, return None.
+    pub fn subtypes<'slf, 'a: 'slf>(
+        &'slf self,
+        type_name: &'a str,
+    ) -> Option<impl Iterator<Item = &'slf str> + 'slf> {
+        if !self.vertex_types.contains_key(type_name) {
+            return None;
+        }
+
+        Some(self.vertex_types.iter().filter_map(move |(name, defn)| {
+            if name.as_ref() == type_name
+                || get_vertex_type_implements(defn)
+                    .iter()
+                    .any(|x| x.node.as_ref() == type_name)
+            {
+                Some(name.as_ref())
+            } else {
+                None
+            }
+        }))
+    }
+
     pub(crate) fn query_type_name(&self) -> &str {
         self.schema.query.as_ref().unwrap().node.as_ref()
     }
@@ -785,6 +808,7 @@ mod tests {
     };
 
     use async_graphql_parser::parse_schema;
+    use itertools::Itertools;
     use trustfall_filetests_macros::parameterize;
 
     use super::{error::InvalidSchemaError, Schema};
@@ -827,5 +851,23 @@ mod tests {
                 panic!("{}", e);
             }
         }
+    }
+
+    #[test]
+    fn schema_subtypes() {
+        let input_data = include_str!("../resources/schemas/numbers.graphql");
+        let schema = Schema::parse(input_data).expect("valid schema");
+
+        assert!(schema.subtypes("Nonexistent").is_none());
+
+        let composite_subtypes = schema.subtypes("Composite").unwrap().collect_vec();
+        assert_eq!(vec!["Composite"], composite_subtypes);
+
+        let mut number_subtypes = schema.subtypes("Number").unwrap().collect_vec();
+        number_subtypes.sort_unstable();
+        assert_eq!(
+            vec!["Composite", "Neither", "Number", "Prime"],
+            number_subtypes
+        );
     }
 }
