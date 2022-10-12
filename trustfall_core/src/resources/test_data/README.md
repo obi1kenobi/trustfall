@@ -5,6 +5,10 @@ snapshot-style tests across the different layers of the compiler toolchain.
 They ensure that running a query, or parsing a schema, continues to produce the same
 outcomes at all levels of the compiler even as it continues to evolve.
 
+Contents:
+- [Testing query behavior](#testing-query-behavior)
+- [Testing schema parsing](#testing-schema-parsing)
+
 ## Testing query behavior
 
 Query processing in `trustfall_core` includes these stages:
