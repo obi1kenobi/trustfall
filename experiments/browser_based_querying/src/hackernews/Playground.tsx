@@ -77,7 +77,7 @@ function PlaygroundNonIdealState(props: { children: React.ReactNode }): JSX.Elem
 }
 
 type QueryMessageEvent = MessageEvent<
-  { state: 'success'; done: boolean; value: object } | { state: 'error'; error: string }
+  { status: 'success'; done: boolean; value: object } | { status: 'error'; error: string }
 >;
 
 export default function HackerNewsPlayground(): JSX.Element {
@@ -151,14 +151,14 @@ export default function HackerNewsPlayground(): JSX.Element {
 
   const handleQueryMessage = useCallback((evt: QueryMessageEvent) => {
     const outcome = evt.data;
-    if (outcome.state === 'error') {
+    if (outcome.status === 'error') {
       debug('received error: ', outcome);
       setHasMore(false);
       setNextResult({
         status: 'error',
         error: `Error:\n${outcome.error}`,
       });
-    } else if (outcome.state === 'success') {
+    } else if (outcome.status === 'success') {
       if (outcome.done) {
         setHasMore(false);
         setNextResult({ status: 'ready', value: null });
