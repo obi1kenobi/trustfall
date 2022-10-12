@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
 
-use itertools::{Tee, Itertools};
+use itertools::{Itertools, Tee};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
@@ -48,15 +48,17 @@ impl RecursiveEdgeData {
         &self,
         adapter: &RefCell<AdapterT>,
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
-    ) -> NeighborsBundle<'token, AdapterT::DataToken> {
-        adapter.borrow_mut().project_neighbors(
-            data_contexts,
-            self.expanding_from.type_name.clone(),
-            self.edge_name.clone(),
-            self.parameters.clone(),
-            self.query_hint.clone(),
-            self.expanding_from.vid,
-            self.edge_hint,
+    ) -> NeighborsIter<'token, AdapterT::DataToken> {
+        NeighborsIter::Direct(
+            adapter.borrow_mut().project_neighbors(
+                data_contexts,
+                self.expanding_from.type_name.clone(),
+                self.edge_name.clone(),
+                self.parameters.clone(),
+                self.query_hint.clone(),
+                self.expanding_from.vid,
+                self.edge_hint,
+            )
         )
     }
 
@@ -64,39 +66,54 @@ impl RecursiveEdgeData {
         &self,
         adapter: &RefCell<AdapterT>,
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
-    ) -> NeighborsBundle<'token, AdapterT::DataToken> {
+    ) -> NeighborsIter<'token, AdapterT::DataToken> {
         let edge_endpoint_type = self
             .expanding_to
             .coerced_from_type
             .as_ref()
             .unwrap_or(&self.expanding_to.type_name);
 
-        let (traversal_from_type, expansion_base_iterator) =
-            if let Some(coerce_to) = self.recursive_info.coerce_to.as_ref() {
-                (
-                    coerce_to.clone(),
-                    perform_coercion(
-                        adapter,
-                        &self.query_hint,
-                        &self.expanding_to,
-                        edge_endpoint_type.clone(),
-                        coerce_to.clone(),
-                        data_contexts,
-                    ),
-                )
-            } else {
-                (self.expanding_from.type_name.clone(), data_contexts)
-            };
+        if let Some(coerce_to) = self.recursive_info.coerce_to.as_ref() {
+            let mut adapter_ref = adapter.borrow_mut();
+            let coercion_iter = adapter_ref.can_coerce_to_type(
+                data_contexts,
+                edge_endpoint_type.clone(),
+                coerce_to.clone(),
+                self.query_hint.clone(),
+                self.expanding_to.vid,
+            );
 
-        adapter.borrow_mut().project_neighbors(
-            expansion_base_iterator,
-            traversal_from_type,
-            self.edge_name.clone(),
-            self.parameters.clone(),
-            self.query_hint.clone(),
-            self.expanding_from.vid,
-            self.edge_hint,
-        )
+            let coerce_prepare = Rc::new(RefCell::new(CoercePrepare::new(coercion_iter)));
+            let iter: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token> =
+                Box::new(SourceIter::Coercion(coerce_prepare.clone()));
+
+            let neighbors_iter = adapter.borrow_mut().project_neighbors(
+                iter,
+                coerce_to.clone(),
+                self.edge_name.clone(),
+                self.parameters.clone(),
+                self.query_hint.clone(),
+                self.expanding_from.vid,
+                self.edge_hint,
+            );
+
+            NeighborsIter::Coercion(neighbors_iter, coerce_prepare)
+        } else {
+            let iter: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token> =
+                Box::new(SourceIter::Direct(data_contexts));
+
+            let neighbors_iter = adapter.borrow_mut().project_neighbors(
+                iter,
+                self.expanding_from.type_name.clone(),
+                self.edge_name.clone(),
+                self.parameters.clone(),
+                self.query_hint.clone(),
+                self.expanding_from.vid,
+                self.edge_hint,
+            );
+
+            NeighborsIter::Direct(neighbors_iter)
+        }
     }
 }
 
@@ -289,7 +306,7 @@ pub(super) struct BundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    inner: NeighborsBundle<'token, Token>,
+    inner: NeighborsIter<'token, Token>,
 
     /// The source context and neighbors that we're in the middle of expanding.
     source: Option<DataContext<Token>>,
@@ -329,7 +346,7 @@ impl<'token, Token> BundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    pub(super) fn new(bundle: NeighborsBundle<'token, Token>) -> Self {
+    fn new(bundle: NeighborsIter<'token, Token>) -> Self {
         Self {
             inner: bundle,
             source: None,
@@ -372,6 +389,14 @@ where
             if pull_limit == 0 {
                 return None;
             }
+            if let NeighborsIter::Coercion(_, coercion) = &self.inner {
+                if !coercion.borrow_mut().move_through_coerce() {
+                    // We pulled an element but it got discarded in the coercion.
+                    pull_limit -= 1;
+                    continue;
+                }
+            }
+
             if let Some((new_source, new_buffer)) = self.inner.next() {
                 self.total_pulls += 1;
                 self.source = Some(new_source);
@@ -450,7 +475,7 @@ impl<'token, Token> RcBundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    pub(super) fn new(bundle: NeighborsBundle<'token, Token>) -> Self {
+    fn new(bundle: NeighborsIter<'token, Token>) -> Self {
         Self {
             inner: Rc::new(RefCell::new(BundleReader::new(bundle))),
         }
@@ -478,6 +503,106 @@ impl<'token, Token: Debug + Clone + 'token> Iterator for RcBundleReader<'token, 
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.as_ref().borrow_mut().next()
+    }
+}
+
+/// Struct that allows us to honor prepare() with a pull limit when coercing a vertex's type.
+///
+/// The pull limit refers to the *upstream* iterator, not to the output iterator.
+/// Normally, this distinction doesn't matter since all elements of the upstream iterator
+/// are returned in the output iterator. Coercions are different: if the vertex cannot be coerced
+/// to the desired type, it is discarded instead of being returned in the output iterator.
+/// Naively implementing prepare() would then cause the prepare() pull limit contract to be violated
+/// by pulling additional items as intermediate results are discarded.
+///
+/// This struct ensures that prepare() with a pull limit applies the limit to
+/// the pre-coercion iterator rather than to the result iterator, honoring the API contract.
+struct CoercePrepare<'a, Token: Debug + Clone + 'a> {
+    coerce_outcomes: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'a>,
+
+    prepared: Option<DataContext<Token>>,
+}
+
+impl<'a, Token: Debug + Clone + 'a> CoercePrepare<'a, Token> {
+    fn new(coerce_outcomes: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'a>) -> Self {
+        Self {
+            coerce_outcomes,
+            prepared: None,
+        }
+    }
+
+    fn move_through_coerce(&mut self) -> bool {
+        if let Some((ctx, can_coerce)) = self.coerce_outcomes.next() {
+            if can_coerce {
+                self.prepared = Some(ctx);
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+impl<'a, Token: Debug + Clone + 'a> Iterator for CoercePrepare<'a, Token> {
+    type Item = DataContext<Token>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let maybe_prepared = self.prepared.take();
+        if maybe_prepared.is_some() {
+            return maybe_prepared;
+        }
+
+        loop {
+            if let Some((ctx, can_coerce)) = self.coerce_outcomes.next() {
+                if can_coerce {
+                    return Some(ctx);
+                }
+            } else {
+                return None;
+            }
+        }
+    }
+}
+
+enum SourceIter<'token, Token: Debug + Clone> {
+    Direct(Box<dyn Iterator<Item = DataContext<Token>> + 'token>),
+    Coercion(Rc<RefCell<CoercePrepare<'token, Token>>>),
+}
+
+impl<'token, Token: Debug + Clone> SourceIter<'token, Token> {
+    fn prepare_succeeded(&mut self) -> bool {
+        match self {
+            SourceIter::Direct(_) => true,
+            SourceIter::Coercion(c) => c.borrow_mut().move_through_coerce(),
+        }
+    }
+}
+
+impl<'token, Token: Debug + Clone> Iterator for SourceIter<'token, Token> {
+    type Item = DataContext<Token>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            SourceIter::Direct(n) => n.next(),
+            SourceIter::Coercion(c) => c.borrow_mut().next(),
+        }
+    }
+}
+
+enum NeighborsIter<'token, Token: Debug + Clone> {
+    Direct(NeighborsBundle<'token, Token>),
+    Coercion(NeighborsBundle<'token, Token>, Rc<RefCell<CoercePrepare<'token, Token>>>),
+}
+
+impl<'token, Token: Debug + Clone> Iterator for NeighborsIter<'token, Token> {
+    type Item = (DataContext<Token>, Box<dyn Iterator<Item = Token> + 'token>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let iter = match self {
+            Self::Direct(n) => n,
+            Self::Coercion(n, _) => n,
+        };
+        iter.next()
     }
 }
 
