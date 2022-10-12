@@ -228,7 +228,7 @@ export default function HackerNewsPlayground(): JSX.Element {
       <PlaygroundNonIdealState>
         <Box>
           <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
-          <Typography variant="h5">Safari is not supported</Typography>
+          <Typography variant="h5">Safari and iOS browsers not supported</Typography>
           <Typography variant="body1">
             <p>
               Due to an{' '}
@@ -242,6 +242,32 @@ export default function HackerNewsPlayground(): JSX.Element {
               in the WebKit engine, this demo does not work in Safari.
             </p>
             <p>Please use a supported browser, such as Firefox or Chrome.</p>
+          </Typography>
+        </Box>
+      </PlaygroundNonIdealState>
+    );
+  }
+
+  if (BROWSER && BROWSER.os === 'iOS') {
+    return (
+      <PlaygroundNonIdealState>
+        <Box>
+          <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
+          <Typography variant="h5">iOS not supported</Typography>
+          <Typography variant="body1">
+            <p>
+              Due to an{' '}
+              <Link
+                href="https://bugs.webkit.org/show_bug.cgi?id=238442"
+                target="_blank"
+                rel="noreferrer"
+              >
+                open issue
+              </Link>{' '}
+              in the WebKit engine, this demo does not work on iOS-based mobile devices or in the
+              Safari desktop browser.
+            </p>
+            <p>Please try this demo on desktop (in Firefox or Chrome) or on an Android device.</p>
           </Typography>
         </Box>
       </PlaygroundNonIdealState>
