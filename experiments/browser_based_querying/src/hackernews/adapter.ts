@@ -640,12 +640,24 @@ function dispatch(e: MessageEvent<AdapterMessage>): void {
   }
 
   if (payload.op === 'query') {
-    _resultIter = performQuery(payload.query, payload.args);
+    try {
+      _resultIter = performQuery(payload.query, payload.args);
+    } catch (e) {
+      debug('error running query: ', e);
+      const result = {
+        status: 'error',
+        error: `${e}`,
+      };
+      postMessage(result);
+      debug('result posted');
+      return;
+    }
   }
 
   if (payload.op === 'query' || payload.op === 'next') {
     const rawResult = _resultIter.next();
     const result = {
+      status: 'success',
       done: rawResult.done,
       value: rawResult.value,
     };
