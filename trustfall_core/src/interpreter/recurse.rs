@@ -82,12 +82,14 @@ impl RecursiveEdgeData {
                 self.query_hint.clone(),
                 self.expanding_to.vid,
             );
+            drop(adapter_ref);
 
             let coerce_prepare = Rc::new(RefCell::new(CoercePrepare::new(coercion_iter)));
             let iter: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token> =
                 Box::new(SourceIter::Coercion(coerce_prepare.clone()));
 
-            let neighbors_iter = adapter.borrow_mut().project_neighbors(
+            let mut adapter_ref = adapter.borrow_mut();
+            let neighbors_iter = adapter_ref.project_neighbors(
                 iter,
                 coerce_to.clone(),
                 self.edge_name.clone(),
@@ -96,13 +98,15 @@ impl RecursiveEdgeData {
                 self.expanding_from.vid,
                 self.edge_hint,
             );
+            drop(adapter_ref);
 
             NeighborsIter::Coercion(neighbors_iter, coerce_prepare)
         } else {
             let iter: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token> =
                 Box::new(SourceIter::Direct(data_contexts));
 
-            let neighbors_iter = adapter.borrow_mut().project_neighbors(
+            let mut adapter_ref = adapter.borrow_mut();
+            let neighbors_iter = adapter_ref.project_neighbors(
                 iter,
                 self.expanding_from.type_name.clone(),
                 self.edge_name.clone(),
@@ -111,6 +115,7 @@ impl RecursiveEdgeData {
                 self.expanding_from.vid,
                 self.edge_hint,
             );
+            drop(adapter_ref);
 
             NeighborsIter::Direct(neighbors_iter)
         }
@@ -392,6 +397,7 @@ where
             if let NeighborsIter::Coercion(_, coercion) = &self.inner {
                 if !coercion.borrow_mut().move_through_coerce() {
                     // We pulled an element but it got discarded in the coercion.
+                    self.total_pulls += 1;
                     pull_limit -= 1;
                     continue;
                 }
