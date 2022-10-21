@@ -18,7 +18,7 @@ pub mod execution;
 mod filtering;
 pub mod macros;
 pub mod replay;
-pub mod simplified_adapter;
+pub mod basic_adapter;
 pub mod trace;
 
 #[derive(Debug, Clone)]
