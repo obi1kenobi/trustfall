@@ -13,12 +13,12 @@ use crate::{
 
 use self::error::QueryArgumentsError;
 
+pub mod basic_adapter;
 pub mod error;
 pub mod execution;
 mod filtering;
 pub mod macros;
 pub mod replay;
-pub mod basic_adapter;
 pub mod trace;
 
 #[derive(Debug, Clone)]
