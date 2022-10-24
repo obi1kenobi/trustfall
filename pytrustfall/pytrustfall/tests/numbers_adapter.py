@@ -1,6 +1,6 @@
 from typing import Any, Mapping, Iterable, Iterator, Tuple
 
-from .. import Adapter, DataContext
+from .. import Adapter, Context
 
 
 _NUMBER_NAMES = [
@@ -33,12 +33,12 @@ class NumbersAdapter(Adapter[Vertex]):
 
     def resolve_property(
         self,
-        contexts: Iterator[DataContext[Vertex]],
+        contexts: Iterator[Context[Vertex]],
         type_name: str,
         property_name: str,
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[DataContext[Vertex], Any]]:
+    ) -> Iterable[Tuple[Context[Vertex], Any]]:
         for context in contexts:
             active_vertex = context.active_vertex
             value = None
@@ -55,13 +55,13 @@ class NumbersAdapter(Adapter[Vertex]):
 
     def resolve_neighbors(
         self,
-        contexts: Iterator[DataContext[Vertex]],
+        contexts: Iterator[Context[Vertex]],
         type_name: str,
         edge_name: str,
         parameters: Mapping[str, Any],
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[DataContext[Vertex], Iterable[Vertex]]]:
+    ) -> Iterable[Tuple[Context[Vertex], Iterable[Vertex]]]:
         for context in contexts:
             active_vertex = context.active_vertex
             neighbors = []
@@ -86,10 +86,10 @@ class NumbersAdapter(Adapter[Vertex]):
 
     def resolve_coercion(
         self,
-        contexts: Iterator[DataContext[Vertex]],
+        contexts: Iterator[Context[Vertex]],
         type_name: str,
         coerce_to_type: str,
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[DataContext[Vertex], bool]]:
+    ) -> Iterable[Tuple[Context[Vertex], bool]]:
         raise NotImplementedError()

@@ -1,4 +1,4 @@
-from .adapter import Adapter, DataContext
+from .adapter import Adapter, Context
 from .execution import execute_query
 
 from .pytrustfall import Schema

@@ -11,16 +11,12 @@ Vertex = TypeVar("Vertex")
 class Context(Generic[Vertex]):
     """Adapter helper type. Its active_vertex property indicates vertices whose data is needed."""
 
-    __slots__ = ("active_vertex",)
+    __slots__ = ("_active_vertex",)
 
     @property
     def active_vertex(self) -> Optional[Vertex]:
         """The vertex whose information (properties, edges, etc.) needs to be resolved."""
         return self._active_vertex
-
-    def __init__(self, active_vertex: Optional[Vertex]) -> None:
-        """Create a Context. Only Trustfall internals should need to call this function."""
-        self._active_vertex = active_vertex
 
 
 class Adapter(Generic[Vertex], metaclass=ABCMeta):
