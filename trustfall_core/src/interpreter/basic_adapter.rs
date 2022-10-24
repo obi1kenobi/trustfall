@@ -22,22 +22,32 @@ type ContextIterator<'vertex, VertexT> = Box<dyn Iterator<Item = DataContext<Ver
 /// Resolver functions produce an output value for each context:
 /// - resolve_property() produces that property's value;
 /// - resolve_neighbors() produces an iterator of neighboring vertices along an edge;
-/// - coerce_vertex_type() gives a bool representing whether the vertex is of the desired type.
+/// - resolve_coercion() gives a bool representing whether the vertex is of the desired type.
 ///
 /// This type lets us write those output types in a slightly more readable way.
 type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
     Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
 
 pub trait BasicAdapter<'vertex> {
+    /// The type of vertices in the dataset this adapter queries.
+    /// It's frequently a good idea to use an Rc<...> type for cheaper cloning here.
     type Vertex: Clone + Debug + 'vertex;
 
     /// Produce an iterator of vertices for the specified starting edge.
     ///
-    /// Starting edges are the edges defined on the schema's specified query type,
-    /// usually named `RootSchemaQuery`.
+    /// Starting edges are ones where queries are allowed to begin.
+    /// They are defined directly on the root query type of the schema.
+    /// For example, `Foo` is the starting edge of the following query:
+    /// ```graphql
+    /// query {
+    ///     Foo {
+    ///         bar @output
+    ///     }
+    /// }
+    /// ```
     ///
     /// The caller guarantees that:
-    /// - The specified edge is defined in the schema being queried.
+    /// - The specified edge is a starting edge in the schema being queried.
     /// - Any parameters the edge requires per the schema have values provided.
     fn resolve_starting_vertices(
         &mut self,
@@ -80,6 +90,9 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// This function resolves the neighboring vertices for that active vertex.
     ///
+    /// If the schema this adapter covers has no edges aside from starting edges,
+    /// then this method will never be called and may be implemented as `unreachable!()`.
+    ///
     /// The caller guarantees that:
     /// - `type_name` is a type or interface defined in the schema.
     /// - `edge_name` is an edge field on `type_name` defined in the schema.
@@ -103,11 +116,25 @@ pub trait BasicAdapter<'vertex> {
 
     /// Attempt to coerce vertices to a subtype, over an iterator of query contexts.
     ///
+    /// In this example query, the starting vertices of type `Foo` are coerced to `Bar`:
+    /// ```graphql
+    /// query {
+    ///     Foo {
+    ///         ... on Bar {
+    ///             abc @output
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
     /// Each context in the `data_contexts` argument has an active vertex, which is
     /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
     /// This function checks whether the active vertex is of the specified subtype.
+    ///
+    /// If this adapter's schema contains no subtyping, then no type coercions are possible:
+    /// this method will never be called and may be implemented as `unreachable!()`.
     ///
     /// The caller guarantees that:
     /// - `type_name` is an interface defined in the schema.
@@ -121,7 +148,7 @@ pub trait BasicAdapter<'vertex> {
     /// - Produce contexts in the same order as the input `data_contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
-    fn coerce_vertex_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
@@ -199,7 +226,7 @@ where
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'token> {
-        <Self as BasicAdapter>::coerce_vertex_type(
+        <Self as BasicAdapter>::resolve_coercion(
             self,
             data_contexts,
             current_type_name.as_ref(),
