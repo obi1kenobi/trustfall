@@ -3,7 +3,7 @@ name: Publish Rust crate
 on:
   workflow_call:
     secrets:
-      MATURIN_PYPI_TOKEN:
+      PYPI_TOKEN:
         required: true
 
 env:
@@ -16,39 +16,157 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - should-publish
+      - macos
+      - windows
+      - linux
+      - musllinux
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/download-artifact@v2
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions/cache@v2
+          name: wheels
+      - uses: actions/setup-python@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-            trustfall_core/target/
-            trustfall_wasm/target/
-            pytrustfall/target/
-            experiments/schemaless/target/
-            experiments/schemaless_wasm/target/
-            experiments/trustfall_rustdoc/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: messense/maturin-action@v1
+          python-version: 3.10
+      - name: Publish to PyPi
         env:
-          MATURIN_PYPI_TOKEN: "${{ secrets.MATURIN_PYPI_TOKEN }}"
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          pip install --upgrade twine
+          twine upload --repository-url test.pypi.org --skip-existing *
+
+  macos:
+    name: macOS build
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10"]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
         with:
-          maturin-version: latest
-          command: publish
-          args: --release -m pytrustfall/Cargo.toml --repository-url test.pypi.org
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels - x86_64
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          args: --release --out dist --sdist -m pytrustfall/Cargo.toml
+      - name: Install built wheel - x86_64
+        run: |
+          pip install trustfall --no-index --find-links dist --force-reinstall
+          python -c "import trustfall"
+      - name: Build wheels - universal2
+        uses: messense/maturin-action@v1
+        with:
+          args: --release --universal2 --out dist -m pytrustfall/Cargo.toml
+      - name: Install built wheel - universal2
+        run: |
+          pip install trustfall --no-index --find-links dist --force-reinstall
+          python -c "import trustfall"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10"]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: x64
+          args: --release --out dist -m pytrustfall/Cargo.toml
+      - name: Install built wheel
+        run: |
+          pip install trustfall --no-index --find-links dist --force-reinstall
+          python -c "import trustfall"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10"]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+    - name: Build wheels
+      uses: messense/maturin-action@v1
+      with:
+        target: x86_64
+        manylinux: auto
+        args: --release --out dist -m pytrustfall/Cargo.toml
+    - name: Install built wheel
+      run: |
+        pip install trustfall --no-index --find-links dist --force-reinstall
+        python -c "import trustfall"
+    - name: Upload wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: dist
+
+  musllinux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10"]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+    - name: Build wheels
+      uses: messense/maturin-action@v1
+      with:
+        target: x86_64-unknown-linux-musl
+        manylinux: musllinux_1_2
+        args: --release --out dist -m pytrustfall/Cargo.toml
+    - name: Install built wheel
+      uses: addnab/docker-run-action@v3
+      with:
+        image: alpine:latest
+        options: -v ${{ github.workspace }}:/io -w /io
+        run: |
+          apk add py3-pip
+          pip3 install -U pip
+          pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
+          python3 -c "import trustfall"
+    - name: Upload wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: dist
 
   should-publish:
     name: Did version change
