@@ -1,6 +1,6 @@
 from typing import Any, Mapping, Iterable, Iterator, Tuple
 
-from .. import Adapter, DataContext
+from .. import Adapter, Context
 
 
 _NUMBER_NAMES = [
@@ -17,75 +17,79 @@ _NUMBER_NAMES = [
     "ten",
 ]
 
-Token = int
+Vertex = int
 
 
-class NumbersAdapter(Adapter[Token]):
-    def get_starting_tokens(
+class NumbersAdapter(Adapter[Vertex]):
+    def resolve_starting_vertices(
         self,
         edge_name: str,
         parameters: Mapping[str, Any],
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Token]:
+    ) -> Iterable[Vertex]:
         max_value = parameters["max"]
         yield from range(0, max_value)
 
-    def project_property(
+    def resolve_property(
         self,
-        data_contexts: Iterator[DataContext[Token]],
+        contexts: Iterator[Context[Vertex]],
         type_name: str,
-        field_name: str,
+        property_name: str,
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[DataContext[Token], Any]]:
-        for context in data_contexts:
-            token = context.current_token
+    ) -> Iterable[Tuple[Context[Vertex], Any]]:
+        for context in contexts:
+            active_vertex = context.active_vertex
             value = None
-            if token is not None:
-                if field_name == "value":
-                    value = token
-                elif field_name == "name":
-                    if 0 <= token < len(_NUMBER_NAMES):
-                        value = _NUMBER_NAMES[token]
+            if active_vertex is not None:
+                if property_name == "value":
+                    value = active_vertex
+                elif property_name == "name":
+                    if 0 <= active_vertex < len(_NUMBER_NAMES):
+                        value = _NUMBER_NAMES[active_vertex]
                 else:
                     raise NotImplementedError()
 
             yield (context, value)
 
-    def project_neighbors(
+    def resolve_neighbors(
         self,
-        data_contexts: Iterator[DataContext[Token]],
+        contexts: Iterator[Context[Vertex]],
         type_name: str,
         edge_name: str,
         parameters: Mapping[str, Any],
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[DataContext[Token], Iterable[Token]]]:
-        for context in data_contexts:
-            token = context.current_token
+    ) -> Iterable[Tuple[Context[Vertex], Iterable[Vertex]]]:
+        for context in contexts:
+            active_vertex = context.active_vertex
             neighbors = []
-            if token is not None:
+            if active_vertex is not None:
                 if edge_name == "multiple":
-                    if token > 0:
+                    if active_vertex > 0:
                         max_value = parameters["max"]
-                        neighbors = range(2 * token, max_value * token + 1, token)
+                        neighbors = range(
+                            2 * active_vertex,
+                            max_value * active_vertex + 1,
+                            active_vertex,
+                        )
                 elif edge_name == "predecessor":
-                    if token > 0:
-                        neighbors = [token - 1]
+                    if active_vertex > 0:
+                        neighbors = [active_vertex - 1]
                 elif edge_name == "successor":
-                    neighbors = [token + 1]
+                    neighbors = [active_vertex + 1]
                 else:
                     raise NotImplementedError()
 
             yield (context, neighbors)
 
-    def can_coerce_to_type(
+    def resolve_coercion(
         self,
-        data_contexts: Iterator[DataContext[Token]],
+        contexts: Iterator[Context[Vertex]],
         type_name: str,
         coerce_to_type: str,
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[DataContext[Token], bool]]:
+    ) -> Iterable[Tuple[Context[Vertex], bool]]:
         raise NotImplementedError()

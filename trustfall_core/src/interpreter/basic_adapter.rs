@@ -5,7 +5,7 @@ use crate::ir::{EdgeParameters, Eid, FieldValue, Vid};
 use super::{Adapter, DataContext, InterpretedQuery};
 
 /// An iterator of vertices representing data points we are querying.
-type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
+pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
 
 /// An iterator of query contexts: bookkeeping structs we use to build up the query results.
 ///
@@ -15,7 +15,8 @@ type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vert
 /// This type is usually an input to adapter resolver functions. Calling those functions
 /// asks them to resolve a property, edge, or type coercion for the particular vertex
 /// the context is currently processing at that point in the query.
-type ContextIterator<'vertex, VertexT> = Box<dyn Iterator<Item = DataContext<VertexT>> + 'vertex>;
+pub type ContextIterator<'vertex, VertexT> =
+    Box<dyn Iterator<Item = DataContext<VertexT>> + 'vertex>;
 
 /// Iterator of (context, outcome) tuples: the output type of most resolver functions.
 ///
@@ -25,7 +26,7 @@ type ContextIterator<'vertex, VertexT> = Box<dyn Iterator<Item = DataContext<Ver
 /// - resolve_coercion() gives a bool representing whether the vertex is of the desired type.
 ///
 /// This type lets us write those output types in a slightly more readable way.
-type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
+pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
     Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
 
 pub trait BasicAdapter<'vertex> {
@@ -57,7 +58,7 @@ pub trait BasicAdapter<'vertex> {
 
     /// Resolve the value of a vertex property over an iterator of query contexts.
     ///
-    /// Each context in the `data_contexts` argument has an active vertex, which is
+    /// Each context in the `contexts` argument has an active vertex, which is
     /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
@@ -72,19 +73,19 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// The returned iterator must satisfy these properties:
     /// - Produce `(context, property_value)` tuples with the property's value for that context.
-    /// - Produce contexts in the same order as the input `data_contexts` iterator produced them.
+    /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
     /// - When a context's active vertex is `None`, its property value is `FieldValue::Null`.
     fn resolve_property(
         &mut self,
-        data_contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         property_name: &str,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue>;
 
     /// Resolve the neighboring vertices across an edge over an iterator of query contexts.
     ///
-    /// Each context in the `data_contexts` argument has an active vertex, which is
+    /// Each context in the `contexts` argument has an active vertex, which is
     /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
@@ -103,12 +104,12 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// The returned iterator must satisfy these properties:
     /// - Produce `(context, neighbors)` tuples with an iterator of neighbor vertices for that edge.
-    /// - Produce contexts in the same order as the input `data_contexts` iterator produced them.
+    /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
     fn resolve_neighbors(
         &mut self,
-        data_contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
         parameters: Option<&EdgeParameters>,
@@ -127,7 +128,7 @@ pub trait BasicAdapter<'vertex> {
     /// }
     /// ```
     ///
-    /// Each context in the `data_contexts` argument has an active vertex, which is
+    /// Each context in the `contexts` argument has an active vertex, which is
     /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
@@ -145,12 +146,12 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// The returned iterator must satisfy these properties:
     /// - Produce `(context, can_coerce)` tuples showing if the coercion succeded for that context.
-    /// - Produce contexts in the same order as the input `data_contexts` iterator produced them.
+    /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
     fn resolve_coercion(
         &mut self,
-        data_contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool>;
@@ -178,7 +179,7 @@ where
 
     fn project_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
         current_type_name: std::sync::Arc<str>,
         field_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
@@ -186,7 +187,7 @@ where
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'token> {
         <Self as BasicAdapter>::resolve_property(
             self,
-            data_contexts,
+            contexts,
             current_type_name.as_ref(),
             field_name.as_ref(),
         )
@@ -194,7 +195,7 @@ where
 
     fn project_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
         current_type_name: std::sync::Arc<str>,
         edge_name: std::sync::Arc<str>,
         parameters: Option<std::sync::Arc<EdgeParameters>>,
@@ -211,7 +212,7 @@ where
     > {
         <Self as BasicAdapter>::resolve_neighbors(
             self,
-            data_contexts,
+            contexts,
             current_type_name.as_ref(),
             edge_name.as_ref(),
             parameters.as_deref(),
@@ -220,7 +221,7 @@ where
 
     fn can_coerce_to_type(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
         current_type_name: std::sync::Arc<str>,
         coerce_to_type_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
@@ -228,7 +229,7 @@ where
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'token> {
         <Self as BasicAdapter>::resolve_coercion(
             self,
-            data_contexts,
+            contexts,
             current_type_name.as_ref(),
             coerce_to_type_name.as_ref(),
         )
