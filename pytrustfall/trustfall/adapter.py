@@ -64,7 +64,8 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
 
         The caller guarantees that:
         - `type_name` is a type or interface defined in the schema.
-        - `property_name` is a property field on `type_name` defined in the schema.
+        - `property_name` is either a property field on `type_name` defined in the schema,
+          or the special value `"__typename"` requesting the name of the vertex's type.
         - When the active vertex is not None, then it's a vertex of type `type_name`:
           either its type is exactly `type_name`, or `type_name` is an interface that
           the vertex's type implements.
