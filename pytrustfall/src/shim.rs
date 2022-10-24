@@ -11,7 +11,7 @@ use pyo3::{
 
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
-    interpreter::{execution::interpret_ir, Adapter, DataContext, InterpretedQuery},
+    interpreter::{basic_adapter::BasicAdapter, execution::interpret_ir, DataContext, InterpretedQuery},
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
@@ -240,16 +240,14 @@ impl PyIterProtocol for ContextIterator {
 }
 
 #[allow(unused_variables)]
-impl Adapter<'static> for AdapterShim {
-    type DataToken = Arc<Py<PyAny>>;
+impl BasicAdapter<'static> for AdapterShim {
+    type Vertex = Arc<Py<PyAny>>;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken>> {
+        edge_name: &str,
+        parameters: Option<&EdgeParameters>,
+    ) -> VertexIterator<'vertex, Self::Vertex> {
         Python::with_gil(|py| {
             let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
                 x.0.iter()
@@ -261,8 +259,8 @@ impl Adapter<'static> for AdapterShim {
                 .adapter
                 .call_method(
                     py,
-                    "get_starting_tokens",
-                    (edge.as_ref(), parameter_data),
+                    "resolve_starting_vertices",
+                    (edge_name, parameter_data),
                     None,
                 )
                 .unwrap();
@@ -270,22 +268,20 @@ impl Adapter<'static> for AdapterShim {
         })
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
+        data_contexts: ContextIterator<'vertex, Self::Vertex>,
+        type_name: &str,
+        property_name: &str,
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         let contexts = ContextIterator::new(data_contexts);
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
                 .call_method(
                     py,
-                    "project_property",
-                    (contexts, current_type_name.as_ref(), field_name.as_ref()),
+                    "resolve_property",
+                    (contexts, current_type_name, field_name),
                     None,
                 )
                 .unwrap();
@@ -295,24 +291,13 @@ impl Adapter<'static> for AdapterShim {
         })
     }
 
-    #[allow(clippy::type_complexity)]
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
-            ),
-        >,
-    > {
+        data_contexts: ContextIterator<'vertex, Self::Vertex>,
+        type_name: &str,
+        edge_name: &str,
+        parameters: Option<&EdgeParameters>,
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         let contexts = ContextIterator::new(data_contexts);
         Python::with_gil(|py| {
             let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
@@ -325,11 +310,11 @@ impl Adapter<'static> for AdapterShim {
                 .adapter
                 .call_method(
                     py,
-                    "project_neighbors",
+                    "resolve_neighbors",
                     (
                         contexts,
-                        current_type_name.as_ref(),
-                        edge_name.as_ref(),
+                        current_type_name,
+                        edge_name,
                         parameter_data,
                     ),
                     None,
@@ -341,25 +326,23 @@ impl Adapter<'static> for AdapterShim {
         })
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
+        data_contexts: ContextIterator<'vertex, Self::Vertex>,
+        type_name: &str,
+        coerce_to_type: &str,
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         let contexts = ContextIterator::new(data_contexts);
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
                 .call_method(
                     py,
-                    "can_coerce_to_type",
+                    "resolve_coercion",
                     (
                         contexts,
-                        current_type_name.as_ref(),
-                        coerce_to_type_name.as_ref(),
+                        current_type_name,
+                        coerce_to_type_name,
                     ),
                     None,
                 )
