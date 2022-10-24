@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_core"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 edition = "2021"
 license = "Apache-2.0"
