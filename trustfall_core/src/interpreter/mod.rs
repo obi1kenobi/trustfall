@@ -13,6 +13,7 @@ use crate::{
 
 use self::error::QueryArgumentsError;
 
+pub mod basic_adapter;
 pub mod error;
 pub mod execution;
 mod filtering;
