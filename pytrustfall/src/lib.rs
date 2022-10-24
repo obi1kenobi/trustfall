@@ -4,7 +4,7 @@ pub mod errors;
 pub mod shim;
 
 #[pymodule]
-fn pytrustfall(py: Python, m: &PyModule) -> PyResult<()> {
+fn trustfall(py: Python, m: &PyModule) -> PyResult<()> {
     shim::register(py, m)?;
     errors::register(py, m)?;
     Ok(())
