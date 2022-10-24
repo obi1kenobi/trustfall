@@ -328,8 +328,6 @@ jobs:
     needs:
       - ci-everything
       - attempt-publish-trustfall-core
-    secrets:
-      MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_TEST_PYPI_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -357,6 +355,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: messense/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: "${{ secrets.MATURIN_TEST_PYPI_TOKEN }}"
         with:
           maturin-version: latest
           command: publish
