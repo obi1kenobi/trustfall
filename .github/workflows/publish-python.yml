@@ -119,6 +119,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
+    - name: Test what's going on
+      run: |
+        python --version
+        python3 --version
     - name: Build wheels
       uses: messense/maturin-action@v1
       with:
