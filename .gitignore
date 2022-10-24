@@ -8,5 +8,5 @@
 **/*.pyo
 **/*.pyx
 **/__pycache__/
-**/pytrustfall.cpython-*.so
+**/trustfall.cpython-*.so
 **/.pytest_cache/

@@ -1945,17 +1945,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pytrustfall"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "lazy_static",
- "pyo3",
- "trustfall_core",
-]
-
-[[package]]
 name = "quick-xml"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3164,6 +3153,17 @@ dependencies = [
  "sharded-slab",
  "thread_local",
  "tracing-core",
+]
+
+[[package]]
+name = "trustfall"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "lazy_static",
+ "pyo3",
+ "trustfall_core",
 ]
 
 [[package]]

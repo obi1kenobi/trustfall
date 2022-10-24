@@ -1,6 +1,6 @@
 import unittest
 
-from ..pytrustfall import (
+from ..trustfall import (
     InvalidSchemaError,
     Schema,
 )
