@@ -168,7 +168,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: alpine:latest
-          options: -v ${{ github.workspace }}:/io -w /io
+          options: -v ${{ github.workspace }}:/dist -w /io/dist
           run: |
             apk add py3-pip
             pip3 install -U pip
