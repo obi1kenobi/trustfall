@@ -19,7 +19,7 @@ jobs:
       - macos
       - windows
       - linux
-      - musllinux
+      # - musllinux
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -144,42 +144,42 @@ jobs:
           name: wheels
           path: dist
 
-  musllinux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10"]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: x64
-      - name: Show python version
-        run: |
-          python3 --version
-      - name: Build wheels
-        uses: messense/maturin-action@v1
-        with:
-          target: x86_64-unknown-linux-musl
-          manylinux: musllinux_1_2
-          args: --release --interpreter python${{ matrix.python-version}} --out /io/dist -m pytrustfall/Cargo.toml
-      - name: Install built wheel
-        uses: addnab/docker-run-action@v3
-        with:
-          image: alpine:latest
-          options: -v ${{ github.workspace }}:/io -w /io
-          run: |
-            apk add py3-pip
-            pip3 install -U pip
-            ls -alh /io/dist/
-            pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
-            python3 -c "import trustfall"
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: /io/dist
+  # musllinux:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.9", "3.10"]
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions/setup-python@v2
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #         architecture: x64
+  #     - name: Show python version
+  #       run: |
+  #         python3 --version
+  #     - name: Build wheels
+  #       uses: messense/maturin-action@v1
+  #       with:
+  #         target: x86_64-unknown-linux-musl
+  #         manylinux: musllinux_1_2
+  #         args: --release --interpreter python${{ matrix.python-version}} --out /io/dist -m pytrustfall/Cargo.toml
+  #     - name: Install built wheel
+  #       uses: addnab/docker-run-action@v3
+  #       with:
+  #         image: alpine:latest
+  #         options: -v ${{ github.workspace }}:/io -w /io
+  #         run: |
+  #           apk add py3-pip
+  #           pip3 install -U pip
+  #           ls -alh /io/dist/
+  #           pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
+  #           python3 -c "import trustfall"
+  #     - name: Upload wheels
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: wheels
+  #         path: /io/dist
 
   should-publish:
     name: Did version change
