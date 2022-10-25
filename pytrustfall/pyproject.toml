@@ -10,8 +10,7 @@ python = "^3.9"
 [tool.poetry.dev-dependencies]
 maturin = "^0.12.5"
 pytest = "^6.2.5"
-black = "^21.12b0"
-jupyterlab = "*"
+black = "^22.10.0"
 
 [tool.black]
 line-length = 100
