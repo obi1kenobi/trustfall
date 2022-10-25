@@ -57,7 +57,7 @@ jobs:
         uses: messense/maturin-action@v1
         with:
           target: x86_64
-          args: --release --out dist --sdist -m pytrustfall/Cargo.toml
+          args: --release --interpreter python --out dist --sdist -m pytrustfall/Cargo.toml
       - name: Install built wheel - x86_64
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
@@ -65,7 +65,7 @@ jobs:
       - name: Build wheels - universal2
         uses: messense/maturin-action@v1
         with:
-          args: --release --universal2 --out dist -m pytrustfall/Cargo.toml
+          args: --release --interpreter python --interpreter python --universal2 --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel - universal2
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
@@ -97,7 +97,7 @@ jobs:
         uses: messense/maturin-action@v1
         with:
           target: x64
-          args: --release --out dist -m pytrustfall/Cargo.toml
+          args: --release --interpreter python --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
@@ -119,16 +119,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
-    - name: Test what's going on
-      run: |
-        python --version
-        python3 --version
     - name: Build wheels
       uses: messense/maturin-action@v1
       with:
         target: x86_64
         manylinux: auto
-        args: --release --out dist -m pytrustfall/Cargo.toml
+        args: --release --interpreter python --interpreter python --out dist -m pytrustfall/Cargo.toml
     - name: Install built wheel
       run: |
         pip install trustfall --no-index --find-links dist --force-reinstall
@@ -155,7 +151,7 @@ jobs:
       with:
         target: x86_64-unknown-linux-musl
         manylinux: musllinux_1_2
-        args: --release --out dist -m pytrustfall/Cargo.toml
+        args: --release --interpreter python --interpreter python --out dist -m pytrustfall/Cargo.toml
     - name: Install built wheel
       uses: addnab/docker-run-action@v3
       with:
