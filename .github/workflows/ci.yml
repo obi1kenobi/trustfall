@@ -324,9 +324,9 @@ jobs:
 
   attempt-publish-pytrustfall:
     name: publish python trusfall
-    needs:
-      - ci-everything
-      - attempt-publish-trustfall-core
+    # needs:
+    #   - ci-everything
+    #   - attempt-publish-trustfall-core
     uses: ./.github/workflows/publish-python.yml
     secrets:
       PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
