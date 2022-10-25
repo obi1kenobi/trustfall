@@ -133,7 +133,7 @@ jobs:
         with:
           target: x86_64
           manylinux: auto
-          args: --release --interpreter python3 --out dist -m pytrustfall/Cargo.toml
+          args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
@@ -163,7 +163,7 @@ jobs:
         with:
           target: x86_64-unknown-linux-musl
           manylinux: musllinux_1_2
-          args: --release --interpreter python3 --out dist -m pytrustfall/Cargo.toml
+          args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         uses: addnab/docker-run-action@v3
         with:
