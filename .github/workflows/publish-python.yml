@@ -53,6 +53,9 @@ jobs:
           toolchain: stable
           profile: minimal
           default: true
+      - name: Show python version
+        run: |
+          python --version
       - name: Build wheels - x86_64
         uses: messense/maturin-action@v1
         with:
@@ -65,7 +68,7 @@ jobs:
       - name: Build wheels - universal2
         uses: messense/maturin-action@v1
         with:
-          args: --release --interpreter python --interpreter python --universal2 --out dist -m pytrustfall/Cargo.toml
+          args: --release --interpreter python --universal2 --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel - universal2
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
@@ -93,6 +96,9 @@ jobs:
           toolchain: stable
           profile: minimal
           default: true
+      - name: Show python version
+        run: |
+          python --version
       - name: Build wheels
         uses: messense/maturin-action@v1
         with:
@@ -114,26 +120,29 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10"]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        architecture: x64
-    - name: Build wheels
-      uses: messense/maturin-action@v1
-      with:
-        target: x86_64
-        manylinux: auto
-        args: --release --interpreter python --interpreter python --out dist -m pytrustfall/Cargo.toml
-    - name: Install built wheel
-      run: |
-        pip install trustfall --no-index --find-links dist --force-reinstall
-        python -c "import trustfall"
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: wheels
-        path: dist
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Show python version
+        run: |
+          python3 --version
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          manylinux: auto
+          args: --release --interpreter python3 --out dist -m pytrustfall/Cargo.toml
+      - name: Install built wheel
+        run: |
+          pip install trustfall --no-index --find-links dist --force-reinstall
+          python -c "import trustfall"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
 
   musllinux:
     runs-on: ubuntu-latest
@@ -141,32 +150,35 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10"]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        architecture: x64
-    - name: Build wheels
-      uses: messense/maturin-action@v1
-      with:
-        target: x86_64-unknown-linux-musl
-        manylinux: musllinux_1_2
-        args: --release --interpreter python --interpreter python --out dist -m pytrustfall/Cargo.toml
-    - name: Install built wheel
-      uses: addnab/docker-run-action@v3
-      with:
-        image: alpine:latest
-        options: -v ${{ github.workspace }}:/io -w /io
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Show python version
         run: |
-          apk add py3-pip
-          pip3 install -U pip
-          pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
-          python3 -c "import trustfall"
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: wheels
-        path: dist
+          python3 --version
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64-unknown-linux-musl
+          manylinux: musllinux_1_2
+          args: --release --interpreter python3 --out dist -m pytrustfall/Cargo.toml
+      - name: Install built wheel
+        uses: addnab/docker-run-action@v3
+        with:
+          image: alpine:latest
+          options: -v ${{ github.workspace }}:/io -w /io
+          run: |
+            apk add py3-pip
+            pip3 install -U pip
+            pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
+            python3 -c "import trustfall"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
 
   should-publish:
     name: Did version change
