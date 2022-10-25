@@ -329,4 +329,4 @@ jobs:
       - attempt-publish-trustfall-core
     uses: ./.github/workflows/publish-python.yml
     secrets:
-      PYPI_TOKEN: ${{ secrets.MATURIN_TEST_PYPI_TOKEN }}
+      PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
