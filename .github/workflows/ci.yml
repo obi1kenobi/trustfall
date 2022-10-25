@@ -303,6 +303,7 @@ jobs:
 
   attempt-publish-trustfall-filetests-macros:
     name: publish trustfall_filetests_macros
+    if: github.ref == 'refs/heads/main'
     needs:
       - ci-everything
     uses: ./.github/workflows/publish-rust.yml
@@ -313,6 +314,7 @@ jobs:
 
   attempt-publish-trustfall-core:
     name: publish trustfall_core
+    if: github.ref == 'refs/heads/main'
     needs:
       - ci-everything
       - attempt-publish-trustfall-filetests-macros
@@ -324,9 +326,10 @@ jobs:
 
   attempt-publish-pytrustfall:
     name: publish python trusfall
-    # needs:
-    #   - ci-everything
-    #   - attempt-publish-trustfall-core
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - ci-everything
+      - attempt-publish-trustfall-core
     uses: ./.github/workflows/publish-python.yml
     secrets:
       PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
