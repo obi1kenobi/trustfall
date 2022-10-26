@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -127,6 +129,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -170,6 +174,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -207,6 +213,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
@@ -287,6 +295,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v3
         with:
