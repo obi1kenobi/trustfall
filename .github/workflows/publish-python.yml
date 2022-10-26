@@ -21,21 +21,12 @@ jobs:
       - linux
       # - musllinux
     steps:
-      - uses: actions/checkout@v3
-        with:
-          persist-credentials: true
       - uses: actions/download-artifact@v2
         with:
           name: wheels
       - uses: actions/setup-python@v2
         with:
           python-version: "3.11"
-      - name: Tag the version
-        run: |
-          set -euxo pipefail
-          export CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh trustfall)"
-          git tag "pytrustfall-v$CURRENT_VERSION"
-          git push origin "pytrustfall-v$CURRENT_VERSION"
       - name: Publish to PyPi
         env:
           TWINE_USERNAME: __token__
@@ -44,6 +35,15 @@ jobs:
           set -euxo pipefail
           pip install --upgrade twine
           twine upload --skip-existing *
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+      - name: Tag the version
+        run: |
+          set -euxo pipefail
+          export CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh trustfall)"
+          git tag "pytrustfall-v$CURRENT_VERSION"
+          git push origin "pytrustfall-v$CURRENT_VERSION"
 
   macos:
     name: macOS build
