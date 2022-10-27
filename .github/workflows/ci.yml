@@ -63,7 +63,7 @@ jobs:
 
       - name: Set up python
         id: setup-python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
