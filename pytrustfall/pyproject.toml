@@ -3,9 +3,6 @@ name = "trustfall"
 description = "If GraphQL were more like SQL: a query language for any combination of data sources."
 readme = "README.md"
 requires-python = ">=3.9"
-license = [
-    {text = "Apache 2.0"}
-]
 authors = [
   {name = "Predrag Gruevski"}
 ]
@@ -13,15 +10,18 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3",
     "Topic :: Database :: Database Engines/Servers",
     "Topic :: Software Development :: Compilers",
     "Topic :: Software Development :: Interpreters",
     "Typing :: Typed",
 ]
+
+[project.license]
+text = "Apache 2.0"
 
 [project.urls]
 homepage = "https://play.predr.ag/"
