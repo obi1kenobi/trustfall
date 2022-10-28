@@ -1,5 +1,34 @@
+[project]
+name = "trustfall"
+description = "If GraphQL were more like SQL: a query language for any combination of data sources."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  {name = "Predrag Gruevski"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Interpreters",
+    "Typing :: Typed",
+]
+
+[project.license]
+text = "Apache 2.0"
+
+[project.urls]
+homepage = "https://play.predr.ag/"
+repository = "https://github.com/obi1kenobi/trustfall"
+
 [tool.poetry]
-name = "pytrustfall"
+name = "trustfall"
 version = "0.0.0"  # Cargo.toml is authoritative, not this
 description = "Python bindings for trustfall."
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
@@ -15,6 +44,9 @@ black = "^22.10.0"
 [tool.black]
 line-length = 100
 
+[tool.maturin]
+sdist-include = ["trustfall/py.typed"]
+
 [build-system]
-requires = ["maturin>=0.12.5", "poetry-core>=1.0.0"]
+requires = ["maturin>=0.13.0,<0.14", "poetry-core>=1.0.0"]
 build-backend = "maturin"
