@@ -110,7 +110,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         )),
       ),
@@ -127,7 +131,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         ))),
       ),
@@ -157,7 +165,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         )),
       ),
@@ -170,7 +182,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         ), String("four"))),
       ),
@@ -195,7 +211,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         )),
       ),
@@ -208,7 +228,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         ), String("eight"))),
       ),
@@ -255,7 +279,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         )),
       ),
@@ -272,7 +300,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(2), "name"): String("four"),
+            ContextField(ContextField(
+              vertex_id: Vid(2),
+              field_name: "name",
+              field_type: "String",
+            )): String("four"),
           },
         ), Int64(8))),
       ),
@@ -473,11 +505,11 @@ TestInterpreterOutputTrace(
                     },
                   ),
                   imported_tags: [
-                    ContextField(
+                    ContextField(ContextField(
                       vertex_id: Vid(2),
                       field_name: "name",
                       field_type: "String",
-                    ),
+                    )),
                   ],
                 ),
               },

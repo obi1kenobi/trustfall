@@ -5,7 +5,7 @@ pub mod serialization;
 pub mod types;
 pub mod value;
 
-use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
+use std::{cmp::Ordering, collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
@@ -150,7 +150,7 @@ pub struct IRFold {
     /// Tags from the directly-enclosing component whose values are needed
     /// inside this fold's component or one of its subcomponents.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub imported_tags: Vec<ContextField>,
+    pub imported_tags: Vec<FieldRef>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificFieldKind>,
@@ -160,7 +160,7 @@ pub struct IRFold {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
 }
@@ -215,6 +215,28 @@ pub enum TransformationKind {
 pub enum FieldRef {
     ContextField(ContextField),
     FoldSpecificField(FoldSpecificField),
+}
+
+impl Ord for FieldRef {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (FieldRef::ContextField(f1), FieldRef::ContextField(f2)) => f1
+                .vertex_id
+                .cmp(&f2.vertex_id)
+                .then(f1.field_name.as_ref().cmp(f2.field_name.as_ref())),
+            (FieldRef::ContextField(_), FieldRef::FoldSpecificField(_)) => Ordering::Less,
+            (FieldRef::FoldSpecificField(_), FieldRef::ContextField(_)) => Ordering::Greater,
+            (FieldRef::FoldSpecificField(f1), FieldRef::FoldSpecificField(f2)) => {
+                f1.fold_eid.cmp(&f2.fold_eid).then(f1.kind.cmp(&f2.kind))
+            }
+        }
+    }
+}
+
+impl PartialOrd for FieldRef {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl From<ContextField> for FieldRef {

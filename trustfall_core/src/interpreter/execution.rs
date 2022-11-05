@@ -354,27 +354,34 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     let mut adapter_ref = adapter.borrow_mut();
 
     // Get any imported tag values needed inside the fold component or one of its subcomponents.
-    for imported_field in fold.imported_tags.iter().cloned() {
-        let activated_vertex_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
-            Box::new(iterator.map(move |x| x.activate_token(&imported_field.vertex_id)));
+    for imported_field in fold.imported_tags.iter() {
+        match &imported_field {
+            FieldRef::ContextField(field) => {
+                let vertex_id = field.vertex_id;
+                let activated_vertex_iterator: Box<
+                    dyn Iterator<Item = DataContext<DataToken>> + 'query,
+                > = Box::new(iterator.map(move |x| x.activate_token(&vertex_id)));
 
-        let field_vertex = &parent_component.vertices[&imported_field.vertex_id];
-        let current_type_name = &field_vertex.type_name;
-        let context_and_value_iterator = adapter_ref.project_property(
-            activated_vertex_iterator,
-            current_type_name.clone(),
-            imported_field.field_name.clone(),
-            query.clone(),
-            imported_field.vertex_id,
-        );
+                let field_vertex = &parent_component.vertices[&field.vertex_id];
+                let current_type_name = &field_vertex.type_name;
+                let context_and_value_iterator = adapter_ref.project_property(
+                    activated_vertex_iterator,
+                    current_type_name.clone(),
+                    field.field_name.clone(),
+                    query.clone(),
+                    field.vertex_id,
+                );
 
-        iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
-            context.imported_tags.insert(
-                (imported_field.vertex_id, imported_field.field_name.clone()),
-                value,
-            );
-            context
-        }))
+                let cloned_field = imported_field.clone();
+                iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
+                    context.imported_tags.insert(cloned_field.clone(), value);
+                    context
+                }))
+            }
+            FieldRef::FoldSpecificField(imported_field) => {
+                todo!()
+            }
+        }
     }
 
     // Get the initial vertices inside the folded scope.
@@ -431,10 +438,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 
         // Remove no-longer-needed imported tags.
         for imported_tag in &moved_fold.imported_tags {
-            context
-                .imported_tags
-                .remove(&(imported_tag.vertex_id, imported_tag.field_name.clone()))
-                .unwrap();
+            context.imported_tags.remove(imported_tag).unwrap();
         }
 
         Some(context)
@@ -868,10 +872,9 @@ fn compute_context_field<'query, DataToken: Clone + Debug + 'query>(
     } else {
         // This context field represents an imported tag value from an outer component.
         // Grab its value from the context itself.
-        let field_name = context_field.field_name.clone();
-        let key = (vertex_id, field_name);
+        let field_ref = FieldRef::ContextField(context_field.clone());
         Box::new(iterator.map(move |mut context| {
-            let value = context.imported_tags[&key].clone();
+            let value = context.imported_tags[&field_ref].clone();
             context.values.push(value);
 
             context

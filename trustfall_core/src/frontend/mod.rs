@@ -380,7 +380,7 @@ fn make_filter_expr<LeftT: NamedTypedValue>(
                             }
                         };
 
-                        Argument::Tag(defined_tag.field.clone().into())
+                        Argument::Tag(defined_tag.field.clone())
                     }
                 })
             },
@@ -1175,7 +1175,7 @@ where
                 });
 
             for output_directive in &subfield.output {
-                // TODO: handle transformed fields here.
+                // TODO: handle outputs of non-fold-related transformed fields here.
                 let field_ref = FieldRef::ContextField(ContextField {
                     vertex_id: current_vid,
                     field_name: subfield.name.clone(),
@@ -1224,7 +1224,10 @@ where
                     field_type: subfield_raw_type.to_owned(),
                 };
 
-                if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
+                // TODO: handle tags on non-fold-related transformed fields here
+                if let Err(e) =
+                    tags.register_tag(tag_name, FieldRef::ContextField(tag_field), component_path)
+                {
                     errors.push(FrontendError::MultipleTagsWithSameName(
                         tag_name.to_string(),
                     ));
