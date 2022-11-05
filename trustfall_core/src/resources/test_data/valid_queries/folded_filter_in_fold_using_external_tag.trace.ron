@@ -380,6 +380,27 @@ TestInterpreterOutputTrace(
               2,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(8, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(8, [
+                    2,
+                  ]))),
+                },
+                imported_tags: {
+                  ContextField(ContextField(
+                    vertex_id: Vid(2),
+                    field_name: "name",
+                    field_type: "String",
+                  )): String("four"),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "second"): Vec([
               Value(Int64(8)),
@@ -398,6 +419,27 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(8, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(8, [
+                    2,
+                  ]))),
+                },
+                imported_tags: {
+                  ContextField(ContextField(
+                    vertex_id: Vid(2),
+                    field_name: "name",
+                    field_type: "String",
+                  )): String("four"),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "second"): Vec([

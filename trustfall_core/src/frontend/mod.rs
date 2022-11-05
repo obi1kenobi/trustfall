@@ -1254,7 +1254,7 @@ fn make_fold<'schema, 'query, V, E>(
     component_path: &mut ComponentPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
-    fold_group: &FoldGroup,
+    fold_group: &'query FoldGroup,
     fold_eid: Eid,
     edge_name: Arc<str>,
     edge_parameters: Option<Arc<EdgeParameters>>,
@@ -1298,7 +1298,6 @@ where
         ));
     }
 
-    // TODO: properly load fold post-filters
     let mut post_filters = vec![];
     let mut fold_specific_outputs = BTreeMap::new();
 
@@ -1367,8 +1366,28 @@ where
                 }))
             }
         }
-        for tag in &transform_group.tag {
-            unimplemented!("register the tag here");
+        for tag_directive in &transform_group.tag {
+            let tag_name = tag_directive
+                .name
+                .as_ref()
+                .map(|x| x.as_ref())
+                .unwrap_or_else(|| {
+                    todo!("handle implicit names for the tagged field")
+                    // subfield
+                    //     .alias
+                    //     .as_ref()
+                    //     .map(|x| x.as_ref())
+                    //     .unwrap_or_else(|| subfield.name.as_ref())
+                });
+            let field = FieldRef::FoldSpecificField(fold_specific_field.clone());
+
+            if let Err(e) =
+                tags.register_tag(tag_name, field, component_path)
+            {
+                errors.push(FrontendError::MultipleTagsWithSameName(
+                    tag_name.to_string(),
+                ));
+            }
         }
     }
 

@@ -299,6 +299,22 @@ TestInterpreterOutputTrace(
               3,
             ]))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(2))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(2))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "factors"): Vec([
               Value(Int64(2)),
@@ -320,6 +336,22 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(2))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(2))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "factors"): Vec([

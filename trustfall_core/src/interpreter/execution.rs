@@ -467,7 +467,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     let cloned_adapter = adapter.clone();
     let cloned_query = query.clone();
     let final_iterator = post_filtered_iterator.map(move |mut ctx| {
-        let fold_elements = ctx.folded_contexts.remove(&fold_eid).unwrap();
+        let fold_elements = ctx.folded_contexts.get(&fold_eid).unwrap();
 
         // Add any fold-specific field outputs to the context's folded values.
         for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
@@ -482,7 +482,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
         }
 
         let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
-            Box::new(fold_elements.into_iter());
+            Box::new(fold_elements.clone().into_iter());
         for output_name in output_names.iter() {
             let context_field = &fold.component.outputs[output_name.as_ref()];
             let vertex_id = context_field.vertex_id;
@@ -653,7 +653,7 @@ fn apply_fold_specific_filter<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let fold_specific_field = filter.left();
-    let field_iterator = compute_fold_specific_field(fold, fold_specific_field, iterator);
+    let field_iterator = compute_fold_specific_field(fold.eid, fold_specific_field, iterator);
 
     apply_filter(
         adapter_ref,
@@ -699,8 +699,8 @@ fn apply_filter<
                 compute_context_field(adapter_ref, query, component, context_field, iterator)
             }
         }
-        Some(Argument::Tag(FieldRef::FoldSpecificField(_fold_field))) => {
-            todo!()
+        Some(Argument::Tag(FieldRef::FoldSpecificField(fold_field))) => {
+            compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, iterator)
         }
         Some(Argument::Variable(var)) => {
             let right_value = query.arguments[var.variable_name.as_ref()].to_owned();
@@ -883,11 +883,10 @@ fn compute_context_field<'query, DataToken: Clone + Debug + 'query>(
 }
 
 fn compute_fold_specific_field<'query, DataToken: Clone + Debug + 'query>(
-    fold: &IRFold,
+    fold_eid: Eid,
     fold_specific_field: &FoldSpecificFieldKind,
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    let fold_eid = fold.eid;
     match fold_specific_field {
         FoldSpecificFieldKind::Count => Box::new(iterator.map(move |mut ctx| {
             let value = ctx.folded_contexts[&fold_eid].len();
