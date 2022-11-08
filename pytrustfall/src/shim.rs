@@ -252,7 +252,7 @@ impl BasicAdapter<'static> for AdapterShim {
                     .collect()
             });
 
-            let py_iter = self
+            let py_iterable = self
                 .adapter
                 .call_method(
                     py,
@@ -261,7 +261,8 @@ impl BasicAdapter<'static> for AdapterShim {
                     None,
                 )
                 .unwrap();
-            Box::new(PythonTokenIterator::new(py_iter))
+            let iter = make_iterator(py, py_iterable).unwrap();
+            Box::new(PythonTokenIterator::new(iter))
         })
     }
 

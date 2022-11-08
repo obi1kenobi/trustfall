@@ -29,7 +29,12 @@ class NumbersAdapter(Adapter[Vertex]):
         **kwargs: Any,
     ) -> Iterable[Vertex]:
         max_value = parameters["max"]
-        yield from range(0, max_value)
+
+        # We could just `yield from range(0, max_value)` here.
+        # But that returns an `Iterator` which is an easier type to deal with than `Iterable`,
+        # and we've had a bug with correct `Iterable` handling already.
+        # So let's return an `Iterable` instead by wrapping it in `list()`.
+        return list(range(0, max_value))
 
     def resolve_property(
         self,
