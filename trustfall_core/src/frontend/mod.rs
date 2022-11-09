@@ -1367,26 +1367,19 @@ where
             }
         }
         for tag_directive in &transform_group.tag {
-            let tag_name = tag_directive
-                .name
-                .as_ref()
-                .map(|x| x.as_ref())
-                .unwrap_or_else(|| {
-                    todo!("handle implicit names for the tagged field")
-                    // subfield
-                    //     .alias
-                    //     .as_ref()
-                    //     .map(|x| x.as_ref())
-                    //     .unwrap_or_else(|| subfield.name.as_ref())
-                });
-            let field = FieldRef::FoldSpecificField(fold_specific_field.clone());
+            let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref());
+            if let Some(tag_name) = tag_name {
+                let field = FieldRef::FoldSpecificField(fold_specific_field.clone());
 
-            if let Err(e) =
-                tags.register_tag(tag_name, field, component_path)
-            {
-                errors.push(FrontendError::MultipleTagsWithSameName(
-                    tag_name.to_string(),
-                ));
+                if let Err(e) = tags.register_tag(tag_name, field, component_path) {
+                    errors.push(FrontendError::MultipleTagsWithSameName(
+                        tag_name.to_string(),
+                    ));
+                }
+            } else {
+                errors.push(FrontendError::ExplicitTagNameRequired(
+                    starting_field.name.as_ref().to_owned(),
+                ))
             }
         }
     }
