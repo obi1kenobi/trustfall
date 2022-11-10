@@ -521,6 +521,48 @@ TestInterpreterOutputTrace(
               5,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(10, [
+                  2,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(10, [
+                    2,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(20, [
+                  2,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(20, [
+                    2,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(30, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(30, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(10)),
@@ -543,6 +585,48 @@ TestInterpreterOutputTrace(
               2,
               5,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(10, [
+                  2,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(10, [
+                    2,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(20, [
+                  2,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(20, [
+                    2,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(30, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(30, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -572,6 +656,48 @@ TestInterpreterOutputTrace(
               5,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(15, [
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(15, [
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(30, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(30, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(45, [
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(45, [
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(15)),
@@ -594,6 +720,48 @@ TestInterpreterOutputTrace(
               3,
               5,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(15, [
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(15, [
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(30, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(30, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(45, [
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(45, [
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -627,6 +795,132 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(5))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(10, [
+                  2,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(10, [
+                    2,
+                    5,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(10, [
+                        2,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(10, [
+                          2,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(20, [
+                        2,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(20, [
+                          2,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(30, [
+                        2,
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(30, [
+                          2,
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(10)),
+                    Value(Int64(20)),
+                    Value(Int64(30)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(15, [
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(15, [
+                    3,
+                    5,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(15, [
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(15, [
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(30, [
+                        2,
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(30, [
+                          2,
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(45, [
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(45, [
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(15)),
+                    Value(Int64(30)),
+                    Value(Int64(45)),
+                  ]),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "value"): Vec([
               Value(Int64(10)),
@@ -654,6 +948,132 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(5))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(5))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(10, [
+                  2,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(10, [
+                    2,
+                    5,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(10, [
+                        2,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(10, [
+                          2,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(20, [
+                        2,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(20, [
+                          2,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(30, [
+                        2,
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(30, [
+                          2,
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(10)),
+                    Value(Int64(20)),
+                    Value(Int64(30)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(15, [
+                  3,
+                  5,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(15, [
+                    3,
+                    5,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(15, [
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(15, [
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(30, [
+                        2,
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(30, [
+                          2,
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(45, [
+                        3,
+                        5,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(45, [
+                          3,
+                          5,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(15)),
+                    Value(Int64(30)),
+                    Value(Int64(45)),
+                  ]),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "value"): Vec([
@@ -1389,6 +1809,46 @@ TestInterpreterOutputTrace(
               3,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(12, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(12, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(18, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(18, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(6)),
@@ -1411,6 +1871,46 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(12, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(12, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(18, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(18, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -1440,6 +1940,46 @@ TestInterpreterOutputTrace(
               3,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(12, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(12, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(24, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(24, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(36, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(36, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(12)),
@@ -1462,6 +2002,46 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(12, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(12, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(24, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(24, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(36, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(36, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -1491,6 +2071,46 @@ TestInterpreterOutputTrace(
               3,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(18, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(18, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(36, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(36, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(54, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(54, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(18)),
@@ -1513,6 +2133,46 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(18, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(18, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(36, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(36, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(54, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(54, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -1551,6 +2211,187 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(6, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(6, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(12, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(12, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(18, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(18, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(6)),
+                    Value(Int64(12)),
+                    Value(Int64(18)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(12, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(12, [
+                    2,
+                    3,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(12, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(12, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(24, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(24, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(36, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(36, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(12)),
+                    Value(Int64(24)),
+                    Value(Int64(36)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(18, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(18, [
+                    2,
+                    3,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(18, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(18, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(36, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(36, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(54, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(54, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(18)),
+                    Value(Int64(36)),
+                    Value(Int64(54)),
+                  ]),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "value"): Vec([
@@ -1591,6 +2432,187 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(6, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(6, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(12, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(12, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(18, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(18, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(6)),
+                    Value(Int64(12)),
+                    Value(Int64(18)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(12, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(12, [
+                    2,
+                    3,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(12, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(12, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(24, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(24, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(36, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(36, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(12)),
+                    Value(Int64(24)),
+                    Value(Int64(36)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(18, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(18, [
+                    2,
+                    3,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(18, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(18, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(36, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(36, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(54, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(54, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(18)),
+                    Value(Int64(36)),
+                    Value(Int64(54)),
+                  ]),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "value"): Vec([
@@ -2122,6 +3144,48 @@ TestInterpreterOutputTrace(
               7,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(14, [
+                  2,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(14, [
+                    2,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(28, [
+                  2,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(28, [
+                    2,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(42, [
+                  2,
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(42, [
+                    2,
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(14)),
@@ -2144,6 +3208,48 @@ TestInterpreterOutputTrace(
               2,
               7,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(14, [
+                  2,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(14, [
+                    2,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(28, [
+                  2,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(28, [
+                    2,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(42, [
+                  2,
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(42, [
+                    2,
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -2173,6 +3279,48 @@ TestInterpreterOutputTrace(
               7,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(21, [
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(21, [
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(42, [
+                  2,
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(42, [
+                    2,
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(63, [
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(63, [
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "mult"): Vec([
               Value(Int64(21)),
@@ -2195,6 +3343,48 @@ TestInterpreterOutputTrace(
               3,
               7,
             ]))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(21, [
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(21, [
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(42, [
+                  2,
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(42, [
+                    2,
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(63, [
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(63, [
+                    3,
+                    7,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "mult"): Vec([
@@ -2228,6 +3418,132 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(7))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(14, [
+                  2,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(14, [
+                    2,
+                    7,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(14, [
+                        2,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(14, [
+                          2,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(28, [
+                        2,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(28, [
+                          2,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(42, [
+                        2,
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(42, [
+                          2,
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(14)),
+                    Value(Int64(28)),
+                    Value(Int64(42)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(21, [
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(21, [
+                    3,
+                    7,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(21, [
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(21, [
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(42, [
+                        2,
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(42, [
+                          2,
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(63, [
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(63, [
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(21)),
+                    Value(Int64(42)),
+                    Value(Int64(63)),
+                  ]),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "value"): Vec([
               Value(Int64(14)),
@@ -2255,6 +3571,132 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(7))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(7))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(14, [
+                  2,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(14, [
+                    2,
+                    7,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(14, [
+                        2,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(14, [
+                          2,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(28, [
+                        2,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(28, [
+                          2,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(42, [
+                        2,
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(42, [
+                          2,
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(14)),
+                    Value(Int64(28)),
+                    Value(Int64(42)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(21, [
+                  3,
+                  7,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(21, [
+                    3,
+                    7,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(21, [
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(21, [
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(42, [
+                        2,
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(42, [
+                          2,
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(63, [
+                        3,
+                        7,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(63, [
+                          3,
+                          7,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "mult"): Vec([
+                    Value(Int64(21)),
+                    Value(Int64(42)),
+                    Value(Int64(63)),
+                  ]),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "value"): Vec([

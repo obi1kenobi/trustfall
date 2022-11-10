@@ -61,7 +61,11 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -74,7 +78,11 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ))),
       ),
@@ -104,7 +112,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -117,7 +129,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), String("four"))),
       ),
@@ -144,7 +160,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -158,7 +178,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), String("six"))),
       ),
@@ -205,7 +229,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -222,7 +250,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), Int64(4))),
       ),
@@ -246,7 +278,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -265,7 +301,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), Int64(6))),
       ),
@@ -366,11 +406,11 @@ TestInterpreterOutputTrace(
               },
             ),
             imported_tags: [
-              ContextField(
+              ContextField(ContextField(
                 vertex_id: Vid(1),
                 field_name: "name",
                 field_type: "String",
-              ),
+              )),
             ],
           ),
         },

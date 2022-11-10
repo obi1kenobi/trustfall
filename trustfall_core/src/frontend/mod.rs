@@ -380,7 +380,7 @@ fn make_filter_expr<LeftT: NamedTypedValue>(
                             }
                         };
 
-                        Argument::Tag(defined_tag.field.clone().into())
+                        Argument::Tag(defined_tag.field.clone())
                     }
                 })
             },
@@ -1175,7 +1175,7 @@ where
                 });
 
             for output_directive in &subfield.output {
-                // TODO: handle transformed fields here.
+                // TODO: handle outputs of non-fold-related transformed fields here.
                 let field_ref = FieldRef::ContextField(ContextField {
                     vertex_id: current_vid,
                     field_name: subfield.name.clone(),
@@ -1224,7 +1224,10 @@ where
                     field_type: subfield_raw_type.to_owned(),
                 };
 
-                if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
+                // TODO: handle tags on non-fold-related transformed fields here
+                if let Err(e) =
+                    tags.register_tag(tag_name, FieldRef::ContextField(tag_field), component_path)
+                {
                     errors.push(FrontendError::MultipleTagsWithSameName(
                         tag_name.to_string(),
                     ));
@@ -1251,7 +1254,7 @@ fn make_fold<'schema, 'query, V, E>(
     component_path: &mut ComponentPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
-    fold_group: &FoldGroup,
+    fold_group: &'query FoldGroup,
     fold_eid: Eid,
     edge_name: Arc<str>,
     edge_parameters: Option<Arc<EdgeParameters>>,
@@ -1295,7 +1298,6 @@ where
         ));
     }
 
-    // TODO: properly load fold post-filters
     let mut post_filters = vec![];
     let mut fold_specific_outputs = BTreeMap::new();
 
@@ -1364,8 +1366,21 @@ where
                 }))
             }
         }
-        for tag in &transform_group.tag {
-            unimplemented!("register the tag here");
+        for tag_directive in &transform_group.tag {
+            let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref());
+            if let Some(tag_name) = tag_name {
+                let field = FieldRef::FoldSpecificField(fold_specific_field.clone());
+
+                if let Err(e) = tags.register_tag(tag_name, field, component_path) {
+                    errors.push(FrontendError::MultipleTagsWithSameName(
+                        tag_name.to_string(),
+                    ));
+                }
+            } else {
+                errors.push(FrontendError::ExplicitTagNameRequired(
+                    starting_field.name.as_ref().to_owned(),
+                ))
+            }
         }
     }
 
