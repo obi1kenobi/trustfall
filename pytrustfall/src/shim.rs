@@ -1,21 +1,19 @@
-#![allow(unused_imports)]
-// Due to unfortunate interaction between pyo3 macros and this clippy lint:
-// https://github.com/rust-lang/rust-clippy/issues/8971
-#![allow(clippy::borrow_deref_ref)]
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
-use std::{cell::RefCell, collections::BTreeMap, fs, rc::Rc, sync::Arc};
-
-use pyo3::{
-    exceptions::PyStopIteration, prelude::*, types::PyTuple, wrap_pyfunction, PyIterProtocol,
-};
+use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
-    interpreter::{execution::interpret_ir, Adapter, DataContext, InterpretedQuery},
-    ir::{EdgeParameters, Eid, FieldValue, Vid},
+    interpreter::{
+        basic_adapter::{
+            BasicAdapter, ContextIterator as BaseContextIterator, ContextOutcomeIterator,
+            VertexIterator,
+        },
+        execution::interpret_ir,
+        DataContext,
+    },
+    ir::{EdgeParameters, FieldValue},
 };
-
-use crate::errors::{InvalidSchemaError, QueryArgumentsError};
 
 pub(crate) fn register(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Schema>()?;
@@ -125,8 +123,8 @@ pub struct ResultIterator {
     iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>>,
 }
 
-#[pyproto]
-impl PyIterProtocol for ResultIterator {
+#[pymethods]
+impl ResultIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
@@ -214,7 +212,7 @@ pub struct Context(DataContext<Arc<Py<PyAny>>>);
 #[pymethods]
 impl Context {
     #[getter]
-    fn current_token(&self) -> PyResult<Option<Py<PyAny>>> {
+    fn active_vertex(&self) -> PyResult<Option<Py<PyAny>>> {
         Ok(self.0.current_token.as_ref().map(|arc| (**arc).clone()))
     }
 }
@@ -228,8 +226,8 @@ impl ContextIterator {
     }
 }
 
-#[pyproto]
-impl PyIterProtocol for ContextIterator {
+#[pymethods]
+impl ContextIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
@@ -239,17 +237,14 @@ impl PyIterProtocol for ContextIterator {
     }
 }
 
-#[allow(unused_variables)]
-impl Adapter<'static> for AdapterShim {
-    type DataToken = Arc<Py<PyAny>>;
+impl BasicAdapter<'static> for AdapterShim {
+    type Vertex = Arc<Py<PyAny>>;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken>> {
+        edge_name: &str,
+        parameters: Option<&EdgeParameters>,
+    ) -> VertexIterator<'static, Self::Vertex> {
         Python::with_gil(|py| {
             let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
                 x.0.iter()
@@ -257,35 +252,34 @@ impl Adapter<'static> for AdapterShim {
                     .collect()
             });
 
-            let py_iter = self
+            let py_iterable = self
                 .adapter
                 .call_method(
                     py,
-                    "get_starting_tokens",
-                    (edge.as_ref(), parameter_data),
+                    "resolve_starting_vertices",
+                    (edge_name, parameter_data),
                     None,
                 )
                 .unwrap();
-            Box::new(PythonTokenIterator::new(py_iter))
+            let iter = make_iterator(py, py_iterable).unwrap();
+            Box::new(PythonTokenIterator::new(iter))
         })
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
+        data_contexts: BaseContextIterator<'static, Self::Vertex>,
+        type_name: &str,
+        property_name: &str,
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         let contexts = ContextIterator::new(data_contexts);
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
                 .call_method(
                     py,
-                    "project_property",
-                    (contexts, current_type_name.as_ref(), field_name.as_ref()),
+                    "resolve_property",
+                    (contexts, type_name, property_name),
                     None,
                 )
                 .unwrap();
@@ -295,24 +289,13 @@ impl Adapter<'static> for AdapterShim {
         })
     }
 
-    #[allow(clippy::type_complexity)]
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
-            ),
-        >,
-    > {
+        data_contexts: BaseContextIterator<'static, Self::Vertex>,
+        type_name: &str,
+        edge_name: &str,
+        parameters: Option<&EdgeParameters>,
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(data_contexts);
         Python::with_gil(|py| {
             let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
@@ -325,13 +308,8 @@ impl Adapter<'static> for AdapterShim {
                 .adapter
                 .call_method(
                     py,
-                    "project_neighbors",
-                    (
-                        contexts,
-                        current_type_name.as_ref(),
-                        edge_name.as_ref(),
-                        parameter_data,
-                    ),
+                    "resolve_neighbors",
+                    (contexts, type_name, edge_name, parameter_data),
                     None,
                 )
                 .unwrap();
@@ -341,26 +319,20 @@ impl Adapter<'static> for AdapterShim {
         })
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
+        data_contexts: BaseContextIterator<'static, Self::Vertex>,
+        type_name: &str,
+        coerce_to_type: &str,
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let contexts = ContextIterator::new(data_contexts);
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
                 .call_method(
                     py,
-                    "can_coerce_to_type",
-                    (
-                        contexts,
-                        current_type_name.as_ref(),
-                        coerce_to_type_name.as_ref(),
-                    ),
+                    "resolve_coercion",
+                    (contexts, type_name, coerce_to_type),
                     None,
                 )
                 .unwrap();
@@ -389,7 +361,7 @@ impl Iterator for PythonTokenIterator {
             |py| match self.underlying.call_method(py, "__next__", (), None) {
                 Ok(value) => Some(Arc::new(value)),
                 Err(e) => {
-                    if e.is_instance::<PyStopIteration>(py) {
+                    if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
                         println!("Got error: {:?}", e);
@@ -439,7 +411,7 @@ impl Iterator for PythonProjectPropertyIterator {
                     Some((context.0, value))
                 }
                 Err(e) => {
-                    if e.is_instance::<PyStopIteration>(py) {
+                    if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
                         println!("Got error: {:?}", e);
@@ -492,7 +464,7 @@ impl Iterator for PythonProjectNeighborsIterator {
                     Some((context.0, neighbors))
                 }
                 Err(e) => {
-                    if e.is_instance::<PyStopIteration>(py) {
+                    if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
                         println!("Got error: {:?}", e);
@@ -536,7 +508,7 @@ impl Iterator for PythonCanCoerceToTypeIterator {
                     Some((context.0, can_coerce))
                 }
                 Err(e) => {
-                    if e.is_instance::<PyStopIteration>(py) {
+                    if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
                         println!("Got error: {:?}", e);

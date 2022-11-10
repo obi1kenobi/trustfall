@@ -25,4 +25,7 @@ export type RustdocWorkerResponse =
   | {
       type: 'query-error';
       message: string;
-    };
+    }
+  | {
+      type: 'ready';
+    }

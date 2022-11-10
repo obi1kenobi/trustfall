@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, Mapping, Type
 
 from .adapter import Adapter
-from .pytrustfall import AdapterShim, Schema, interpret_query
+from .trustfall import AdapterShim, Schema, interpret_query
 
 
 def execute_query(

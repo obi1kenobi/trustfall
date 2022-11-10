@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { buildSchema } from 'graphql';
 import { Autocomplete, Box, Grid, TextField, Typography } from '@mui/material';
+import { StringParam, useQueryParam, withDefault } from 'use-query-params';
 
 import { AsyncValue } from '../types';
 import TrustfallPlayground from '../TrustfallPlayground';
@@ -51,6 +52,8 @@ interface CrateOption {
 }
 
 const CRATE_OPTIONS = crateNames.map((name) => ({ label: fmtCrateName(name), value: name }));
+
+const CrateParam = withDefault(StringParam, 'itertools-0.10.3')
 
 interface PlaygroundProps {
   queryWorker: Worker;
@@ -127,14 +130,15 @@ function Playground(props: PlaygroundProps): JSX.Element {
 
 export default function Rustdoc(): JSX.Element {
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
-  const [selectedCrate, setSelectedCrate] = useState<string | null>(null);
+  const [selectedCrate, setSelectedCrate] = useQueryParam('crate', CrateParam);
   const [asyncLoadedCrate, setAsyncLoadedCrate] = useState<AsyncValue<string> | null>(null);
+  const [workerReady, setWorkerReady] = useState(false);
 
   const handleCrateChange = useCallback(
     (_evt: React.SyntheticEvent, option: CrateOption | null) => {
-      setSelectedCrate(option?.value ?? null);
+      setSelectedCrate(option?.value ?? null, 'replaceIn');
     },
-    []
+    [setSelectedCrate]
   );
 
   const handleWorkerMessage = useCallback((evt: MessageEvent<RustdocWorkerResponse>) => {
@@ -146,6 +150,8 @@ export default function Rustdoc(): JSX.Element {
       case 'load-crate-error':
         setAsyncLoadedCrate({ status: 'error', error: msg.message });
         break;
+      case 'ready':
+        setWorkerReady(true);
     }
   }, []);
 
@@ -173,7 +179,7 @@ export default function Rustdoc(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (queryWorker && selectedCrate) {
+    if (queryWorker && workerReady && selectedCrate && selectedCrate != '') {
       setAsyncLoadedCrate({ status: 'pending' });
       queryWorker.postMessage({
         op: 'load-crate',
@@ -182,9 +188,10 @@ export default function Rustdoc(): JSX.Element {
     } else {
       setAsyncLoadedCrate(null);
     }
-  }, [queryWorker, selectedCrate]);
+  }, [queryWorker, selectedCrate, workerReady]);
 
-  useEffect(() => {
+  // Register worker listener before all other effects are run
+  useLayoutEffect(() => {
     if (!queryWorker) return;
 
     queryWorker.addEventListener('message', handleWorkerMessage);
@@ -194,6 +201,7 @@ export default function Rustdoc(): JSX.Element {
   }, [handleWorkerMessage, queryWorker]);
 
   const header = useMemo(() => {
+    const selectedCrateOption = CRATE_OPTIONS.find((option) => option.value === selectedCrate) ?? null;
     return (
       <Box>
         <Typography variant="h4" component="div">
@@ -219,12 +227,13 @@ export default function Rustdoc(): JSX.Element {
               size="small"
               sx={{ mt: 2, width: 250 }}
               onChange={handleCrateChange}
+              value={selectedCrateOption}
             />
           </Box>
         )}
       </Box>
     );
-  }, [queryWorker, handleCrateChange]);
+  }, [selectedCrate, queryWorker, handleCrateChange]);
 
   return (
     <Grid

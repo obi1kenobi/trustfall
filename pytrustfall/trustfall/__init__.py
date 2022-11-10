@@ -1,7 +1,7 @@
-from .adapter import Adapter, DataContext
+from .adapter import Adapter, Context
 from .execution import execute_query
 
-from .pytrustfall import Schema
+from .trustfall import Schema
 
 # Error types:
 # - ParseError, when the provided input doesn't even parse as valid syntax
@@ -12,7 +12,7 @@ from .pytrustfall import Schema
 #   the internal representation could not be converted to its "indexed" (i.e. execution-ready) form.
 # - QueryArgumentsError, if the query by itself is fine but cannot be executed together with
 #   the provided arguments.
-from .pytrustfall import (
+from .trustfall import (
     FrontendError,
     InvalidIRQueryError,
     ParseError,

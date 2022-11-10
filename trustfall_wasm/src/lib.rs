@@ -71,13 +71,13 @@ pub fn execute_query(
     // TODO: add a proper error type
     let args = from_js_args(args)?;
 
-    let query = trustfall_core::frontend::parse(schema, query).map_err(|e| e.to_string())?;
+    let query = trustfall_core::frontend::parse(schema, query).map_err(|e| format!("{e}"))?;
 
     let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
 
     let results_iter =
         trustfall_core::interpreter::execution::interpret_ir(wrapped_adapter, query, args)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("{e}"))?;
 
     Ok(QueryResultIterator::new(results_iter))
 }

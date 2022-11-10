@@ -105,6 +105,9 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
+          folded_contexts: {
+            Eid(1): [],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
           },
@@ -117,6 +120,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Neither(NeitherNumber(0))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
+          },
+          folded_contexts: {
+            Eid(1): [],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
@@ -237,6 +243,9 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
+          folded_contexts: {
+            Eid(1): [],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
           },
@@ -249,6 +258,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Neither(NeitherNumber(1))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(1))),
+          },
+          folded_contexts: {
+            Eid(1): [],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
@@ -369,6 +381,9 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
+          folded_contexts: {
+            Eid(1): [],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
           },
@@ -381,6 +396,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+          folded_contexts: {
+            Eid(1): [],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
@@ -526,6 +544,16 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(2))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(2))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([
               Value(Int64(2)),
@@ -540,6 +568,16 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(3))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(2))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(2))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([
@@ -701,6 +739,16 @@ TestInterpreterOutputTrace(
               2,
             ]))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([
               Value(Int64(3)),
@@ -719,6 +767,16 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([
@@ -847,6 +905,9 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(5))),
           },
+          folded_contexts: {
+            Eid(1): [],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
           },
@@ -859,6 +920,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(5))),
           tokens: {
             Vid(1): Some(Prime(PrimeNumber(5))),
+          },
+          folded_contexts: {
+            Eid(1): [],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([]),
@@ -1025,6 +1089,16 @@ TestInterpreterOutputTrace(
               3,
             ]))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(5))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(5))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "prime"): Vec([
               Value(Int64(5)),
@@ -1045,6 +1119,16 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(5))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(5))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "prime"): Vec([

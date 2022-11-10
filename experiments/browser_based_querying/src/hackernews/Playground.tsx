@@ -18,6 +18,7 @@ import linksInUserAboutSection from '../../example_queries/hackernews/links_in_u
 import searchPlusHnApis from '../../example_queries/hackernews/search_plus_hn_apis.example';
 
 import HN_SCHEMA from './schema.graphql';
+import debug from '../utils/debug';
 
 const BROWSER = detect();
 
@@ -75,7 +76,9 @@ function PlaygroundNonIdealState(props: { children: React.ReactNode }): JSX.Elem
   );
 }
 
-type QueryMessageEvent = MessageEvent<{ done: boolean; value: object }>;
+type QueryMessageEvent = MessageEvent<
+  { status: 'success'; done: boolean; value: object } | { status: 'error'; error: string }
+>;
 
 export default function HackerNewsPlayground(): JSX.Element {
   const [queryWorker, setQueryWorker] = useState<Worker | null>(null);
@@ -148,12 +151,21 @@ export default function HackerNewsPlayground(): JSX.Element {
 
   const handleQueryMessage = useCallback((evt: QueryMessageEvent) => {
     const outcome = evt.data;
-    if (outcome.done) {
+    if (outcome.status === 'error') {
+      debug('received error: ', outcome);
       setHasMore(false);
-      setNextResult({ status: 'ready', value: null });
-    } else {
-      setNextResult({ status: 'ready', value: outcome.value });
-      setHasMore(true);
+      setNextResult({
+        status: 'error',
+        error: `Error:\n${outcome.error}`,
+      });
+    } else if (outcome.status === 'success') {
+      if (outcome.done) {
+        setHasMore(false);
+        setNextResult({ status: 'ready', value: null });
+      } else {
+        setNextResult({ status: 'ready', value: outcome.value });
+        setHasMore(true);
+      }
     }
   }, []);
 
@@ -228,7 +240,7 @@ export default function HackerNewsPlayground(): JSX.Element {
       <PlaygroundNonIdealState>
         <Box>
           <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
-          <Typography variant="h5">Safari is not supported</Typography>
+          <Typography variant="h5">Safari and iOS browsers not supported</Typography>
           <Typography variant="body1">
             <p>
               Due to an{' '}
@@ -242,6 +254,32 @@ export default function HackerNewsPlayground(): JSX.Element {
               in the WebKit engine, this demo does not work in Safari.
             </p>
             <p>Please use a supported browser, such as Firefox or Chrome.</p>
+          </Typography>
+        </Box>
+      </PlaygroundNonIdealState>
+    );
+  }
+
+  if (BROWSER && BROWSER.os === 'iOS') {
+    return (
+      <PlaygroundNonIdealState>
+        <Box>
+          <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
+          <Typography variant="h5">iOS not supported</Typography>
+          <Typography variant="body1">
+            <p>
+              Due to an{' '}
+              <Link
+                href="https://bugs.webkit.org/show_bug.cgi?id=238442"
+                target="_blank"
+                rel="noreferrer"
+              >
+                open issue
+              </Link>{' '}
+              in the WebKit engine, this demo does not work on iOS-based mobile devices or in the
+              Safari desktop browser.
+            </p>
+            <p>Please try this demo on desktop (in Firefox or Chrome) or on an Android device.</p>
           </Typography>
         </Box>
       </PlaygroundNonIdealState>

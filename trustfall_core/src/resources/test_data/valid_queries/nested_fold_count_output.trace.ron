@@ -422,6 +422,32 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(4, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(4, [
+                    2,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "multiplecount"): Value(Uint64(2)),
             (Eid(2), "multiples"): Vec([
@@ -438,6 +464,32 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(2))),
           tokens: {
             Vid(2): Some(Prime(PrimeNumber(2))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(4, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(4, [
+                    2,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "multiplecount"): Value(Uint64(2)),
@@ -461,6 +513,32 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(9, [
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(9, [
+                    3,
+                  ]))),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "multiplecount"): Value(Uint64(2)),
             (Eid(2), "multiples"): Vec([
@@ -477,6 +555,32 @@ TestInterpreterOutputTrace(
           current_token: Some(Prime(PrimeNumber(3))),
           tokens: {
             Vid(2): Some(Prime(PrimeNumber(3))),
+          },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(6, [
+                  2,
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(6, [
+                    2,
+                    3,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(9, [
+                  3,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(9, [
+                    3,
+                  ]))),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(2), "multiplecount"): Value(Uint64(2)),
@@ -516,6 +620,88 @@ TestInterpreterOutputTrace(
               3,
             ]))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(2))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(2))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(6, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(6, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "multiplecount"): Value(Uint64(2)),
+                  (Eid(2), "multiples"): Vec([
+                    Value(Int64(4)),
+                    Value(Int64(6)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(6, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(6, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(9, [
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(9, [
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "multiplecount"): Value(Uint64(2)),
+                  (Eid(2), "multiples"): Vec([
+                    Value(Int64(6)),
+                    Value(Int64(9)),
+                  ]),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(1), "factors"): Vec([
               Value(Int64(2)),
@@ -552,6 +738,88 @@ TestInterpreterOutputTrace(
               2,
               3,
             ]))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(2))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(2))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(6, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(6, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "multiplecount"): Value(Uint64(2)),
+                  (Eid(2), "multiples"): Vec([
+                    Value(Int64(4)),
+                    Value(Int64(6)),
+                  ]),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(6, [
+                        2,
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(6, [
+                          2,
+                          3,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(9, [
+                        3,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(9, [
+                          3,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+                folded_values: {
+                  (Eid(2), "multiplecount"): Value(Uint64(2)),
+                  (Eid(2), "multiples"): Vec([
+                    Value(Int64(6)),
+                    Value(Int64(9)),
+                  ]),
+                },
+              ),
+            ],
           },
           folded_values: {
             (Eid(1), "factors"): Vec([

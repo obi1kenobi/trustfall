@@ -3,7 +3,7 @@ from textwrap import dedent
 from typing import Any, Dict
 import unittest
 
-from ..pytrustfall import (
+from ..trustfall import (
     FrontendError,
     InvalidIRQueryError,
     ParseError,

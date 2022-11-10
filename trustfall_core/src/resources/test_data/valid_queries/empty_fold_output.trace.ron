@@ -85,6 +85,9 @@ TestInterpreterOutputTrace(
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
+          folded_contexts: {
+            Eid(1): [],
+          },
           folded_values: {
             (Eid(1), "mult"): Vec([]),
           },
@@ -97,6 +100,9 @@ TestInterpreterOutputTrace(
           current_token: Some(Neither(NeitherNumber(0))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
+          },
+          folded_contexts: {
+            Eid(1): [],
           },
           folded_values: {
             (Eid(1), "mult"): Vec([]),
