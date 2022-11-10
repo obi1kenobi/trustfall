@@ -376,10 +376,26 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
                     context.imported_tags.insert(cloned_field.clone(), value);
                     context
-                }))
+                }));
             }
-            FieldRef::FoldSpecificField(imported_field) => {
-                todo!()
+            FieldRef::FoldSpecificField(fold_specific_field) => {
+                let cloned_field = imported_field.clone();
+                iterator = Box::new(
+                    compute_fold_specific_field(
+                        fold_specific_field.fold_eid,
+                        &fold_specific_field.kind,
+                        iterator,
+                    )
+                    .map(move |mut ctx| {
+                        ctx.imported_tags.insert(
+                            cloned_field.clone(),
+                            ctx.values
+                                .pop()
+                                .expect("fold-specific field computed and pushed onto the stack"),
+                        );
+                        ctx
+                    }),
+                );
             }
         }
     }
@@ -452,7 +468,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
         post_filtered_iterator = apply_fold_specific_filter(
             adapter_ref,
             query,
-            fold.component.as_ref(),
+            parent_component,
             fold.as_ref(),
             expanding_from.vid,
             post_fold_filter,
@@ -699,8 +715,21 @@ fn apply_filter<
                 compute_context_field(adapter_ref, query, component, context_field, iterator)
             }
         }
-        Some(Argument::Tag(FieldRef::FoldSpecificField(fold_field))) => {
-            compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, iterator)
+        Some(Argument::Tag(field_ref @ FieldRef::FoldSpecificField(fold_field))) => {
+            if component.folds.contains_key(&fold_field.fold_eid) {
+                // This value comes from one of this component's folds:
+                // the @tag is a sibling to the current computation and needs to be materialized.
+                compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, iterator)
+            } else {
+                // This value represents an imported tag value from an outer component.
+                // Grab its value from the context itself.
+                let cloned_ref = field_ref.clone();
+                Box::new(iterator.map(move |mut ctx| {
+                    let right_value = ctx.imported_tags[&cloned_ref].clone();
+                    ctx.values.push(right_value);
+                    ctx
+                }))
+            }
         }
         Some(Argument::Variable(var)) => {
             let right_value = query.arguments[var.variable_name.as_ref()].to_owned();

@@ -20,6 +20,22 @@ Ok(TestParsedGraphQLQuery(
             line: 4,
             column: 9,
           ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
           name: "successor",
           fold: Some(FoldGroup(
             fold: FoldDirective(),
@@ -29,14 +45,14 @@ Ok(TestParsedGraphQLQuery(
               ),
               tag: [
                 TagDirective(
-                  name: Some("successor_count"),
+                  name: Some("tagged_count"),
                 ),
               ],
             )),
           )),
         ), FieldNode(
           position: Pos(
-            line: 4,
+            line: 6,
             column: 9,
           ),
           name: "successor",
@@ -46,43 +62,43 @@ Ok(TestParsedGraphQLQuery(
             ),
             tag: [
               TagDirective(
-                name: Some("successor_count"),
+                name: Some("tagged_count"),
               ),
             ],
           )),
         )),
         (FieldConnection(
           position: Pos(
-            line: 6,
+            line: 8,
             column: 9,
           ),
           name: "predecessor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
         ), FieldNode(
           position: Pos(
-            line: 6,
+            line: 8,
             column: 9,
           ),
           name: "predecessor",
           connections: [
             (FieldConnection(
               position: Pos(
-                line: 7,
+                line: 9,
                 column: 13,
               ),
               name: "value",
             ), FieldNode(
               position: Pos(
-                line: 7,
+                line: 9,
                 column: 13,
               ),
               name: "value",
               filter: [
                 FilterDirective(
-                  operation: Equals((), TagRef("successor_count")),
+                  operation: Equals((), TagRef("tagged_count")),
                 ),
-              ],
-              output: [
-                OutputDirective(),
               ],
             )),
           ],

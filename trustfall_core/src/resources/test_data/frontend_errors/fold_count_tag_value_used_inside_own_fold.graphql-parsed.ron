@@ -29,7 +29,7 @@ Ok(TestParsedGraphQLQuery(
               ),
               tag: [
                 TagDirective(
-                  name: Some("successor_count"),
+                  name: Some("tagged_count"),
                 ),
               ],
             )),
@@ -40,45 +40,22 @@ Ok(TestParsedGraphQLQuery(
             column: 9,
           ),
           name: "successor",
-          transform_group: Some(TransformGroup(
-            transform: TransformDirective(
-              kind: Count,
-            ),
-            tag: [
-              TagDirective(
-                name: Some("successor_count"),
-              ),
-            ],
-          )),
-        )),
-        (FieldConnection(
-          position: Pos(
-            line: 6,
-            column: 9,
-          ),
-          name: "predecessor",
-        ), FieldNode(
-          position: Pos(
-            line: 6,
-            column: 9,
-          ),
-          name: "predecessor",
           connections: [
             (FieldConnection(
               position: Pos(
-                line: 7,
+                line: 5,
                 column: 13,
               ),
               name: "value",
             ), FieldNode(
               position: Pos(
-                line: 7,
+                line: 5,
                 column: 13,
               ),
               name: "value",
               filter: [
                 FilterDirective(
-                  operation: Equals((), TagRef("successor_count")),
+                  operation: Equals((), TagRef("tagged_count")),
                 ),
               ],
               output: [
@@ -86,6 +63,16 @@ Ok(TestParsedGraphQLQuery(
               ],
             )),
           ],
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            tag: [
+              TagDirective(
+                name: Some("tagged_count"),
+              ),
+            ],
+          )),
         )),
       ],
     ),
