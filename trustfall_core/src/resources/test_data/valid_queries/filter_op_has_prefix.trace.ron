@@ -84,50 +84,57 @@ TestInterpreterOutputTrace(
       ),
       Opid(11): TraceOp(
         opid: Opid(11),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "name": String("four"),
+        }),
       ),
       Opid(12): TraceOp(
         opid: Opid(12),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
       Opid(13): TraceOp(
         opid: Opid(13),
-        parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(5)))),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(14): TraceOp(
         opid: Opid(14),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(5)))),
+      ),
+      Opid(15): TraceOp(
+        opid: Opid(15),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(5))),
           tokens: {},
         )),
       ),
-      Opid(15): TraceOp(
-        opid: Opid(15),
+      Opid(16): TraceOp(
+        opid: Opid(16),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(5))),
           tokens: {},
         ), String("five"))),
       ),
-      Opid(16): TraceOp(
-        opid: Opid(16),
+      Opid(17): TraceOp(
+        opid: Opid(17),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(17): TraceOp(
-        opid: Opid(17),
+      Opid(18): TraceOp(
+        opid: Opid(18),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(6, [
           2,
           3,
         ])))),
       ),
-      Opid(18): TraceOp(
-        opid: Opid(18),
+      Opid(19): TraceOp(
+        opid: Opid(19),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(6, [
@@ -137,8 +144,8 @@ TestInterpreterOutputTrace(
           tokens: {},
         )),
       ),
-      Opid(19): TraceOp(
-        opid: Opid(19),
+      Opid(20): TraceOp(
+        opid: Opid(20),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(6, [
@@ -148,46 +155,46 @@ TestInterpreterOutputTrace(
           tokens: {},
         ), String("six"))),
       ),
-      Opid(20): TraceOp(
-        opid: Opid(20),
+      Opid(21): TraceOp(
+        opid: Opid(21),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(21): TraceOp(
-        opid: Opid(21),
+      Opid(22): TraceOp(
+        opid: Opid(22),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(7)))),
       ),
-      Opid(22): TraceOp(
-        opid: Opid(22),
+      Opid(23): TraceOp(
+        opid: Opid(23),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(7))),
           tokens: {},
         )),
       ),
-      Opid(23): TraceOp(
-        opid: Opid(23),
+      Opid(24): TraceOp(
+        opid: Opid(24),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(7))),
           tokens: {},
         ), String("seven"))),
       ),
-      Opid(24): TraceOp(
-        opid: Opid(24),
+      Opid(25): TraceOp(
+        opid: Opid(25),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(25): TraceOp(
-        opid: Opid(25),
+      Opid(26): TraceOp(
+        opid: Opid(26),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(8, [
           2,
         ])))),
       ),
-      Opid(26): TraceOp(
-        opid: Opid(26),
+      Opid(27): TraceOp(
+        opid: Opid(27),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(8, [
@@ -196,8 +203,8 @@ TestInterpreterOutputTrace(
           tokens: {},
         )),
       ),
-      Opid(27): TraceOp(
-        opid: Opid(27),
+      Opid(28): TraceOp(
+        opid: Opid(28),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(8, [
@@ -206,20 +213,20 @@ TestInterpreterOutputTrace(
           tokens: {},
         ), String("eight"))),
       ),
-      Opid(28): TraceOp(
-        opid: Opid(28),
+      Opid(29): TraceOp(
+        opid: Opid(29),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(29): TraceOp(
-        opid: Opid(29),
+      Opid(30): TraceOp(
+        opid: Opid(30),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(9, [
           3,
         ])))),
       ),
-      Opid(30): TraceOp(
-        opid: Opid(30),
+      Opid(31): TraceOp(
+        opid: Opid(31),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -228,8 +235,8 @@ TestInterpreterOutputTrace(
           tokens: {},
         )),
       ),
-      Opid(31): TraceOp(
-        opid: Opid(31),
+      Opid(32): TraceOp(
+        opid: Opid(32),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -238,21 +245,21 @@ TestInterpreterOutputTrace(
           tokens: {},
         ), String("nine"))),
       ),
-      Opid(32): TraceOp(
-        opid: Opid(32),
+      Opid(33): TraceOp(
+        opid: Opid(33),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(33): TraceOp(
-        opid: Opid(33),
+      Opid(34): TraceOp(
+        opid: Opid(34),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(10, [
           2,
           5,
         ])))),
       ),
-      Opid(34): TraceOp(
-        opid: Opid(34),
+      Opid(35): TraceOp(
+        opid: Opid(35),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -262,8 +269,8 @@ TestInterpreterOutputTrace(
           tokens: {},
         )),
       ),
-      Opid(35): TraceOp(
-        opid: Opid(35),
+      Opid(36): TraceOp(
+        opid: Opid(36),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -273,47 +280,47 @@ TestInterpreterOutputTrace(
           tokens: {},
         ), String("ten"))),
       ),
-      Opid(36): TraceOp(
-        opid: Opid(36),
+      Opid(37): TraceOp(
+        opid: Opid(37),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(37): TraceOp(
-        opid: Opid(37),
+      Opid(38): TraceOp(
+        opid: Opid(38),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(11)))),
       ),
-      Opid(38): TraceOp(
-        opid: Opid(38),
+      Opid(39): TraceOp(
+        opid: Opid(39),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(11))),
           tokens: {},
         )),
       ),
-      Opid(39): TraceOp(
-        opid: Opid(39),
+      Opid(40): TraceOp(
+        opid: Opid(40),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(11))),
           tokens: {},
         ), String("eleven"))),
       ),
-      Opid(40): TraceOp(
-        opid: Opid(40),
+      Opid(41): TraceOp(
+        opid: Opid(41),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(41): TraceOp(
-        opid: Opid(41),
+      Opid(42): TraceOp(
+        opid: Opid(42),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(12, [
           2,
           3,
         ])))),
       ),
-      Opid(42): TraceOp(
-        opid: Opid(42),
+      Opid(43): TraceOp(
+        opid: Opid(43),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(12, [
@@ -323,8 +330,8 @@ TestInterpreterOutputTrace(
           tokens: {},
         )),
       ),
-      Opid(43): TraceOp(
-        opid: Opid(43),
+      Opid(44): TraceOp(
+        opid: Opid(44),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(12, [
@@ -334,47 +341,47 @@ TestInterpreterOutputTrace(
           tokens: {},
         ), String("twelve"))),
       ),
-      Opid(44): TraceOp(
-        opid: Opid(44),
+      Opid(45): TraceOp(
+        opid: Opid(45),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(45): TraceOp(
-        opid: Opid(45),
+      Opid(46): TraceOp(
+        opid: Opid(46),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(13)))),
       ),
-      Opid(46): TraceOp(
-        opid: Opid(46),
+      Opid(47): TraceOp(
+        opid: Opid(47),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(13))),
           tokens: {},
         )),
       ),
-      Opid(47): TraceOp(
-        opid: Opid(47),
+      Opid(48): TraceOp(
+        opid: Opid(48),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(13))),
           tokens: {},
         ), String("thirteen"))),
       ),
-      Opid(48): TraceOp(
-        opid: Opid(48),
+      Opid(49): TraceOp(
+        opid: Opid(49),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(49): TraceOp(
-        opid: Opid(49),
+      Opid(50): TraceOp(
+        opid: Opid(50),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(14, [
           2,
           7,
         ])))),
       ),
-      Opid(50): TraceOp(
-        opid: Opid(50),
+      Opid(51): TraceOp(
+        opid: Opid(51),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(14, [
@@ -384,8 +391,8 @@ TestInterpreterOutputTrace(
           tokens: {},
         )),
       ),
-      Opid(51): TraceOp(
-        opid: Opid(51),
+      Opid(52): TraceOp(
+        opid: Opid(52),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(14, [
@@ -394,26 +401,26 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
         ), String("fourteen"))),
-      ),
-      Opid(52): TraceOp(
-        opid: Opid(52),
-        parent_opid: Some(Opid(3)),
-        content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(14, [
-            2,
-            7,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(14, [
-              2,
-              7,
-            ]))),
-          },
-        )),
       ),
       Opid(53): TraceOp(
         opid: Opid(53),
         parent_opid: Some(Opid(3)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(14, [
+            2,
+            7,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(14, [
+              2,
+              7,
+            ]))),
+          },
+        )),
+      ),
+      Opid(54): TraceOp(
+        opid: Opid(54),
+        parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(14, [
             2,
@@ -427,38 +434,45 @@ TestInterpreterOutputTrace(
           },
         ), String("fourteen"))),
       ),
-      Opid(54): TraceOp(
-        opid: Opid(54),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
-      ),
       Opid(55): TraceOp(
         opid: Opid(55),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "name": String("fourteen"),
+        }),
       ),
       Opid(56): TraceOp(
         opid: Opid(56),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
       ),
       Opid(57): TraceOp(
         opid: Opid(57),
         parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        content: AdvanceInputIterator,
       ),
       Opid(58): TraceOp(
         opid: Opid(58),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(1)),
         content: OutputIteratorExhausted,
       ),
       Opid(59): TraceOp(
         opid: Opid(59),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(2)),
         content: InputIteratorExhausted,
       ),
       Opid(60): TraceOp(
         opid: Opid(60),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(61): TraceOp(
+        opid: Opid(61),
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(62): TraceOp(
+        opid: Opid(62),
         parent_opid: Some(Opid(3)),
         content: OutputIteratorExhausted,
       ),

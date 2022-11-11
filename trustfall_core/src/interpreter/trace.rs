@@ -87,6 +87,8 @@ where
 
     InputIteratorExhausted,
     OutputIteratorExhausted,
+
+    ProduceQueryResult(BTreeMap<Arc<str>, FieldValue>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -203,6 +205,27 @@ where
         drop(trace_ref);
         self.tracer.replace(new_trace)
     }
+}
+
+#[allow(dead_code)]
+pub(crate) fn tap_results<'token, DataToken, AdapterT>(
+    adapter_tap: Rc<RefCell<AdapterTap<'token, DataToken, AdapterT>>>,
+    result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'token,
+) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'token
+where
+    AdapterT: Adapter<'token, DataToken = DataToken> + 'token,
+    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'token,
+    for<'de2> DataToken: Deserialize<'de2>,
+{
+    result_iter.map(move |result| {
+        let adapter_ref = adapter_tap.borrow_mut();
+        adapter_ref
+            .tracer
+            .borrow_mut()
+            .record(TraceOpContent::ProduceQueryResult(result.clone()), None);
+
+        result
+    })
 }
 
 impl<'token, DataToken, AdapterT> Adapter<'token> for AdapterTap<'token, DataToken, AdapterT>

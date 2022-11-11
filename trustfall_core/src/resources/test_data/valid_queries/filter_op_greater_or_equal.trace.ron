@@ -282,28 +282,36 @@ TestInterpreterOutputTrace(
       ),
       Opid(28): TraceOp(
         opid: Opid(28),
-        parent_opid: Some(Opid(5)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "mult": Int64(24),
+          "value": Int64(8),
+        }),
       ),
       Opid(29): TraceOp(
         opid: Opid(29),
-        parent_opid: Some(Opid(4)),
+        parent_opid: Some(Opid(5)),
         content: AdvanceInputIterator,
       ),
       Opid(30): TraceOp(
         opid: Opid(30),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(4)),
         content: AdvanceInputIterator,
       ),
       Opid(31): TraceOp(
         opid: Opid(31),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(32): TraceOp(
+        opid: Opid(32),
         parent_opid: Some(Opid(12)),
         content: YieldFrom(ProjectNeighborsInner(3, Composite(CompositeNumber(32, [
           2,
         ])))),
       ),
-      Opid(32): TraceOp(
-        opid: Opid(32),
+      Opid(33): TraceOp(
+        opid: Opid(33),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(32, [
@@ -316,8 +324,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(33): TraceOp(
-        opid: Opid(33),
+      Opid(34): TraceOp(
+        opid: Opid(34),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(32, [
@@ -329,27 +337,27 @@ TestInterpreterOutputTrace(
             ]))),
           },
         ), Int64(32))),
-      ),
-      Opid(34): TraceOp(
-        opid: Opid(34),
-        parent_opid: Some(Opid(4)),
-        content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(32, [
-            2,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(8, [
-              2,
-            ]))),
-            Vid(2): Some(Composite(CompositeNumber(32, [
-              2,
-            ]))),
-          },
-        )),
       ),
       Opid(35): TraceOp(
         opid: Opid(35),
         parent_opid: Some(Opid(4)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(32, [
+            2,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(8, [
+              2,
+            ]))),
+            Vid(2): Some(Composite(CompositeNumber(32, [
+              2,
+            ]))),
+          },
+        )),
+      ),
+      Opid(36): TraceOp(
+        opid: Opid(36),
+        parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(32, [
             2,
@@ -364,8 +372,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(32))),
       ),
-      Opid(36): TraceOp(
-        opid: Opid(36),
+      Opid(37): TraceOp(
+        opid: Opid(37),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(8, [
@@ -384,8 +392,8 @@ TestInterpreterOutputTrace(
           ],
         )),
       ),
-      Opid(37): TraceOp(
-        opid: Opid(37),
+      Opid(38): TraceOp(
+        opid: Opid(38),
         parent_opid: Some(Opid(5)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(8, [
@@ -404,40 +412,48 @@ TestInterpreterOutputTrace(
           ],
         ), Int64(8))),
       ),
-      Opid(38): TraceOp(
-        opid: Opid(38),
-        parent_opid: Some(Opid(5)),
-        content: AdvanceInputIterator,
-      ),
       Opid(39): TraceOp(
         opid: Opid(39),
-        parent_opid: Some(Opid(4)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "mult": Int64(32),
+          "value": Int64(8),
+        }),
       ),
       Opid(40): TraceOp(
         opid: Opid(40),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(5)),
         content: AdvanceInputIterator,
       ),
       Opid(41): TraceOp(
         opid: Opid(41),
-        parent_opid: Some(Opid(12)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
       ),
       Opid(42): TraceOp(
         opid: Opid(42),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
       Opid(43): TraceOp(
         opid: Opid(43),
+        parent_opid: Some(Opid(12)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(44): TraceOp(
+        opid: Opid(44),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(45): TraceOp(
+        opid: Opid(45),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(9, [
           3,
         ])))),
       ),
-      Opid(44): TraceOp(
-        opid: Opid(44),
+      Opid(46): TraceOp(
+        opid: Opid(46),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -450,8 +466,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(45): TraceOp(
-        opid: Opid(45),
+      Opid(47): TraceOp(
+        opid: Opid(47),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -464,15 +480,15 @@ TestInterpreterOutputTrace(
           },
         ))),
       ),
-      Opid(46): TraceOp(
-        opid: Opid(46),
-        parent_opid: Some(Opid(45)),
+      Opid(48): TraceOp(
+        opid: Opid(48),
+        parent_opid: Some(Opid(47)),
         content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(9, [
           3,
         ])))),
       ),
-      Opid(47): TraceOp(
-        opid: Opid(47),
+      Opid(49): TraceOp(
+        opid: Opid(49),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -485,8 +501,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(48): TraceOp(
-        opid: Opid(48),
+      Opid(50): TraceOp(
+        opid: Opid(50),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -499,21 +515,21 @@ TestInterpreterOutputTrace(
           },
         ), Int64(9))),
       ),
-      Opid(49): TraceOp(
-        opid: Opid(49),
+      Opid(51): TraceOp(
+        opid: Opid(51),
         parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
-      Opid(50): TraceOp(
-        opid: Opid(50),
-        parent_opid: Some(Opid(45)),
+      Opid(52): TraceOp(
+        opid: Opid(52),
+        parent_opid: Some(Opid(47)),
         content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(18, [
           2,
           3,
         ])))),
       ),
-      Opid(51): TraceOp(
-        opid: Opid(51),
+      Opid(53): TraceOp(
+        opid: Opid(53),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(18, [
@@ -527,8 +543,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(52): TraceOp(
-        opid: Opid(52),
+      Opid(54): TraceOp(
+        opid: Opid(54),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(18, [
@@ -542,58 +558,27 @@ TestInterpreterOutputTrace(
           },
         ), Int64(18))),
       ),
-      Opid(53): TraceOp(
-        opid: Opid(53),
+      Opid(55): TraceOp(
+        opid: Opid(55),
         parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
-      Opid(54): TraceOp(
-        opid: Opid(54),
-        parent_opid: Some(Opid(45)),
+      Opid(56): TraceOp(
+        opid: Opid(56),
+        parent_opid: Some(Opid(47)),
         content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(27, [
           3,
         ])))),
       ),
-      Opid(55): TraceOp(
-        opid: Opid(55),
-        parent_opid: Some(Opid(3)),
-        content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(27, [
-            3,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(9, [
-              3,
-            ]))),
-          },
-        )),
-      ),
-      Opid(56): TraceOp(
-        opid: Opid(56),
-        parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(27, [
-            3,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(9, [
-              3,
-            ]))),
-          },
-        ), Int64(27))),
-      ),
       Opid(57): TraceOp(
         opid: Opid(57),
-        parent_opid: Some(Opid(4)),
+        parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(27, [
             3,
           ]))),
           tokens: {
             Vid(1): Some(Composite(CompositeNumber(9, [
-              3,
-            ]))),
-            Vid(2): Some(Composite(CompositeNumber(27, [
               3,
             ]))),
           },
@@ -601,6 +586,37 @@ TestInterpreterOutputTrace(
       ),
       Opid(58): TraceOp(
         opid: Opid(58),
+        parent_opid: Some(Opid(3)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(27, [
+            3,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(9, [
+              3,
+            ]))),
+          },
+        ), Int64(27))),
+      ),
+      Opid(59): TraceOp(
+        opid: Opid(59),
+        parent_opid: Some(Opid(4)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(27, [
+            3,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(9, [
+              3,
+            ]))),
+            Vid(2): Some(Composite(CompositeNumber(27, [
+              3,
+            ]))),
+          },
+        )),
+      ),
+      Opid(60): TraceOp(
+        opid: Opid(60),
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(27, [
@@ -616,8 +632,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(27))),
       ),
-      Opid(59): TraceOp(
-        opid: Opid(59),
+      Opid(61): TraceOp(
+        opid: Opid(61),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -636,8 +652,8 @@ TestInterpreterOutputTrace(
           ],
         )),
       ),
-      Opid(60): TraceOp(
-        opid: Opid(60),
+      Opid(62): TraceOp(
+        opid: Opid(62),
         parent_opid: Some(Opid(5)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -656,82 +672,41 @@ TestInterpreterOutputTrace(
           ],
         ), Int64(9))),
       ),
-      Opid(61): TraceOp(
-        opid: Opid(61),
-        parent_opid: Some(Opid(5)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(62): TraceOp(
-        opid: Opid(62),
-        parent_opid: Some(Opid(4)),
-        content: AdvanceInputIterator,
-      ),
       Opid(63): TraceOp(
         opid: Opid(63),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "mult": Int64(27),
+          "value": Int64(9),
+        }),
       ),
       Opid(64): TraceOp(
         opid: Opid(64),
-        parent_opid: Some(Opid(45)),
+        parent_opid: Some(Opid(5)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(65): TraceOp(
+        opid: Opid(65),
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(66): TraceOp(
+        opid: Opid(66),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(67): TraceOp(
+        opid: Opid(67),
+        parent_opid: Some(Opid(47)),
         content: YieldFrom(ProjectNeighborsInner(3, Composite(CompositeNumber(36, [
           2,
           3,
         ])))),
       ),
-      Opid(65): TraceOp(
-        opid: Opid(65),
-        parent_opid: Some(Opid(3)),
-        content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(36, [
-            2,
-            3,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(9, [
-              3,
-            ]))),
-          },
-        )),
-      ),
-      Opid(66): TraceOp(
-        opid: Opid(66),
-        parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(36, [
-            2,
-            3,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(9, [
-              3,
-            ]))),
-          },
-        ), Int64(36))),
-      ),
-      Opid(67): TraceOp(
-        opid: Opid(67),
-        parent_opid: Some(Opid(4)),
-        content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(36, [
-            2,
-            3,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(9, [
-              3,
-            ]))),
-            Vid(2): Some(Composite(CompositeNumber(36, [
-              2,
-              3,
-            ]))),
-          },
-        )),
-      ),
       Opid(68): TraceOp(
         opid: Opid(68),
-        parent_opid: Some(Opid(4)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        parent_opid: Some(Opid(3)),
+        content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(36, [
             2,
             3,
@@ -740,15 +715,64 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
-            Vid(2): Some(Composite(CompositeNumber(36, [
-              2,
-              3,
-            ]))),
           },
-        ), Int64(36))),
+        )),
       ),
       Opid(69): TraceOp(
         opid: Opid(69),
+        parent_opid: Some(Opid(3)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(36, [
+            2,
+            3,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(9, [
+              3,
+            ]))),
+          },
+        ), Int64(36))),
+      ),
+      Opid(70): TraceOp(
+        opid: Opid(70),
+        parent_opid: Some(Opid(4)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(36, [
+            2,
+            3,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(9, [
+              3,
+            ]))),
+            Vid(2): Some(Composite(CompositeNumber(36, [
+              2,
+              3,
+            ]))),
+          },
+        )),
+      ),
+      Opid(71): TraceOp(
+        opid: Opid(71),
+        parent_opid: Some(Opid(4)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(36, [
+            2,
+            3,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(9, [
+              3,
+            ]))),
+            Vid(2): Some(Composite(CompositeNumber(36, [
+              2,
+              3,
+            ]))),
+          },
+        ), Int64(36))),
+      ),
+      Opid(72): TraceOp(
+        opid: Opid(72),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -768,8 +792,8 @@ TestInterpreterOutputTrace(
           ],
         )),
       ),
-      Opid(70): TraceOp(
-        opid: Opid(70),
+      Opid(73): TraceOp(
+        opid: Opid(73),
         parent_opid: Some(Opid(5)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(9, [
@@ -789,41 +813,49 @@ TestInterpreterOutputTrace(
           ],
         ), Int64(9))),
       ),
-      Opid(71): TraceOp(
-        opid: Opid(71),
-        parent_opid: Some(Opid(5)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(72): TraceOp(
-        opid: Opid(72),
-        parent_opid: Some(Opid(4)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(73): TraceOp(
-        opid: Opid(73),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
-      ),
       Opid(74): TraceOp(
         opid: Opid(74),
-        parent_opid: Some(Opid(45)),
-        content: OutputIteratorExhausted,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "mult": Int64(36),
+          "value": Int64(9),
+        }),
       ),
       Opid(75): TraceOp(
         opid: Opid(75),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(5)),
         content: AdvanceInputIterator,
       ),
       Opid(76): TraceOp(
         opid: Opid(76),
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(77): TraceOp(
+        opid: Opid(77),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(78): TraceOp(
+        opid: Opid(78),
+        parent_opid: Some(Opid(47)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(79): TraceOp(
+        opid: Opid(79),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(80): TraceOp(
+        opid: Opid(80),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(10, [
           2,
           5,
         ])))),
       ),
-      Opid(77): TraceOp(
-        opid: Opid(77),
+      Opid(81): TraceOp(
+        opid: Opid(81),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -838,8 +870,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(78): TraceOp(
-        opid: Opid(78),
+      Opid(82): TraceOp(
+        opid: Opid(82),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -854,55 +886,10 @@ TestInterpreterOutputTrace(
           },
         ))),
       ),
-      Opid(79): TraceOp(
-        opid: Opid(79),
-        parent_opid: Some(Opid(78)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(10, [
-          2,
-          5,
-        ])))),
-      ),
-      Opid(80): TraceOp(
-        opid: Opid(80),
-        parent_opid: Some(Opid(3)),
-        content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(10, [
-            2,
-            5,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
-              2,
-              5,
-            ]))),
-          },
-        )),
-      ),
-      Opid(81): TraceOp(
-        opid: Opid(81),
-        parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(10, [
-            2,
-            5,
-          ]))),
-          tokens: {
-            Vid(1): Some(Composite(CompositeNumber(10, [
-              2,
-              5,
-            ]))),
-          },
-        ), Int64(10))),
-      ),
-      Opid(82): TraceOp(
-        opid: Opid(82),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
-      ),
       Opid(83): TraceOp(
         opid: Opid(83),
-        parent_opid: Some(Opid(78)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(20, [
+        parent_opid: Some(Opid(82)),
+        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(10, [
           2,
           5,
         ])))),
@@ -911,7 +898,7 @@ TestInterpreterOutputTrace(
         opid: Opid(84),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(20, [
+          current_token: Some(Composite(CompositeNumber(10, [
             2,
             5,
           ]))),
@@ -927,7 +914,7 @@ TestInterpreterOutputTrace(
         opid: Opid(85),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(20, [
+          current_token: Some(Composite(CompositeNumber(10, [
             2,
             5,
           ]))),
@@ -937,7 +924,7 @@ TestInterpreterOutputTrace(
               5,
             ]))),
           },
-        ), Int64(20))),
+        ), Int64(10))),
       ),
       Opid(86): TraceOp(
         opid: Opid(86),
@@ -946,10 +933,9 @@ TestInterpreterOutputTrace(
       ),
       Opid(87): TraceOp(
         opid: Opid(87),
-        parent_opid: Some(Opid(78)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(30, [
+        parent_opid: Some(Opid(82)),
+        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(20, [
           2,
-          3,
           5,
         ])))),
       ),
@@ -957,9 +943,8 @@ TestInterpreterOutputTrace(
         opid: Opid(88),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Composite(CompositeNumber(30, [
+          current_token: Some(Composite(CompositeNumber(20, [
             2,
-            3,
             5,
           ]))),
           tokens: {
@@ -974,6 +959,53 @@ TestInterpreterOutputTrace(
         opid: Opid(89),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(20, [
+            2,
+            5,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(10, [
+              2,
+              5,
+            ]))),
+          },
+        ), Int64(20))),
+      ),
+      Opid(90): TraceOp(
+        opid: Opid(90),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(91): TraceOp(
+        opid: Opid(91),
+        parent_opid: Some(Opid(82)),
+        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(30, [
+          2,
+          3,
+          5,
+        ])))),
+      ),
+      Opid(92): TraceOp(
+        opid: Opid(92),
+        parent_opid: Some(Opid(3)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Composite(CompositeNumber(30, [
+            2,
+            3,
+            5,
+          ]))),
+          tokens: {
+            Vid(1): Some(Composite(CompositeNumber(10, [
+              2,
+              5,
+            ]))),
+          },
+        )),
+      ),
+      Opid(93): TraceOp(
+        opid: Opid(93),
+        parent_opid: Some(Opid(3)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(30, [
             2,
             3,
@@ -987,8 +1019,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(30))),
       ),
-      Opid(90): TraceOp(
-        opid: Opid(90),
+      Opid(94): TraceOp(
+        opid: Opid(94),
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(30, [
@@ -1009,8 +1041,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(91): TraceOp(
-        opid: Opid(91),
+      Opid(95): TraceOp(
+        opid: Opid(95),
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(30, [
@@ -1031,8 +1063,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(30))),
       ),
-      Opid(92): TraceOp(
-        opid: Opid(92),
+      Opid(96): TraceOp(
+        opid: Opid(96),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -1055,8 +1087,8 @@ TestInterpreterOutputTrace(
           ],
         )),
       ),
-      Opid(93): TraceOp(
-        opid: Opid(93),
+      Opid(97): TraceOp(
+        opid: Opid(97),
         parent_opid: Some(Opid(5)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -1079,31 +1111,39 @@ TestInterpreterOutputTrace(
           ],
         ), Int64(10))),
       ),
-      Opid(94): TraceOp(
-        opid: Opid(94),
+      Opid(98): TraceOp(
+        opid: Opid(98),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "mult": Int64(30),
+          "value": Int64(10),
+        }),
+      ),
+      Opid(99): TraceOp(
+        opid: Opid(99),
         parent_opid: Some(Opid(5)),
         content: AdvanceInputIterator,
       ),
-      Opid(95): TraceOp(
-        opid: Opid(95),
+      Opid(100): TraceOp(
+        opid: Opid(100),
         parent_opid: Some(Opid(4)),
         content: AdvanceInputIterator,
       ),
-      Opid(96): TraceOp(
-        opid: Opid(96),
+      Opid(101): TraceOp(
+        opid: Opid(101),
         parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
-      Opid(97): TraceOp(
-        opid: Opid(97),
-        parent_opid: Some(Opid(78)),
+      Opid(102): TraceOp(
+        opid: Opid(102),
+        parent_opid: Some(Opid(82)),
         content: YieldFrom(ProjectNeighborsInner(3, Composite(CompositeNumber(40, [
           2,
           5,
         ])))),
       ),
-      Opid(98): TraceOp(
-        opid: Opid(98),
+      Opid(103): TraceOp(
+        opid: Opid(103),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(40, [
@@ -1118,8 +1158,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(99): TraceOp(
-        opid: Opid(99),
+      Opid(104): TraceOp(
+        opid: Opid(104),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(40, [
@@ -1134,8 +1174,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(40))),
       ),
-      Opid(100): TraceOp(
-        opid: Opid(100),
+      Opid(105): TraceOp(
+        opid: Opid(105),
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(40, [
@@ -1154,8 +1194,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(101): TraceOp(
-        opid: Opid(101),
+      Opid(106): TraceOp(
+        opid: Opid(106),
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(40, [
@@ -1174,8 +1214,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(40))),
       ),
-      Opid(102): TraceOp(
-        opid: Opid(102),
+      Opid(107): TraceOp(
+        opid: Opid(107),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -1197,8 +1237,8 @@ TestInterpreterOutputTrace(
           ],
         )),
       ),
-      Opid(103): TraceOp(
-        opid: Opid(103),
+      Opid(108): TraceOp(
+        opid: Opid(108),
         parent_opid: Some(Opid(5)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Composite(CompositeNumber(10, [
@@ -1220,73 +1260,81 @@ TestInterpreterOutputTrace(
           ],
         ), Int64(10))),
       ),
-      Opid(104): TraceOp(
-        opid: Opid(104),
-        parent_opid: Some(Opid(5)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(105): TraceOp(
-        opid: Opid(105),
-        parent_opid: Some(Opid(4)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(106): TraceOp(
-        opid: Opid(106),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(107): TraceOp(
-        opid: Opid(107),
-        parent_opid: Some(Opid(78)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(108): TraceOp(
-        opid: Opid(108),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
-      ),
       Opid(109): TraceOp(
         opid: Opid(109),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "mult": Int64(40),
+          "value": Int64(10),
+        }),
       ),
       Opid(110): TraceOp(
         opid: Opid(110),
-        parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(5)),
+        content: AdvanceInputIterator,
       ),
       Opid(111): TraceOp(
         opid: Opid(111),
-        parent_opid: Some(Opid(2)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
       ),
       Opid(112): TraceOp(
         opid: Opid(112),
         parent_opid: Some(Opid(3)),
-        content: InputIteratorExhausted,
+        content: AdvanceInputIterator,
       ),
       Opid(113): TraceOp(
         opid: Opid(113),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(82)),
         content: OutputIteratorExhausted,
       ),
       Opid(114): TraceOp(
         opid: Opid(114),
-        parent_opid: Some(Opid(4)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(115): TraceOp(
         opid: Opid(115),
-        parent_opid: Some(Opid(4)),
+        parent_opid: Some(Opid(1)),
         content: OutputIteratorExhausted,
       ),
       Opid(116): TraceOp(
         opid: Opid(116),
-        parent_opid: Some(Opid(5)),
+        parent_opid: Some(Opid(2)),
         content: InputIteratorExhausted,
       ),
       Opid(117): TraceOp(
         opid: Opid(117),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(118): TraceOp(
+        opid: Opid(118),
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(119): TraceOp(
+        opid: Opid(119),
+        parent_opid: Some(Opid(3)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(120): TraceOp(
+        opid: Opid(120),
+        parent_opid: Some(Opid(4)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(121): TraceOp(
+        opid: Opid(121),
+        parent_opid: Some(Opid(4)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(122): TraceOp(
+        opid: Opid(122),
+        parent_opid: Some(Opid(5)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(123): TraceOp(
+        opid: Opid(123),
         parent_opid: Some(Opid(5)),
         content: OutputIteratorExhausted,
       ),

@@ -44,16 +44,23 @@ TestInterpreterOutputTrace(
       ),
       Opid(7): TraceOp(
         opid: Opid(7),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "number_name": String("zero"),
+        }),
       ),
       Opid(8): TraceOp(
         opid: Opid(8),
-        parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Neither(NeitherNumber(1)))),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(9): TraceOp(
         opid: Opid(9),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(GetStartingTokens(Neither(NeitherNumber(1)))),
+      ),
+      Opid(10): TraceOp(
+        opid: Opid(10),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
@@ -62,8 +69,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(10): TraceOp(
-        opid: Opid(10),
+      Opid(11): TraceOp(
+        opid: Opid(11),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(1))),
@@ -72,18 +79,25 @@ TestInterpreterOutputTrace(
           },
         ), String("one"))),
       ),
-      Opid(11): TraceOp(
-        opid: Opid(11),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
-      ),
       Opid(12): TraceOp(
         opid: Opid(12),
-        parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(2)))),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "number_name": String("one"),
+        }),
       ),
       Opid(13): TraceOp(
         opid: Opid(13),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(14): TraceOp(
+        opid: Opid(14),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(2)))),
+      ),
+      Opid(15): TraceOp(
+        opid: Opid(15),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
@@ -92,8 +106,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(14): TraceOp(
-        opid: Opid(14),
+      Opid(16): TraceOp(
+        opid: Opid(16),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(2))),
@@ -102,18 +116,25 @@ TestInterpreterOutputTrace(
           },
         ), String("two"))),
       ),
-      Opid(15): TraceOp(
-        opid: Opid(15),
+      Opid(17): TraceOp(
+        opid: Opid(17),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "number_name": String("two"),
+        }),
+      ),
+      Opid(18): TraceOp(
+        opid: Opid(18),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(16): TraceOp(
-        opid: Opid(16),
+      Opid(19): TraceOp(
+        opid: Opid(19),
         parent_opid: Some(Opid(1)),
         content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(3)))),
       ),
-      Opid(17): TraceOp(
-        opid: Opid(17),
+      Opid(20): TraceOp(
+        opid: Opid(20),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
@@ -122,8 +143,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(18): TraceOp(
-        opid: Opid(18),
+      Opid(21): TraceOp(
+        opid: Opid(21),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Prime(PrimeNumber(3))),
@@ -132,23 +153,30 @@ TestInterpreterOutputTrace(
           },
         ), String("three"))),
       ),
-      Opid(19): TraceOp(
-        opid: Opid(19),
+      Opid(22): TraceOp(
+        opid: Opid(22),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "number_name": String("three"),
+        }),
+      ),
+      Opid(23): TraceOp(
+        opid: Opid(23),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(20): TraceOp(
-        opid: Opid(20),
+      Opid(24): TraceOp(
+        opid: Opid(24),
         parent_opid: Some(Opid(1)),
         content: OutputIteratorExhausted,
       ),
-      Opid(21): TraceOp(
-        opid: Opid(21),
+      Opid(25): TraceOp(
+        opid: Opid(25),
         parent_opid: Some(Opid(2)),
         content: InputIteratorExhausted,
       ),
-      Opid(22): TraceOp(
-        opid: Opid(22),
+      Opid(26): TraceOp(
+        opid: Opid(26),
         parent_opid: Some(Opid(2)),
         content: OutputIteratorExhausted,
       ),
