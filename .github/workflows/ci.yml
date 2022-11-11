@@ -298,6 +298,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install rust  # necessary for `npm run build:wasm` later
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
       - uses: actions/setup-node@v3
         with:
           node-version: 16
