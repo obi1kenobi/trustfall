@@ -32,7 +32,7 @@ use crate::{
     graphql_query::query::parse_document,
     interpreter::{
         execution,
-        trace::{AdapterTap, Trace},
+        trace::{tap_results, AdapterTap, Trace},
         Adapter,
     },
     nullables_interpreter::NullablesAdapter,
@@ -138,7 +138,7 @@ where
     let execution_result = execution::interpret_ir(adapter_tap.clone(), query, arguments);
     match execution_result {
         Ok(results_iter) => {
-            let results = results_iter.collect_vec();
+            let results = tap_results(adapter_tap.clone(), results_iter).collect_vec();
 
             let empty_tap = AdapterTap::new(cloned_adapter, tracer);
             let trace = adapter_tap.replace(empty_tap).finish();
