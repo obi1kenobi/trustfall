@@ -58,7 +58,10 @@ where
             self.parent_opid,
             trace_op
                 .parent_opid
-                .expect("Expected an operation with a parent_opid.")
+                .expect("Expected an operation with a parent_opid."),
+            "Expected parent_opid {:?} did not match operation {:#?}",
+            self.parent_opid,
+            trace_op,
         );
 
         match &trace_op.content {
@@ -97,6 +100,9 @@ where
                 input_op
                     .parent_opid
                     .expect("Expected an operation with a parent_opid."),
+                "Expected parent_opid {:?} did not match operation {:#?}",
+                self.parent_opid,
+                input_op,
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
@@ -109,6 +115,9 @@ where
                     input_op
                         .parent_opid
                         .expect("Expected an operation with a parent_opid."),
+                    "Expected parent_opid {:?} did not match operation {:#?}",
+                    self.parent_opid,
+                    input_op,
                 );
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
@@ -170,6 +179,9 @@ where
                 input_op
                     .parent_opid
                     .expect("Expected an operation with a parent_opid."),
+                "Expected parent_opid {:?} did not match operation {:#?}",
+                self.parent_opid,
+                input_op,
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
@@ -182,6 +194,9 @@ where
                     input_op
                         .parent_opid
                         .expect("Expected an operation with a parent_opid."),
+                    "Expected parent_opid {:?} did not match operation {:#?}",
+                    self.parent_opid,
+                    input_op,
                 );
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
@@ -247,6 +262,9 @@ where
                 input_op
                     .parent_opid
                     .expect("Expected an operation with a parent_opid."),
+                "Expected parent_opid {:?} did not match operation {:#?}",
+                self.parent_opid,
+                input_op,
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
@@ -259,6 +277,9 @@ where
                     input_op
                         .parent_opid
                         .expect("Expected an operation with a parent_opid."),
+                    "Expected parent_opid {:?} did not match operation {:#?}",
+                    self.parent_opid,
+                    input_op,
                 );
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
@@ -325,7 +346,10 @@ where
             self.parent_iterator_opid,
             trace_op
                 .parent_opid
-                .expect("Expected an operation with a parent_opid.")
+                .expect("Expected an operation with a parent_opid."),
+            "Expected parent_opid {:?} did not match operation {:#?}",
+            self.parent_iterator_opid,
+            trace_op,
         );
 
         match &trace_op.content {
