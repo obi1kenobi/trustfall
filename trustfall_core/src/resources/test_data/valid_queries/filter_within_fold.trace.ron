@@ -258,21 +258,31 @@ TestInterpreterOutputTrace(
       ),
       Opid(34): TraceOp(
         opid: Opid(34),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "name": List([
+            String("six"),
+            String("eight"),
+          ]),
+        }),
       ),
       Opid(35): TraceOp(
         opid: Opid(35),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(36): TraceOp(
         opid: Opid(36),
-        parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
       ),
       Opid(37): TraceOp(
         opid: Opid(37),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(38): TraceOp(
+        opid: Opid(38),
         parent_opid: Some(Opid(2)),
         content: OutputIteratorExhausted,
       ),
