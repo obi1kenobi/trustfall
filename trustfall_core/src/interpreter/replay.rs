@@ -39,6 +39,7 @@ where
     DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> DataToken: Deserialize<'de2>,
 {
+    exhausted: bool,
     parent_opid: Opid,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
 }
@@ -52,6 +53,8 @@ where
     type Item = DataToken;
 
     fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
+
         let (_, trace_op) = advance_ref_iter(self.inner.as_ref())
             .expect("Expected to have an item but found none.");
         assert_eq!(
@@ -65,7 +68,10 @@ where
         );
 
         match &trace_op.content {
-            TraceOpContent::OutputIteratorExhausted => None,
+            TraceOpContent::OutputIteratorExhausted => {
+                self.exhausted = true;
+                None
+            }
             TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(token)) => Some(token.clone()),
             _ => unreachable!(),
         }
@@ -77,6 +83,7 @@ where
     DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> DataToken: Deserialize<'de2>,
 {
+    exhausted: bool,
     parent_opid: Opid,
     data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'trace>,
     input_batch: VecDeque<DataContext<DataToken>>,
@@ -92,6 +99,7 @@ where
     type Item = (DataContext<DataToken>, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
         let next_op = loop {
             let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                 .expect("Expected to have an item but found none.");
@@ -142,6 +150,7 @@ where
             }
             TraceOpContent::OutputIteratorExhausted => {
                 assert_eq!(None, self.input_batch.pop_front());
+                self.exhausted = true;
                 None
             }
             _ => unreachable!(),
@@ -155,6 +164,7 @@ where
     for<'de2> DataToken: Deserialize<'de2>,
     'trace: 'query,
 {
+    exhausted: bool,
     parent_opid: Opid,
     data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
     input_batch: VecDeque<DataContext<DataToken>>,
@@ -171,6 +181,7 @@ where
     type Item = (DataContext<DataToken>, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
         let next_op = loop {
             let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                 .expect("Expected to have an item but found none.");
@@ -222,6 +233,7 @@ where
             }
             TraceOpContent::OutputIteratorExhausted => {
                 assert_eq!(None, self.input_batch.pop_front());
+                self.exhausted = true;
                 None
             }
             _ => unreachable!(),
@@ -235,6 +247,7 @@ where
     for<'de2> DataToken: Deserialize<'de2>,
     'trace: 'query,
 {
+    exhausted: bool,
     parent_opid: Opid,
     data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
     input_batch: VecDeque<DataContext<DataToken>>,
@@ -254,6 +267,7 @@ where
     );
 
     fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
         let next_op = loop {
             let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                 .expect("Expected to have an item but found none.");
@@ -303,6 +317,7 @@ where
                 assert_eq!(trace_context, &input_context);
 
                 let neighbors = Box::new(TraceReaderNeighborIter {
+                    exhausted: false,
                     parent_iterator_opid: next_op.opid,
                     next_index: 0,
                     inner: self.inner.clone(),
@@ -312,6 +327,7 @@ where
             }
             TraceOpContent::OutputIteratorExhausted => {
                 assert_eq!(None, self.input_batch.pop_front());
+                self.exhausted = true;
                 None
             }
             _ => unreachable!(),
@@ -325,6 +341,7 @@ where
     for<'de2> DataToken: Deserialize<'de2>,
     'trace: 'query,
 {
+    exhausted: bool,
     parent_iterator_opid: Opid,
     next_index: usize,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
@@ -342,6 +359,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let (_, trace_op) = advance_ref_iter(self.inner.as_ref())
             .expect("Expected to have an item but found none.");
+        assert!(!self.exhausted);
         assert_eq!(
             self.parent_iterator_opid,
             trace_op
@@ -353,7 +371,10 @@ where
         );
 
         match &trace_op.content {
-            TraceOpContent::OutputIteratorExhausted => None,
+            TraceOpContent::OutputIteratorExhausted => {
+                self.exhausted = true;
+                None
+            }
             TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(index, token)) => {
                 assert_eq!(self.next_index, *index);
                 self.next_index += 1;
@@ -387,6 +408,7 @@ where
             assert_eq!(vid, vertex_hint);
 
             Box::new(TraceReaderStartingTokensIter {
+                exhausted: false,
                 parent_opid: *root_opid,
                 inner: self.next_op.clone(),
             })
@@ -415,6 +437,7 @@ where
             assert_eq!(*property, field_name);
 
             Box::new(TraceReaderProjectPropertiesIter {
+                exhausted: false,
                 parent_opid: *root_opid,
                 data_contexts,
                 input_batch: Default::default(),
@@ -455,6 +478,7 @@ where
             assert_eq!(eid, &edge_hint);
 
             Box::new(TraceReaderProjectNeighborsIter {
+                exhausted: false,
                 parent_opid: *root_opid,
                 data_contexts,
                 input_batch: Default::default(),
@@ -485,6 +509,7 @@ where
             assert_eq!(*to_type, coerce_to_type_name);
 
             Box::new(TraceReaderCanCoerceIter {
+                exhausted: false,
                 parent_opid: *root_opid,
                 data_contexts,
                 input_batch: Default::default(),
