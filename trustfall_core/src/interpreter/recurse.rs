@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::VecDeque, fmt::Debug, iter::Fuse, rc::Rc, sync::Arc};
 
-use itertools::{Tee, Itertools};
+use itertools::{Itertools, Tee};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
@@ -293,7 +293,7 @@ where
 
     /// The source context and neighbors that we're in the middle of expanding.
     source: Option<DataContext<Token>>,
-    buffer: Box<dyn Iterator<Item = Token> + 'token>,
+    buffer: Fuse<Box<dyn Iterator<Item = Token> + 'token>>,
 
     /// Number of times pulled buffers from the bundle
     total_pulls: usize,
@@ -330,10 +330,11 @@ where
     Token: Clone + Debug + 'token,
 {
     pub(super) fn new(bundle: NeighborsBundle<'token, Token>) -> Self {
+        let buffer: Box<dyn Iterator<Item = _> + 'token> = Box::new(std::iter::empty());
         Self {
             inner: bundle,
             source: None,
-            buffer: Box::new(std::iter::empty()),
+            buffer: buffer.fuse(),
             total_pulls: 0,
             total_prepared: 0,
             prepared: Default::default(),
@@ -375,7 +376,7 @@ where
             if let Some((new_source, new_buffer)) = self.inner.next() {
                 self.total_pulls += 1;
                 self.source = Some(new_source);
-                self.buffer = new_buffer;
+                self.buffer = new_buffer.fuse();
             } else {
                 return None;
             }
@@ -427,7 +428,7 @@ where
             if let Some((new_source, new_buffer)) = self.inner.next() {
                 self.total_pulls += 1;
                 self.source = Some(new_source);
-                self.buffer = new_buffer;
+                self.buffer = new_buffer.fuse();
             } else {
                 // No more data.
                 return None;
