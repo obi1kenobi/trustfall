@@ -115,8 +115,6 @@ where
     /// Recursive neighbor expansion args.
     edge_data: RecursiveEdgeData,
 
-    // /// The maximum depth of the recursion; None means unbounded i.e. "as long as there's data."
-    // max_depth: Option<NonZeroUsize>,
     /// Data structures that keep track of data at each recursion level.
     levels: Vec<RcBundleReader<'token, AdapterT::DataToken>>,
 
@@ -289,7 +287,7 @@ pub(super) struct BundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    inner: NeighborsBundle<'token, Token>,
+    inner: Fuse<NeighborsBundle<'token, Token>>,
 
     /// The source context and neighbors that we're in the middle of expanding.
     source: Option<DataContext<Token>>,
@@ -332,7 +330,7 @@ where
     pub(super) fn new(bundle: NeighborsBundle<'token, Token>) -> Self {
         let buffer: Box<dyn Iterator<Item = _> + 'token> = Box::new(std::iter::empty());
         Self {
-            inner: bundle,
+            inner: bundle.fuse(),
             source: None,
             buffer: buffer.fuse(),
             total_pulls: 0,
