@@ -563,6 +563,174 @@ TestInterpreterOutputTrace(
               2,
             ]))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(4, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(4, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(8, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(8, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(16, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(16, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(8, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(8, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(32, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(32, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(8, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(8, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(16, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(16, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+            ],
+          },
         )),
       ),
       Opid(77): TraceOp(
@@ -577,55 +745,230 @@ TestInterpreterOutputTrace(
               2,
             ]))),
           },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(4, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(4, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(8, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(8, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(16, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(16, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(8, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(8, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(32, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(2): Some(Composite(CompositeNumber(32, [
+                    2,
+                  ]))),
+                },
+                folded_contexts: {
+                  Eid(2): [
+                    SerializableContext(
+                      current_token: Some(Neither(NeitherNumber(1))),
+                      tokens: {
+                        Vid(3): Some(Neither(NeitherNumber(1))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Prime(PrimeNumber(2))),
+                      tokens: {
+                        Vid(3): Some(Prime(PrimeNumber(2))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(4, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(4, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(8, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(8, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                    SerializableContext(
+                      current_token: Some(Composite(CompositeNumber(16, [
+                        2,
+                      ]))),
+                      tokens: {
+                        Vid(3): Some(Composite(CompositeNumber(16, [
+                          2,
+                        ]))),
+                      },
+                    ),
+                  ],
+                },
+              ),
+            ],
+          },
         ), Int64(64))),
       ),
       Opid(78): TraceOp(
         opid: Opid(78),
-        parent_opid: Some(Opid(4)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "value": Int64(64),
+        }),
       ),
       Opid(79): TraceOp(
         opid: Opid(79),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(4)),
         content: AdvanceInputIterator,
       ),
       Opid(80): TraceOp(
         opid: Opid(80),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
       Opid(81): TraceOp(
         opid: Opid(81),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(82): TraceOp(
         opid: Opid(82),
-        parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
       ),
       Opid(83): TraceOp(
         opid: Opid(83),
         parent_opid: Some(Opid(2)),
-        content: OutputIteratorExhausted,
+        content: InputIteratorExhausted,
       ),
       Opid(84): TraceOp(
         opid: Opid(84),
-        parent_opid: Some(Opid(3)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
       ),
       Opid(85): TraceOp(
         opid: Opid(85),
         parent_opid: Some(Opid(3)),
-        content: OutputIteratorExhausted,
+        content: InputIteratorExhausted,
       ),
       Opid(86): TraceOp(
         opid: Opid(86),
-        parent_opid: Some(Opid(4)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(3)),
+        content: OutputIteratorExhausted,
       ),
       Opid(87): TraceOp(
         opid: Opid(87),
+        parent_opid: Some(Opid(4)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(88): TraceOp(
+        opid: Opid(88),
         parent_opid: Some(Opid(4)),
         content: OutputIteratorExhausted,
       ),
