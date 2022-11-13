@@ -1,0 +1,93 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Two",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Two",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "successor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              tag: [
+                TagDirective(
+                  name: Some("successor_count"),
+                ),
+              ],
+            )),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "successor",
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            tag: [
+              TagDirective(
+                name: Some("successor_count"),
+              ),
+            ],
+          )),
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              filter: [
+                FilterDirective(
+                  operation: Equals((), TagRef("successor_count")),
+                ),
+              ],
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

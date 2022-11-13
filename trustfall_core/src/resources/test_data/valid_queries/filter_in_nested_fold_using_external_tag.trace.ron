@@ -61,7 +61,11 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -74,7 +78,11 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ))),
       ),
@@ -108,7 +116,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -125,7 +137,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ))),
       ),
@@ -155,7 +171,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -168,7 +188,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), String("four"))),
       ),
@@ -193,7 +217,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -206,7 +234,11 @@ TestInterpreterOutputTrace(
           ]))),
           tokens: {},
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), String("eight"))),
       ),
@@ -253,7 +285,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -270,7 +306,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), Int64(4))),
       ),
@@ -292,7 +332,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -309,7 +353,11 @@ TestInterpreterOutputTrace(
             ]))),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), Int64(8))),
       ),
@@ -370,6 +418,44 @@ TestInterpreterOutputTrace(
               2,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(4, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(4, [
+                    2,
+                  ]))),
+                },
+                imported_tags: {
+                  ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "name",
+                    field_type: "String",
+                  )): String("two"),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(8, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(8, [
+                    2,
+                  ]))),
+                },
+                imported_tags: {
+                  ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "name",
+                    field_type: "String",
+                  )): String("two"),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "second"): Vec([
               Value(Int64(4)),
@@ -377,7 +463,11 @@ TestInterpreterOutputTrace(
             ]),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         )),
       ),
@@ -393,6 +483,44 @@ TestInterpreterOutputTrace(
               2,
             ]))),
           },
+          folded_contexts: {
+            Eid(2): [
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(4, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(4, [
+                    2,
+                  ]))),
+                },
+                imported_tags: {
+                  ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "name",
+                    field_type: "String",
+                  )): String("two"),
+                },
+              ),
+              SerializableContext(
+                current_token: Some(Composite(CompositeNumber(8, [
+                  2,
+                ]))),
+                tokens: {
+                  Vid(3): Some(Composite(CompositeNumber(8, [
+                    2,
+                  ]))),
+                },
+                imported_tags: {
+                  ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "name",
+                    field_type: "String",
+                  )): String("two"),
+                },
+              ),
+            ],
+          },
           folded_values: {
             (Eid(2), "second"): Vec([
               Value(Int64(4)),
@@ -400,7 +528,11 @@ TestInterpreterOutputTrace(
             ]),
           },
           imported_tags: {
-            (Vid(1), "name"): String("two"),
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "name",
+              field_type: "String",
+            )): String("two"),
           },
         ), Int64(4))),
       ),
@@ -421,36 +553,51 @@ TestInterpreterOutputTrace(
       ),
       Opid(50): TraceOp(
         opid: Opid(50),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "first": List([
+            Int64(4),
+          ]),
+          "second": List([
+            List([
+              Int64(4),
+              Int64(8),
+            ]),
+          ]),
+        }),
       ),
       Opid(51): TraceOp(
         opid: Opid(51),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
       Opid(52): TraceOp(
         opid: Opid(52),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(53): TraceOp(
         opid: Opid(53),
-        parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
       ),
       Opid(54): TraceOp(
         opid: Opid(54),
         parent_opid: Some(Opid(2)),
-        content: OutputIteratorExhausted,
+        content: InputIteratorExhausted,
       ),
       Opid(55): TraceOp(
         opid: Opid(55),
-        parent_opid: Some(Opid(3)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
       ),
       Opid(56): TraceOp(
         opid: Opid(56),
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(57): TraceOp(
+        opid: Opid(57),
         parent_opid: Some(Opid(3)),
         content: OutputIteratorExhausted,
       ),
@@ -528,11 +675,11 @@ TestInterpreterOutputTrace(
               },
             ),
             imported_tags: [
-              ContextField(
+              ContextField(ContextField(
                 vertex_id: Vid(1),
                 field_name: "name",
                 field_type: "String",
-              ),
+              )),
             ],
           ),
         },

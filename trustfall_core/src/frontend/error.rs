@@ -43,6 +43,12 @@ pub enum FrontendError {
     #[error("Multiple fields have @tag directives with the same name: {0}")]
     MultipleTagsWithSameName(String),
 
+    #[error(
+        "Tagged fields with an applied @transform must explicitly specify the tag name, like this: \
+        @tag(name: \"some_name\"). Affected field: {0}"
+    )]
+    ExplicitTagNameRequired(String),
+
     #[error("Incompatible types encountered in @filter.")]
     FilterTypeError(#[from] FilterTypeError),
 

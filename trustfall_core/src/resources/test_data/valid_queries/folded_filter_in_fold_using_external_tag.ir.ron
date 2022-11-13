@@ -63,11 +63,11 @@ Ok(TestIRQuery(
                   },
                 ),
                 imported_tags: [
-                  ContextField(
+                  ContextField(ContextField(
                     vertex_id: Vid(2),
                     field_name: "name",
                     field_type: "String",
-                  ),
+                  )),
                 ],
               ),
             },

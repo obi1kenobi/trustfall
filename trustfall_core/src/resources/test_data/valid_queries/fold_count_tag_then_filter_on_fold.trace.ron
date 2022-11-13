@@ -1,0 +1,218 @@
+TestInterpreterOutputTrace(
+  schema_name: "numbers",
+  trace: Trace(
+    ops: {
+      Opid(1): TraceOp(
+        opid: Opid(1),
+        parent_opid: None,
+        content: Call(GetStartingTokens(Vid(1))),
+      ),
+      Opid(2): TraceOp(
+        opid: Opid(2),
+        parent_opid: None,
+        content: Call(ProjectNeighbors(Vid(1), "Prime", Eid(1))),
+      ),
+      Opid(3): TraceOp(
+        opid: Opid(3),
+        parent_opid: None,
+        content: Call(ProjectNeighbors(Vid(1), "Prime", Eid(2))),
+      ),
+      Opid(4): TraceOp(
+        opid: Opid(4),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(5): TraceOp(
+        opid: Opid(5),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(6): TraceOp(
+        opid: Opid(6),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(2)))),
+      ),
+      Opid(7): TraceOp(
+        opid: Opid(7),
+        parent_opid: Some(Opid(2)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Prime(PrimeNumber(2))),
+          tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+        )),
+      ),
+      Opid(8): TraceOp(
+        opid: Opid(8),
+        parent_opid: Some(Opid(2)),
+        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+          current_token: Some(Prime(PrimeNumber(2))),
+          tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+        ))),
+      ),
+      Opid(9): TraceOp(
+        opid: Opid(9),
+        parent_opid: Some(Opid(8)),
+        content: YieldFrom(ProjectNeighborsInner(0, Prime(PrimeNumber(3)))),
+      ),
+      Opid(10): TraceOp(
+        opid: Opid(10),
+        parent_opid: Some(Opid(8)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(11): TraceOp(
+        opid: Opid(11),
+        parent_opid: Some(Opid(3)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Prime(PrimeNumber(2))),
+          tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+              ),
+            ],
+          },
+        )),
+      ),
+      Opid(12): TraceOp(
+        opid: Opid(12),
+        parent_opid: Some(Opid(3)),
+        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+          current_token: Some(Prime(PrimeNumber(2))),
+          tokens: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+          folded_contexts: {
+            Eid(1): [
+              SerializableContext(
+                current_token: Some(Prime(PrimeNumber(3))),
+                tokens: {
+                  Vid(2): Some(Prime(PrimeNumber(3))),
+                },
+              ),
+            ],
+          },
+        ))),
+      ),
+      Opid(13): TraceOp(
+        opid: Opid(13),
+        parent_opid: Some(Opid(12)),
+        content: YieldFrom(ProjectNeighborsInner(0, Neither(NeitherNumber(1)))),
+      ),
+      Opid(14): TraceOp(
+        opid: Opid(14),
+        parent_opid: Some(Opid(12)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(15): TraceOp(
+        opid: Opid(15),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "predecessorcount": Uint64(1),
+        }),
+      ),
+      Opid(16): TraceOp(
+        opid: Opid(16),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(17): TraceOp(
+        opid: Opid(17),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(18): TraceOp(
+        opid: Opid(18),
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(19): TraceOp(
+        opid: Opid(19),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(20): TraceOp(
+        opid: Opid(20),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(21): TraceOp(
+        opid: Opid(21),
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(22): TraceOp(
+        opid: Opid(22),
+        parent_opid: Some(Opid(3)),
+        content: OutputIteratorExhausted,
+      ),
+    },
+    ir_query: IRQuery(
+      root_name: "Two",
+      root_component: IRQueryComponent(
+        root: Vid(1),
+        vertices: {
+          Vid(1): IRVertex(
+            vid: Vid(1),
+            type_name: "Prime",
+          ),
+        },
+        folds: {
+          Eid(1): IRFold(
+            eid: Eid(1),
+            from_vid: Vid(1),
+            to_vid: Vid(2),
+            edge_name: "successor",
+            component: IRQueryComponent(
+              root: Vid(2),
+              vertices: {
+                Vid(2): IRVertex(
+                  vid: Vid(2),
+                  type_name: "Number",
+                ),
+              },
+            ),
+          ),
+          Eid(2): IRFold(
+            eid: Eid(2),
+            from_vid: Vid(1),
+            to_vid: Vid(3),
+            edge_name: "predecessor",
+            component: IRQueryComponent(
+              root: Vid(3),
+              vertices: {
+                Vid(3): IRVertex(
+                  vid: Vid(3),
+                  type_name: "Number",
+                ),
+              },
+            ),
+            fold_specific_outputs: {
+              "predecessorcount": Count,
+            },
+            post_filters: [
+              Equals(Count, Tag(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )))),
+            ],
+          ),
+        },
+      ),
+    ),
+  ),
+  results: [
+    {
+      "predecessorcount": Uint64(1),
+    },
+  ],
+)

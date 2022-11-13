@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ir::{
-        indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldValue, Vid,
+        indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldRef,
+        FieldValue, Vid,
     },
     util::BTreeMapTryInsertExt,
 };
@@ -30,7 +31,7 @@ pub struct DataContext<DataToken: Clone + Debug> {
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
-    imported_tags: BTreeMap<(Vid, Arc<str>), FieldValue>,
+    imported_tags: BTreeMap<FieldRef, FieldValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -84,7 +85,7 @@ where
 
     /// Tagged values imported from an ancestor component of the one currently being evaluated.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    imported_tags: BTreeMap<(Vid, Arc<str>), FieldValue>,
+    imported_tags: BTreeMap<FieldRef, FieldValue>,
 }
 
 impl<DataToken> From<SerializableContext<DataToken>> for DataContext<DataToken>

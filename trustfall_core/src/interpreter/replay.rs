@@ -58,7 +58,10 @@ where
             self.parent_opid,
             trace_op
                 .parent_opid
-                .expect("Expected an operation with a parent_opid.")
+                .expect("Expected an operation with a parent_opid."),
+            "Expected parent_opid {:?} did not match operation {:#?}",
+            self.parent_opid,
+            trace_op,
         );
 
         match &trace_op.content {
@@ -97,6 +100,9 @@ where
                 input_op
                     .parent_opid
                     .expect("Expected an operation with a parent_opid."),
+                "Expected parent_opid {:?} did not match operation {:#?}",
+                self.parent_opid,
+                input_op,
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
@@ -109,6 +115,9 @@ where
                     input_op
                         .parent_opid
                         .expect("Expected an operation with a parent_opid."),
+                    "Expected parent_opid {:?} did not match operation {:#?}",
+                    self.parent_opid,
+                    input_op,
                 );
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
@@ -170,6 +179,9 @@ where
                 input_op
                     .parent_opid
                     .expect("Expected an operation with a parent_opid."),
+                "Expected parent_opid {:?} did not match operation {:#?}",
+                self.parent_opid,
+                input_op,
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
@@ -182,6 +194,9 @@ where
                     input_op
                         .parent_opid
                         .expect("Expected an operation with a parent_opid."),
+                    "Expected parent_opid {:?} did not match operation {:#?}",
+                    self.parent_opid,
+                    input_op,
                 );
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
@@ -247,6 +262,9 @@ where
                 input_op
                     .parent_opid
                     .expect("Expected an operation with a parent_opid."),
+                "Expected parent_opid {:?} did not match operation {:#?}",
+                self.parent_opid,
+                input_op,
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
@@ -259,6 +277,9 @@ where
                     input_op
                         .parent_opid
                         .expect("Expected an operation with a parent_opid."),
+                    "Expected parent_opid {:?} did not match operation {:#?}",
+                    self.parent_opid,
+                    input_op,
                 );
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
@@ -325,7 +346,10 @@ where
             self.parent_iterator_opid,
             trace_op
                 .parent_opid
-                .expect("Expected an operation with a parent_opid.")
+                .expect("Expected an operation with a parent_opid."),
+            "Expected parent_opid {:?} did not match operation {:#?}",
+            self.parent_iterator_opid,
+            trace_op,
         );
 
         match &trace_op.content {
@@ -483,7 +507,9 @@ pub fn assert_interpreted_results<'query, 'trace, DataToken>(
     'trace: 'query,
 {
     let next_op = Rc::new(RefCell::new(trace.ops.iter()));
-    let trace_reader_adapter = Rc::new(RefCell::new(TraceReaderAdapter { next_op }));
+    let trace_reader_adapter = Rc::new(RefCell::new(TraceReaderAdapter {
+        next_op: next_op.clone(),
+    }));
 
     let query: Arc<IndexedQuery> = Arc::new(trace.ir_query.clone().try_into().unwrap());
     let arguments = Arc::new(
@@ -500,13 +526,33 @@ pub fn assert_interpreted_results<'query, 'trace, DataToken>(
         let expected_row = expected_iter.next();
         let trace_row = trace_iter.next();
 
-        if expected_row.is_none() {
+        if let Some(expected_row_content) = expected_row {
+            let trace_expected_row = {
+                let mut next_op_ref = next_op.borrow_mut();
+                let Some((_, trace_op)) = next_op_ref.next() else {
+                    panic!("Reached the end of the trace without producing result {:#?}", trace_row);
+                };
+                let TraceOpContent::ProduceQueryResult(expected_result) = &trace_op.content else {
+                    panic!("Expected the trace to produce a result {:#?} but got another type of operation instead: {:#?}", trace_row, trace_op);
+                };
+                drop(next_op_ref);
+
+                expected_result
+            };
+            assert_eq!(
+                trace_expected_row,
+                expected_row_content,
+                "This trace is self-inconsistent: trace produces row {:#?} but results have row {:#?}",
+                trace_expected_row,
+                expected_row_content,
+            );
+
+            assert_eq!(expected_row, trace_row.as_ref());
+        } else {
             if complete {
                 assert_eq!(None, trace_row);
             }
             return;
-        } else {
-            assert_eq!(expected_row, trace_row.as_ref());
         }
     }
 }
