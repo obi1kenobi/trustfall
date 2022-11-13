@@ -360,6 +360,7 @@ where
         assert!(!self.exhausted);
         let (_, trace_op) = advance_ref_iter(self.inner.as_ref())
             .expect("Expected to have an item but found none.");
+        assert!(!self.exhausted);
         assert_eq!(
             self.parent_iterator_opid,
             trace_op

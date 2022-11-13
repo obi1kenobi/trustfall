@@ -1,0 +1,81 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(30),
+        "min": Int64(30),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      coerced_to: Some("Composite"),
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 7,
+            column: 13,
+          ),
+          name: "primeFactor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              filter: [
+                FilterDirective(
+                  operation: GreaterThanOrEqual((), VariableRef("min_primes")),
+                ),
+              ],
+            )),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 7,
+            column: 13,
+          ),
+          name: "primeFactor",
+          transform_group: Some(TransformGroup(
+            transform: TransformDirective(
+              kind: Count,
+            ),
+            filter: [
+              FilterDirective(
+                operation: GreaterThanOrEqual((), VariableRef("min_primes")),
+              ),
+            ],
+          )),
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "min_primes": Uint64(2),
+  },
+))
