@@ -1,0 +1,26 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query checks that the number 64 has at least two divisors
+    // which are composite numbers with at least two divisors of their own.
+    // Those divisors are not returned, to test "early return" from nested @fold.
+    //
+    // The matching divisors are 32 (2, 4, 8, 16), 16 (2, 4, 8) and 8 (2, 4).
+    // We expect both the outer and the inner @fold to perform that early return.
+    query: r#"
+{
+    Number(min: 64, max: 64) {
+        ... on Composite {
+            value @output
+
+            divisor @fold @transform(op: "count") @filter(op: ">=", value: ["$two"]) {
+                ... on Composite {
+                    divisor @fold @transform(op: "count") @filter(op: ">=", value: ["$two"])
+                }
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "two": Uint64(2)
+    },
+)
