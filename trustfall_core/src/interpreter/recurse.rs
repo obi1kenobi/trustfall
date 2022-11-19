@@ -5,7 +5,7 @@ use itertools::{Itertools, Tee};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
-use super::{execution::perform_coercion, Adapter, DataContext, InterpretedQuery};
+use super::{Adapter, DataContext, InterpretedQuery};
 
 type NeighborsBundle<'token, Token> = Box<
     dyn Iterator<Item = (DataContext<Token>, Box<dyn Iterator<Item = Token> + 'token>)> + 'token,
@@ -44,51 +44,69 @@ impl RecursiveEdgeData {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     fn expand_initial_edge<'token, AdapterT: Adapter<'token> + 'token>(
         &self,
         adapter: &RefCell<AdapterT>,
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
-    ) -> NeighborsBundle<'token, AdapterT::DataToken> {
-        adapter.borrow_mut().project_neighbors(
-            data_contexts,
+    ) -> (Box<dyn Iterator<Item=(DataContext<AdapterT::DataToken>, bool)> + 'token>, NeighborsBundle<'token, AdapterT::DataToken>) {
+        let (left, right) = data_contexts.tee();
+
+        let coercion_iter = Box::new(left.map(|ctx| (ctx, true)));
+        let bundle = adapter.borrow_mut().project_neighbors(
+            Box::new(right),
             self.expanding_from.type_name.clone(),
             self.edge_name.clone(),
             self.parameters.clone(),
             self.query_hint.clone(),
             self.expanding_from.vid,
             self.edge_hint,
-        )
+        );
+
+        (coercion_iter, bundle)
     }
 
+    #[allow(clippy::type_complexity)]
     fn expand_edge<'token, AdapterT: Adapter<'token> + 'token>(
         &self,
         adapter: &RefCell<AdapterT>,
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
-    ) -> NeighborsBundle<'token, AdapterT::DataToken> {
+    ) -> (Box<dyn Iterator<Item=(DataContext<AdapterT::DataToken>, bool)> + 'token>, NeighborsBundle<'token, AdapterT::DataToken>) {
         let edge_endpoint_type = self
             .expanding_to
             .coerced_from_type
             .as_ref()
             .unwrap_or(&self.expanding_to.type_name);
 
-        let (traversal_from_type, expansion_base_iterator) =
+        let (traversal_from_type, coercion_iter) =
             if let Some(coerce_to) = self.recursive_info.coerce_to.as_ref() {
+                let mut adapter_ref = adapter.borrow_mut();
+                let coercion_iter = adapter_ref.can_coerce_to_type(
+                    data_contexts,
+                    edge_endpoint_type.clone(),
+                    coerce_to.clone(),
+                    self.query_hint.clone(),
+                    self.expanding_to.vid,
+                );
+                drop(adapter_ref);
+
                 (
                     coerce_to.clone(),
-                    perform_coercion(
-                        adapter,
-                        &self.query_hint,
-                        &self.expanding_to,
-                        edge_endpoint_type.clone(),
-                        coerce_to.clone(),
-                        data_contexts,
-                    ),
+                    coercion_iter
                 )
             } else {
-                (self.expanding_from.type_name.clone(), data_contexts)
+                let coercion_iter: Box<dyn Iterator<Item=(DataContext<AdapterT::DataToken>, bool)> + 'token> = Box::new(data_contexts.map(|ctx| (ctx, true)));
+
+                (self.expanding_from.type_name.clone(), coercion_iter)
             };
 
-        adapter.borrow_mut().project_neighbors(
+        let (left, right) = coercion_iter.tee();
+
+        let expansion_base_iterator: Box<dyn Iterator<Item=DataContext<AdapterT::DataToken>> + 'token> = Box::new(
+            right.flat_map(|(ctx, can_coerce)| can_coerce.then_some(ctx))
+        );
+
+        let bundle = adapter.borrow_mut().project_neighbors(
             expansion_base_iterator,
             traversal_from_type,
             self.edge_name.clone(),
@@ -96,7 +114,9 @@ impl RecursiveEdgeData {
             self.query_hint.clone(),
             self.expanding_from.vid,
             self.edge_hint,
-        )
+        );
+
+        (Box::new(left), bundle)
     }
 }
 
@@ -152,13 +172,15 @@ where
 
     fn increase_recursion_depth(&mut self) {
         if self.levels.is_empty() {
+            let (coercion_iter, bundle) = self.edge_data.expand_initial_edge(
+                self.adapter.as_ref(),
+                self.starting_contexts
+                    .take()
+                    .expect("levels was empty but the starting contexts was None"),
+            );
+
             self.levels.push(RcBundleReader::new(
-                self.edge_data.expand_initial_edge(
-                    self.adapter.as_ref(),
-                    self.starting_contexts
-                        .take()
-                        .expect("levels was empty but the starting contexts was None"),
-                ),
+                coercion_iter, bundle
             ))
         } else {
             let last_recursion_layer = RcBundleReader::clone(
@@ -167,9 +189,10 @@ where
                     .as_ref()
                     .expect("no recursion levels found"),
             );
+
+            let (coercion_iter, bundle) = self.edge_data.expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer));
             let new_recursion_layer = RcBundleReader::new(
-                self.edge_data
-                    .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer)),
+                coercion_iter, bundle
             );
             self.levels.push(new_recursion_layer);
         }
@@ -287,6 +310,7 @@ pub(super) struct BundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
+    coercion_iter: Fuse<Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>>,
     inner: Fuse<NeighborsBundle<'token, Token>>,
 
     /// The source context and neighbors that we're in the middle of expanding.
@@ -312,6 +336,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BundleReader")
+            .field("coercion_iter", &"<elided>")
             .field("inner", &"<elided>")
             .field("source", &self.source)
             .field("buffer", &"<elided>")
@@ -327,9 +352,10 @@ impl<'token, Token> BundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    pub(super) fn new(bundle: NeighborsBundle<'token, Token>) -> Self {
+    pub(super) fn new(coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>, bundle: NeighborsBundle<'token, Token>) -> Self {
         let buffer: Box<dyn Iterator<Item = _> + 'token> = Box::new(std::iter::empty());
         Self {
+            coercion_iter: coercion_iter.fuse(),
             inner: bundle.fuse(),
             source: None,
             buffer: buffer.fuse(),
@@ -371,10 +397,16 @@ where
             if pull_limit == 0 {
                 return None;
             }
-            if let Some((new_source, new_buffer)) = self.inner.next() {
+            if let Some((_ctx, can_coerce)) = self.coercion_iter.next() {
                 self.total_pulls += 1;
-                self.source = Some(new_source);
-                self.buffer = new_buffer.fuse();
+                if can_coerce {
+                    // This element passes through the coercion,
+                    // and will also be returned by self.inner.next().
+                    let (new_source, new_buffer) = self.inner.next().expect("coercion returned coercible element but inner.next() returned None");
+                    // debug_assert_eq!(ctx, new_source);
+                    self.source = Some(new_source);
+                    self.buffer = new_buffer.fuse();
+                }
             } else {
                 return None;
             }
@@ -423,13 +455,22 @@ where
                 return Some(neighbor_ctx);
             }
 
-            if let Some((new_source, new_buffer)) = self.inner.next() {
-                self.total_pulls += 1;
-                self.source = Some(new_source);
-                self.buffer = new_buffer.fuse();
-            } else {
-                // No more data.
-                return None;
+            loop {
+                if let Some((_ctx, can_coerce)) = self.coercion_iter.next() {
+                    self.total_pulls += 1;
+                    if can_coerce {
+                        // This element passes through the coercion,
+                        // and will also be returned by self.inner.next().
+                        let (new_source, new_buffer) = self.inner.next().expect("coercion returned coercible element but inner.next() returned None");
+                        // debug_assert_eq!(ctx, new_source);
+                        self.source = Some(new_source);
+                        self.buffer = new_buffer.fuse();
+                        break;
+                    }
+                } else {
+                    // No more data.
+                    return None;
+                }
             }
         }
     }
@@ -449,9 +490,9 @@ impl<'token, Token> RcBundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    pub(super) fn new(bundle: NeighborsBundle<'token, Token>) -> Self {
+    pub(super) fn new(coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>, bundle: NeighborsBundle<'token, Token>) -> Self {
         Self {
-            inner: Rc::new(RefCell::new(BundleReader::new(bundle))),
+            inner: Rc::new(RefCell::new(BundleReader::new(coercion_iter, bundle))),
         }
     }
 
@@ -477,128 +518,6 @@ impl<'token, Token: Debug + Clone + 'token> Iterator for RcBundleReader<'token, 
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.as_ref().borrow_mut().next()
-    }
-}
-
-fn perform_recursion_aware_coercion<'query, DataToken>(
-    adapter: &RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>,
-    query: &InterpretedQuery,
-    vertex: &IRVertex,
-    coerced_from: Arc<str>,
-    coerce_to: Arc<str>,
-    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>
-where
-    DataToken: Clone + Debug + 'query,
-{
-    let mut adapter_ref = adapter.borrow_mut();
-    let coercion_iter = adapter_ref.can_coerce_to_type(
-        iterator,
-        coerced_from,
-        coerce_to,
-        query.clone(),
-        vertex.vid,
-    );
-
-    Box::new(RecursionAwareCoercion::new(coercion_iter.fuse()))
-}
-
-fn perform_no_op_coercion<'query, DataToken>(
-    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>
-where
-    DataToken: Clone + Debug + 'query,
-{
-    let no_op_coercion_iter = iterator.map(|ctx| (ctx, true)).fuse();
-    Box::new(RecursionAwareCoercion::new(coercion_iter))
-}
-
-type CoercionOutput<'query, Token: Clone + Debug + 'query> = (DataContext<Token>, bool);
-
-struct RecursionAwareCoercion<'query, Token, Iter>
-where
-    Token: Clone + Debug + 'query,
-    Iter: FusedIterator,
-    Iter::Item: CoercionOutput<'query, Token>,
-{
-    coercion_iter: Iter,
-    buffer: VecDeque<CoercionOutput<'query, Token>>,
-    buffer_is_prepared: bool,
-}
-
-impl<'query, Token, Iter> RecursionAwareCoercion<'query, Token, Iter>
-where
-    Token: Clone + Debug + 'query,
-    Iter: FusedIterator,
-    Iter::Item: CoercionOutput<'query, Token>,
-{
-    fn new(coercion_iter: Iter) -> Self {
-        Self {
-            coercion_iter: coercion_iter.fuse(),
-            buffer: Default::default(),
-            buffer_is_prepared: true,
-        }
-    }
-
-    fn prepare(&mut self, mut pull_limit: usize) -> Option<DataContext<Token>> {
-        while pull_limit > 0 {
-            if !self.buffer_is_prepared {
-                if let Some((ctx, can_coerce)) = self.buffer.pop_front() {
-                    pull_limit -= 1;
-
-                    if can_coerce {
-                        return Some(ctx);
-                    }
-                }
-            }
-
-            self.buffer_is_prepared = true;
-
-            let maybe_item = self.inner.next();
-            if maybe_item.is_some() {
-                pull_limit -= 1;
-
-                self.buffer.push_back(maybe_item.clone());
-                let (ctx, can_coerce) = maybe_item.unwrap();
-                if can_coerce {
-                    return Some(ctx);
-                }
-            }
-        }
-
-        None
-    }
-}
-
-impl<'query, Token, Iter> Iterator for RecursionAwareCoercion<'query, Token, Iter>
-where
-    Token: Clone + Debug + 'query,
-    Iter: FusedIterator,
-    Iter::Item: CoercionOutput<'query, Token>,
-{
-    type Item = DataContext<Token>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.buffer_is_prepared {
-            while let Some((ctx, can_coerce)) = self.buffer.pop_front() {
-                if can_coerce {
-                    return Some(ctx);
-                }
-            }
-
-            self.buffer_is_prepared = false;
-        }
-
-        let maybe_item = self.inner.next();
-        if maybe_item.is_some() {
-            self.buffer.push_back(maybe_item.clone());
-            let (ctx, can_coerce) = maybe_item.unwrap();
-            if can_coerce {
-                return Some(ctx);
-            }
-        }
-
-        None
     }
 }
 
