@@ -45,21 +45,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-            trustfall_core/target/
-            trustfall_wasm/target/
-            pytrustfall/target/
-            experiments/schemaless/target/
-            experiments/schemaless_wasm/target/
-            experiments/trustfall_rustdoc/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Set up python
         id: setup-python
@@ -140,21 +126,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-            trustfall_core/target/
-            trustfall_wasm/target/
-            pytrustfall/target/
-            experiments/schemaless/target/
-            experiments/schemaless_wasm/target/
-            experiments/trustfall_rustdoc/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: cargo clippy
         uses: actions-rs/clippy-check@v1
@@ -184,21 +156,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-            trustfall_core/target/
-            trustfall_wasm/target/
-            pytrustfall/target/
-            experiments/schemaless/target/
-            experiments/schemaless_wasm/target/
-            experiments/trustfall_rustdoc/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: cargo test
         run: cargo test
@@ -223,21 +181,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-            trustfall_core/target/
-            trustfall_wasm/target/
-            pytrustfall/target/
-            experiments/schemaless/target/
-            experiments/schemaless_wasm/target/
-            experiments/trustfall_rustdoc/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
