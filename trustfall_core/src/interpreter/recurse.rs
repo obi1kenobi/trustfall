@@ -552,3 +552,125 @@ pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
 
     Box::new(stack)
 }
+
+#[cfg(test)]
+mod tests {
+    mod first_result_expands_no_edges {
+        use std::{cell::RefCell, rc::Rc, sync::Arc};
+
+        use crate::{interpreter::{basic_adapter::*, execution}, ir::EdgeParameters, frontend::parse, schema::Schema};
+
+        struct TestAdapter;
+
+        impl TestAdapter {
+            const TEST_QUERY: &'static str = r#"
+                {
+                    Number(max: 10) {
+                        successor @recurse(depth: 3) {
+                            value @output
+                        }
+                    }
+                }
+            "#;
+        }
+
+        impl BasicAdapter<'static> for TestAdapter {
+            type Vertex = i64;
+
+            fn resolve_starting_vertices(
+                &mut self,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> VertexIterator<'static, Self::Vertex> {
+                // This adapter is only meant for one very specific query.
+                assert_eq!(edge_name, "Number");
+                assert_eq!(parameters, Some(&EdgeParameters(btreemap! {
+                    Arc::from("min") => 0.into(),
+                    Arc::from("max") => 10.into(),
+                })));
+
+                let mut invocations = 0usize;
+                Box::new((0..10).map(move |num| {
+                    invocations += 1;
+                    assert!(
+                        invocations <= 1,
+                        "The iterator produced by resolve_starting_vertices() was advanced \
+                        more than once. In this test case, this almost certainly means a buggy
+                        (insufficiently-lazy) @recurse implementation.");
+
+                    num
+                }))
+            }
+
+            fn resolve_property(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                property_name: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, crate::ir::FieldValue> {
+                // This adapter is only meant for one very specific query.
+                assert_eq!(type_name, "Number");
+                assert_eq!(property_name, "value");
+
+                let mut invocations = 0usize;
+                Box::new(contexts.map(move |ctx| {
+                    invocations += 1;
+                    assert!(
+                        invocations <= 1,
+                        "The iterator produced by resolve_starting_vertices() was advanced \
+                        more than once. In this test case, this almost certainly means a buggy
+                        (insufficiently-lazy) @recurse implementation.");
+
+                    let value = ctx.current_token.into();
+                    (ctx, value)
+                }))
+            }
+
+            fn resolve_neighbors(
+                &mut self,
+                _contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+                panic!(
+                    "resolve_neighbors() was not expected to be called, but was called anyway. \
+                    In this test case, this almost certainly means a buggy (insufficiently-lazy) \
+                    @recurse implementation. \
+                    Call arguments: {type_name} {edge_name} {parameters:#?}"
+                )
+            }
+
+            fn resolve_coercion(
+                &mut self,
+                _contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                coerce_to_type: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+                panic!(
+                    "resolve_coercion() was not expected to be called, but was called with \
+                    arguments: {type_name} {coerce_to_type}"
+                )
+            }
+        }
+
+        #[test]
+        fn first_recurse_result_resolves_no_edges() {
+            let adapter = Rc::new(RefCell::new(TestAdapter));
+            let schema_text = include_str!("../resources/schemas/numbers.graphql");
+            let schema = Schema::parse(schema_text).expect("valid schema");
+
+            let indexed_query = parse(&schema, TestAdapter::TEST_QUERY).expect("valid query");
+            let mut results_iter = execution::interpret_ir(adapter, indexed_query, Arc::new(Default::default())).expect("no execution errors");
+
+            let first_result = results_iter.next().expect("there is at least one result");
+            assert_eq!(
+                btreemap! {
+                    Arc::from("value") => 0.into()
+                },
+                first_result
+            );
+        }
+    }
+
+}
