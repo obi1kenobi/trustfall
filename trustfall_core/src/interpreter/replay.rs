@@ -270,12 +270,12 @@ where
         assert!(!self.exhausted);
         let next_op = loop {
             let (_, input_op) = advance_ref_iter(self.inner.as_ref())
-            .expect("Expected to have an item but found none.");
+                .expect("Expected to have an item but found none.");
             assert_eq!(
                 self.parent_opid,
                 input_op
-                .parent_opid
-                .expect("Expected an operation with a parent_opid."),
+                    .parent_opid
+                    .expect("Expected an operation with a parent_opid."),
                 "Expected parent_opid {:?} did not match operation {:#?}",
                 self.parent_opid,
                 input_op,

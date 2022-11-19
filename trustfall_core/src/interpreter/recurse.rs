@@ -480,6 +480,128 @@ impl<'token, Token: Debug + Clone + 'token> Iterator for RcBundleReader<'token, 
     }
 }
 
+fn perform_recursion_aware_coercion<'query, DataToken>(
+    adapter: &RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>,
+    query: &InterpretedQuery,
+    vertex: &IRVertex,
+    coerced_from: Arc<str>,
+    coerce_to: Arc<str>,
+    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>
+where
+    DataToken: Clone + Debug + 'query,
+{
+    let mut adapter_ref = adapter.borrow_mut();
+    let coercion_iter = adapter_ref.can_coerce_to_type(
+        iterator,
+        coerced_from,
+        coerce_to,
+        query.clone(),
+        vertex.vid,
+    );
+
+    Box::new(RecursionAwareCoercion::new(coercion_iter.fuse()))
+}
+
+fn perform_no_op_coercion<'query, DataToken>(
+    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
+) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>
+where
+    DataToken: Clone + Debug + 'query,
+{
+    let no_op_coercion_iter = iterator.map(|ctx| (ctx, true)).fuse();
+    Box::new(RecursionAwareCoercion::new(coercion_iter))
+}
+
+type CoercionOutput<'query, Token: Clone + Debug + 'query> = (DataContext<Token>, bool);
+
+struct RecursionAwareCoercion<'query, Token, Iter>
+where
+    Token: Clone + Debug + 'query,
+    Iter: FusedIterator,
+    Iter::Item: CoercionOutput<'query, Token>,
+{
+    coercion_iter: Iter,
+    buffer: VecDeque<CoercionOutput<'query, Token>>,
+    buffer_is_prepared: bool,
+}
+
+impl<'query, Token, Iter> RecursionAwareCoercion<'query, Token, Iter>
+where
+    Token: Clone + Debug + 'query,
+    Iter: FusedIterator,
+    Iter::Item: CoercionOutput<'query, Token>,
+{
+    fn new(coercion_iter: Iter) -> Self {
+        Self {
+            coercion_iter: coercion_iter.fuse(),
+            buffer: Default::default(),
+            buffer_is_prepared: true,
+        }
+    }
+
+    fn prepare(&mut self, mut pull_limit: usize) -> Option<DataContext<Token>> {
+        while pull_limit > 0 {
+            if !self.buffer_is_prepared {
+                if let Some((ctx, can_coerce)) = self.buffer.pop_front() {
+                    pull_limit -= 1;
+
+                    if can_coerce {
+                        return Some(ctx);
+                    }
+                }
+            }
+
+            self.buffer_is_prepared = true;
+
+            let maybe_item = self.inner.next();
+            if maybe_item.is_some() {
+                pull_limit -= 1;
+
+                self.buffer.push_back(maybe_item.clone());
+                let (ctx, can_coerce) = maybe_item.unwrap();
+                if can_coerce {
+                    return Some(ctx);
+                }
+            }
+        }
+
+        None
+    }
+}
+
+impl<'query, Token, Iter> Iterator for RecursionAwareCoercion<'query, Token, Iter>
+where
+    Token: Clone + Debug + 'query,
+    Iter: FusedIterator,
+    Iter::Item: CoercionOutput<'query, Token>,
+{
+    type Item = DataContext<Token>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buffer_is_prepared {
+            while let Some((ctx, can_coerce)) = self.buffer.pop_front() {
+                if can_coerce {
+                    return Some(ctx);
+                }
+            }
+
+            self.buffer_is_prepared = false;
+        }
+
+        let maybe_item = self.inner.next();
+        if maybe_item.is_some() {
+            self.buffer.push_back(maybe_item.clone());
+            let (ctx, can_coerce) = maybe_item.unwrap();
+            if can_coerce {
+                return Some(ctx);
+            }
+        }
+
+        None
+    }
+}
+
 // This is the current "expand an edge recursively" interface in execution.rs.
 // Any replacement recursion logic will need to plug into this function,
 // which execution.rs will call.
