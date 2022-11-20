@@ -49,7 +49,10 @@ impl RecursiveEdgeData {
         &self,
         adapter: &RefCell<AdapterT>,
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
-    ) -> (Box<dyn Iterator<Item=(DataContext<AdapterT::DataToken>, bool)> + 'token>, NeighborsBundle<'token, AdapterT::DataToken>) {
+    ) -> (
+        Box<dyn Iterator<Item = (DataContext<AdapterT::DataToken>, bool)> + 'token>,
+        NeighborsBundle<'token, AdapterT::DataToken>,
+    ) {
         let (left, right) = data_contexts.tee();
 
         let coercion_iter = Box::new(left.map(|ctx| (ctx, true)));
@@ -71,7 +74,10 @@ impl RecursiveEdgeData {
         &self,
         adapter: &RefCell<AdapterT>,
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
-    ) -> (Box<dyn Iterator<Item=(DataContext<AdapterT::DataToken>, bool)> + 'token>, NeighborsBundle<'token, AdapterT::DataToken>) {
+    ) -> (
+        Box<dyn Iterator<Item = (DataContext<AdapterT::DataToken>, bool)> + 'token>,
+        NeighborsBundle<'token, AdapterT::DataToken>,
+    ) {
         let edge_endpoint_type = self
             .expanding_to
             .coerced_from_type
@@ -90,21 +96,20 @@ impl RecursiveEdgeData {
                 );
                 drop(adapter_ref);
 
-                (
-                    coerce_to.clone(),
-                    coercion_iter
-                )
+                (coerce_to.clone(), coercion_iter)
             } else {
-                let coercion_iter: Box<dyn Iterator<Item=(DataContext<AdapterT::DataToken>, bool)> + 'token> = Box::new(data_contexts.map(|ctx| (ctx, true)));
+                let coercion_iter: Box<
+                    dyn Iterator<Item = (DataContext<AdapterT::DataToken>, bool)> + 'token,
+                > = Box::new(data_contexts.map(|ctx| (ctx, true)));
 
                 (self.expanding_from.type_name.clone(), coercion_iter)
             };
 
         let (left, right) = coercion_iter.tee();
 
-        let expansion_base_iterator: Box<dyn Iterator<Item=DataContext<AdapterT::DataToken>> + 'token> = Box::new(
-            right.flat_map(|(ctx, can_coerce)| can_coerce.then_some(ctx))
-        );
+        let expansion_base_iterator: Box<
+            dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token,
+        > = Box::new(right.flat_map(|(ctx, can_coerce)| can_coerce.then_some(ctx)));
 
         let bundle = adapter.borrow_mut().project_neighbors(
             expansion_base_iterator,
@@ -179,9 +184,7 @@ where
                     .expect("levels was empty but the starting contexts was None"),
             );
 
-            self.levels.push(RcBundleReader::new(
-                coercion_iter, bundle
-            ))
+            self.levels.push(RcBundleReader::new(coercion_iter, bundle))
         } else {
             let last_recursion_layer = RcBundleReader::clone(
                 self.levels
@@ -190,10 +193,10 @@ where
                     .expect("no recursion levels found"),
             );
 
-            let (coercion_iter, bundle) = self.edge_data.expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer));
-            let new_recursion_layer = RcBundleReader::new(
-                coercion_iter, bundle
-            );
+            let (coercion_iter, bundle) = self
+                .edge_data
+                .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer));
+            let new_recursion_layer = RcBundleReader::new(coercion_iter, bundle);
             self.levels.push(new_recursion_layer);
         }
 
@@ -352,7 +355,10 @@ impl<'token, Token> BundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    pub(super) fn new(coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>, bundle: NeighborsBundle<'token, Token>) -> Self {
+    pub(super) fn new(
+        coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>,
+        bundle: NeighborsBundle<'token, Token>,
+    ) -> Self {
         let buffer: Box<dyn Iterator<Item = _> + 'token> = Box::new(std::iter::empty());
         Self {
             coercion_iter: coercion_iter.fuse(),
@@ -402,7 +408,9 @@ where
                 if can_coerce {
                     // This element passes through the coercion,
                     // and will also be returned by self.inner.next().
-                    let (new_source, new_buffer) = self.inner.next().expect("coercion returned coercible element but inner.next() returned None");
+                    let (new_source, new_buffer) = self.inner.next().expect(
+                        "coercion returned coercible element but inner.next() returned None",
+                    );
                     // debug_assert_eq!(ctx, new_source);
                     self.source = Some(new_source);
                     self.buffer = new_buffer.fuse();
@@ -461,7 +469,9 @@ where
                     if can_coerce {
                         // This element passes through the coercion,
                         // and will also be returned by self.inner.next().
-                        let (new_source, new_buffer) = self.inner.next().expect("coercion returned coercible element but inner.next() returned None");
+                        let (new_source, new_buffer) = self.inner.next().expect(
+                            "coercion returned coercible element but inner.next() returned None",
+                        );
                         // debug_assert_eq!(ctx, new_source);
                         self.source = Some(new_source);
                         self.buffer = new_buffer.fuse();
@@ -490,7 +500,10 @@ impl<'token, Token> RcBundleReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    pub(super) fn new(coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>, bundle: NeighborsBundle<'token, Token>) -> Self {
+    pub(super) fn new(
+        coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>,
+        bundle: NeighborsBundle<'token, Token>,
+    ) -> Self {
         Self {
             inner: Rc::new(RefCell::new(BundleReader::new(coercion_iter, bundle))),
         }
@@ -558,7 +571,12 @@ mod tests {
     mod first_result_expands_no_edges {
         use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-        use crate::{interpreter::{basic_adapter::*, execution}, ir::EdgeParameters, frontend::parse, schema::Schema};
+        use crate::{
+            frontend::parse,
+            interpreter::{basic_adapter::*, execution},
+            ir::EdgeParameters,
+            schema::Schema,
+        };
 
         struct TestAdapter;
 
@@ -584,10 +602,13 @@ mod tests {
             ) -> VertexIterator<'static, Self::Vertex> {
                 // This adapter is only meant for one very specific query.
                 assert_eq!(edge_name, "Number");
-                assert_eq!(parameters, Some(&EdgeParameters(btreemap! {
-                    Arc::from("min") => 0.into(),
-                    Arc::from("max") => 10.into(),
-                })));
+                assert_eq!(
+                    parameters,
+                    Some(&EdgeParameters(btreemap! {
+                        Arc::from("min") => 0.into(),
+                        Arc::from("max") => 10.into(),
+                    }))
+                );
 
                 let mut invocations = 0usize;
                 Box::new((0..10).map(move |num| {
@@ -596,7 +617,8 @@ mod tests {
                         invocations <= 1,
                         "The iterator produced by resolve_starting_vertices() was advanced \
                         more than once. In this test case, this almost certainly means a buggy
-                        (insufficiently-lazy) @recurse implementation.");
+                        (insufficiently-lazy) @recurse implementation."
+                    );
 
                     num
                 }))
@@ -619,7 +641,8 @@ mod tests {
                         invocations <= 1,
                         "The iterator produced by resolve_starting_vertices() was advanced \
                         more than once. In this test case, this almost certainly means a buggy
-                        (insufficiently-lazy) @recurse implementation.");
+                        (insufficiently-lazy) @recurse implementation."
+                    );
 
                     let value = ctx.current_token.into();
                     (ctx, value)
@@ -632,7 +655,8 @@ mod tests {
                 type_name: &str,
                 edge_name: &str,
                 parameters: Option<&crate::ir::EdgeParameters>,
-            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
+            {
                 panic!(
                     "resolve_neighbors() was not expected to be called, but was called anyway. \
                     In this test case, this almost certainly means a buggy (insufficiently-lazy) \
@@ -661,7 +685,9 @@ mod tests {
             let schema = Schema::parse(schema_text).expect("valid schema");
 
             let indexed_query = parse(&schema, TestAdapter::TEST_QUERY).expect("valid query");
-            let mut results_iter = execution::interpret_ir(adapter, indexed_query, Arc::new(Default::default())).expect("no execution errors");
+            let mut results_iter =
+                execution::interpret_ir(adapter, indexed_query, Arc::new(Default::default()))
+                    .expect("no execution errors");
 
             let first_result = results_iter.next().expect("there is at least one result");
             assert_eq!(
@@ -673,4 +699,291 @@ mod tests {
         }
     }
 
+    mod adapter_batching_does_not_change_result_order {
+        use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
+
+        use crate::{
+            frontend::parse,
+            interpreter::{basic_adapter::*, execution, DataContext},
+            schema::Schema,
+        };
+
+        struct TestAdapter {
+            base: usize,
+            offset: usize,
+            symbols: &'static [&'static str],
+            neighbor_calls: usize,
+        }
+
+        impl TestAdapter {
+            const SCHEMA_TEXT: &'static str = r#"
+                schema {
+                    query: RootSchemaQuery
+                }
+                directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+                directive @tag(name: String) on FIELD
+                directive @output(name: String) on FIELD
+                directive @optional on FIELD
+                directive @recurse(depth: Int!) on FIELD
+                directive @fold on FIELD
+                directive @transform(op: String!) on FIELD
+
+                type RootSchemaQuery {
+                    Node: [Node!]!
+                }
+
+                type Node {
+                    value: String!
+
+                    next_layer: [Node!]!
+                }
+            "#;
+
+            fn make_test_query(depth: usize) -> String {
+                // The doubled `{{` and `}}` are because of format!()'s need
+                // for escaping `{` and `}`.
+                format!(
+                    r#"
+                    query {{
+                        Node {{
+                            next_layer @recurse(depth: {depth}) {{
+                                value @output
+                            }}
+                        }}
+                    }}
+                "#
+                )
+            }
+
+            fn new(
+                base_batch_size: usize,
+                batch_size_offset: usize,
+                symbols: &'static [&'static str],
+            ) -> Self {
+                Self {
+                    base: base_batch_size,
+                    offset: batch_size_offset,
+                    symbols,
+                    neighbor_calls: 0,
+                }
+            }
+        }
+
+        impl BasicAdapter<'static> for TestAdapter {
+            type Vertex = String;
+
+            fn resolve_starting_vertices(
+                &mut self,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> VertexIterator<'static, Self::Vertex> {
+                assert_eq!(edge_name, "Node");
+                assert!(parameters.is_none());
+
+                Box::new(self.symbols.iter().map(|x| x.to_string()))
+            }
+
+            fn resolve_property(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                property_name: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, crate::ir::FieldValue> {
+                assert_eq!(type_name, "Node");
+                assert_eq!(property_name, "value");
+
+                let property_batch_base = (self.base % self.symbols.len()) + 1;
+
+                Box::new(VariableBatchingIterator::new(
+                    contexts,
+                    |value| value.clone().into(),
+                    property_batch_base,
+                    self.symbols.len(),
+                ))
+            }
+
+            fn resolve_neighbors(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
+            {
+                assert_eq!(type_name, "Node");
+                assert_eq!(edge_name, "next_layer");
+                assert!(parameters.is_none());
+
+                self.neighbor_calls += 1;
+
+                // Get different batch size start points for each neighbor resolution.
+                let neighbors_batch_base =
+                    ((self.base + (self.offset * self.neighbor_calls)) % self.symbols.len()) + 1;
+
+                Box::new(VariableBatchingIterator::new(
+                    contexts,
+                    |value| {
+                        let value = value
+                            .as_ref()
+                            .expect("no @optional in the test query")
+                            .clone();
+                        let neighbors: Box<dyn Iterator<Item = String> + 'static> = Box::new(
+                            self.symbols
+                                .iter()
+                                .map(move |suffix| value.to_owned() + suffix),
+                        );
+                        neighbors
+                    },
+                    neighbors_batch_base,
+                    self.symbols.len(),
+                ))
+            }
+
+            fn resolve_coercion(
+                &mut self,
+                _contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                coerce_to_type: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+                panic!(
+                    "resolve_coercion() was not expected to be called, but was called with \
+                    arguments: {type_name} {coerce_to_type}"
+                )
+            }
+        }
+
+        struct VariableBatchingIterator<'a, T, F>
+        where
+            F: Fn(&Option<String>) -> T,
+        {
+            input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
+            resolver: F,
+            buffer: VecDeque<(DataContext<String>, T)>,
+            next_batch_size: usize,
+            max_batch_size: usize,
+        }
+
+        impl<'a, T, F> VariableBatchingIterator<'a, T, F>
+        where
+            F: Fn(&Option<String>) -> T,
+        {
+            fn new(
+                input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
+                resolver: F,
+                starting_batch_size: usize,
+                max_batch_size: usize,
+            ) -> Self {
+                assert_ne!(starting_batch_size, 0);
+                assert!(max_batch_size >= starting_batch_size);
+                Self {
+                    input,
+                    resolver,
+                    buffer: Default::default(),
+                    next_batch_size: starting_batch_size,
+                    max_batch_size,
+                }
+            }
+        }
+
+        impl<'a, T, F> Iterator for VariableBatchingIterator<'a, T, F>
+        where
+            F: Fn(&Option<String>) -> T,
+        {
+            type Item = (DataContext<String>, T);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.buffer.is_empty() {
+                    let mut remaining_batch_size = self.next_batch_size;
+                    self.next_batch_size = if self.next_batch_size == self.max_batch_size {
+                        1
+                    } else {
+                        self.next_batch_size + 1
+                    };
+
+                    for item in &mut self.input {
+                        assert!(remaining_batch_size > 0);
+
+                        let value = (self.resolver)(&item.current_token);
+                        self.buffer.push_back((item, value));
+
+                        remaining_batch_size -= 1;
+                        if remaining_batch_size == 0 {
+                            break;
+                        }
+                    }
+                }
+
+                self.buffer.pop_front()
+            }
+        }
+
+        fn generate_and_validate_all_results(depth: usize, symbols: &'static [&'static str]) {
+            let schema = Schema::parse(TestAdapter::SCHEMA_TEXT).expect("valid schema");
+            let query = parse(&schema, TestAdapter::make_test_query(depth)).expect("valid query");
+
+            let mut all_results = vec![];
+            for base_batch_size in 1..=symbols.len() {
+                for offset in 1..=symbols.len() {
+                    let adapter = Rc::new(RefCell::new(TestAdapter::new(
+                        base_batch_size,
+                        offset,
+                        symbols,
+                    )));
+                    let results_iter = execution::interpret_ir(
+                        adapter,
+                        query.clone(),
+                        Arc::new(Default::default()),
+                    )
+                    .expect("no execution errors");
+                    let results: Vec<_> = results_iter
+                        .map(|x| x["value"].as_str().unwrap().to_string())
+                        .collect();
+                    all_results.push(results);
+                }
+            }
+
+            // We got some results.
+            assert!(!all_results.is_empty());
+
+            // All results are equal to each other.
+            // This ensures that varying the batch size and sequence
+            // does not change the order in which results are produced.
+            let first_result = all_results.first().unwrap();
+            for result in &all_results {
+                assert_eq!(first_result, result);
+            }
+
+            // All the data points in each result are in lexicographic order.
+            // This ensures that the recurse-produced ordering is correct.
+            let mut last_value = &"0".to_string();
+            for value in first_result {
+                assert!(last_value < value);
+                last_value = value;
+            }
+        }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_2_ply_2() {
+            let depth = 2;
+            const SYMBOLS: &[&str] = &["1", "2"];
+
+            generate_and_validate_all_results(depth, SYMBOLS);
+        }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_2_ply_5() {
+            let depth = 2;
+            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5"];
+
+            generate_and_validate_all_results(depth, SYMBOLS);
+        }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_4_ply_3() {
+            let depth = 4;
+            const SYMBOLS: &[&str] = &["1", "2", "3"];
+
+            generate_and_validate_all_results(depth, SYMBOLS);
+        }
+    }
 }
