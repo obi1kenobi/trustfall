@@ -539,7 +539,7 @@ impl<'token, Token: Debug + Clone + 'token> Iterator for RcBundleReader<'token, 
 // which execution.rs will call.
 #[allow(clippy::too_many_arguments)]
 #[allow(unused_variables)]
-pub(super) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
+pub(in crate::interpreter) fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
     query: &InterpretedQuery,
     component: &IRQueryComponent,
@@ -681,7 +681,7 @@ mod tests {
         #[test]
         fn first_recurse_result_resolves_no_edges() {
             let adapter = Rc::new(RefCell::new(TestAdapter));
-            let schema_text = include_str!("../resources/schemas/numbers.graphql");
+            let schema_text = include_str!("../../resources/schemas/numbers.graphql");
             let schema = Schema::parse(schema_text).expect("valid schema");
 
             let indexed_query = parse(&schema, TestAdapter::TEST_QUERY).expect("valid query");
