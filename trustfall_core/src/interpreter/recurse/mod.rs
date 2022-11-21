@@ -1,9 +1,13 @@
 #![allow(dead_code)]
-use std::{cell::RefCell, collections::VecDeque, fmt::Debug, iter::Fuse, rc::Rc, sync::Arc};
+mod depth_layer;
+
+use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
 
 use itertools::{Itertools, Tee};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
+
+use self::depth_layer::{BundleReader, RecursionLayer};
 
 use super::{Adapter, DataContext, InterpretedQuery};
 
@@ -309,185 +313,6 @@ where
     }
 }
 
-pub(super) struct BundleReader<'token, Token>
-where
-    Token: Clone + Debug + 'token,
-{
-    coercion_iter: Fuse<Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>>,
-    inner: Fuse<NeighborsBundle<'token, Token>>,
-
-    /// The source context and neighbors that we're in the middle of expanding.
-    source: Option<DataContext<Token>>,
-    buffer: Fuse<Box<dyn Iterator<Item = Token> + 'token>>,
-
-    /// Number of times pulled buffers from the bundle
-    total_pulls: usize,
-
-    /// Number of outputs so far
-    total_prepared: usize,
-
-    /// Items already seen (and probably recorded as outputs), but not yet pulled from next().
-    prepared: VecDeque<DataContext<Token>>,
-
-    /// Items pulled from next() without being prepared first. This can happen with batching.
-    passed_unprepared: VecDeque<DataContext<Token>>,
-}
-
-impl<'token, Token> Debug for BundleReader<'token, Token>
-where
-    Token: Debug + Clone + 'token,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BundleReader")
-            .field("coercion_iter", &"<elided>")
-            .field("inner", &"<elided>")
-            .field("source", &self.source)
-            .field("buffer", &"<elided>")
-            .field("total_pulls", &self.total_pulls)
-            .field("total_prepared", &self.total_prepared)
-            .field("prepared", &self.prepared)
-            .field("passed_unprepared", &self.passed_unprepared)
-            .finish()
-    }
-}
-
-impl<'token, Token> BundleReader<'token, Token>
-where
-    Token: Clone + Debug + 'token,
-{
-    pub(super) fn new(
-        coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>,
-        bundle: NeighborsBundle<'token, Token>,
-    ) -> Self {
-        let buffer: Box<dyn Iterator<Item = _> + 'token> = Box::new(std::iter::empty());
-        Self {
-            coercion_iter: coercion_iter.fuse(),
-            inner: bundle.fuse(),
-            source: None,
-            buffer: buffer.fuse(),
-            total_pulls: 0,
-            total_prepared: 0,
-            prepared: Default::default(),
-            passed_unprepared: Default::default(),
-        }
-    }
-
-    pub(super) fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
-        let maybe_token = self.passed_unprepared.pop_front();
-        if maybe_token.is_some() {
-            self.total_prepared += 1;
-        }
-        maybe_token
-    }
-
-    /// Prepare while not pulling more than specified from the bundle,
-    /// i.e. from the parent level of the recursion.
-    pub(super) fn prepare(&mut self, mut pull_limit: usize) -> Option<DataContext<Token>> {
-        loop {
-            let maybe_token = self.pop_passed_unprepared();
-            if maybe_token.is_some() {
-                return maybe_token;
-            }
-
-            if let Some(token) = self.buffer.next() {
-                let neighbor_ctx = self
-                    .source
-                    .as_ref()
-                    .expect("no source for existing buffer")
-                    .split_and_move_to_token(Some(token));
-                self.prepared.push_back(neighbor_ctx.clone());
-                self.total_prepared += 1;
-                return Some(neighbor_ctx);
-            }
-
-            if pull_limit == 0 {
-                return None;
-            }
-            if let Some((_ctx, can_coerce)) = self.coercion_iter.next() {
-                self.total_pulls += 1;
-                if can_coerce {
-                    // This element passes through the coercion,
-                    // and will also be returned by self.inner.next().
-                    let (new_source, new_buffer) = self.inner.next().expect(
-                        "coercion returned coercible element but inner.next() returned None",
-                    );
-                    // debug_assert_eq!(ctx, new_source);
-                    self.source = Some(new_source);
-                    self.buffer = new_buffer.fuse();
-                }
-            } else {
-                return None;
-            }
-            pull_limit -= 1;
-        }
-    }
-
-    pub(super) fn total_prepared(&self) -> usize {
-        self.total_prepared
-    }
-
-    pub(super) fn total_pulls(&self) -> usize {
-        self.total_pulls
-    }
-}
-
-impl<'token, Token> Iterator for BundleReader<'token, Token>
-where
-    Token: Clone + Debug + 'token,
-{
-    type Item = DataContext<Token>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let maybe_token = self.prepared.pop_front();
-            if maybe_token.is_some() {
-                // We found a prepared element, return it.
-                return maybe_token;
-            }
-
-            // If the adapter isn't using batching, then the next() call here will always be None
-            // because any elements from the buffer were processed in a prior prepare().
-            //
-            // If the adapter is using batching, we might end up pulling from the buffer here,
-            // so we'll also have to put those items back in the queue for prepare().
-            // If we forgot to do that, those intermediate nodes in the recursion would not
-            // be included in the recursive expansion of the edge.
-            let maybe_token = self.buffer.next();
-            if let Some(token) = maybe_token {
-                let neighbor_ctx = self
-                    .source
-                    .as_ref()
-                    .expect("no source for existing buffer")
-                    .split_and_move_to_token(Some(token));
-                self.passed_unprepared.push_back(neighbor_ctx.clone());
-                return Some(neighbor_ctx);
-            }
-
-            loop {
-                if let Some((_ctx, can_coerce)) = self.coercion_iter.next() {
-                    self.total_pulls += 1;
-                    if can_coerce {
-                        // This element passes through the coercion,
-                        // and will also be returned by self.inner.next().
-                        let (new_source, new_buffer) = self.inner.next().expect(
-                            "coercion returned coercible element but inner.next() returned None",
-                        );
-                        // debug_assert_eq!(ctx, new_source);
-                        self.source = Some(new_source);
-                        self.buffer = new_buffer.fuse();
-                        break;
-                    }
-                } else {
-                    // No more data.
-                    return None;
-                }
-            }
-        }
-    }
-}
-
-/// Iterator with interior mutability. You can have two references to
-/// it and call next() on either, just not at the same time.
 #[derive(Debug, Clone)]
 pub(super) struct RcBundleReader<'token, Token>
 where
@@ -518,11 +343,11 @@ where
     }
 
     pub(super) fn total_prepared(&self) -> usize {
-        self.inner.as_ref().borrow().total_prepared
+        self.inner.as_ref().borrow().total_prepared()
     }
 
     pub(super) fn total_pulls(&self) -> usize {
-        self.inner.as_ref().borrow().total_pulls
+        self.inner.as_ref().borrow().total_pulls()
     }
 }
 
