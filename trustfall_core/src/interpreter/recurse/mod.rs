@@ -3,11 +3,11 @@ mod depth_layer;
 
 use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
 
-use itertools::{Itertools};
+use itertools::Itertools;
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
-use self::depth_layer::{BundleReader, RecursionLayer, Layer, DepthZeroReader, RcRecursionLayer};
+use self::depth_layer::{BundleReader, DepthZeroReader, Layer, RcRecursionLayer, RecursionLayer};
 
 use super::{Adapter, DataContext, InterpretedQuery};
 
@@ -158,9 +158,7 @@ where
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
         edge_data: RecursiveEdgeData,
     ) -> Self {
-        let depth_zero = RcRecursionLayer::new(
-            DepthZeroReader::new(data_contexts)
-        );
+        let depth_zero = RcRecursionLayer::new(DepthZeroReader::new(data_contexts));
 
         Self {
             levels: vec![Layer::DepthZero(depth_zero)],
@@ -172,21 +170,25 @@ where
     }
 
     fn increase_recursion_depth(&mut self) {
-        let last_recursion_layer: Layer<_> = self.levels.last().expect("at least one level exists").clone();
+        let last_recursion_layer: Layer<_> = self
+            .levels
+            .last()
+            .expect("at least one level exists")
+            .clone();
 
         let (coercion_iter, bundle) = if self.levels.len() == 1 {
-            self.edge_data.expand_initial_edge(
-                self.adapter.as_ref(),
-                Box::new(last_recursion_layer)
-            )
+            self.edge_data
+                .expand_initial_edge(self.adapter.as_ref(), Box::new(last_recursion_layer))
         } else {
-            self.edge_data.expand_edge(
-                self.adapter.as_ref(),
-                Box::new(last_recursion_layer)
-            )
+            self.edge_data
+                .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer))
         };
 
-        self.levels.push(Layer::Neighbors(RcRecursionLayer::new(BundleReader::new(coercion_iter, bundle))));
+        self.levels
+            .push(Layer::Neighbors(RcRecursionLayer::new(BundleReader::new(
+                coercion_iter,
+                bundle,
+            ))));
 
         // @recurse with depth N means the max allowed index in self.levels is N
         debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth) + 1);
