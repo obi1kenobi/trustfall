@@ -3,11 +3,11 @@ mod depth_layer;
 
 use std::{cell::RefCell, collections::VecDeque, fmt::Debug, rc::Rc, sync::Arc};
 
-use itertools::{Itertools, Tee};
+use itertools::{Itertools};
 
 use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 
-use self::depth_layer::{BundleReader, RecursionLayer};
+use self::depth_layer::{BundleReader, RecursionLayer, Layer, DepthZeroReader, RcRecursionLayer};
 
 use super::{Adapter, DataContext, InterpretedQuery};
 
@@ -135,17 +135,11 @@ where
 {
     adapter: Rc<RefCell<AdapterT>>,
 
-    // Two views into the input iterator:
-    // - one used for outputting depth 0 results into the recurse results,
-    // - and one used to drive the depth 1 level of the recursion
-    depth_zero_contexts: Tee<Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>>,
-    starting_contexts: Option<Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>>,
-
     /// Recursive neighbor expansion args.
     edge_data: RecursiveEdgeData,
 
     /// Data structures that keep track of data at each recursion level.
-    levels: Vec<RcBundleReader<'token, AdapterT::DataToken>>,
+    levels: Vec<Layer<'token, AdapterT::DataToken>>,
 
     /// Queue to ensure elements are returned in correct order.
     reorder_queue: VecDeque<DataContext<AdapterT::DataToken>>,
@@ -153,8 +147,6 @@ where
     /// Largest index which is guaranteed to have data which
     /// we can peek() without advancing the parent level's iterator.
     next_from: usize,
-
-    depth_zero_advanced: bool,
 }
 
 impl<'token, AdapterT> RecurseStack<'token, AdapterT>
@@ -166,45 +158,38 @@ where
         data_contexts: Box<dyn Iterator<Item = DataContext<AdapterT::DataToken>> + 'token>,
         edge_data: RecursiveEdgeData,
     ) -> Self {
-        let (first, second) = data_contexts.tee();
+        let depth_zero = RcRecursionLayer::new(
+            DepthZeroReader::new(data_contexts)
+        );
+
         Self {
-            depth_zero_contexts: first,
-            starting_contexts: Some(Box::new(second)),
-            levels: vec![],
+            levels: vec![Layer::DepthZero(depth_zero)],
             adapter,
             edge_data,
             reorder_queue: VecDeque::new(),
             next_from: 0,
-            depth_zero_advanced: false,
         }
     }
 
     fn increase_recursion_depth(&mut self) {
-        if self.levels.is_empty() {
-            let (coercion_iter, bundle) = self.edge_data.expand_initial_edge(
+        let last_recursion_layer: Layer<_> = self.levels.last().expect("at least one level exists").clone();
+
+        let (coercion_iter, bundle) = if self.levels.len() == 1 {
+            self.edge_data.expand_initial_edge(
                 self.adapter.as_ref(),
-                self.starting_contexts
-                    .take()
-                    .expect("levels was empty but the starting contexts was None"),
-            );
-
-            self.levels.push(RcBundleReader::new(coercion_iter, bundle))
+                Box::new(last_recursion_layer)
+            )
         } else {
-            let last_recursion_layer = RcBundleReader::clone(
-                self.levels
-                    .last()
-                    .as_ref()
-                    .expect("no recursion levels found"),
-            );
+            self.edge_data.expand_edge(
+                self.adapter.as_ref(),
+                Box::new(last_recursion_layer)
+            )
+        };
 
-            let (coercion_iter, bundle) = self
-                .edge_data
-                .expand_edge(self.adapter.as_ref(), Box::new(last_recursion_layer));
-            let new_recursion_layer = RcBundleReader::new(coercion_iter, bundle);
-            self.levels.push(new_recursion_layer);
-        }
+        self.levels.push(Layer::Neighbors(RcRecursionLayer::new(BundleReader::new(coercion_iter, bundle))));
 
-        debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth));
+        // @recurse with depth N means the max allowed index in self.levels is N
+        debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth) + 1);
     }
 
     /// The given context value is about to be produced from the Iterator::next() method.
@@ -260,20 +245,16 @@ where
     type Item = DataContext<AdapterT::DataToken>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.depth_zero_advanced {
-            self.depth_zero_advanced = true;
-            return self.depth_zero_contexts.next();
-        }
-
         let maybe_ctx = self.reorder_queue.pop_front();
         if maybe_ctx.is_some() {
             return maybe_ctx;
         }
 
-        debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth));
+        // @recurse with depth N means the max allowed index in self.levels is N
+        debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth) + 1);
 
         // Have we reached the maximum recursion depth?
-        if self.levels.len() < usize::from(self.edge_data.recursive_info.depth) {
+        if self.levels.len() < usize::from(self.edge_data.recursive_info.depth) + 1 {
             // Add a new recursion level if necessary.
             if self.next_from == self.levels.len() {
                 self.increase_recursion_depth();
@@ -283,24 +264,25 @@ where
         // Unless next_from is past the deepest level of the recursion,
         // we need to prepare an item from the next_from level.
         //
-        // We have 1 output prepared at level self.next_from - 1
-        // because of the self.next_from invariant, so it's safe
-        // to prepare(1).
+        // If self.next_from is 0, that's the "depth 0" level which is fine to prepare_with_pull().
+        // Otherwise, we have 1 output prepared at level `self.next_from - 1`
+        // because of the `self.next_from` invariant, so it's safe to prepare_with_pull().
         if let Some(ctx) = self
             .levels
             .get_mut(self.next_from)
-            .and_then(|level| level.prepare(1))
+            .and_then(|level| level.prepare_with_pull())
         {
             // Increment so that the search behaves like depth-first search.
             self.next_from += 1;
             return Some(self.reorder_output(self.next_from - 1, ctx));
         }
 
-        // If prepare(1) at this level returned None, it's not safe to
+        // If prepare_with_pull() at this level returned None, it's not safe to
         // try again since we don't have any more prepared inputs.
-        // Try to prepare using prepare(0). Move up the stack until we find something.
-        while self.next_from > 0 {
-            if let Some(ctx) = self.levels[self.next_from - 1].prepare(0) {
+        //
+        // Move up the stack until we find something with prepare_without_pull().
+        while self.next_from > 1 {
+            if let Some(ctx) = self.levels[self.next_from - 1].prepare_without_pull() {
                 return Some(self.reorder_output(self.next_from - 1, ctx));
             }
             self.next_from -= 1;
@@ -308,54 +290,8 @@ where
 
         // If we've reached this point, then all the active neighbor iterators
         // at all recursion levels have run dry. Then it's time for a depth-0 element.
-        debug_assert_eq!(self.next_from, 0);
-        self.depth_zero_contexts.next()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct RcBundleReader<'token, Token>
-where
-    Token: Clone + Debug + 'token,
-{
-    inner: Rc<RefCell<BundleReader<'token, Token>>>,
-}
-
-impl<'token, Token> RcBundleReader<'token, Token>
-where
-    Token: Clone + Debug + 'token,
-{
-    pub(super) fn new(
-        coercion_iter: Box<dyn Iterator<Item = (DataContext<Token>, bool)> + 'token>,
-        bundle: NeighborsBundle<'token, Token>,
-    ) -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(BundleReader::new(coercion_iter, bundle))),
-        }
-    }
-
-    pub(super) fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
-        self.inner.as_ref().borrow_mut().pop_passed_unprepared()
-    }
-
-    pub(super) fn prepare(&mut self, pull_limit: usize) -> Option<DataContext<Token>> {
-        self.inner.as_ref().borrow_mut().prepare(pull_limit)
-    }
-
-    pub(super) fn total_prepared(&self) -> usize {
-        self.inner.as_ref().borrow().total_prepared()
-    }
-
-    pub(super) fn total_pulls(&self) -> usize {
-        self.inner.as_ref().borrow().total_pulls()
-    }
-}
-
-impl<'token, Token: Debug + Clone + 'token> Iterator for RcBundleReader<'token, Token> {
-    type Item = DataContext<Token>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.as_ref().borrow_mut().next()
+        debug_assert_eq!(self.next_from, 1);
+        self.levels[0].prepare_with_pull()
     }
 }
 
@@ -774,6 +710,7 @@ mod tests {
             // This ensures that varying the batch size and sequence
             // does not change the order in which results are produced.
             let first_result = all_results.first().unwrap();
+            dbg!(&first_result);
             for result in &all_results {
                 assert_eq!(first_result, result);
             }
@@ -791,6 +728,14 @@ mod tests {
         fn batching_does_not_change_result_order_at_depth_2_ply_2() {
             let depth = 2;
             const SYMBOLS: &[&str] = &["1", "2"];
+
+            generate_and_validate_all_results(depth, SYMBOLS);
+        }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_2_ply_4() {
+            let depth = 2;
+            const SYMBOLS: &[&str] = &["1", "2", "3", "4"];
 
             generate_and_validate_all_results(depth, SYMBOLS);
         }

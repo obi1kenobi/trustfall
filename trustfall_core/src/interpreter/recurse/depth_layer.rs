@@ -1,10 +1,14 @@
-use std::{cell::{RefMut, RefCell}, fmt::Debug, rc::Rc, iter::Fuse, marker::PhantomData, collections::VecDeque};
+use std::{
+    cell::RefCell, collections::VecDeque, fmt::Debug, iter::Fuse, marker::PhantomData, rc::Rc,
+};
 
 use crate::interpreter::DataContext;
 
 use super::NeighborsBundle;
 
-pub(super) trait RecursionLayer<'token, Token: Clone + Debug + 'token> : Iterator<Item = DataContext<Token>> + 'token {
+pub(super) trait RecursionLayer<'token, Token: Clone + Debug + 'token>:
+    Iterator<Item = DataContext<Token>> + 'token
+{
     fn total_pulls(&self) -> usize;
 
     fn total_prepared(&self) -> usize;
@@ -18,12 +22,45 @@ pub(super) trait RecursionLayer<'token, Token: Clone + Debug + 'token> : Iterato
 
 /// Cloneable wrapper with interior mutability. You can have two references to
 /// it and call next() on either, just not at the same time.
-pub(super) struct RcRecursionLayer<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>> {
+#[derive(Debug)]
+pub(super) struct RcRecursionLayer<
+    'token,
+    Token: Clone + Debug + 'token,
+    R: RecursionLayer<'token, Token>,
+> {
     inner: Rc<RefCell<R>>,
     _marker: PhantomData<&'token Token>,
 }
 
-impl<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>> Iterator for RcRecursionLayer<'token, Token, R> {
+impl<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>>
+    RcRecursionLayer<'token, Token, R>
+{
+    pub(super) fn new(inner: R) -> Self {
+        Self {
+            inner: Rc::new(RefCell::new(inner)),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'token, Token, R> Clone for RcRecursionLayer<'token, Token, R>
+where
+    Token: Clone + Debug + 'token,
+    R: RecursionLayer<'token, Token>,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _marker: self._marker,
+        }
+    }
+}
+
+impl<'token, Token, R> Iterator for RcRecursionLayer<'token, Token, R>
+where
+    Token: Clone + Debug + 'token,
+    R: RecursionLayer<'token, Token>,
+{
     type Item = <R as Iterator>::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -31,7 +68,11 @@ impl<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>> It
     }
 }
 
-impl<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>> RecursionLayer<'token, Token> for RcRecursionLayer<'token, Token, R> {
+impl<'token, Token, R> RecursionLayer<'token, Token> for RcRecursionLayer<'token, Token, R>
+where
+    Token: Clone + Debug + 'token,
+    R: RecursionLayer<'token, Token>,
+{
     fn total_pulls(&self) -> usize {
         self.inner.as_ref().borrow().total_pulls()
     }
@@ -41,18 +82,15 @@ impl<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>> Re
     }
 
     fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
-        let mut ref_mut: RefMut<_> = self.inner.as_ref().borrow_mut();
-        ref_mut.prepare_without_pull()
+        self.inner.as_ref().borrow_mut().prepare_without_pull()
     }
 
     fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
-        let mut ref_mut: RefMut<_> = self.inner.as_ref().borrow_mut();
-        ref_mut.prepare_with_pull()
+        self.inner.as_ref().borrow_mut().prepare_with_pull()
     }
 
     fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
-        let mut ref_mut: RefMut<_> = self.inner.as_ref().borrow_mut();
-        ref_mut.pop_passed_unprepared()
+        self.inner.as_ref().borrow_mut().pop_passed_unprepared()
     }
 }
 
@@ -60,6 +98,7 @@ impl<'token, Token: Clone + Debug + 'token, R: RecursionLayer<'token, Token>> Re
 /// followed by Layer::Neighbors layers equal to the depth.
 ///
 /// For example: `@recurse(depth: 1)` produces one Layer::DepthZero and one Layer::Neighbors layer.
+#[derive(Debug, Clone)]
 pub(super) enum Layer<'token, Token>
 where
     Token: Clone + Debug + 'token,
@@ -149,7 +188,9 @@ where
     passed_unprepared: VecDeque<DataContext<Token>>,
 }
 
-impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token> for BundleReader<'token, Token> {
+impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token>
+    for BundleReader<'token, Token>
+{
     fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
         let maybe_token = self.passed_unprepared.pop_front();
         if maybe_token.is_some() {
@@ -316,7 +357,7 @@ pub(super) struct DepthZeroReader<'token, Token>
 where
     Token: Clone + Debug + 'token,
 {
-    inner: Fuse<Box<dyn Iterator<Item=DataContext<Token>> + 'token>>,
+    inner: Fuse<Box<dyn Iterator<Item = DataContext<Token>> + 'token>>,
 
     /// Number of times pulled buffers from the bundle
     total_pulls: usize,
@@ -332,7 +373,7 @@ where
 }
 
 impl<'token, Token: Debug + Clone + 'token> DepthZeroReader<'token, Token> {
-    fn new(inner: Box<dyn Iterator<Item = DataContext<Token>> + 'token>) -> Self {
+    pub(super) fn new(inner: Box<dyn Iterator<Item = DataContext<Token>> + 'token>) -> Self {
         Self {
             inner: inner.fuse(),
             total_pulls: 0,
@@ -343,7 +384,21 @@ impl<'token, Token: Debug + Clone + 'token> DepthZeroReader<'token, Token> {
     }
 }
 
-impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token> for DepthZeroReader<'token, Token> {
+impl<'token, Token: Debug + Clone + 'token> Debug for DepthZeroReader<'token, Token> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DepthZeroReader")
+            .field("inner", &"<elided>")
+            .field("total_pulls", &self.total_pulls)
+            .field("total_prepared", &self.total_prepared)
+            .field("prepared", &self.prepared)
+            .field("passed_unprepared", &self.passed_unprepared)
+            .finish()
+    }
+}
+
+impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token>
+    for DepthZeroReader<'token, Token>
+{
     fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
         let maybe_token = self.passed_unprepared.pop_front();
         if maybe_token.is_some() {
@@ -354,23 +409,24 @@ impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token> for De
 
     /// Prepare an element. There's no "pull limit" unlike in BundleReader;
     /// this method merely helps us track whether the next() calls were out of order or not.
-    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
         let maybe_token = self.pop_passed_unprepared();
         if maybe_token.is_some() {
             return maybe_token;
         }
 
         let maybe_ctx = self.inner.next();
-        if maybe_ctx.is_some() {
+        if let Some(ref ctx) = maybe_ctx {
             self.total_prepared += 1;
             self.total_pulls += 1;
+            self.prepared.push_back(ctx.clone());
         }
 
         maybe_ctx
     }
 
     #[inline]
-    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
         None
     }
 
