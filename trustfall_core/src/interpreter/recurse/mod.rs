@@ -713,7 +713,6 @@ mod tests {
             // This ensures that varying the batch size and sequence
             // does not change the order in which results are produced.
             let first_result = all_results.first().unwrap();
-            dbg!(&first_result);
             for result in &all_results {
                 assert_eq!(first_result, result);
             }
