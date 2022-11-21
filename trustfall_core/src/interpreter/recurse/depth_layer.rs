@@ -13,11 +13,11 @@ pub(super) trait RecursionLayer<'token, Token: Clone + Debug + 'token>:
 
     fn total_prepared(&self) -> usize;
 
-    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>>;
+    fn prepare_without_pull(&mut self) -> Option<(DataContext<Token>, usize)>;
 
-    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>>;
+    fn prepare_with_pull(&mut self) -> Option<(DataContext<Token>, usize)>;
 
-    fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>>;
+    fn pop_passed_unprepared(&mut self) -> Option<(DataContext<Token>, usize)>;
 }
 
 /// Cloneable wrapper with interior mutability. You can have two references to
@@ -81,15 +81,15 @@ where
         self.inner.as_ref().borrow().total_prepared()
     }
 
-    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_without_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         self.inner.as_ref().borrow_mut().prepare_without_pull()
     }
 
-    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_with_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         self.inner.as_ref().borrow_mut().prepare_with_pull()
     }
 
-    fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
+    fn pop_passed_unprepared(&mut self) -> Option<(DataContext<Token>, usize)> {
         self.inner.as_ref().borrow_mut().pop_passed_unprepared()
     }
 }
@@ -140,7 +140,7 @@ impl<'token, Token: Clone + Debug + 'token> RecursionLayer<'token, Token> for La
     }
 
     #[inline]
-    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_without_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         match self {
             Layer::DepthZero(d) => d.prepare_without_pull(),
             Layer::Neighbors(n) => n.prepare_without_pull(),
@@ -148,7 +148,7 @@ impl<'token, Token: Clone + Debug + 'token> RecursionLayer<'token, Token> for La
     }
 
     #[inline]
-    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_with_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         match self {
             Layer::DepthZero(d) => d.prepare_with_pull(),
             Layer::Neighbors(n) => n.prepare_with_pull(),
@@ -156,7 +156,7 @@ impl<'token, Token: Clone + Debug + 'token> RecursionLayer<'token, Token> for La
     }
 
     #[inline]
-    fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
+    fn pop_passed_unprepared(&mut self) -> Option<(DataContext<Token>, usize)> {
         match self {
             Layer::DepthZero(d) => d.pop_passed_unprepared(),
             Layer::Neighbors(n) => n.pop_passed_unprepared(),
@@ -185,13 +185,13 @@ where
     prepared: VecDeque<DataContext<Token>>,
 
     /// Items pulled from next() without being prepared first. This can happen with batching.
-    passed_unprepared: VecDeque<DataContext<Token>>,
+    passed_unprepared: VecDeque<(DataContext<Token>, usize)>,
 }
 
 impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token>
     for BundleReader<'token, Token>
 {
-    fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
+    fn pop_passed_unprepared(&mut self) -> Option<(DataContext<Token>, usize)> {
         let maybe_token = self.passed_unprepared.pop_front();
         if maybe_token.is_some() {
             self.total_prepared += 1;
@@ -207,11 +207,11 @@ impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token>
         self.total_pulls
     }
 
-    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_without_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         self.prepare(0)
     }
 
-    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_with_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         self.prepare(1)
     }
 }
@@ -257,7 +257,7 @@ where
 
     /// Prepare while not pulling more than specified from the bundle,
     /// i.e. from the parent level of the recursion.
-    pub(super) fn prepare(&mut self, mut pull_limit: usize) -> Option<DataContext<Token>> {
+    pub(super) fn prepare(&mut self, mut pull_limit: usize) -> Option<(DataContext<Token>, usize)> {
         loop {
             let maybe_token = self.pop_passed_unprepared();
             if maybe_token.is_some() {
@@ -272,7 +272,7 @@ where
                     .split_and_move_to_token(Some(token));
                 self.prepared.push_back(neighbor_ctx.clone());
                 self.total_prepared += 1;
-                return Some(neighbor_ctx);
+                return Some((neighbor_ctx, self.total_pulls));
             }
 
             if pull_limit == 0 {
@@ -326,7 +326,8 @@ where
                     .as_ref()
                     .expect("no source for existing buffer")
                     .split_and_move_to_token(Some(token));
-                self.passed_unprepared.push_back(neighbor_ctx.clone());
+                self.passed_unprepared
+                    .push_back((neighbor_ctx.clone(), self.total_pulls));
                 return Some(neighbor_ctx);
             }
 
@@ -369,7 +370,7 @@ where
     prepared: VecDeque<DataContext<Token>>,
 
     /// Items pulled from next() without being prepared first. This can happen with batching.
-    passed_unprepared: VecDeque<DataContext<Token>>,
+    passed_unprepared: VecDeque<(DataContext<Token>, usize)>,
 }
 
 impl<'token, Token: Debug + Clone + 'token> DepthZeroReader<'token, Token> {
@@ -399,7 +400,7 @@ impl<'token, Token: Debug + Clone + 'token> Debug for DepthZeroReader<'token, To
 impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token>
     for DepthZeroReader<'token, Token>
 {
-    fn pop_passed_unprepared(&mut self) -> Option<DataContext<Token>> {
+    fn pop_passed_unprepared(&mut self) -> Option<(DataContext<Token>, usize)> {
         let maybe_token = self.passed_unprepared.pop_front();
         if maybe_token.is_some() {
             self.total_prepared += 1;
@@ -409,24 +410,25 @@ impl<'token, Token: Debug + Clone + 'token> RecursionLayer<'token, Token>
 
     /// Prepare an element. There's no "pull limit" unlike in BundleReader;
     /// this method merely helps us track whether the next() calls were out of order or not.
-    fn prepare_with_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_with_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         let maybe_token = self.pop_passed_unprepared();
         if maybe_token.is_some() {
             return maybe_token;
         }
 
         let maybe_ctx = self.inner.next();
-        if let Some(ref ctx) = maybe_ctx {
+        if let Some(ctx) = maybe_ctx {
             self.total_prepared += 1;
             self.total_pulls += 1;
             self.prepared.push_back(ctx.clone());
+            return Some((ctx, self.total_pulls));
         }
 
-        maybe_ctx
+        None
     }
 
     #[inline]
-    fn prepare_without_pull(&mut self) -> Option<DataContext<Token>> {
+    fn prepare_without_pull(&mut self) -> Option<(DataContext<Token>, usize)> {
         None
     }
 
@@ -452,7 +454,8 @@ impl<'token, Token: Debug + Clone + 'token> Iterator for DepthZeroReader<'token,
         let maybe_ctx = self.inner.next();
         if let Some(ref ctx) = maybe_ctx {
             self.total_pulls += 1;
-            self.passed_unprepared.push_back(ctx.clone());
+            self.passed_unprepared
+                .push_back((ctx.clone(), self.total_pulls));
         }
 
         maybe_ctx

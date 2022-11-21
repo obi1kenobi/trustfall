@@ -201,6 +201,7 @@ where
         &mut self,
         level: usize,
         ctx: DataContext<AdapterT::DataToken>,
+        ctx_pulls: usize,
     ) -> DataContext<AdapterT::DataToken> {
         let mut returned_ctx = ctx;
 
@@ -208,7 +209,7 @@ where
             // We must never have prepared more items than we have attempted to pull.
             assert!(self.levels[level].total_pulls() >= self.levels[level - 1].total_prepared());
 
-            while self.levels[level].total_pulls() > self.levels[level - 1].total_prepared() {
+            while ctx_pulls > self.levels[level - 1].total_prepared() {
                 // N.B.: Do not reorder these lines!
                 //       Lots of tricky interactions through Rc<RefCell<...>> here.
                 //
@@ -227,10 +228,10 @@ where
                 //
                 // We keep looping until we've processed and correctly reordered all the tokens
                 // that were not previously "prepared" due to the batching.
-                let last_level_ctx = self.levels[level - 1]
+                let (last_level_ctx, last_pulls) = self.levels[level - 1]
                     .pop_passed_unprepared()
                     .expect("there was no unprepared token but the count said there should be");
-                let next_ctx = self.reorder_output(level - 1, last_level_ctx);
+                let next_ctx = self.reorder_output(level - 1, last_level_ctx, last_pulls);
                 self.reorder_queue.push_back(returned_ctx);
                 returned_ctx = next_ctx;
             }
@@ -269,14 +270,14 @@ where
         // If self.next_from is 0, that's the "depth 0" level which is fine to prepare_with_pull().
         // Otherwise, we have 1 output prepared at level `self.next_from - 1`
         // because of the `self.next_from` invariant, so it's safe to prepare_with_pull().
-        if let Some(ctx) = self
+        if let Some((ctx, ctx_pulls)) = self
             .levels
             .get_mut(self.next_from)
             .and_then(|level| level.prepare_with_pull())
         {
             // Increment so that the search behaves like depth-first search.
             self.next_from += 1;
-            return Some(self.reorder_output(self.next_from - 1, ctx));
+            return Some(self.reorder_output(self.next_from - 1, ctx, ctx_pulls));
         }
 
         // If prepare_with_pull() at this level returned None, it's not safe to
@@ -284,8 +285,8 @@ where
         //
         // Move up the stack until we find something with prepare_without_pull().
         while self.next_from > 1 {
-            if let Some(ctx) = self.levels[self.next_from - 1].prepare_without_pull() {
-                return Some(self.reorder_output(self.next_from - 1, ctx));
+            if let Some((ctx, ctx_pulls)) = self.levels[self.next_from - 1].prepare_without_pull() {
+                return Some(self.reorder_output(self.next_from - 1, ctx, ctx_pulls));
             }
             self.next_from -= 1;
         }
@@ -293,7 +294,7 @@ where
         // If we've reached this point, then all the active neighbor iterators
         // at all recursion levels have run dry. Then it's time for a depth-0 element.
         debug_assert_eq!(self.next_from, 1);
-        self.levels[0].prepare_with_pull()
+        self.levels[0].prepare_with_pull().map(|(ctx, _)| ctx)
     }
 }
 
