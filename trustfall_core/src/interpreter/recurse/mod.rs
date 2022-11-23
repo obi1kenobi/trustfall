@@ -1037,5 +1037,14 @@ mod tests {
 
             generate_and_validate_all_results(depth, batch_size, SYMBOLS);
         }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_4_ply_8_batch_size_4() {
+            let depth = 4;
+            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5", "6", "7", "8"];
+            let batch_size = 4;
+
+            generate_and_validate_all_results(depth, batch_size, SYMBOLS);
+        }
     }
 }
