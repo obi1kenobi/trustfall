@@ -463,7 +463,48 @@ mod tests {
         }
     }
 
-    mod adapter_batching_does_not_change_result_order {
+    pub(super) mod simple_node_schema {
+        pub(super) const SCHEMA_TEXT: &str = r#"
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+            directive @tag(name: String) on FIELD
+            directive @output(name: String) on FIELD
+            directive @optional on FIELD
+            directive @recurse(depth: Int!) on FIELD
+            directive @fold on FIELD
+            directive @transform(op: String!) on FIELD
+
+            type RootSchemaQuery {
+                Node: [Node!]!
+            }
+
+            type Node {
+                value: String!
+
+                next_layer: [Node!]!
+            }
+        "#;
+
+        pub(super) fn make_test_query(depth: usize) -> String {
+            // The doubled `{{` and `}}` are because of format!()'s need
+            // for escaping `{` and `}`.
+            format!(
+                r#"
+                query {{
+                    Node {{
+                        next_layer @recurse(depth: {depth}) {{
+                            value @output
+                        }}
+                    }}
+                }}
+            "#
+            )
+        }
+    }
+
+    mod adapter_variable_batching_does_not_change_result_order {
         use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
 
         use crate::{
@@ -472,53 +513,14 @@ mod tests {
             schema::Schema,
         };
 
-        struct TestAdapter {
+        struct VariableBatchingAdapter {
             base: usize,
             offset: usize,
             symbols: &'static [&'static str],
             neighbor_calls: usize,
         }
 
-        impl TestAdapter {
-            const SCHEMA_TEXT: &'static str = r#"
-                schema {
-                    query: RootSchemaQuery
-                }
-                directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-                directive @tag(name: String) on FIELD
-                directive @output(name: String) on FIELD
-                directive @optional on FIELD
-                directive @recurse(depth: Int!) on FIELD
-                directive @fold on FIELD
-                directive @transform(op: String!) on FIELD
-
-                type RootSchemaQuery {
-                    Node: [Node!]!
-                }
-
-                type Node {
-                    value: String!
-
-                    next_layer: [Node!]!
-                }
-            "#;
-
-            fn make_test_query(depth: usize) -> String {
-                // The doubled `{{` and `}}` are because of format!()'s need
-                // for escaping `{` and `}`.
-                format!(
-                    r#"
-                    query {{
-                        Node {{
-                            next_layer @recurse(depth: {depth}) {{
-                                value @output
-                            }}
-                        }}
-                    }}
-                "#
-                )
-            }
-
+        impl VariableBatchingAdapter {
             fn new(
                 base_batch_size: usize,
                 batch_size_offset: usize,
@@ -533,7 +535,7 @@ mod tests {
             }
         }
 
-        impl BasicAdapter<'static> for TestAdapter {
+        impl BasicAdapter<'static> for VariableBatchingAdapter {
             type Vertex = String;
 
             fn resolve_starting_vertices(
@@ -682,13 +684,15 @@ mod tests {
         }
 
         fn generate_and_validate_all_results(depth: usize, symbols: &'static [&'static str]) {
-            let schema = Schema::parse(TestAdapter::SCHEMA_TEXT).expect("valid schema");
-            let query = parse(&schema, TestAdapter::make_test_query(depth)).expect("valid query");
+            let schema =
+                Schema::parse(super::simple_node_schema::SCHEMA_TEXT).expect("valid schema");
+            let query = parse(&schema, super::simple_node_schema::make_test_query(depth))
+                .expect("valid query");
 
             let mut all_results = vec![];
             for base_batch_size in 1..=symbols.len() {
                 for offset in 1..=symbols.len() {
-                    let adapter = Rc::new(RefCell::new(TestAdapter::new(
+                    let adapter = Rc::new(RefCell::new(VariableBatchingAdapter::new(
                         base_batch_size,
                         offset,
                         symbols,
@@ -756,6 +760,282 @@ mod tests {
             const SYMBOLS: &[&str] = &["1", "2", "3"];
 
             generate_and_validate_all_results(depth, SYMBOLS);
+        }
+    }
+
+    mod adapter_on_or_off_batching_does_not_change_result_order {
+        use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
+
+        use crate::{
+            frontend::parse,
+            interpreter::{basic_adapter::*, execution, DataContext},
+            schema::Schema,
+        };
+
+        struct OnOrOffBatchingAdapter {
+            property_batch_size: usize,
+            neighbors_batch_sizes: VecDeque<usize>,
+            symbols: &'static [&'static str],
+        }
+
+        impl OnOrOffBatchingAdapter {
+            fn new(
+                property_batch_size: usize,
+                neighbors_batch_sizes: VecDeque<usize>,
+                symbols: &'static [&'static str],
+            ) -> Self {
+                Self {
+                    property_batch_size,
+                    neighbors_batch_sizes,
+                    symbols,
+                }
+            }
+        }
+
+        impl BasicAdapter<'static> for OnOrOffBatchingAdapter {
+            type Vertex = String;
+
+            fn resolve_starting_vertices(
+                &mut self,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> VertexIterator<'static, Self::Vertex> {
+                assert_eq!(edge_name, "Node");
+                assert!(parameters.is_none());
+
+                Box::new(self.symbols.iter().map(|x| x.to_string()))
+            }
+
+            fn resolve_property(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                property_name: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, crate::ir::FieldValue> {
+                assert_eq!(type_name, "Node");
+                assert_eq!(property_name, "value");
+
+                Box::new(BatchingIterator::new(
+                    contexts,
+                    |value| value.clone().into(),
+                    self.property_batch_size,
+                ))
+            }
+
+            fn resolve_neighbors(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
+            {
+                assert_eq!(type_name, "Node");
+                assert_eq!(edge_name, "next_layer");
+                assert!(parameters.is_none());
+
+                let next_batch_size = self
+                    .neighbors_batch_sizes
+                    .pop_front()
+                    .expect("sufficient batch sizes");
+
+                Box::new(BatchingIterator::new(
+                    contexts,
+                    |value| {
+                        let value = value
+                            .as_ref()
+                            .expect("no @optional in the test query")
+                            .clone();
+                        let neighbors: Box<dyn Iterator<Item = String> + 'static> = Box::new(
+                            self.symbols
+                                .iter()
+                                .map(move |suffix| value.to_owned() + suffix),
+                        );
+                        neighbors
+                    },
+                    next_batch_size,
+                ))
+            }
+
+            fn resolve_coercion(
+                &mut self,
+                _contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                coerce_to_type: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+                panic!(
+                    "resolve_coercion() was not expected to be called, but was called with \
+                    arguments: {type_name} {coerce_to_type}"
+                )
+            }
+        }
+
+        struct BatchingIterator<'a, T, F>
+        where
+            F: Fn(&Option<String>) -> T,
+        {
+            input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
+            resolver: F,
+            buffer: VecDeque<(DataContext<String>, T)>,
+            batch_size: usize,
+        }
+
+        impl<'a, T, F> BatchingIterator<'a, T, F>
+        where
+            F: Fn(&Option<String>) -> T,
+        {
+            fn new(
+                input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
+                resolver: F,
+                batch_size: usize,
+            ) -> Self {
+                assert_ne!(batch_size, 0);
+                Self {
+                    input,
+                    resolver,
+                    buffer: Default::default(),
+                    batch_size,
+                }
+            }
+        }
+
+        impl<'a, T, F> Iterator for BatchingIterator<'a, T, F>
+        where
+            F: Fn(&Option<String>) -> T,
+        {
+            type Item = (DataContext<String>, T);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.buffer.is_empty() {
+                    let mut remaining_batch_size = self.batch_size;
+
+                    for item in &mut self.input {
+                        assert!(remaining_batch_size > 0);
+
+                        let value = (self.resolver)(&item.current_token);
+                        self.buffer.push_back((item, value));
+
+                        remaining_batch_size -= 1;
+                        if remaining_batch_size == 0 {
+                            break;
+                        }
+                    }
+                }
+
+                self.buffer.pop_front()
+            }
+        }
+
+        struct VariationsIterator<T: Copy> {
+            next_state: usize,
+            variations: usize,
+            on_value: T,
+            off_value: T,
+        }
+
+        impl<T: Copy> VariationsIterator<T> {
+            fn new(variations: usize, on_value: T, off_value: T) -> Self {
+                Self {
+                    next_state: 0,
+                    variations,
+                    on_value,
+                    off_value,
+                }
+            }
+        }
+
+        impl<T: Copy> Iterator for VariationsIterator<T> {
+            type Item = VecDeque<T>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.next_state == 1 << self.variations {
+                    return None;
+                }
+
+                let mut output = VecDeque::with_capacity(self.variations);
+                let mut state = self.next_state;
+                for _ in 0..self.variations {
+                    let next_value = if state & 1 != 0 {
+                        self.on_value
+                    } else {
+                        self.off_value
+                    };
+                    output.push_back(next_value);
+                    state >>= 1;
+                }
+
+                self.next_state += 1;
+                Some(output)
+            }
+        }
+
+        fn generate_and_validate_all_results(
+            depth: usize,
+            batch_size: usize,
+            symbols: &'static [&'static str],
+        ) {
+            assert!(batch_size > 1);
+            assert!(batch_size <= symbols.len());
+
+            let schema =
+                Schema::parse(super::simple_node_schema::SCHEMA_TEXT).expect("valid schema");
+            let query = parse(&schema, super::simple_node_schema::make_test_query(depth))
+                .expect("valid query");
+
+            let variations = VariationsIterator::new(depth, batch_size, 1);
+
+            let mut all_results = vec![];
+            for batch_schedule in variations {
+                let adapter = Rc::new(RefCell::new(OnOrOffBatchingAdapter::new(
+                    batch_size,
+                    batch_schedule,
+                    symbols,
+                )));
+                let results_iter =
+                    execution::interpret_ir(adapter, query.clone(), Arc::new(Default::default()))
+                        .expect("no execution errors");
+                let results: Vec<_> = results_iter
+                    .map(|x| x["value"].as_str().unwrap().to_string())
+                    .collect();
+                all_results.push(results);
+            }
+
+            // We got some results.
+            assert!(!all_results.is_empty());
+
+            // All results are equal to each other.
+            // This ensures that varying the batch size and sequence
+            // does not change the order in which results are produced.
+            let first_result = all_results.first().unwrap();
+            for result in &all_results {
+                assert_eq!(first_result, result);
+            }
+
+            // All the data points in each result are in lexicographic order.
+            // This ensures that the recurse-produced ordering is correct.
+            let mut last_value = &"0".to_string();
+            for value in first_result {
+                assert!(last_value < value);
+                last_value = value;
+            }
+        }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_3_ply_6_batch_size_3() {
+            let depth = 3;
+            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5", "6"];
+            let batch_size = 3;
+
+            generate_and_validate_all_results(depth, batch_size, SYMBOLS);
+        }
+
+        #[test]
+        fn batching_does_not_change_result_order_at_depth_3_ply_9_batch_size_3() {
+            let depth = 2;
+            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+            let batch_size = 3;
+
+            generate_and_validate_all_results(depth, batch_size, SYMBOLS);
         }
     }
 }
