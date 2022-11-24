@@ -31,7 +31,6 @@ pub struct DataContext<DataToken: Clone + Debug> {
     suspended_tokens: Vec<Option<DataToken>>,
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
-    piggyback: Option<Vec<DataContext<DataToken>>>,
     imported_tags: BTreeMap<FieldRef, FieldValue>,
 }
 
@@ -81,9 +80,6 @@ where
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    piggyback: Option<Vec<DataContext<DataToken>>>,
-
     /// Tagged values imported from an ancestor component of the one currently being evaluated.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     imported_tags: BTreeMap<FieldRef, FieldValue>,
@@ -102,7 +98,6 @@ where
             suspended_tokens: context.suspended_tokens,
             folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
-            piggyback: context.piggyback,
             imported_tags: context.imported_tags,
         }
     }
@@ -121,7 +116,6 @@ where
             suspended_tokens: context.suspended_tokens,
             folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
-            piggyback: context.piggyback,
             imported_tags: context.imported_tags,
         }
     }
@@ -131,7 +125,6 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
     fn new(token: Option<DataToken>) -> DataContext<DataToken> {
         DataContext {
             current_token: token,
-            piggyback: None,
             tokens: Default::default(),
             values: Default::default(),
             suspended_tokens: Default::default(),
@@ -155,7 +148,6 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             suspended_tokens: self.suspended_tokens,
             folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
-            piggyback: self.piggyback,
             imported_tags: self.imported_tags,
         }
     }
@@ -168,7 +160,6 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             suspended_tokens: self.suspended_tokens.clone(),
             folded_contexts: self.folded_contexts.clone(),
             folded_values: self.folded_values.clone(),
-            piggyback: None,
             imported_tags: self.imported_tags.clone(),
         }
     }
@@ -181,45 +172,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             suspended_tokens: self.suspended_tokens,
             folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
-            piggyback: self.piggyback,
             imported_tags: self.imported_tags,
-        }
-    }
-
-    fn ensure_suspended(mut self) -> DataContext<DataToken> {
-        if let Some(token) = self.current_token {
-            self.suspended_tokens.push(Some(token));
-            DataContext {
-                current_token: None,
-                tokens: self.tokens,
-                values: self.values,
-                suspended_tokens: self.suspended_tokens,
-                folded_contexts: self.folded_contexts,
-                folded_values: self.folded_values,
-                piggyback: self.piggyback,
-                imported_tags: self.imported_tags,
-            }
-        } else {
-            self
-        }
-    }
-
-    fn ensure_unsuspended(mut self) -> DataContext<DataToken> {
-        match self.current_token {
-            None => {
-                let current_token = self.suspended_tokens.pop().unwrap();
-                DataContext {
-                    current_token,
-                    tokens: self.tokens,
-                    values: self.values,
-                    suspended_tokens: self.suspended_tokens,
-                    folded_contexts: self.folded_contexts,
-                    folded_values: self.folded_values,
-                    piggyback: self.piggyback,
-                    imported_tags: self.imported_tags,
-                }
-            }
-            Some(_) => self,
         }
     }
 }
@@ -231,7 +184,6 @@ impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> 
             && self.values == other.values
             && self.suspended_tokens == other.suspended_tokens
             && self.folded_contexts == other.folded_contexts
-            && self.piggyback == other.piggyback
             && self.imported_tags == other.imported_tags
     }
 }
