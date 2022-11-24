@@ -576,7 +576,7 @@ mod tests {
         struct VariableBatchingAdapter {
             base: usize,
             offset: usize,
-            symbols: &'static [&'static str],
+            symbols: &'static [char],
             neighbor_calls: usize,
         }
 
@@ -584,7 +584,7 @@ mod tests {
             fn new(
                 base_batch_size: usize,
                 batch_size_offset: usize,
-                symbols: &'static [&'static str],
+                symbols: &'static [char],
             ) -> Self {
                 Self {
                     base: base_batch_size,
@@ -656,7 +656,7 @@ mod tests {
                         let neighbors: Box<dyn Iterator<Item = String> + 'static> = Box::new(
                             self.symbols
                                 .iter()
-                                .map(move |suffix| value.to_owned() + suffix),
+                                .map(move |suffix| value.to_owned() + suffix.to_string().as_str()),
                         );
                         neighbors
                     },
@@ -743,7 +743,7 @@ mod tests {
             }
         }
 
-        fn generate_and_validate_all_results(depth: usize, symbols: &'static [&'static str]) {
+        fn generate_and_validate_all_results(depth: usize, symbols: &'static [char]) {
             let schema =
                 Schema::parse(super::simple_node_schema::SCHEMA_TEXT).expect("valid schema");
             let query = parse(&schema, super::simple_node_schema::make_test_query(depth))
@@ -793,7 +793,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_2_ply_2() {
             let depth = 2;
-            const SYMBOLS: &[&str] = &["1", "2"];
+            const SYMBOLS: &[char] = &['1', '2'];
 
             generate_and_validate_all_results(depth, SYMBOLS);
         }
@@ -801,7 +801,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_2_ply_4() {
             let depth = 2;
-            const SYMBOLS: &[&str] = &["1", "2", "3", "4"];
+            const SYMBOLS: &[char] = &['1', '2', '3', '4'];
 
             generate_and_validate_all_results(depth, SYMBOLS);
         }
@@ -809,7 +809,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_2_ply_5() {
             let depth = 2;
-            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5"];
+            const SYMBOLS: &[char] = &['1', '2', '3', '4', '5'];
 
             generate_and_validate_all_results(depth, SYMBOLS);
         }
@@ -817,7 +817,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_4_ply_3() {
             let depth = 4;
-            const SYMBOLS: &[&str] = &["1", "2", "3"];
+            const SYMBOLS: &[char] = &['1', '2', '3'];
 
             generate_and_validate_all_results(depth, SYMBOLS);
         }
@@ -835,14 +835,14 @@ mod tests {
         struct OnOrOffBatchingAdapter {
             property_batch_size: usize,
             neighbors_batch_sizes: VecDeque<usize>,
-            symbols: &'static [&'static str],
+            symbols: &'static [char],
         }
 
         impl OnOrOffBatchingAdapter {
             fn new(
                 property_batch_size: usize,
                 neighbors_batch_sizes: VecDeque<usize>,
-                symbols: &'static [&'static str],
+                symbols: &'static [char],
             ) -> Self {
                 Self {
                     property_batch_size,
@@ -909,7 +909,7 @@ mod tests {
                         let neighbors: Box<dyn Iterator<Item = String> + 'static> = Box::new(
                             self.symbols
                                 .iter()
-                                .map(move |suffix| value.to_owned() + suffix),
+                                .map(move |suffix| value.to_owned() + suffix.to_string().as_str()),
                         );
                         neighbors
                     },
@@ -976,7 +976,7 @@ mod tests {
         fn generate_and_validate_all_results(
             depth: usize,
             batch_size: usize,
-            symbols: &'static [&'static str],
+            symbols: &'static [char],
         ) {
             assert!(batch_size > 1);
             assert!(batch_size <= symbols.len());
@@ -1027,7 +1027,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_3_ply_6_batch_size_3() {
             let depth = 3;
-            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5", "6"];
+            const SYMBOLS: &[char] = &['1', '2', '3', '4', '5', '6'];
             let batch_size = 3;
 
             generate_and_validate_all_results(depth, batch_size, SYMBOLS);
@@ -1036,7 +1036,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_3_ply_9_batch_size_3() {
             let depth = 2;
-            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+            const SYMBOLS: &[char] = &['1', '2', '3', '4', '5', '6', '7', '8', '9'];
             let batch_size = 3;
 
             generate_and_validate_all_results(depth, batch_size, SYMBOLS);
@@ -1045,7 +1045,7 @@ mod tests {
         #[test]
         fn batching_does_not_change_result_order_at_depth_4_ply_8_batch_size_4() {
             let depth = 4;
-            const SYMBOLS: &[&str] = &["1", "2", "3", "4", "5", "6", "7", "8"];
+            const SYMBOLS: &[char] = &['1', '2', '3', '4', '5', '6', '7', '8'];
             let batch_size = 4;
 
             generate_and_validate_all_results(depth, batch_size, SYMBOLS);
