@@ -332,6 +332,10 @@ pub(in crate::interpreter) fn expand_recursive_edge<'query, DataToken: Clone + D
 
 #[cfg(test)]
 mod tests {
+    use std::collections::VecDeque;
+
+    use crate::interpreter::DataContext;
+
     mod first_result_expands_no_edges {
         use std::{cell::RefCell, rc::Rc, sync::Arc};
 
@@ -501,6 +505,62 @@ mod tests {
                 }}
             "#
             )
+        }
+    }
+
+    struct BatchingIterator<'a, T, F>
+    where
+        F: Fn(&Option<String>) -> T,
+    {
+        input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
+        resolver: F,
+        buffer: VecDeque<(DataContext<String>, T)>,
+        batch_size: usize,
+    }
+
+    impl<'a, T, F> BatchingIterator<'a, T, F>
+    where
+        F: Fn(&Option<String>) -> T,
+    {
+        fn new(
+            input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
+            resolver: F,
+            batch_size: usize,
+        ) -> Self {
+            assert_ne!(batch_size, 0);
+            Self {
+                input,
+                resolver,
+                buffer: Default::default(),
+                batch_size,
+            }
+        }
+    }
+
+    impl<'a, T, F> Iterator for BatchingIterator<'a, T, F>
+    where
+        F: Fn(&Option<String>) -> T,
+    {
+        type Item = (DataContext<String>, T);
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.buffer.is_empty() {
+                let mut remaining_batch_size = self.batch_size;
+
+                for item in &mut self.input {
+                    assert!(remaining_batch_size > 0);
+
+                    let value = (self.resolver)(&item.current_token);
+                    self.buffer.push_back((item, value));
+
+                    remaining_batch_size -= 1;
+                    if remaining_batch_size == 0 {
+                        break;
+                    }
+                }
+            }
+
+            self.buffer.pop_front()
         }
     }
 
@@ -768,7 +828,7 @@ mod tests {
 
         use crate::{
             frontend::parse,
-            interpreter::{basic_adapter::*, execution, DataContext},
+            interpreter::{basic_adapter::*, execution},
             schema::Schema,
         };
 
@@ -815,7 +875,7 @@ mod tests {
                 assert_eq!(type_name, "Node");
                 assert_eq!(property_name, "value");
 
-                Box::new(BatchingIterator::new(
+                Box::new(super::BatchingIterator::new(
                     contexts,
                     |value| value.clone().into(),
                     self.property_batch_size,
@@ -839,7 +899,7 @@ mod tests {
                     .pop_front()
                     .expect("sufficient batch sizes");
 
-                Box::new(BatchingIterator::new(
+                Box::new(super::BatchingIterator::new(
                     contexts,
                     |value| {
                         let value = value
@@ -867,62 +927,6 @@ mod tests {
                     "resolve_coercion() was not expected to be called, but was called with \
                     arguments: {type_name} {coerce_to_type}"
                 )
-            }
-        }
-
-        struct BatchingIterator<'a, T, F>
-        where
-            F: Fn(&Option<String>) -> T,
-        {
-            input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
-            resolver: F,
-            buffer: VecDeque<(DataContext<String>, T)>,
-            batch_size: usize,
-        }
-
-        impl<'a, T, F> BatchingIterator<'a, T, F>
-        where
-            F: Fn(&Option<String>) -> T,
-        {
-            fn new(
-                input: Box<dyn Iterator<Item = DataContext<String>> + 'a>,
-                resolver: F,
-                batch_size: usize,
-            ) -> Self {
-                assert_ne!(batch_size, 0);
-                Self {
-                    input,
-                    resolver,
-                    buffer: Default::default(),
-                    batch_size,
-                }
-            }
-        }
-
-        impl<'a, T, F> Iterator for BatchingIterator<'a, T, F>
-        where
-            F: Fn(&Option<String>) -> T,
-        {
-            type Item = (DataContext<String>, T);
-
-            fn next(&mut self) -> Option<Self::Item> {
-                if self.buffer.is_empty() {
-                    let mut remaining_batch_size = self.batch_size;
-
-                    for item in &mut self.input {
-                        assert!(remaining_batch_size > 0);
-
-                        let value = (self.resolver)(&item.current_token);
-                        self.buffer.push_back((item, value));
-
-                        remaining_batch_size -= 1;
-                        if remaining_batch_size == 0 {
-                            break;
-                        }
-                    }
-                }
-
-                self.buffer.pop_front()
             }
         }
 
@@ -1045,6 +1049,172 @@ mod tests {
             let batch_size = 4;
 
             generate_and_validate_all_results(depth, batch_size, SYMBOLS);
+        }
+    }
+
+    mod adapter_batching_where_not_all_edges_exist_does_not_change_result_order {
+        use std::{cell::RefCell, rc::Rc, sync::Arc};
+
+        use crate::{
+            frontend::parse,
+            interpreter::{basic_adapter::*, execution},
+            schema::Schema,
+        };
+
+        struct NotAllEdgesExistAdapter {
+            property_batch_size: usize,
+            neighbors_batch_size: usize,
+            symbols: &'static [char],
+            symbols_with_edges: &'static [char],
+        }
+
+        impl NotAllEdgesExistAdapter {
+            fn new(
+                property_batch_size: usize,
+                neighbors_batch_size: usize,
+                symbols: &'static [char],
+                symbols_with_edges: &'static [char],
+            ) -> Self {
+                Self {
+                    property_batch_size,
+                    neighbors_batch_size,
+                    symbols,
+                    symbols_with_edges,
+                }
+            }
+        }
+
+        impl BasicAdapter<'static> for NotAllEdgesExistAdapter {
+            type Vertex = String;
+
+            fn resolve_starting_vertices(
+                &mut self,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> VertexIterator<'static, Self::Vertex> {
+                assert_eq!(edge_name, "Node");
+                assert!(parameters.is_none());
+
+                Box::new(self.symbols.iter().map(|x| x.to_string()))
+            }
+
+            fn resolve_property(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                property_name: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, crate::ir::FieldValue> {
+                assert_eq!(type_name, "Node");
+                assert_eq!(property_name, "value");
+
+                Box::new(super::BatchingIterator::new(
+                    contexts,
+                    |value| value.clone().into(),
+                    self.property_batch_size,
+                ))
+            }
+
+            fn resolve_neighbors(
+                &mut self,
+                contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                edge_name: &str,
+                parameters: Option<&crate::ir::EdgeParameters>,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
+            {
+                assert_eq!(type_name, "Node");
+                assert_eq!(edge_name, "next_layer");
+                assert!(parameters.is_none());
+
+                Box::new(super::BatchingIterator::new(
+                    contexts,
+                    |value| {
+                        let value = value
+                            .as_ref()
+                            .expect("no @optional in the test query")
+                            .clone();
+
+                        let neighbors: Box<dyn Iterator<Item = String> + 'static> =
+                            if value.ends_with(|c| self.symbols_with_edges.contains(&c)) {
+                                Box::new(self.symbols.iter().map(move |suffix| {
+                                    value.to_owned() + suffix.to_string().as_str()
+                                }))
+                            } else {
+                                Box::new(std::iter::empty())
+                            };
+                        neighbors
+                    },
+                    self.neighbors_batch_size,
+                ))
+            }
+
+            fn resolve_coercion(
+                &mut self,
+                _contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &str,
+                coerce_to_type: &str,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+                panic!(
+                    "resolve_coercion() was not expected to be called, but was called with \
+                    arguments: {type_name} {coerce_to_type}"
+                )
+            }
+        }
+
+        fn generate_and_validate_result(
+            depth: usize,
+            batch_size: usize,
+            symbols: &'static [char],
+            symbols_with_edges: &'static [char],
+        ) {
+            assert!(batch_size > 1);
+            assert!(batch_size <= symbols.len());
+
+            let schema =
+                Schema::parse(super::simple_node_schema::SCHEMA_TEXT).expect("valid schema");
+            let query = parse(&schema, super::simple_node_schema::make_test_query(depth))
+                .expect("valid query");
+
+            let adapter = Rc::new(RefCell::new(NotAllEdgesExistAdapter::new(
+                1,
+                batch_size,
+                symbols,
+                symbols_with_edges,
+            )));
+            let results_iter =
+                execution::interpret_ir(adapter, query, Arc::new(Default::default()))
+                    .expect("no execution errors");
+            let results: Vec<_> = results_iter
+                .map(|x| x["value"].as_str().unwrap().to_string())
+                .collect();
+
+            dbg!(&results);
+
+            // All the data points in each result are in lexicographic order.
+            // This ensures that the recurse-produced ordering is correct.
+            let mut last_value = &"0".to_string();
+            for value in &results {
+                assert!(last_value < value);
+                last_value = value;
+            }
+        }
+
+        #[test]
+        fn not_all_edges_exist_depth_2_ply_5_edges_2_batch_2() {
+            let depth = 2;
+            let batch_size = 2;
+            const SYMBOLS: &[char] = &['1', '2', '3', '4', '5'];
+            const SYMBOLS_WITH_EDGES: &[char] = &['2', '4'];
+            generate_and_validate_result(depth, batch_size, SYMBOLS, SYMBOLS_WITH_EDGES);
+        }
+
+        #[test]
+        fn not_all_edges_exist_depth_4_ply_5_edges_2_batch_3() {
+            let depth = 4;
+            let batch_size = 3;
+            const SYMBOLS: &[char] = &['1', '2', '3', '4', '5'];
+            const SYMBOLS_WITH_EDGES: &[char] = &['2', '5'];
+            generate_and_validate_result(depth, batch_size, SYMBOLS, SYMBOLS_WITH_EDGES);
         }
     }
 }
