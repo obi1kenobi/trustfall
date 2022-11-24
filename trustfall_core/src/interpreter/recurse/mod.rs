@@ -194,6 +194,23 @@ where
         debug_assert!(self.levels.len() <= usize::from(self.edge_data.recursive_info.depth) + 1);
     }
 
+    fn reorder_inner(
+        &mut self,
+        level: usize,
+        ctx_pulls: usize,
+    ) {
+        if level > 0 {
+            while ctx_pulls > self.levels[level - 1].total_prepared() {
+                let (last_level_ctx, last_pulls) = self.levels[level - 1]
+                    .pop_passed_unprepared()
+                    .expect("there was no unprepared token but the count said there should be");
+
+                self.reorder_inner(level - 1, last_pulls);
+                self.reorder_queue.push_back(last_level_ctx);
+            }
+        }
+    }
+
     /// The given context value is about to be produced from the Iterator::next() method.
     /// Ensure elements are produced in the correct order: if there are other contexts
     /// that need to be produced first, queue this context and return one from the queue instead.
@@ -209,32 +226,38 @@ where
             // We must never have prepared more items than we have attempted to pull.
             assert!(self.levels[level].total_pulls() >= self.levels[level - 1].total_prepared());
 
-            while ctx_pulls > self.levels[level - 1].total_prepared() {
-                // N.B.: Do not reorder these lines!
-                //       Lots of tricky interactions through Rc<RefCell<...>> here.
-                //
-                // This level has pulled more elements than the last level prepared for us.
-                // This usually happens when batching is used: the adapter impl requests multiple
-                // elements from upstream before yielding its own results.
-                //
-                // In this case, we have to do some work to reorder the tokens into
-                // their proper order:
-                // - We get an "unprepared" token from the previous level.
-                // - We recursively reorder tokens on the previous level.
-                // - We queue the token we were going to return.
-                //   It's tempting to move this line to earlier, but it will mess up
-                //   the recursive step!
-                // - The token from the recursive step is our next candidate token to return.
-                //
-                // We keep looping until we've processed and correctly reordered all the tokens
-                // that were not previously "prepared" due to the batching.
-                let (last_level_ctx, last_pulls) = self.levels[level - 1]
-                    .pop_passed_unprepared()
-                    .expect("there was no unprepared token but the count said there should be");
-                let next_ctx = self.reorder_output(level - 1, last_level_ctx, last_pulls);
+            self.reorder_inner(level, ctx_pulls);
+            if let Some(new_ctx) = self.reorder_queue.pop_front() {
                 self.reorder_queue.push_back(returned_ctx);
-                returned_ctx = next_ctx;
+                returned_ctx = new_ctx;
             }
+
+            // while ctx_pulls > self.levels[level - 1].total_prepared() {
+            //     // N.B.: Do not reorder these lines!
+            //     //       Lots of tricky interactions through Rc<RefCell<...>> here.
+            //     //
+            //     // This level has pulled more elements than the last level prepared for us.
+            //     // This usually happens when batching is used: the adapter impl requests multiple
+            //     // elements from upstream before yielding its own results.
+            //     //
+            //     // In this case, we have to do some work to reorder the tokens into
+            //     // their proper order:
+            //     // - We get an "unprepared" token from the previous level.
+            //     // - We recursively reorder tokens on the previous level.
+            //     // - We queue the token we were going to return.
+            //     //   It's tempting to move this line to earlier, but it will mess up
+            //     //   the recursive step!
+            //     // - The token from the recursive step is our next candidate token to return.
+            //     //
+            //     // We keep looping until we've processed and correctly reordered all the tokens
+            //     // that were not previously "prepared" due to the batching.
+            //     let (last_level_ctx, last_pulls) = self.levels[level - 1]
+            //         .pop_passed_unprepared()
+            //         .expect("there was no unprepared token but the count said there should be");
+            //     let next_ctx = self.reorder_output(level - 1, last_level_ctx, last_pulls);
+            //     self.reorder_queue.push_back(returned_ctx);
+            //     returned_ctx = next_ctx;
+            // }
         }
 
         returned_ctx
