@@ -20,7 +20,7 @@ use crate::{
     ir::{
         indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
         FoldSpecificFieldKind, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
-        Recursive, Vid,
+        Vid,
     },
     util::BTreeMapTryInsertExt,
 };
@@ -83,7 +83,7 @@ where
     }
 }
 
-fn perform_coercion<'query, DataToken>(
+pub(super) fn perform_coercion<'query, DataToken>(
     adapter: &RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>,
     query: &InterpretedQuery,
     vertex: &IRVertex,
@@ -1028,7 +1028,7 @@ fn expand_edge<'query, DataToken: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
     let expanded_iterator = if let Some(recursive) = &edge.recursive {
-        expand_recursive_edge(
+        super::recurse::expand_recursive_edge(
             adapter.clone(),
             query,
             component,
@@ -1126,232 +1126,6 @@ fn perform_entry_into_new_vertex<'query, DataToken: Clone + Debug + 'query>(
         x.record_token(vertex_id);
         x
     }))
-}
-
-#[allow(clippy::too_many_arguments)]
-fn expand_recursive_edge<'query, DataToken: Clone + Debug + 'query>(
-    adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
-    query: &InterpretedQuery,
-    component: &IRQueryComponent,
-    expanding_from: &IRVertex,
-    expanding_to: &IRVertex,
-    edge_id: Eid,
-    edge_name: &Arc<str>,
-    edge_parameters: &Option<Arc<EdgeParameters>>,
-    recursive: &Recursive,
-    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    let expanding_from_vid = expanding_from.vid;
-    let mut recursion_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
-        Box::new(iterator.map(move |mut context| {
-            if context.current_token.is_none() {
-                // Mark that this token starts off with a None current_token value,
-                // so the later unsuspend() call should restore it to such a state later.
-                context.suspended_tokens.push(None);
-            }
-            context.activate_token(&expanding_from_vid)
-        }));
-
-    let max_depth = usize::from(recursive.depth);
-    recursion_iterator = perform_one_recursive_edge_expansion(
-        adapter.clone(),
-        query,
-        component,
-        expanding_from.type_name.clone(),
-        expanding_from,
-        expanding_to,
-        edge_id,
-        edge_name,
-        edge_parameters,
-        recursion_iterator,
-    );
-
-    let edge_endpoint_type = expanding_to
-        .coerced_from_type
-        .as_ref()
-        .unwrap_or(&expanding_to.type_name);
-    let recursing_from = recursive.coerce_to.as_ref().unwrap_or(edge_endpoint_type);
-
-    for _ in 2..=max_depth {
-        if let Some(coerce_to) = recursive.coerce_to.as_ref() {
-            let mut adapter_ref = adapter.borrow_mut();
-            let coercion_iter = adapter_ref.can_coerce_to_type(
-                recursion_iterator,
-                edge_endpoint_type.clone(),
-                coerce_to.clone(),
-                query.clone(),
-                expanding_from_vid,
-            );
-
-            // This coercion is unusual since it doesn't discard elements that can't be coerced.
-            // This is because we still want to produce those elements, and we simply want to
-            // not continue recursing deeper through them since they don't have the edge we need.
-            recursion_iterator = Box::new(coercion_iter.map(|(ctx, can_coerce)| {
-                if can_coerce {
-                    ctx
-                } else {
-                    ctx.ensure_suspended()
-                }
-            }));
-        }
-
-        recursion_iterator = perform_one_recursive_edge_expansion(
-            adapter.clone(),
-            query,
-            component,
-            recursing_from.clone(),
-            expanding_from,
-            expanding_to,
-            edge_id,
-            edge_name,
-            edge_parameters,
-            recursion_iterator,
-        );
-    }
-
-    post_process_recursive_expansion(recursion_iterator)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn perform_one_recursive_edge_expansion<'query, DataToken: Clone + Debug + 'query>(
-    adapter: Rc<RefCell<impl Adapter<'query, DataToken = DataToken> + 'query>>,
-    query: &InterpretedQuery,
-    _component: &IRQueryComponent,
-    expanding_from_type: Arc<str>,
-    expanding_from: &IRVertex,
-    _expanding_to: &IRVertex,
-    edge_id: Eid,
-    edge_name: &Arc<str>,
-    edge_parameters: &Option<Arc<EdgeParameters>>,
-    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    let mut adapter_ref = adapter.borrow_mut();
-    let edge_iterator = adapter_ref.project_neighbors(
-        iterator,
-        expanding_from_type,
-        edge_name.clone(),
-        edge_parameters.clone(),
-        query.clone(),
-        expanding_from.vid,
-        edge_id,
-    );
-    drop(adapter_ref);
-
-    let result_iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> =
-        Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
-            RecursiveEdgeExpander::new(context, neighbor_iterator)
-        }));
-
-    result_iterator
-}
-
-struct RecursiveEdgeExpander<'query, DataToken: Clone + Debug + 'query> {
-    context: Option<DataContext<DataToken>>,
-    neighbor_base: Option<DataContext<DataToken>>,
-    neighbor_tokens: Box<dyn Iterator<Item = DataToken> + 'query>,
-    has_neighbors: bool,
-    neighbors_ended: bool,
-}
-
-impl<'query, DataToken: Clone + Debug + 'query> RecursiveEdgeExpander<'query, DataToken> {
-    pub fn new(
-        context: DataContext<DataToken>,
-        neighbor_tokens: Box<dyn Iterator<Item = DataToken> + 'query>,
-    ) -> RecursiveEdgeExpander<'query, DataToken> {
-        RecursiveEdgeExpander {
-            context: Some(context),
-            neighbor_base: None,
-            neighbor_tokens,
-            has_neighbors: false,
-            neighbors_ended: false,
-        }
-    }
-}
-
-impl<'query, DataToken: Clone + Debug + 'query> Iterator
-    for RecursiveEdgeExpander<'query, DataToken>
-{
-    type Item = DataContext<DataToken>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if !self.neighbors_ended {
-            let neighbor = self.neighbor_tokens.next();
-
-            if let Some(token) = neighbor {
-                if let Some(context) = self.context.take() {
-                    // Prep a neighbor base context for future use, since we're moving
-                    // the "self" context out.
-                    self.neighbor_base = Some(context.split_and_move_to_token(None));
-
-                    // Attach the "self" context as a piggyback rider on the neighbor.
-                    let mut neighbor_context = context.split_and_move_to_token(Some(token));
-                    neighbor_context
-                        .piggyback
-                        .get_or_insert_with(Default::default)
-                        .push(context.ensure_suspended());
-                    return Some(neighbor_context);
-                } else {
-                    // The "self" token has already been moved out, so use the neighbor base context
-                    // as the starting point for constructing a new context.
-                    return Some(
-                        self.neighbor_base
-                            .as_ref()
-                            .unwrap()
-                            .split_and_move_to_token(Some(token)),
-                    );
-                }
-            } else {
-                self.neighbors_ended = true;
-
-                // If there's no current token, there couldn't possibly be neighbors.
-                // If this assertion trips, the adapter's project_neighbors() implementation
-                // illegally returned neighbors for a non-existent vertex.
-                if let Some(context) = &self.context {
-                    if context.current_token.is_none() {
-                        assert!(!self.has_neighbors);
-                    }
-                }
-            }
-        }
-
-        self.context.take()
-    }
-}
-
-fn unpack_piggyback<DataToken: Debug + Clone>(
-    context: DataContext<DataToken>,
-) -> Vec<DataContext<DataToken>> {
-    let mut result = Default::default();
-
-    unpack_piggyback_inner(&mut result, context);
-
-    result
-}
-
-fn unpack_piggyback_inner<DataToken: Debug + Clone>(
-    output: &mut Vec<DataContext<DataToken>>,
-    mut context: DataContext<DataToken>,
-) {
-    if let Some(mut piggyback) = context.piggyback.take() {
-        for ctx in piggyback.drain(..) {
-            unpack_piggyback_inner(output, ctx);
-        }
-    }
-
-    output.push(context);
-}
-
-fn post_process_recursive_expansion<'query, DataToken: Clone + Debug + 'query>(
-    iterator: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<DataToken>> + 'query> {
-    Box::new(
-        iterator
-            .flat_map(|context| unpack_piggyback(context))
-            .map(|context| {
-                assert!(context.piggyback.is_none());
-                context.ensure_unsuspended()
-            }),
-    )
 }
 
 #[cfg(test)]

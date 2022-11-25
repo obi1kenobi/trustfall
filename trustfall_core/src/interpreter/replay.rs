@@ -357,6 +357,7 @@ where
     type Item = DataToken;
 
     fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
         let (_, trace_op) = advance_ref_iter(self.inner.as_ref())
             .expect("Expected to have an item but found none.");
         assert!(!self.exhausted);
