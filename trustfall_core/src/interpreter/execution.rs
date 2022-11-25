@@ -19,7 +19,8 @@ use crate::{
     },
     ir::{
         indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
-        FoldSpecificFieldKind, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
+        FoldSpecificFieldKind, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
+        Vid,
     },
     util::BTreeMapTryInsertExt,
 };
