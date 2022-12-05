@@ -127,7 +127,7 @@ where
 }
 
 impl<DataToken: Clone + Debug> DataContext<DataToken> {
-    fn new(token: Option<DataToken>) -> DataContext<DataToken> {
+    pub fn new(token: Option<DataToken>) -> DataContext<DataToken> {
         DataContext {
             current_token: token,
             piggyback: None,
