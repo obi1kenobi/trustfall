@@ -1,0 +1,27 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query has a @fold with no elements.
+    //
+    // It checks that all the @output names and values are properly returned,
+    // including for the edge traversal inside the fold, even though the fold has no data.
+    // We expect one result back with the following data: {
+    //   "zero": 0,
+    //   "predecessor": [],
+    //   "successors": [],
+    // }
+    query: r#"
+{
+    Zero {
+        zero: value @output
+
+        predecessor @fold {
+            predecessor: value @output
+
+            successor @optional {
+                successors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
