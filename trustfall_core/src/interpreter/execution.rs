@@ -484,6 +484,16 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
     let cloned_query = query.clone();
     let fold_component = fold.component.clone();
     let final_iterator = post_filtered_iterator.map(move |mut ctx| {
+        // If the @fold is inside an @optional that doesn't exist,
+        // its outputs should be `null` rather than empty lists (the usual for empty folds).
+        // Transformed outputs should also be `null` rather than their usual transformed defaults.
+        let did_fold_root_exist = ctx.tokens[&expanding_from_vid].is_some();
+        let default_value = if did_fold_root_exist {
+            Some(ValueOrVec::Vec(vec![]))
+        } else {
+            None
+        };
+
         let fold_elements = ctx.folded_contexts.get(&fold_eid).unwrap();
 
         // Add any fold-specific field outputs to the context's folded values.
@@ -494,14 +504,18 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 }
             };
             ctx.folded_values
-                .insert_or_error((fold_eid, output_name.clone()), Some(value))
+                .insert_or_error(
+                    (fold_eid, output_name.clone()),
+                    did_fold_root_exist.then_some(value),
+                )
                 .unwrap();
         }
 
         // Prepare empty vectors for all the outputs from this @fold component.
+        // If the fold-root vertex didn't exist, the default is `null` instead.
         let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
             .iter()
-            .map(|output| ((fold_eid, output.clone()), Some(ValueOrVec::Vec(vec![]))))
+            .map(|output| ((fold_eid, output.clone()), default_value.clone()))
             .collect();
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
@@ -512,10 +526,10 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             let mut queue: Vec<_> = fold_component.folds.values().collect();
             while let Some(inner_fold) = queue.pop() {
                 for output in inner_fold.fold_specific_outputs.keys() {
-                    folded_values.insert((inner_fold.eid, output.clone()), Some(ValueOrVec::Vec(vec![])));
+                    folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
                 }
                 for output in inner_fold.component.outputs.keys() {
-                    folded_values.insert((inner_fold.eid, output.clone()), Some(ValueOrVec::Vec(vec![])));
+                    folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
                 }
                 queue.extend(inner_fold.component.folds.values());
             }
@@ -574,7 +588,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                         .push(ValueOrVec::Value(value));
                 }
             }
-        }
+        };
 
         let prior_folded_values_count = ctx.folded_values.len();
         let new_folded_values_count = folded_values.len();
