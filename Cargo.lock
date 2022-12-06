@@ -3168,7 +3168,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
