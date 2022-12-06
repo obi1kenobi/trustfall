@@ -1,0 +1,28 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query's outer @optional edge doesn't exist for the vertex in question.
+    //
+    // It checks that all the @output names and values are properly returned,
+    // including for the inner @optional edge, even though it has no data.
+    // Everything inside an @optional scope that doesn't exist is `null`.
+    // We expect one result back with the following data: {
+    //   "zero": 0,
+    //   "predecessor": null,
+    //   "successors": null,
+    // }
+    query: r#"
+{
+    Zero {
+        zero: value @output
+
+        predecessor @optional {
+            predecessor: value @output
+
+            successor @optional {
+                successors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
