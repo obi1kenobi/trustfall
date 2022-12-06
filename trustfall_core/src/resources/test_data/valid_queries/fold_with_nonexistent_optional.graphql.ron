@@ -1,0 +1,24 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query's @optional edge doesn't exist for the vertex in question.
+    //
+    // It checks that @output values from non-existent @optional edges inside a @fold
+    // correctly output lists of `null` values.
+    // We expect one result back with the following data: {
+    //   "zero": [0],
+    //   "value": [null],
+    // }
+    query: r#"
+{
+    One {
+        predecessor @fold {
+            zero: value @output
+
+            predecessor @optional {
+                value: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
