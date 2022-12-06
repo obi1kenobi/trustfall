@@ -1,0 +1,29 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query has two nested @fold scopes, and the outer folded edge
+    // doesn't exist for the vertex in question.
+    //
+    // It checks that all the @output names and values are properly returned,
+    // including for the inner @fold, even though they have no data.
+    // We expect one result back with the following data: {
+    //   "zero": 0,
+    //   "predecessor": [],
+    //   "successor_counts": [],
+    //   "successors": [],
+    // }
+    query: r#"
+{
+    Zero {
+        zero: value @output
+
+        predecessor @fold {
+            predecessor: value @output
+
+            successor @fold @transform(op: "count") @output(name: "successor_counts") {
+                successors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
