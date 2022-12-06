@@ -482,6 +482,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 
     let cloned_adapter = adapter.clone();
     let cloned_query = query.clone();
+    let fold_component = fold.component.clone();
     let final_iterator = post_filtered_iterator.map(move |mut ctx| {
         let fold_elements = ctx.folded_contexts.get(&fold_eid).unwrap();
 
@@ -497,6 +498,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 .unwrap();
         }
 
+        // Prepare empty vectors for all the outputs from this @fold component.
         let mut folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), ValueOrVec::Vec(vec![])))
@@ -504,7 +506,21 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
         // Skip the adapter project_property() calls and add the empty output values directly.
-        if !fold_elements.is_empty() {
+        if fold_elements.is_empty() {
+            // We need to make sure any outputs from any nested @fold components (recursively)
+            // are set to empty lists.
+            let mut queue: Vec<_> = fold_component.folds.values().collect();
+            while let Some(inner_fold) = queue.pop() {
+                for output in inner_fold.fold_specific_outputs.keys() {
+                    folded_values.insert((inner_fold.eid, output.clone()), ValueOrVec::Vec(vec![]));
+                }
+                for output in inner_fold.component.outputs.keys() {
+                    folded_values.insert((inner_fold.eid, output.clone()), ValueOrVec::Vec(vec![]));
+                }
+                queue.extend(inner_fold.component.folds.values());
+            }
+        } else {
+            // Iterate through the elements of the fold and get the values we need.
             let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
                 Box::new(fold_elements.clone().into_iter());
             for output_name in output_names.iter() {
