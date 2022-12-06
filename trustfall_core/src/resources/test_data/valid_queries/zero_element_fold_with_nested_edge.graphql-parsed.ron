@@ -1,0 +1,108 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Zero",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Zero",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          alias: Some("zero"),
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          alias: Some("zero"),
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("predecessor"),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "value",
+              alias: Some("predecessor"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "successor",
+            ), FieldNode(
+              position: Pos(
+                line: 9,
+                column: 13,
+              ),
+              name: "successor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 10,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("successors"),
+                ), FieldNode(
+                  position: Pos(
+                    line: 10,
+                    column: 17,
+                  ),
+                  name: "value",
+                  alias: Some("successors"),
+                  output: [
+                    OutputDirective(),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))
