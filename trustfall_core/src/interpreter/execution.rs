@@ -494,14 +494,14 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 }
             };
             ctx.folded_values
-                .insert_or_error((fold_eid, output_name.clone()), value)
+                .insert_or_error((fold_eid, output_name.clone()), Some(value))
                 .unwrap();
         }
 
         // Prepare empty vectors for all the outputs from this @fold component.
-        let mut folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec> = output_names
+        let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
             .iter()
-            .map(|output| ((fold_eid, output.clone()), ValueOrVec::Vec(vec![])))
+            .map(|output| ((fold_eid, output.clone()), Some(ValueOrVec::Vec(vec![]))))
             .collect();
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
@@ -512,10 +512,10 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
             let mut queue: Vec<_> = fold_component.folds.values().collect();
             while let Some(inner_fold) = queue.pop() {
                 for output in inner_fold.fold_specific_outputs.keys() {
-                    folded_values.insert((inner_fold.eid, output.clone()), ValueOrVec::Vec(vec![]));
+                    folded_values.insert((inner_fold.eid, output.clone()), Some(ValueOrVec::Vec(vec![])));
                 }
                 for output in inner_fold.component.outputs.keys() {
-                    folded_values.insert((inner_fold.eid, output.clone()), ValueOrVec::Vec(vec![]));
+                    folded_values.insert((inner_fold.eid, output.clone()), Some(ValueOrVec::Vec(vec![])));
                 }
                 queue.extend(inner_fold.component.folds.values());
             }
@@ -551,10 +551,12 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 for (key, value) in folded_context.folded_values {
                     folded_values
                         .entry(key)
-                        .or_insert_with(|| ValueOrVec::Vec(vec![]))
+                        .or_insert_with(|| Some(ValueOrVec::Vec(vec![])))
+                        .as_mut()
+                        .expect("not Some")
                         .as_mut_vec()
-                        .unwrap()
-                        .push(value);
+                        .expect("not a Vec")
+                        .push(value.unwrap_or(ValueOrVec::Value(FieldValue::Null)));
                 }
 
                 // We pushed values onto folded_context.values with output names in increasing order
@@ -564,9 +566,11 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                     let value = folded_context.values.pop().unwrap();
                     folded_values
                         .get_mut(&(fold_eid, output.clone()))
-                        .unwrap()
+                        .expect("key not present")
+                        .as_mut()
+                        .expect("value was None")
                         .as_mut_vec()
-                        .unwrap()
+                        .expect("not a Vec")
                         .push(ValueOrVec::Value(value));
                 }
             }

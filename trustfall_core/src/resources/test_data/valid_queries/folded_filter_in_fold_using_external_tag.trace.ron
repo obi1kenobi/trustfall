@@ -402,9 +402,9 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "second"): Vec([
+            (Eid(2), "second"): Some(Vec([
               Value(Int64(8)),
-            ]),
+            ])),
           },
         )),
       ),
@@ -442,9 +442,9 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "second"): Vec([
+            (Eid(2), "second"): Some(Vec([
               Value(Int64(8)),
-            ]),
+            ])),
           },
         ), Int64(4))),
       ),

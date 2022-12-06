@@ -613,25 +613,28 @@ mod tests {
     }
 
     fn check_filesystem_trace(expected_ir: TestIRQuery, input_data: &str) {
-        if let Ok(test_data) =
-            ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(input_data)
-        {
-            assert_eq!(expected_ir.schema_name, "filesystem");
-            assert_eq!(test_data.schema_name, "filesystem");
-            check_trace(expected_ir, test_data);
-        } else {
-            unreachable!()
+        match ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(input_data) {
+            Ok(test_data) => {
+                assert_eq!(expected_ir.schema_name, "filesystem");
+                assert_eq!(test_data.schema_name, "filesystem");
+                check_trace(expected_ir, test_data);
+            }
+            Err(e) => {
+                unreachable!("failed to parse trace file: {e}");
+            }
         }
     }
 
     fn check_numbers_trace(expected_ir: TestIRQuery, input_data: &str) {
-        if let Ok(test_data) = ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(input_data)
-        {
-            assert_eq!(expected_ir.schema_name, "numbers");
-            assert_eq!(test_data.schema_name, "numbers");
-            check_trace(expected_ir, test_data);
-        } else {
-            unreachable!()
+        match ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(input_data) {
+            Ok(test_data) => {
+                assert_eq!(expected_ir.schema_name, "numbers");
+                assert_eq!(test_data.schema_name, "numbers");
+                check_trace(expected_ir, test_data);
+            }
+            Err(e) => {
+                unreachable!("failed to parse trace file: {e}");
+            }
         }
     }
 

@@ -29,7 +29,7 @@ pub struct DataContext<DataToken: Clone + Debug> {
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<DataToken>>,
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
-    folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
+    folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<DataToken>>>,
     imported_tags: BTreeMap<FieldRef, FieldValue>,
 }
@@ -78,7 +78,7 @@ where
     folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec>,
+    folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     piggyback: Option<Vec<DataContext<DataToken>>>,

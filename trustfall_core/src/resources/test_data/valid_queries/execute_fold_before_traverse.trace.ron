@@ -245,10 +245,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "mult"): Vec([
+            (Eid(2), "mult"): Some(Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ]),
+            ])),
           },
         )),
       ),
@@ -288,10 +288,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "mult"): Vec([
+            (Eid(2), "mult"): Some(Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ]),
+            ])),
           },
         ))),
       ),
@@ -337,10 +337,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "mult"): Vec([
+            (Eid(2), "mult"): Some(Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ]),
+            ])),
           },
         )),
       ),
@@ -381,10 +381,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "mult"): Vec([
+            (Eid(2), "mult"): Some(Vec([
               Value(Int64(4)),
               Value(Int64(6)),
-            ]),
+            ])),
           },
         ), Int64(3))),
       ),

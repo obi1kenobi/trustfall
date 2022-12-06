@@ -215,11 +215,11 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(7)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(2))),
           },
         )),
       ),
@@ -254,11 +254,11 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(7)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(2))),
           },
         ), Int64(28))),
       ),
@@ -538,12 +538,12 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
               Value(Int64(5)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(3)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(3))),
           },
         )),
       ),
@@ -586,12 +586,12 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
               Value(Int64(5)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(3)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(3))),
           },
         ), Int64(30))),
       ),
@@ -782,10 +782,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(1)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(1))),
           },
         )),
       ),
@@ -812,10 +812,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(1)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(1))),
           },
         ), Int64(32))),
       ),

@@ -225,11 +225,11 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(2))),
           },
         )),
       ),
@@ -264,11 +264,11 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(2))),
           },
         ))),
       ),
@@ -501,17 +501,17 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
-            (Eid(2), "multiplecount"): Value(Uint64(3)),
-            (Eid(2), "multiples"): Vec([
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(2))),
+            (Eid(2), "multiplecount"): Some(Value(Uint64(3))),
+            (Eid(2), "multiples"): Some(Vec([
               Value(Int64(6)),
               Value(Int64(12)),
               Value(Int64(18)),
-            ]),
+            ])),
           },
         )),
       ),
@@ -584,17 +584,17 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
-            ]),
-            (Eid(1), "primeFactorcount"): Value(Uint64(2)),
-            (Eid(2), "multiplecount"): Value(Uint64(3)),
-            (Eid(2), "multiples"): Vec([
+            ])),
+            (Eid(1), "primeFactorcount"): Some(Value(Uint64(2))),
+            (Eid(2), "multiplecount"): Some(Value(Uint64(3))),
+            (Eid(2), "multiples"): Some(Vec([
               Value(Int64(6)),
               Value(Int64(12)),
               Value(Int64(18)),
-            ]),
+            ])),
           },
         ), Int64(6))),
       ),
