@@ -79,46 +79,6 @@ TestInterpreterOutputTrace(
       ),
       Opid(14): TraceOp(
         opid: Opid(14),
-        parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "Number", "value")),
-      ),
-      Opid(15): TraceOp(
-        opid: Opid(15),
-        parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Number", "value")),
-      ),
-      Opid(16): TraceOp(
-        opid: Opid(16),
-        parent_opid: Some(Opid(15)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(17): TraceOp(
-        opid: Opid(17),
-        parent_opid: Some(Opid(14)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(18): TraceOp(
-        opid: Opid(18),
-        parent_opid: Some(Opid(14)),
-        content: InputIteratorExhausted,
-      ),
-      Opid(19): TraceOp(
-        opid: Opid(19),
-        parent_opid: Some(Opid(14)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(20): TraceOp(
-        opid: Opid(20),
-        parent_opid: Some(Opid(15)),
-        content: InputIteratorExhausted,
-      ),
-      Opid(21): TraceOp(
-        opid: Opid(21),
-        parent_opid: Some(Opid(15)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(22): TraceOp(
-        opid: Opid(22),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           current_token: Some(Neither(NeitherNumber(0))),
@@ -134,8 +94,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(23): TraceOp(
-        opid: Opid(23),
+      Opid(15): TraceOp(
+        opid: Opid(15),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           current_token: Some(Neither(NeitherNumber(0))),
@@ -151,8 +111,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(0))),
       ),
-      Opid(24): TraceOp(
-        opid: Opid(24),
+      Opid(16): TraceOp(
+        opid: Opid(16),
         parent_opid: None,
         content: ProduceQueryResult({
           "predecessor": List([]),
@@ -160,38 +120,38 @@ TestInterpreterOutputTrace(
           "zero": Int64(0),
         }),
       ),
-      Opid(25): TraceOp(
-        opid: Opid(25),
+      Opid(17): TraceOp(
+        opid: Opid(17),
         parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
-      Opid(26): TraceOp(
-        opid: Opid(26),
+      Opid(18): TraceOp(
+        opid: Opid(18),
         parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
-      Opid(27): TraceOp(
-        opid: Opid(27),
+      Opid(19): TraceOp(
+        opid: Opid(19),
         parent_opid: Some(Opid(1)),
         content: OutputIteratorExhausted,
       ),
-      Opid(28): TraceOp(
-        opid: Opid(28),
+      Opid(20): TraceOp(
+        opid: Opid(20),
         parent_opid: Some(Opid(2)),
         content: InputIteratorExhausted,
       ),
-      Opid(29): TraceOp(
-        opid: Opid(29),
+      Opid(21): TraceOp(
+        opid: Opid(21),
         parent_opid: Some(Opid(2)),
         content: OutputIteratorExhausted,
       ),
-      Opid(30): TraceOp(
-        opid: Opid(30),
+      Opid(22): TraceOp(
+        opid: Opid(22),
         parent_opid: Some(Opid(3)),
         content: InputIteratorExhausted,
       ),
-      Opid(31): TraceOp(
-        opid: Opid(31),
+      Opid(23): TraceOp(
+        opid: Opid(23),
         parent_opid: Some(Opid(3)),
         content: OutputIteratorExhausted,
       ),
