@@ -497,57 +497,62 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
                 .unwrap();
         }
 
-        let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
-            Box::new(fold_elements.clone().into_iter());
-        for output_name in output_names.iter() {
-            let context_field = &fold.component.outputs[output_name.as_ref()];
-            let vertex_id = context_field.vertex_id;
-            let moved_iterator = Box::new(output_iterator.map(move |context| {
-                let new_token = context.tokens[&vertex_id].clone();
-                context.move_to_token(new_token)
-            }));
-
-            let mut adapter_ref = cloned_adapter.borrow_mut();
-            let field_data_iterator = adapter_ref.project_property(
-                moved_iterator,
-                fold.component.vertices[&vertex_id].type_name.clone(),
-                context_field.field_name.clone(),
-                cloned_query.clone(),
-                vertex_id,
-            );
-            drop(adapter_ref);
-
-            output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
-                context.values.push(value);
-                context
-            }));
-        }
-
         let mut folded_values: BTreeMap<(Eid, Arc<str>), ValueOrVec> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), ValueOrVec::Vec(vec![])))
             .collect();
-        for mut folded_context in output_iterator {
-            for (key, value) in folded_context.folded_values {
-                folded_values
-                    .entry(key)
-                    .or_insert_with(|| ValueOrVec::Vec(vec![]))
-                    .as_mut_vec()
-                    .unwrap()
-                    .push(value);
+
+        // Don't bother trying to resolve property values on this @fold when it's empty.
+        // Skip the adapter project_property() calls and add the empty output values directly.
+        if !fold_elements.is_empty() {
+            let mut output_iterator: Box<dyn Iterator<Item = DataContext<DataToken>>> =
+                Box::new(fold_elements.clone().into_iter());
+            for output_name in output_names.iter() {
+                let context_field = &fold.component.outputs[output_name.as_ref()];
+                let vertex_id = context_field.vertex_id;
+                let moved_iterator = Box::new(output_iterator.map(move |context| {
+                    let new_token = context.tokens[&vertex_id].clone();
+                    context.move_to_token(new_token)
+                }));
+
+                let mut adapter_ref = cloned_adapter.borrow_mut();
+                let field_data_iterator = adapter_ref.project_property(
+                    moved_iterator,
+                    fold.component.vertices[&vertex_id].type_name.clone(),
+                    context_field.field_name.clone(),
+                    cloned_query.clone(),
+                    vertex_id,
+                );
+                drop(adapter_ref);
+
+                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
+                    context.values.push(value);
+                    context
+                }));
             }
 
-            // We pushed values onto folded_context.values with output names in increasing order
-            // and we are now popping from the back. That means we're getting the highest name
-            // first, so we should reverse our output_names iteration order.
-            for output in output_names.iter().rev() {
-                let value = folded_context.values.pop().unwrap();
-                folded_values
-                    .get_mut(&(fold_eid, output.clone()))
-                    .unwrap()
-                    .as_mut_vec()
-                    .unwrap()
-                    .push(ValueOrVec::Value(value));
+            for mut folded_context in output_iterator {
+                for (key, value) in folded_context.folded_values {
+                    folded_values
+                        .entry(key)
+                        .or_insert_with(|| ValueOrVec::Vec(vec![]))
+                        .as_mut_vec()
+                        .unwrap()
+                        .push(value);
+                }
+
+                // We pushed values onto folded_context.values with output names in increasing order
+                // and we are now popping from the back. That means we're getting the highest name
+                // first, so we should reverse our output_names iteration order.
+                for output in output_names.iter().rev() {
+                    let value = folded_context.values.pop().unwrap();
+                    folded_values
+                        .get_mut(&(fold_eid, output.clone()))
+                        .unwrap()
+                        .as_mut_vec()
+                        .unwrap()
+                        .push(ValueOrVec::Value(value));
+                }
             }
         }
 
