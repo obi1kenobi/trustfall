@@ -20,6 +20,7 @@ jobs:
       - windows
       - linux
       # - musllinux
+    if: needs.should-publish.outputs.is_new_version == 'yes' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -46,8 +47,10 @@ jobs:
           git push origin "pytrustfall-v$CURRENT_VERSION"
 
   macos:
-    name: macOS build
     runs-on: macos-latest
+    needs:
+      - should-publish
+    if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
@@ -93,6 +96,9 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    needs:
+      - should-publish
+    if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
@@ -130,6 +136,9 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
+    needs:
+      - should-publish
+    if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
@@ -162,6 +171,9 @@ jobs:
 
   # musllinux:
   #   runs-on: ubuntu-latest
+    # needs:
+    #   - should-publish
+    # if: needs.should-publish.outputs.is_new_version == 'yes'
   #   strategy:
   #     matrix:
   #       python-version: ["3.9", "3.10", "3.11"]
@@ -226,9 +238,9 @@ jobs:
           export EXIT_CODE="$?"
           set -e
           if [[ "$EXIT_CODE" == "7" ]]; then
-            echo '::set-output name=is_new_version::no'
+            echo 'is_new_version=no' >> $GITHUB_OUTPUT
           elif [[ "$EXIT_CODE" == "0" ]]; then
-            echo '::set-output name=is_new_version::yes'
+            echo 'is_new_version=yes' >> $GITHUB_OUTPUT
           else
             # Unexpected outcome, indicates a bug.
             exit "$EXIT_CODE"
