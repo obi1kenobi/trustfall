@@ -316,10 +316,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
-            ]),
+            ])),
           },
         )),
       ),
@@ -354,10 +354,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(1), "factors"): Vec([
+            (Eid(1), "factors"): Some(Vec([
               Value(Int64(2)),
               Value(Int64(3)),
-            ]),
+            ])),
           },
         ), Int64(6))),
       ),

@@ -457,10 +457,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "second"): Vec([
+            (Eid(2), "second"): Some(Vec([
               Value(Int64(4)),
               Value(Int64(8)),
-            ]),
+            ])),
           },
           imported_tags: {
             ContextField(ContextField(
@@ -522,10 +522,10 @@ TestInterpreterOutputTrace(
             ],
           },
           folded_values: {
-            (Eid(2), "second"): Vec([
+            (Eid(2), "second"): Some(Vec([
               Value(Int64(4)),
               Value(Int64(8)),
-            ]),
+            ])),
           },
           imported_tags: {
             ContextField(ContextField(

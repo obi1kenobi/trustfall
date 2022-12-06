@@ -89,8 +89,8 @@ TestInterpreterOutputTrace(
             Eid(1): [],
           },
           folded_values: {
-            (Eid(1), "predecessor"): Vec([]),
-            (Eid(1), "successors"): Vec([]),
+            (Eid(1), "predecessor"): Some(Vec([])),
+            (Eid(1), "successors"): Some(Vec([])),
           },
         )),
       ),
@@ -106,8 +106,8 @@ TestInterpreterOutputTrace(
             Eid(1): [],
           },
           folded_values: {
-            (Eid(1), "predecessor"): Vec([]),
-            (Eid(1), "successors"): Vec([]),
+            (Eid(1), "predecessor"): Some(Vec([])),
+            (Eid(1), "successors"): Some(Vec([])),
           },
         ), Int64(0))),
       ),

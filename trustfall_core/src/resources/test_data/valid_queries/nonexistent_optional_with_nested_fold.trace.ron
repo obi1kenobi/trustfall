@@ -1,0 +1,334 @@
+TestInterpreterOutputTrace(
+  schema_name: "numbers",
+  trace: Trace(
+    ops: {
+      Opid(1): TraceOp(
+        opid: Opid(1),
+        parent_opid: None,
+        content: Call(GetStartingTokens(Vid(1))),
+      ),
+      Opid(2): TraceOp(
+        opid: Opid(2),
+        parent_opid: None,
+        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
+      ),
+      Opid(3): TraceOp(
+        opid: Opid(3),
+        parent_opid: None,
+        content: Call(ProjectNeighbors(Vid(2), "Number", Eid(2))),
+      ),
+      Opid(4): TraceOp(
+        opid: Opid(4),
+        parent_opid: None,
+        content: Call(ProjectProperty(Vid(2), "Number", "value")),
+      ),
+      Opid(5): TraceOp(
+        opid: Opid(5),
+        parent_opid: None,
+        content: Call(ProjectProperty(Vid(1), "Number", "value")),
+      ),
+      Opid(6): TraceOp(
+        opid: Opid(6),
+        parent_opid: Some(Opid(5)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(7): TraceOp(
+        opid: Opid(7),
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(8): TraceOp(
+        opid: Opid(8),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(9): TraceOp(
+        opid: Opid(9),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(10): TraceOp(
+        opid: Opid(10),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(GetStartingTokens(Neither(NeitherNumber(0)))),
+      ),
+      Opid(11): TraceOp(
+        opid: Opid(11),
+        parent_opid: Some(Opid(2)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Neither(NeitherNumber(0))),
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+          },
+        )),
+      ),
+      Opid(12): TraceOp(
+        opid: Opid(12),
+        parent_opid: Some(Opid(2)),
+        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+          current_token: Some(Neither(NeitherNumber(0))),
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+          },
+        ))),
+      ),
+      Opid(13): TraceOp(
+        opid: Opid(13),
+        parent_opid: Some(Opid(12)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(14): TraceOp(
+        opid: Opid(14),
+        parent_opid: Some(Opid(3)),
+        content: YieldInto(SerializableContext(
+          current_token: None,
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): None,
+          },
+        )),
+      ),
+      Opid(15): TraceOp(
+        opid: Opid(15),
+        parent_opid: Some(Opid(3)),
+        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+          current_token: None,
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): None,
+          },
+        ))),
+      ),
+      Opid(16): TraceOp(
+        opid: Opid(16),
+        parent_opid: Some(Opid(15)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(17): TraceOp(
+        opid: Opid(17),
+        parent_opid: Some(Opid(4)),
+        content: YieldInto(SerializableContext(
+          current_token: None,
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): None,
+          },
+          folded_contexts: {
+            Eid(2): [],
+          },
+          folded_values: {
+            (Eid(2), "successor_counts"): None,
+            (Eid(2), "successors"): None,
+          },
+        )),
+      ),
+      Opid(18): TraceOp(
+        opid: Opid(18),
+        parent_opid: Some(Opid(4)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: None,
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): None,
+          },
+          folded_contexts: {
+            Eid(2): [],
+          },
+          folded_values: {
+            (Eid(2), "successor_counts"): None,
+            (Eid(2), "successors"): None,
+          },
+        ), Null)),
+      ),
+      Opid(19): TraceOp(
+        opid: Opid(19),
+        parent_opid: Some(Opid(5)),
+        content: YieldInto(SerializableContext(
+          current_token: Some(Neither(NeitherNumber(0))),
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): None,
+          },
+          values: [
+            Null,
+          ],
+          folded_contexts: {
+            Eid(2): [],
+          },
+          folded_values: {
+            (Eid(2), "successor_counts"): None,
+            (Eid(2), "successors"): None,
+          },
+        )),
+      ),
+      Opid(20): TraceOp(
+        opid: Opid(20),
+        parent_opid: Some(Opid(5)),
+        content: YieldFrom(ProjectProperty(SerializableContext(
+          current_token: Some(Neither(NeitherNumber(0))),
+          tokens: {
+            Vid(1): Some(Neither(NeitherNumber(0))),
+            Vid(2): None,
+          },
+          values: [
+            Null,
+          ],
+          folded_contexts: {
+            Eid(2): [],
+          },
+          folded_values: {
+            (Eid(2), "successor_counts"): None,
+            (Eid(2), "successors"): None,
+          },
+        ), Int64(0))),
+      ),
+      Opid(21): TraceOp(
+        opid: Opid(21),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "predecessor": Null,
+          "successor_counts": Null,
+          "successors": Null,
+          "zero": Int64(0),
+        }),
+      ),
+      Opid(22): TraceOp(
+        opid: Opid(22),
+        parent_opid: Some(Opid(5)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(23): TraceOp(
+        opid: Opid(23),
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(24): TraceOp(
+        opid: Opid(24),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(25): TraceOp(
+        opid: Opid(25),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(26): TraceOp(
+        opid: Opid(26),
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(27): TraceOp(
+        opid: Opid(27),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(28): TraceOp(
+        opid: Opid(28),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(29): TraceOp(
+        opid: Opid(29),
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(30): TraceOp(
+        opid: Opid(30),
+        parent_opid: Some(Opid(3)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(31): TraceOp(
+        opid: Opid(31),
+        parent_opid: Some(Opid(4)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(32): TraceOp(
+        opid: Opid(32),
+        parent_opid: Some(Opid(4)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(33): TraceOp(
+        opid: Opid(33),
+        parent_opid: Some(Opid(5)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(34): TraceOp(
+        opid: Opid(34),
+        parent_opid: Some(Opid(5)),
+        content: OutputIteratorExhausted,
+      ),
+    },
+    ir_query: IRQuery(
+      root_name: "Zero",
+      root_component: IRQueryComponent(
+        root: Vid(1),
+        vertices: {
+          Vid(1): IRVertex(
+            vid: Vid(1),
+            type_name: "Number",
+          ),
+          Vid(2): IRVertex(
+            vid: Vid(2),
+            type_name: "Number",
+          ),
+        },
+        edges: {
+          Eid(1): IREdge(
+            eid: Eid(1),
+            from_vid: Vid(1),
+            to_vid: Vid(2),
+            edge_name: "predecessor",
+            optional: true,
+          ),
+        },
+        folds: {
+          Eid(2): IRFold(
+            eid: Eid(2),
+            from_vid: Vid(2),
+            to_vid: Vid(3),
+            edge_name: "successor",
+            component: IRQueryComponent(
+              root: Vid(3),
+              vertices: {
+                Vid(3): IRVertex(
+                  vid: Vid(3),
+                  type_name: "Number",
+                ),
+              },
+              outputs: {
+                "successors": ContextField(
+                  vertex_id: Vid(3),
+                  field_name: "value",
+                  field_type: "Int",
+                ),
+              },
+            ),
+            fold_specific_outputs: {
+              "successor_counts": Count,
+            },
+          ),
+        },
+        outputs: {
+          "predecessor": ContextField(
+            vertex_id: Vid(2),
+            field_name: "value",
+            field_type: "Int",
+          ),
+          "zero": ContextField(
+            vertex_id: Vid(1),
+            field_name: "value",
+            field_type: "Int",
+          ),
+        },
+      ),
+    ),
+  ),
+  results: [
+    {
+      "predecessor": Null,
+      "successor_counts": Null,
+      "successors": Null,
+      "zero": Int64(0),
+    },
+  ],
+)

@@ -69,7 +69,7 @@ TestInterpreterOutputTrace(
             Eid(1): [],
           },
           folded_values: {
-            (Eid(1), "mult"): Vec([]),
+            (Eid(1), "mult"): Some(Vec([])),
           },
         )),
       ),
@@ -85,7 +85,7 @@ TestInterpreterOutputTrace(
             Eid(1): [],
           },
           folded_values: {
-            (Eid(1), "mult"): Vec([]),
+            (Eid(1), "mult"): Some(Vec([])),
           },
         ), Int64(0))),
       ),
