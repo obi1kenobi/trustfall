@@ -64,7 +64,7 @@ impl DemoAdapter {
             .filter_map(|id| match HN_CLIENT.get_item(id) {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
-                    eprintln!("Got an error while fetching item: {}", e);
+                    eprintln!("Got an error while fetching item: {e}");
                     None
                 }
             });
@@ -88,7 +88,7 @@ impl DemoAdapter {
             .filter_map(|res| match res {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
-                    eprintln!("Got an error while fetching item: {}", e);
+                    eprintln!("Got an error while fetching item: {e}");
                     None
                 }
             });
@@ -108,10 +108,7 @@ impl DemoAdapter {
                 Box::new(std::iter::empty())
             }
             Err(e) => {
-                eprintln!(
-                    "Got an error while getting user profile for user {}: {}",
-                    username, e
-                );
+                eprintln!("Got an error while getting user profile for user {username}: {e}",);
                 Box::new(std::iter::empty())
             }
         }
@@ -432,8 +429,7 @@ impl Adapter<'static> for DemoAdapter {
                                     }
                                     Err(e) => {
                                         eprintln!(
-                                            "API error while fetching story {} comment {}: {}",
-                                            story_id, comment_id, e
+                                            "API error while fetching story {story_id} comment {comment_id}: {e}",
                                         );
                                         None
                                     }
@@ -518,8 +514,7 @@ impl Adapter<'static> for DemoAdapter {
                             Ok(Some(item)) => Box::new(std::iter::once(item.into())),
                             Err(e) => {
                                 eprintln!(
-                                    "API error while fetching comment {} parent {}: {}",
-                                    comment_id, parent_id, e
+                                    "API error while fetching comment {comment_id} parent {parent_id}: {e}",
                                 );
                                 Box::new(std::iter::empty())
                             }
@@ -555,8 +550,7 @@ impl Adapter<'static> for DemoAdapter {
                                 },
                                 Err(e) => {
                                     eprintln!(
-                                        "API error while fetching comment {} parent {}: {}",
-                                        comment_id, parent_id, e
+                                        "API error while fetching comment {comment_id} parent {parent_id}: {e}",
                                     );
                                     break Box::new(std::iter::empty());
                                 }
@@ -588,8 +582,7 @@ impl Adapter<'static> for DemoAdapter {
                                 }
                                 Err(e) => {
                                     eprintln!(
-                                        "API error while fetching comment {} reply {}: {}",
-                                        comment_id, reply_id, e
+                                        "API error while fetching comment {comment_id} reply {reply_id}: {e}",
                                     );
                                     None
                                 }
@@ -614,8 +607,7 @@ impl Adapter<'static> for DemoAdapter {
                                 Ok(Some(item)) => Some(item.into()),
                                 Err(e) => {
                                     eprintln!(
-                                        "API error while fetching submitted item {}: {}",
-                                        submission_id, e
+                                        "API error while fetching submitted item {submission_id}: {e}",
                                     );
                                     None
                                 }
@@ -761,17 +753,14 @@ fn resolve_url(url: &str) -> Option<Token> {
                     git_url
                         .owner
                         .as_ref()
-                        .unwrap_or_else(|| panic!("repo {} had no owner", url))
+                        .unwrap_or_else(|| panic!("repo {url} had no owner"))
                         .as_str(),
                     git_url.name.as_str(),
                 );
                 match RUNTIME.block_on(future) {
                     Ok(repo) => Some(Repository::new(url.to_string(), Rc::new(repo)).into()),
                     Err(e) => {
-                        eprintln!(
-                            "Error getting repository information for url {}: {}",
-                            url, e
-                        );
+                        eprintln!("Error getting repository information for url {url}: {e}",);
                         None
                     }
                 }
@@ -791,8 +780,7 @@ fn get_repo_file_content(repo: &FullRepository, path: &str) -> Option<ContentFil
         Ok(content) => Some(content),
         Err(e) => {
             eprintln!(
-                "Error getting repo {}/{} branch {} file {}: {}",
-                owner, repo_name, main_branch, path, e
+                "Error getting repo {owner}/{repo_name} branch {main_branch} file {path}: {e}",
             );
             None
         }

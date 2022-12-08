@@ -96,7 +96,7 @@ pub fn parameterize(attr: TokenStream, item: TokenStream) -> TokenStream {
             #fn_ident(&#base_ident, #stem_ident);
         };
 
-        let test_function_name = Ident::new(format!("test_{}", stem).as_ref(), Span::call_site());
+        let test_function_name = Ident::new(format!("test_{stem}").as_ref(), Span::call_site());
         let test_fn = quote! {
             #[test]
             fn #test_function_name() {

@@ -1413,10 +1413,10 @@ mod tests {
     #[parameterize("trustfall_core/src/resources/test_data/execution_errors")]
     fn parameterizable_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
-        input_path.push(format!("{}.ir.ron", stem));
+        input_path.push(format!("{stem}.ir.ron"));
 
         let mut check_path = PathBuf::from(base);
-        check_path.push(format!("{}{}", stem, ".exec-error.ron"));
+        check_path.push(format!("{stem}.exec-error.ron"));
         let check_data = fs::read_to_string(check_path).unwrap();
 
         let input_data = fs::read_to_string(input_path).unwrap();

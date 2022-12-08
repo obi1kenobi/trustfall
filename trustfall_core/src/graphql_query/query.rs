@@ -547,10 +547,10 @@ mod tests {
 
     fn parameterizable_tester(base: &Path, stem: &str, check_file_suffix: &str) {
         let mut input_path = PathBuf::from(base);
-        input_path.push(format!("{}.graphql.ron", stem));
+        input_path.push(format!("{stem}.graphql.ron"));
 
         let mut check_path = PathBuf::from(base);
-        check_path.push(format!("{}{}", stem, check_file_suffix));
+        check_path.push(format!("{stem}{check_file_suffix}"));
 
         let input_data = fs::read_to_string(input_path).unwrap();
         let test_query: TestGraphQLQuery = ron::from_str(&input_data).unwrap();

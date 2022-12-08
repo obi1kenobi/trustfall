@@ -112,8 +112,7 @@ impl InferredSchema {
         );
         assert!(
             existing.is_none(),
-            "unexpected type name conflict: {}",
-            anon_type
+            "unexpected type name conflict: {anon_type}",
         );
 
         anon_type

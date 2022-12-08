@@ -35,7 +35,7 @@ impl Schema {
     pub fn new(schema_text: &str) -> PyResult<Self> {
         let inner = trustfall_core::schema::Schema::parse(schema_text).map_err(|e| {
             Python::with_gil(|py| {
-                crate::errors::InvalidSchemaError::new_err(format!("{}", e).into_py(py))
+                crate::errors::InvalidSchemaError::new_err(format!("{e}").into_py(py))
             })
         })?;
 
@@ -68,8 +68,7 @@ fn to_query_arguments(src: &PyAny) -> PyResult<Arc<BTreeMap<Arc<str>, FieldValue
             crate::errors::QueryArgumentsError::new_err(
                 format!(
                     "Encountered argument(s) with unexpected types that could not be converted \
-                    into a representation usable by the query engine: {:?}",
-                    unrepresentable_args
+                    into a representation usable by the query engine: {unrepresentable_args:?}",
                 )
                 .into_py(py),
             )
@@ -88,19 +87,19 @@ pub fn interpret_query(
 
     let indexed_query = parse(&schema.inner, query).map_err(|err| match err {
         FrontendError::ParseError(parse_err) => Python::with_gil(|py| {
-            crate::errors::ParseError::new_err(format!("{}", parse_err).into_py(py))
+            crate::errors::ParseError::new_err(format!("{parse_err}").into_py(py))
         }),
         FrontendError::ValidationError(val_err) => Python::with_gil(|py| {
-            crate::errors::ValidationError::new_err(format!("{}", val_err).into_py(py))
+            crate::errors::ValidationError::new_err(format!("{val_err}").into_py(py))
         }),
         _ => Python::with_gil(|py| {
-            crate::errors::FrontendError::new_err(format!("{}", err).into_py(py))
+            crate::errors::FrontendError::new_err(format!("{err}").into_py(py))
         }),
     })?;
 
     let execution = interpret_ir(wrapped_adapter, indexed_query, arguments).map_err(|err| {
         Python::with_gil(|py| {
-            crate::errors::QueryArgumentsError::new_err(format!("{}", err).into_py(py))
+            crate::errors::QueryArgumentsError::new_err(format!("{err}").into_py(py))
         })
     })?;
     let owned_iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>> =
@@ -364,7 +363,7 @@ impl Iterator for PythonTokenIterator {
                     if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
-                        println!("Got error: {:?}", e);
+                        println!("Got error: {e:?}");
                         e.print(py);
                         panic!();
                     }
@@ -414,7 +413,7 @@ impl Iterator for PythonProjectPropertyIterator {
                     if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
-                        println!("Got error: {:?}", e);
+                        println!("Got error: {e:?}");
                         e.print(py);
                         panic!();
                     }
@@ -467,7 +466,7 @@ impl Iterator for PythonProjectNeighborsIterator {
                     if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
-                        println!("Got error: {:?}", e);
+                        println!("Got error: {e:?}");
                         e.print(py);
                         panic!();
                     }
@@ -511,7 +510,7 @@ impl Iterator for PythonCanCoerceToTypeIterator {
                     if e.is_instance_of::<PyStopIteration>(py) {
                         None
                     } else {
-                        println!("Got error: {:?}", e);
+                        println!("Got error: {e:?}");
                         e.print(py);
                         panic!();
                     }

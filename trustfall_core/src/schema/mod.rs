@@ -359,7 +359,7 @@ fn check_type_and_property_and_edge_invariants(
                                             field_defn.name.node.to_string(),
                                             param_defn.node.name.node.to_string(),
                                             param_type.to_string(),
-                                            format!("{:?}", value),
+                                            format!("{value:?}"),
                                         ));
                                     }
                                 }
@@ -816,12 +816,12 @@ mod tests {
     #[parameterize("trustfall_core/src/resources/test_data/schema_errors", "*.graphql")]
     fn schema_errors(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
-        input_path.push(format!("{}.graphql", stem));
+        input_path.push(format!("{stem}.graphql"));
 
         let input_data = fs::read_to_string(input_path).unwrap();
 
         let mut error_path = PathBuf::from(base);
-        error_path.push(format!("{}.schema-error.ron", stem));
+        error_path.push(format!("{stem}.schema-error.ron"));
         let error_data = fs::read_to_string(error_path).unwrap();
         let expected_error: InvalidSchemaError = ron::from_str(&error_data).unwrap();
 
@@ -838,7 +838,7 @@ mod tests {
     #[parameterize("trustfall_core/src/resources/test_data/valid_schemas", "*.graphql")]
     fn valid_schemas(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
-        input_path.push(format!("{}.graphql", stem));
+        input_path.push(format!("{stem}.graphql"));
 
         let input_data = fs::read_to_string(input_path).unwrap();
 

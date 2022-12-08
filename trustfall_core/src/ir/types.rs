@@ -304,17 +304,13 @@ mod tests {
             for matching_type in &matching_types {
                 assert!(
                     is_argument_type_valid(matching_type, value),
-                    "{} {:?}",
-                    matching_type,
-                    value
+                    "{matching_type} {value:?}",
                 );
             }
             for non_matching_type in &non_matching_types {
                 assert!(
                     !is_argument_type_valid(non_matching_type, value),
-                    "{} {:?}",
-                    non_matching_type,
-                    value
+                    "{non_matching_type} {value:?}",
                 );
             }
         }
@@ -338,17 +334,13 @@ mod tests {
             for matching_type in &matching_types {
                 assert!(
                     is_argument_type_valid(matching_type, value),
-                    "{} {:?}",
-                    matching_type,
-                    value
+                    "{matching_type} {value:?}",
                 );
             }
             for non_matching_type in &non_matching_types {
                 assert!(
                     !is_argument_type_valid(non_matching_type, value),
-                    "{} {:?}",
-                    non_matching_type,
-                    value
+                    "{non_matching_type} {value:?}",
                 );
             }
         }
@@ -372,17 +364,13 @@ mod tests {
             for matching_type in &matching_types {
                 assert!(
                     is_argument_type_valid(matching_type, value),
-                    "{} {:?}",
-                    matching_type,
-                    value
+                    "{matching_type} {value:?}",
                 );
             }
             for non_matching_type in &non_matching_types {
                 assert!(
                     !is_argument_type_valid(non_matching_type, value),
-                    "{} {:?}",
-                    non_matching_type,
-                    value
+                    "{non_matching_type} {value:?}",
                 );
             }
         }
@@ -430,17 +418,13 @@ mod tests {
             for matching_type in &nullable_contents_matching_types {
                 assert!(
                     is_argument_type_valid(matching_type, value),
-                    "{} {:?}",
-                    matching_type,
-                    value
+                    "{matching_type} {value:?}",
                 );
             }
             for matching_type in &non_nullable_contents_matching_types {
                 assert!(
                     is_argument_type_valid(matching_type, value),
-                    "{} {:?}",
-                    matching_type,
-                    value
+                    "{matching_type} {value:?}",
                 );
             }
 
@@ -448,9 +432,7 @@ mod tests {
             for non_matching_type in &non_matching_types {
                 assert!(
                     !is_argument_type_valid(non_matching_type, value),
-                    "{} {:?}",
-                    non_matching_type,
-                    value
+                    "{non_matching_type} {value:?}",
                 );
             }
         }
@@ -460,9 +442,7 @@ mod tests {
             for matching_type in &nullable_contents_matching_types {
                 assert!(
                     is_argument_type_valid(matching_type, value),
-                    "{} {:?}",
-                    matching_type,
-                    value
+                    "{matching_type} {value:?}",
                 );
             }
 
@@ -470,9 +450,7 @@ mod tests {
             for non_matching_type in &non_nullable_contents_matching_types {
                 assert!(
                     !is_argument_type_valid(non_matching_type, value),
-                    "{} {:?}",
-                    non_matching_type,
-                    value
+                    "{non_matching_type} {value:?}",
                 );
             }
 
@@ -480,9 +458,7 @@ mod tests {
             for non_matching_type in &non_matching_types {
                 assert!(
                     !is_argument_type_valid(non_matching_type, value),
-                    "{} {:?}",
-                    non_matching_type,
-                    value
+                    "{non_matching_type} {value:?}",
                 );
             }
         }

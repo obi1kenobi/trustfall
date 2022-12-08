@@ -29,7 +29,7 @@ pub fn make_crate_info(json_text: &str) -> Result<CrateInfo, String> {
     trustfall_wasm::util::initialize().expect("init failed");
 
     let crate_info = serde_json::from_str(json_text)
-        .map_err(|e| format!("Failed to parse rustdoc JSON content: {}", e))?;
+        .map_err(|e| format!("Failed to parse rustdoc JSON content: {e}"))?;
 
     let inner = InnerCrateInfoBuilder {
         crate_info,

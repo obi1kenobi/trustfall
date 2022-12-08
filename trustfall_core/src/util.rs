@@ -20,7 +20,7 @@ impl<T: Display> Display for DisplayVec<T> {
         writeln!(f, "[")?;
 
         for item in &self.0 {
-            writeln!(f, "  {};", item)?;
+            writeln!(f, "  {item};")?;
         }
 
         write!(f, "]")

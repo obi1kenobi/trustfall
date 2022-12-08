@@ -141,6 +141,6 @@ fn main() {
                 execute_query(path)
             }
         },
-        Some(cmd) => panic!("Unrecognized command given: {}", cmd),
+        Some(cmd) => panic!("Unrecognized command given: {cmd}"),
     }
 }

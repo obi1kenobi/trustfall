@@ -194,9 +194,7 @@ impl ContextIterator {
             let existing = self.registry.borrow_mut().insert(next_item, ctx);
             assert!(
                 existing.is_none(),
-                "id {} already inserted with value {:?}",
-                next_item,
-                existing
+                "id {next_item} already inserted with value {existing:?}",
             );
 
             ContextIteratorItem::new_item(JsContext::new(next_item, current_token))

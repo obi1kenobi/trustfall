@@ -66,10 +66,7 @@ pub(crate) fn get_jobs_in_workflow_file(
 pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = Token>> {
     let steps = job.yaml["steps"].clone();
     if steps.is_badvalue() || !steps.is_array() {
-        eprintln!(
-            "invalid yaml, no 'steps' array in workflow job yaml: {:?}",
-            job
-        );
+        eprintln!("invalid yaml, no 'steps' array in workflow job yaml: {job:?}",);
         return Box::new(std::iter::empty());
     }
 
@@ -95,8 +92,7 @@ pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = T
             }
             _ => {
                 eprintln!(
-                    "unexpected job step with name {:?} uses {:?} run {:?}: {:?}",
-                    name, uses, run_element, job
+                    "unexpected job step with name {name:?} uses {uses:?} run {run_element:?}: {job:?}",
                 );
                 None
             }
@@ -135,7 +131,7 @@ pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator
                     Yaml::Integer(i) => i.to_string(),
                     Yaml::Boolean(b) => b.to_string(),
                     _ => {
-                        eprintln!("unexpected value for env key {}: {:?}", key, value_yaml);
+                        eprintln!("unexpected value for env key {key}: {value_yaml:?}");
                         return None;
                     }
                 };

@@ -30,7 +30,7 @@ impl HackerNewsAdapter {
             .filter_map(|id| match CLIENT.get_item(id) {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
-                    eprintln!("Got an error while fetching item: {}", e);
+                    eprintln!("Got an error while fetching item: {e}");
                     None
                 }
             });
@@ -54,7 +54,7 @@ impl HackerNewsAdapter {
             .filter_map(|res| match res {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
-                    eprintln!("Got an error while fetching item: {}", e);
+                    eprintln!("Got an error while fetching item: {e}");
                     None
                 }
             });
@@ -74,10 +74,7 @@ impl HackerNewsAdapter {
                 Box::new(std::iter::empty())
             }
             Err(e) => {
-                eprintln!(
-                    "Got an error while getting user profile for user {}: {}",
-                    username, e
-                );
+                eprintln!("Got an error while getting user profile for user {username}: {e}",);
                 Box::new(std::iter::empty())
             }
         }
@@ -300,8 +297,7 @@ impl Adapter<'static> for HackerNewsAdapter {
                                     }
                                     Err(e) => {
                                         eprintln!(
-                                            "API error while fetching story {} comment {}: {}",
-                                            story_id, comment_id, e
+                                            "API error while fetching story {story_id} comment {comment_id}: {e}",
                                         );
                                         None
                                     }
@@ -351,8 +347,7 @@ impl Adapter<'static> for HackerNewsAdapter {
                             Ok(Some(item)) => Box::new(std::iter::once(item.into())),
                             Err(e) => {
                                 eprintln!(
-                                    "API error while fetching comment {} parent {}: {}",
-                                    comment_id, parent_id, e
+                                    "API error while fetching comment {comment_id} parent {parent_id}: {e}",
                                 );
                                 Box::new(std::iter::empty())
                             }
@@ -383,8 +378,7 @@ impl Adapter<'static> for HackerNewsAdapter {
                                 }
                                 Err(e) => {
                                     eprintln!(
-                                        "API error while fetching comment {} reply {}: {}",
-                                        comment_id, reply_id, e
+                                        "API error while fetching comment {comment_id} reply {reply_id}: {e}",
                                     );
                                     None
                                 }
@@ -409,8 +403,7 @@ impl Adapter<'static> for HackerNewsAdapter {
                                 Ok(Some(item)) => Some(item.into()),
                                 Err(e) => {
                                     eprintln!(
-                                        "API error while fetching submitted item {}: {}",
-                                        submission_id, e
+                                        "API error while fetching submitted item {submission_id}: {e}",
                                     );
                                     None
                                 }
