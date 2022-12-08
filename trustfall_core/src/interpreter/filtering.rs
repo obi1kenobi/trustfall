@@ -249,16 +249,12 @@ mod tests {
             assert_eq!(
                 expected_outcome,
                 greater_than(&left, &right),
-                "{:?} > {:?}",
-                left,
-                right
+                "{left:?} > {right:?}",
             );
             assert_eq!(
                 expected_outcome,
                 less_than(&right, &left),
-                "{:?} < {:?}",
-                right,
-                left
+                "{right:?} < {left:?}",
             );
         }
     }
@@ -285,16 +281,12 @@ mod tests {
             assert_eq!(
                 expected_outcome,
                 greater_than_or_equal(&left, &right),
-                "{:?} >= {:?}",
-                left,
-                right
+                "{left:?} >= {right:?}",
             );
             assert_eq!(
                 expected_outcome,
                 less_than_or_equal(&right, &left),
-                "{:?} <= {:?}",
-                right,
-                left
+                "{right:?} <= {left:?}",
             );
         }
     }
@@ -321,83 +313,49 @@ mod tests {
             assert_eq!(
                 expected_outcome,
                 equals(&left, &right),
-                "{:?} = {:?}",
-                left,
-                right
+                "{left:?} = {right:?}",
             );
             assert_eq!(
                 expected_outcome,
                 equals(&right, &left),
-                "{:?} = {:?}",
-                right,
-                left
+                "{right:?} = {left:?}",
             );
 
             if expected_outcome {
                 // both >= and <= comparisons in either direction should return true
-                assert!(
-                    less_than_or_equal(&left, &right),
-                    "{:?} <= {:?}",
-                    left,
-                    right
-                );
+                assert!(less_than_or_equal(&left, &right), "{left:?} <= {right:?}",);
                 assert!(
                     greater_than_or_equal(&left, &right),
-                    "{:?} >= {:?}",
-                    left,
-                    right
+                    "{left:?} >= {right:?}",
                 );
-                assert!(
-                    less_than_or_equal(&right, &left),
-                    "{:?} <= {:?}",
-                    right,
-                    left
-                );
+                assert!(less_than_or_equal(&right, &left), "{right:?} <= {left:?}",);
                 assert!(
                     greater_than_or_equal(&right, &left),
-                    "{:?} >= {:?}",
-                    right,
-                    left
+                    "{right:?} >= {left:?}",
                 );
 
                 // both > and < comparisons in either direction should return false
-                assert!(!less_than(&left, &right), "{:?} < {:?}", left, right);
-                assert!(!greater_than(&left, &right), "{:?} > {:?}", left, right);
-                assert!(!less_than(&right, &left), "{:?} < {:?}", right, left);
-                assert!(!greater_than(&right, &left), "{:?} > {:?}", right, left);
+                assert!(!less_than(&left, &right), "{left:?} < {right:?}");
+                assert!(!greater_than(&left, &right), "{left:?} > {right:?}");
+                assert!(!less_than(&right, &left), "{right:?} < {left:?}");
+                assert!(!greater_than(&right, &left), "{right:?} > {left:?}");
             } else {
                 // exactly one of <= / >= / < / > comparisons should return true per direction
                 assert!(
                     less_than_or_equal(&left, &right) ^ greater_than_or_equal(&left, &right),
-                    "{:?} <= {:?} ^ {:?} >= {:?}",
-                    left,
-                    right,
-                    left,
-                    right
+                    "{left:?} <= {right:?} ^ {left:?} >= {right:?}",
                 );
                 assert!(
                     less_than_or_equal(&right, &left) ^ greater_than_or_equal(&right, &left),
-                    "{:?} <= {:?} ^ {:?} >= {:?}",
-                    right,
-                    left,
-                    right,
-                    left
+                    "{right:?} <= {left:?} ^ {right:?} >= {left:?}",
                 );
                 assert!(
                     less_than(&left, &right) ^ greater_than(&left, &right),
-                    "{:?} <= {:?} ^ {:?} >= {:?}",
-                    left,
-                    right,
-                    left,
-                    right
+                    "{left:?} <= {right:?} ^ {left:?} >= {right:?}",
                 );
                 assert!(
                     less_than(&right, &left) ^ greater_than(&right, &left),
-                    "{:?} <= {:?} ^ {:?} >= {:?}",
-                    right,
-                    left,
-                    right,
-                    left
+                    "{right:?} <= {left:?} ^ {right:?} >= {left:?}",
                 );
             }
         }
@@ -452,16 +410,12 @@ mod tests {
             assert_eq!(
                 expected_outcome,
                 equals(&left, &right),
-                "{:?} = {:?}",
-                left,
-                right
+                "{left:?} = {right:?}",
             );
             assert_eq!(
                 expected_outcome,
                 equals(&right, &left),
-                "{:?} = {:?}",
-                right,
-                left
+                "{right:?} = {left:?}",
             );
         }
     }

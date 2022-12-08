@@ -24,14 +24,14 @@ fn main() {
                 make_schema(path)
             }
         },
-        Some(cmd) => panic!("Unrecognized command given: {}", cmd),
+        Some(cmd) => panic!("Unrecognized command given: {cmd}"),
     }
 }
 
 fn make_schema(path: &str) {
     let input_query = fs::read_to_string(path).unwrap();
     match infer_schema_from_query(&input_query) {
-        Ok(schema) => println!("{}", schema),
-        Err(e) => println!("Error: {}", e),
+        Ok(schema) => println!("{schema}"),
+        Err(e) => println!("Error: {e}"),
     }
 }

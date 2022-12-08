@@ -59,7 +59,7 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                                 s.split_at(1).1
                             } else {
                                 return Err(ParseError::OtherError(
-                                    format!("Filter argument was expected to start with '$' or '%' but did not: {}", s),
+                                    format!("Filter argument was expected to start with '$' or '%' but did not: {s}"),
                                     value_argument.pos,
                                 ));
                             };
@@ -71,7 +71,7 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                                 || name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_')
                             {
                                 return Err(ParseError::OtherError(
-                                    format!("Filter argument names must start with an ASCII letter or underscore character: {}", name),
+                                    format!("Filter argument names must start with an ASCII letter or underscore character: {name}"),
                                     value_argument.pos,
                                 ));
                             }

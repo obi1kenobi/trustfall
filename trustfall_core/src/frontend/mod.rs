@@ -1458,7 +1458,7 @@ mod tests {
 
     fn parameterizable_tester(base: &Path, stem: &str, check_file_suffix: &str) {
         let mut input_path = PathBuf::from(base);
-        input_path.push(format!("{}.graphql-parsed.ron", stem));
+        input_path.push(format!("{stem}.graphql-parsed.ron"));
 
         let input_data = fs::read_to_string(input_path).unwrap();
         let test_query: TestParsedGraphQLQueryResult = ron::from_str(&input_data).unwrap();
@@ -1476,7 +1476,7 @@ mod tests {
         };
 
         let mut check_path = PathBuf::from(base);
-        check_path.push(format!("{}{}", stem, check_file_suffix));
+        check_path.push(format!("{stem}{check_file_suffix}"));
         let check_data = fs::read_to_string(check_path).unwrap();
 
         let arguments = test_query.arguments;

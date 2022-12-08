@@ -277,8 +277,7 @@ fn get_visibility(raw_metar: &str) -> Visibility {
                 Visibility::StatuteMiles(visibility_meters / meters_per_mile)
             }
             vis => {
-                println!("{}", vis);
-                unreachable!()
+                unreachable!("{vis}")
             }
         }
     } else {

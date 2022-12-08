@@ -555,21 +555,19 @@ pub fn assert_interpreted_results<'query, 'trace, DataToken>(
             let trace_expected_row = {
                 let mut next_op_ref = next_op.borrow_mut();
                 let Some((_, trace_op)) = next_op_ref.next() else {
-                    panic!("Reached the end of the trace without producing result {:#?}", trace_row);
+                    panic!("Reached the end of the trace without producing result {trace_row:#?}");
                 };
                 let TraceOpContent::ProduceQueryResult(expected_result) = &trace_op.content else {
-                    panic!("Expected the trace to produce a result {:#?} but got another type of operation instead: {:#?}", trace_row, trace_op);
+                    panic!("Expected the trace to produce a result {trace_row:#?} but got another type of operation instead: {trace_op:#?}");
                 };
                 drop(next_op_ref);
 
                 expected_result
             };
             assert_eq!(
-                trace_expected_row,
-                expected_row_content,
-                "This trace is self-inconsistent: trace produces row {:#?} but results have row {:#?}",
-                trace_expected_row,
-                expected_row_content,
+                trace_expected_row, expected_row_content,
+                "This trace is self-inconsistent: trace produces row {trace_expected_row:#?} \
+                but results have row {expected_row_content:#?}",
             );
 
             assert_eq!(expected_row, trace_row.as_ref());
@@ -641,12 +639,12 @@ mod tests {
     #[parameterize("trustfall_core/src/resources/test_data/valid_queries")]
     fn parameterized_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
-        input_path.push(format!("{}.trace.ron", stem));
+        input_path.push(format!("{stem}.trace.ron"));
 
         let input_data = fs::read_to_string(input_path).unwrap();
 
         let mut check_path = PathBuf::from(base);
-        check_path.push(format!("{}.ir.ron", stem));
+        check_path.push(format!("{stem}.ir.ron"));
         let check_data = fs::read_to_string(check_path).unwrap();
         let expected_ir: TestIRQueryResult = ron::from_str(&check_data).unwrap();
         let expected_ir = expected_ir.unwrap();

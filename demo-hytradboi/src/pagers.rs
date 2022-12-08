@@ -39,10 +39,7 @@ impl<'a> Pager for CratesPager<'a> {
                 }
             }
             Err(e) => {
-                eprintln!(
-                    "Got an error while getting most downloaded crates page {}: {}",
-                    page, e
-                );
+                eprintln!("Got an error while getting most downloaded crates page {page}: {e}",);
                 PagerOutput::None
             }
         }
