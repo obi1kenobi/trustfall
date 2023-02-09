@@ -11,7 +11,6 @@ use crate::ir::{Operation, TransformationKind};
 
 use super::error::ParseError;
 
-
 /// An argument as passed to the `value` array, for example for a `@filter`
 /// directive (see [FilterDirective]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,7 +18,7 @@ pub enum OperatorArgument {
     /// Reference to a variable provided to the query. Variable names are always
     /// prefixed with `$`.
     VariableRef(Arc<str>),
-    
+
     /// Reference to a `@tag`ed value encountered elsewhere
     /// in the query. Tag names are always prefixed with `%`.
     TagRef(Arc<str>),
@@ -173,8 +172,21 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
     }
 }
 
+/// A GraphQL `@output` directive.
+///
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @output(name: "betterName")
+/// ```
+///
+/// and
+///
+/// ```
+/// OutputDirective { name: Some(Arc::new("betterName"))}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct OutputDirective {
+    /// The name that should be used for this field when it is given as output
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<Arc<str>>,
 }
