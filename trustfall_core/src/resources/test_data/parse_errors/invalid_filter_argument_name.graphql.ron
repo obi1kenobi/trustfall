@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "filesystem",
+    query: r#"
+{
+    OriginDirectory {
+        name @output @filter(op: "has_substring", value: ["$containsåäö"])
+    }
+}"#,
+    arguments: {
+        "containsåäö": String("src")
+    }
+)
