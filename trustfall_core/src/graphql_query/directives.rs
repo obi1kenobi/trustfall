@@ -247,8 +247,21 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
     }
 }
 
+/// A GraphQL `@transform` directive.
+/// 
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @transform(op: "count")
+/// ```
+///
+/// and
+///
+/// ```
+/// TransformDirective { kind: TransformKind::Count }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformDirective {
+    /// The `op` in a GraphQL `@transform`
     pub kind: TransformationKind,
 }
 
@@ -310,6 +323,18 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
     }
 }
 
+/// A GraphQL `@tag` directive.
+///
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @tag(name: "%tag_name")
+/// ```
+///
+/// and
+///
+/// ```
+/// TagDirective { name: Some(Arc::new("%tag_name"))}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TagDirective {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -370,6 +395,7 @@ impl TryFrom<&Positioned<Directive>> for TagDirective {
     }
 }
 
+/// A GraphQL `@optional` directive.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct OptionalDirective {}
 
@@ -390,6 +416,7 @@ impl TryFrom<&Positioned<Directive>> for OptionalDirective {
     }
 }
 
+/// A GraphQL `@fold` directive.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FoldDirective {}
 
@@ -410,6 +437,18 @@ impl TryFrom<&Positioned<Directive>> for FoldDirective {
     }
 }
 
+/// A GraphQL `@recurse` directive.
+///
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @recurse(depth: 1)
+/// ```
+///
+/// and
+///
+/// ```
+/// RecurseDirective { depth: NonZeroUsize::new(1usize)}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct RecurseDirective {
     pub depth: NonZeroUsize,
