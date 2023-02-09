@@ -1,7 +1,5 @@
 //! Directives in GraphQL can be identified by staring with `@`. While
 //! `trustfall_core` doesn't support all GraphQL directives, some are available.
-//! 
-//! 
 use std::{collections::HashSet, convert::TryFrom, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{types::Directive, Positioned};
@@ -13,14 +11,39 @@ use crate::ir::{Operation, TransformationKind};
 
 use super::error::ParseError;
 
+
+/// An argument as passed to the `value` array, for example for a `@filter`
+/// directive (see [FilterDirective]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperatorArgument {
+    /// Reference to a variable provided to the query. Variable names are always
+    /// prefixed with `$`.
     VariableRef(Arc<str>),
+    
+    /// Reference to a `@tag`ed value encountered elsewhere
+    /// in the query. Tag names are always prefixed with `%`.
     TagRef(Arc<str>),
 }
 
+/// A GraphQL `@filter` directive.
+///
+/// The following GraphQL filter directive and Rust instance would be
+/// equivalent:
+///
+/// ```graphql
+/// @filter(op: ">=", value: ["$some_value"])
+/// ```
+///
+/// and
+///
+/// ```
+/// FilterDirective {
+///     operation: Operation::GreaterThanOrEqual(VariableRef(Arc::new("$some_value")))
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FilterDirective {
+    /// Describes which operation should be made by the filter
     pub operation: Operation<(), OperatorArgument>,
 }
 
