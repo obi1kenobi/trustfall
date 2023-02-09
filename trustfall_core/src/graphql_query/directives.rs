@@ -67,11 +67,17 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                             // Empty names handled above already.
                             assert!(!name.is_empty());
 
-                            if name.chars().next().unwrap().is_numeric()
-                                || name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_')
-                            {
+                            let first_char = name.chars().next().unwrap();
+                            if  !first_char.is_ascii_alphabetic() && first_char != '_' {
                                 return Err(ParseError::OtherError(
                                     format!("Filter argument names must start with an ASCII letter or underscore character: {name}"),
+                                    value_argument.pos)) 
+                            }
+
+                            if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_')
+                            {
+                                return Err(ParseError::OtherError(
+                                    format!("Filter argument names must only contain ASCII alphanumerics or underscore characters: {name}"),
                                     value_argument.pos,
                                 ));
                             }
