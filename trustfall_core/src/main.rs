@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![forbid(unused_lifetimes)]
-#![allow(clippy::result_large_err)]  // TODO: clean this up repo-wide
+#![allow(clippy::result_large_err)] // TODO: clean this up repo-wide
 
 #[macro_use]
 extern crate maplit;
