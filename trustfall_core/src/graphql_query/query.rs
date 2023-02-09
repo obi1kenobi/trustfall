@@ -116,6 +116,10 @@ impl ParsedDirective {
     }
 }
 
+/// Attempts to extract the query root from an [ExecutableDocument]
+/// 
+/// May return [ParseError] if the query is empty, there is no query root, or
+/// the query root is not formatted properly
 fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field>, ParseError> {
     if let Some(v) = document.fragments.values().next() {
         return Err(ParseError::DocumentContainsNonInlineFragments(v.pos));
@@ -507,6 +511,7 @@ fn make_transform_group(
     })
 }
 
+/// Parses a query document. May fail if a query root is missing (see [try_get_query_root](try_get_query_root))
 pub(crate) fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError> {
     let query_root = try_get_query_root(document)?;
 

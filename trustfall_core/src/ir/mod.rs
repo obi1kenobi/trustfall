@@ -26,8 +26,10 @@ lazy_static! {
     pub(crate) static ref TYPENAME_META_FIELD_ARC: Arc<str> = Arc::from(TYPENAME_META_FIELD);
 }
 
+/// Vertex ID
+#[doc(alias = "vertex")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Vid(pub(crate) NonZeroUsize); // vertex ID
+pub struct Vid(pub(crate) NonZeroUsize);
 
 impl Vid {
     pub fn new(id: NonZeroUsize) -> Vid {
@@ -35,8 +37,10 @@ impl Vid {
     }
 }
 
+/// Edge ID
+#[doc(alias = "edge")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Eid(pub(crate) NonZeroUsize); // edge ID
+pub struct Eid(pub(crate) NonZeroUsize);
 
 impl Eid {
     pub fn new(id: NonZeroUsize) -> Eid {
