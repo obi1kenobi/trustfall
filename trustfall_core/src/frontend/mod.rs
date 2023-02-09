@@ -57,7 +57,7 @@ pub fn parse(schema: &Schema, query: impl AsRef<str>) -> Result<Arc<IndexedQuery
     Ok(Arc::from(indexed_query))
 }
 
-/// Parses a query string using a GraphQL [Schema](crate::schema::Schema)
+/// Parses a query string to IR using a GraphQL [Schema](crate::schema::Schema)
 pub fn parse_to_ir<T: AsRef<str>>(schema: &Schema, query: T) -> Result<IRQuery, FrontendError> {
     let document = async_graphql_parser::parse_query(query)?;
     let q = parse_document(&document)?;

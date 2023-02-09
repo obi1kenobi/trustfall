@@ -75,6 +75,7 @@ pub struct IRQueryComponent {
     pub outputs: BTreeMap<Arc<str>, ContextField>,
 }
 
+/// Intermediate representation of a query
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRQuery {
     pub root_name: Arc<str>,
