@@ -83,6 +83,7 @@ lazy_static! {
 const RESERVED_PREFIX: &str = "__";
 
 impl Schema {
+    /// All GraphQL directives supported by Trustfall, in GraphQL format
     pub const ALL_DIRECTIVE_DEFINITIONS: &'static str = "
 directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
 directive @tag(name: String) on FIELD
@@ -228,7 +229,7 @@ directive @transform(op: String!) on FIELD
     }
 
     /// If the named type is defined, iterate through the names of its subtypes including itself.
-    /// Otherwise, return None.
+    /// Otherwise, return `None`.
     pub fn subtypes<'slf, 'a: 'slf>(
         &'slf self,
         type_name: &'a str,
