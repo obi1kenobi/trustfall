@@ -47,7 +47,7 @@ use crate::{
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
     let schema_text =
-        fs::read_to_string(format!("src/resources/schemas/{}.graphql", schema_name,)).unwrap();
+        fs::read_to_string(format!("src/resources/schemas/{schema_name}.graphql",)).unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
     Schema::new(schema_document).unwrap()
 }
@@ -224,7 +224,7 @@ fn reserialize(path: &str) {
         None => unreachable!("{}", path),
     };
 
-    println!("{}", output_data);
+    println!("{output_data}");
 }
 
 fn schema_error(path: &str) {
@@ -257,7 +257,7 @@ fn corpus_graphql(path: &str, schema_name: &str) {
         None => unreachable!("{}", path),
     };
 
-    println!("{}", output_data);
+    println!("{output_data}");
 }
 
 fn main() {
@@ -323,6 +323,6 @@ fn main() {
                 check_fuzzed(path, schema_name)
             }
         },
-        Some(cmd) => panic!("Unrecognized command given: {}", cmd),
+        Some(cmd) => panic!("Unrecognized command given: {cmd}"),
     }
 }

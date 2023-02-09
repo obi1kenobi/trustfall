@@ -111,7 +111,6 @@ impl<'a> TagHandler<'a> {
             .tags
             .keys()
             .copied()
-            .into_iter()
             .filter(|x| !self.used_tags.contains(x))
             .collect();
         if unused_tags.is_empty() {
