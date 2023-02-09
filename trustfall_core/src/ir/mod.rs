@@ -1,3 +1,4 @@
+//! Trustfall internal representation (IR)
 #![allow(dead_code)]
 
 pub mod indexed;
@@ -27,7 +28,7 @@ lazy_static! {
 }
 
 /// Vertex ID
-#[doc(alias = "vertex")]
+#[doc(alias("vertex", "node"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Vid(pub(crate) NonZeroUsize);
 
@@ -53,8 +54,12 @@ pub struct EdgeParameters(
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")] pub BTreeMap<Arc<str>, FieldValue>,
 );
 
+/// IR of components of a query, containing information about the vertex ID
+/// of the root of the query, as well as well as maps of all vertices, edges,
+/// folds, and outputs of the query.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRQueryComponent {
+    /// The [Vid] of the root, or entry point, of the query.
     pub root: Vid,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -98,6 +103,9 @@ pub struct IREdge {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Arc<EdgeParameters>>,
 
+    /// Indicating if this edge is optional.
+    /// 
+    /// This would correspond to `@optional` in GraphQL.
     #[serde(default = "default_optional", skip_serializing_if = "is_false")]
     pub optional: bool,
 
@@ -127,9 +135,13 @@ impl Recursive {
     }
 }
 
+/// Representation of a vertex (node) in the Trustfall intermediate
+/// representation (IR).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRVertex {
     pub vid: Vid,
+    
+    /// The name of the type of the vertex as a string.
     pub type_name: Arc<str>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -286,6 +298,15 @@ impl Argument {
     }
 }
 
+/// Operations that can be made in the graph.
+/// 
+/// In GraphQL, this can correspond to the `op` argument in `@filter`,
+/// for example in the following:
+/// ```graphql
+/// query Student {
+///     name @filter(op: "has_substring", values: ["John"])
+/// }
+/// ```
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation<LeftT, RightT>
@@ -369,6 +390,10 @@ where
         }
     }
 
+    /// The operation name as a `str`
+    /// 
+    /// Note that these are the same as would be given to a GraphQL `op`
+    /// argumetn.
     pub(crate) fn operation_name(&self) -> &'static str {
         match self {
             Operation::IsNull(..) => "is_null",

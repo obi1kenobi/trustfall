@@ -1,3 +1,7 @@
+//! Directives in GraphQL can be identified by staring with `@`. While
+//! `trustfall_core` doesn't support all GraphQL directives, some are available.
+//! 
+//! 
 use std::{collections::HashSet, convert::TryFrom, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{types::Directive, Positioned};

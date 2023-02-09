@@ -1,3 +1,4 @@
+//! Frontend for Trustfall, containing parsers for queries using schemas
 #![allow(dead_code, unused_variables, unused_mut)]
 use std::{
     collections::BTreeMap, convert::TryFrom, iter::successors, num::NonZeroUsize, sync::Arc,
@@ -41,8 +42,9 @@ mod tags;
 mod util;
 mod validation;
 
-/// Parses a query string to the trustfall IR using a provided [Schema](crate::schema::Schema).
-/// May fail if [parse_to_ir](parse_to_ir) fails
+/// Parses a query string to the Trustfall IR using a provided
+/// [Schema](crate::schema::Schema). May fail if [parse_to_ir](parse_to_ir)
+/// fails for the provided schema and query.
 pub fn parse(schema: &Schema, query: impl AsRef<str>) -> Result<Arc<IndexedQuery>, FrontendError> {
     let ir_query = parse_to_ir(schema, query)?;
 
