@@ -1,4 +1,4 @@
-//! Trustfall internal representation (IR)
+//! Trustfall intermediate representation (IR)
 #![allow(dead_code)]
 
 pub mod indexed;
@@ -60,7 +60,7 @@ pub struct EdgeParameters(
 /// as well as well as maps of all vertices, edges, folds, and outputs from this component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRQueryComponent {
-    /// The [Vid] of the root, or entry point, of the query.
+    /// The [Vid] of the root, or entry point, of the component.
     pub root: Vid,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -107,7 +107,7 @@ pub struct IREdge {
 
     /// Indicating if this edge is optional.
     ///
-    /// This would correspond to `@optional` in GraphQL.
+    /// Corresponds to the `@optional` directive.
     #[serde(default = "default_optional", skip_serializing_if = "is_false")]
     pub optional: bool,
 
@@ -302,12 +302,11 @@ impl Argument {
 
 /// Operations that can be made in the graph.
 ///
-/// In GraphQL, this can correspond to the `op` argument in `@filter`,
-/// for example in the following:
+/// In a Trustfall query, the `@filter` directive produces `Operation` values:
 /// ```graphql
-/// query Student {
-///     name @filter(op: "has_substring", values: ["John"])
-/// }
+/// name @filter(op: "=", values: ["$input"])
+/// ```
+/// would produce the `Operation::Equals` variant, for example.
 /// ```
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -392,10 +391,7 @@ where
         }
     }
 
-    /// The operation name as a `str`
-    ///
-    /// Note that these are the same as would be given to a GraphQL `op`
-    /// argumetn.
+    /// The operation name, as it would have appeared in the `@filter` directive `op` argument.
     pub(crate) fn operation_name(&self) -> &'static str {
         match self {
             Operation::IsNull(..) => "is_null",

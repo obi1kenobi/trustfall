@@ -1,9 +1,9 @@
-/// IR of the values of GraphQL fields.
+/// IR of the values of Trustfall fields.
 use async_graphql_value::{ConstValue, Number, Value};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Values of fields in GraphQL types.
+/// Values of fields in Trustfall.
 ///
 /// For version that is serialized as an untagged enum, see [TransparentValue].
 #[derive(Debug, Clone, Serialize, Deserialize)]
