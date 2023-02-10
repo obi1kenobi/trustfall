@@ -364,10 +364,10 @@ fn validate_argument_type(
 ///     name: String,
 ///     homework: Vec<Homework>,
 /// };
-/// 
+///
 /// #[derive(Debug, Clone)]
 /// struct Homework;
-/// 
+///
 /// #[derive(Debug, Clone)]
 /// enum DataToken {
 ///     StudentToken(Rc<Student>),
@@ -515,7 +515,7 @@ pub trait Adapter<'token> {
     /// #     StudentToken(Rc<Student>),
     /// #     HomeworkToken(Rc<Homework>),
     /// # }
-    /// 
+    ///
     /// impl DataToken {
     ///     pub fn as_student(&self) -> Option<&Student> {
     ///         match self {
@@ -524,9 +524,9 @@ pub trait Adapter<'token> {
     ///         }
     ///     }
     /// }
-    /// 
+    ///
     /// // ...
-    /// 
+    ///
     /// # fn expanded(data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>>>)
     /// # -> Box<dyn Iterator<Item = (DataContext<DataToken>, FieldValue)>> {
     /// Box::new(data_contexts.map(|ctx| {
@@ -543,7 +543,7 @@ pub trait Adapter<'token> {
     ///         None => FieldValue::Null,
     ///         Some(s) => (&s.name).into(),
     ///     };
-    /// 
+    ///
     ///     (ctx, value)
     /// }))
     /// # }
