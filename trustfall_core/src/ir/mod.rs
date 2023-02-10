@@ -1,3 +1,4 @@
+//! Trustfall intermediate representation (IR)
 #![allow(dead_code)]
 
 pub mod indexed;
@@ -26,8 +27,10 @@ lazy_static! {
     pub(crate) static ref TYPENAME_META_FIELD_ARC: Arc<str> = Arc::from(TYPENAME_META_FIELD);
 }
 
+/// Vertex ID
+#[doc(alias("vertex", "node"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Vid(pub(crate) NonZeroUsize); // vertex ID
+pub struct Vid(pub(crate) NonZeroUsize);
 
 impl Vid {
     pub fn new(id: NonZeroUsize) -> Vid {
@@ -35,8 +38,10 @@ impl Vid {
     }
 }
 
+/// Edge ID
+#[doc(alias = "edge")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Eid(pub(crate) NonZeroUsize); // edge ID
+pub struct Eid(pub(crate) NonZeroUsize);
 
 impl Eid {
     pub fn new(id: NonZeroUsize) -> Eid {
@@ -49,8 +54,13 @@ pub struct EdgeParameters(
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")] pub BTreeMap<Arc<str>, FieldValue>,
 );
 
+/// A complete component of a query; may itself contain one or more components.
+///
+/// Contains information about the Vid where the component is rooted,
+/// as well as well as maps of all vertices, edges, folds, and outputs from this component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRQueryComponent {
+    /// The [Vid] of the root, or entry point, of the component.
     pub root: Vid,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -66,6 +76,7 @@ pub struct IRQueryComponent {
     pub outputs: BTreeMap<Arc<str>, ContextField>,
 }
 
+/// Intermediate representation of a query
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRQuery {
     pub root_name: Arc<str>,
@@ -94,6 +105,9 @@ pub struct IREdge {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Arc<EdgeParameters>>,
 
+    /// Indicating if this edge is optional.
+    ///
+    /// Corresponds to the `@optional` directive.
     #[serde(default = "default_optional", skip_serializing_if = "is_false")]
     pub optional: bool,
 
@@ -123,9 +137,13 @@ impl Recursive {
     }
 }
 
+/// Representation of a vertex (node) in the Trustfall intermediate
+/// representation (IR).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRVertex {
     pub vid: Vid,
+
+    /// The name of the type of the vertex as a string.
     pub type_name: Arc<str>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -282,6 +300,13 @@ impl Argument {
     }
 }
 
+/// Operations that can be made in the graph.
+///
+/// In a Trustfall query, the `@filter` directive produces `Operation` values:
+/// ```graphql
+/// name @filter(op: "=", values: ["$input"])
+/// ```
+/// would produce the `Operation::Equals` variant, for example.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation<LeftT, RightT>
@@ -365,6 +390,7 @@ where
         }
     }
 
+    /// The operation name, as it would have appeared in the `@filter` directive `op` argument.
     pub(crate) fn operation_name(&self) -> &'static str {
         match self {
             Operation::IsNull(..) => "is_null",
