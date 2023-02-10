@@ -105,7 +105,7 @@ pub struct IREdge {
     pub parameters: Option<Arc<EdgeParameters>>,
 
     /// Indicating if this edge is optional.
-    /// 
+    ///
     /// This would correspond to `@optional` in GraphQL.
     #[serde(default = "default_optional", skip_serializing_if = "is_false")]
     pub optional: bool,
@@ -141,7 +141,7 @@ impl Recursive {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRVertex {
     pub vid: Vid,
-    
+
     /// The name of the type of the vertex as a string.
     pub type_name: Arc<str>,
 
@@ -300,7 +300,7 @@ impl Argument {
 }
 
 /// Operations that can be made in the graph.
-/// 
+///
 /// In GraphQL, this can correspond to the `op` argument in `@filter`,
 /// for example in the following:
 /// ```graphql
@@ -392,7 +392,7 @@ where
     }
 
     /// The operation name as a `str`
-    /// 
+    ///
     /// Note that these are the same as would be given to a GraphQL `op`
     /// argumetn.
     pub(crate) fn operation_name(&self) -> &'static str {
