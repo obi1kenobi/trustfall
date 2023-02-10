@@ -5,7 +5,7 @@ use async_graphql_value::Name;
 
 use crate::ir::Vid;
 
-/// Retrieves the underlying GraphQL named type by looping through any [list
+/// Retrieves the underlying type name by looping through any [list
 /// types](BaseType::List) until a [named type](Type) is found
 pub(super) fn get_underlying_named_type(t: &Type) -> &Name {
     let mut base_type = &t.base;
@@ -38,7 +38,7 @@ impl ComponentPath {
         self.path.push(component_start_vid);
     }
 
-    /// Pops the current path.
+    /// Pops the last component of the current path.
     ///
     /// Will panic if the popped value is not the provided `component_start_vid`
     pub(super) fn pop(&mut self, component_start_vid: Vid) {
