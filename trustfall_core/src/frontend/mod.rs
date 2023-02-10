@@ -1,3 +1,4 @@
+//! Frontend for Trustfall: takes a parsed query, validates it, and turns it into IR.
 #![allow(dead_code, unused_variables, unused_mut)]
 use std::{
     collections::BTreeMap, convert::TryFrom, iter::successors, num::NonZeroUsize, sync::Arc,
@@ -41,6 +42,9 @@ mod tags;
 mod util;
 mod validation;
 
+/// Parses a query string to the Trustfall IR using a provided
+/// [Schema](crate::schema::Schema). May fail if [parse_to_ir](parse_to_ir)
+/// fails for the provided schema and query.
 pub fn parse(schema: &Schema, query: impl AsRef<str>) -> Result<Arc<IndexedQuery>, FrontendError> {
     let ir_query = parse_to_ir(schema, query)?;
 
@@ -53,6 +57,7 @@ pub fn parse(schema: &Schema, query: impl AsRef<str>) -> Result<Arc<IndexedQuery
     Ok(Arc::from(indexed_query))
 }
 
+/// Parses a query string to IR using a [Schema](crate::schema::Schema)
 pub fn parse_to_ir<T: AsRef<str>>(schema: &Schema, query: T) -> Result<IRQuery, FrontendError> {
     let document = async_graphql_parser::parse_query(query)?;
     let q = parse_document(&document)?;
