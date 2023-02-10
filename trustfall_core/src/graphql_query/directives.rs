@@ -35,9 +35,9 @@ pub enum OperatorArgument {
 ///
 /// and
 ///
-/// ```
+/// ```ignore
 /// FilterDirective {
-///     operation: Operation::GreaterThanOrEqual(VariableRef(Arc::new("$some_value")))
+///     operation: Operation::GreaterThanOrEqual(OperatorArgument::VariableRef(Arc::new("$some_value"), 1))
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -187,7 +187,7 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
 ///
 /// and
 ///
-/// ```
+/// ```ignore
 /// OutputDirective { name: Some(Arc::new("betterName"))}
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -262,8 +262,8 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
 ///
 /// and
 ///
-/// ```
-/// TransformDirective { kind: TransformKind::Count }
+/// ```ignore
+/// TransformDirective { kind: TransformationKind::Count }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformDirective {
@@ -338,7 +338,7 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
 ///
 /// and
 ///
-/// ```
+/// ```ignore
 /// TagDirective { name: Some(Arc::new("%tag_name"))}
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -452,7 +452,7 @@ impl TryFrom<&Positioned<Directive>> for FoldDirective {
 ///
 /// and
 ///
-/// ```
+/// ```ignore
 /// RecurseDirective { depth: NonZeroUsize::new(1usize)}
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
