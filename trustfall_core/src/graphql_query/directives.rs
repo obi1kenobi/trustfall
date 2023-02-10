@@ -1,3 +1,5 @@
+//! Directives in GraphQL can be identified by staring with `@`. While
+//! `trustfall_core` doesn't support all GraphQL directives, some are available.
 use std::{collections::HashSet, convert::TryFrom, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{types::Directive, Positioned};
@@ -9,14 +11,38 @@ use crate::ir::{Operation, TransformationKind};
 
 use super::error::ParseError;
 
+/// An argument as passed to the `value` array, for example for a `@filter`
+/// directive (see [FilterDirective]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperatorArgument {
+    /// Reference to a variable provided to the query. Variable names are always
+    /// prefixed with `$`.
     VariableRef(Arc<str>),
+
+    /// Reference to a `@tag`ed value encountered elsewhere
+    /// in the query. Tag names are always prefixed with `%`.
     TagRef(Arc<str>),
 }
 
+/// A GraphQL `@filter` directive.
+///
+/// The following GraphQL filter directive and Rust instance would be
+/// equivalent:
+///
+/// ```graphql
+/// @filter(op: ">=", value: ["$some_value"])
+/// ```
+///
+/// and
+///
+/// ```
+/// FilterDirective {
+///     operation: Operation::GreaterThanOrEqual(VariableRef(Arc::new("$some_value")))
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FilterDirective {
+    /// Describes which operation should be made by the filter
     pub operation: Operation<(), OperatorArgument>,
 }
 
@@ -152,8 +178,21 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
     }
 }
 
+/// A GraphQL `@output` directive.
+///
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @output(name: "betterName")
+/// ```
+///
+/// and
+///
+/// ```
+/// OutputDirective { name: Some(Arc::new("betterName"))}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct OutputDirective {
+    /// The name that should be used for this field when it is given as output
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<Arc<str>>,
 }
@@ -214,8 +253,21 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
     }
 }
 
+/// A GraphQL `@transform` directive.
+/// 
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @transform(op: "count")
+/// ```
+///
+/// and
+///
+/// ```
+/// TransformDirective { kind: TransformKind::Count }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformDirective {
+    /// The `op` in a GraphQL `@transform`
     pub kind: TransformationKind,
 }
 
@@ -277,6 +329,18 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
     }
 }
 
+/// A GraphQL `@tag` directive.
+///
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @tag(name: "%tag_name")
+/// ```
+///
+/// and
+///
+/// ```
+/// TagDirective { name: Some(Arc::new("%tag_name"))}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TagDirective {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -337,6 +401,7 @@ impl TryFrom<&Positioned<Directive>> for TagDirective {
     }
 }
 
+/// A GraphQL `@optional` directive.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct OptionalDirective {}
 
@@ -357,6 +422,7 @@ impl TryFrom<&Positioned<Directive>> for OptionalDirective {
     }
 }
 
+/// A GraphQL `@fold` directive.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FoldDirective {}
 
@@ -377,6 +443,18 @@ impl TryFrom<&Positioned<Directive>> for FoldDirective {
     }
 }
 
+/// A GraphQL `@recurse` directive.
+///
+/// For example, the following GraphQL and Rust would be equivalent:
+/// ```graphql
+/// @recurse(depth: 1)
+/// ```
+///
+/// and
+///
+/// ```
+/// RecurseDirective { depth: NonZeroUsize::new(1usize)}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct RecurseDirective {
     pub depth: NonZeroUsize,
