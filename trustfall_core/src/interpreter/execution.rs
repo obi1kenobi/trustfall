@@ -611,7 +611,7 @@ fn compute_fold<'query, DataToken: Clone + Debug + 'query>(
 ///
 /// A small subtlety is important here: it's possible that the tagged value is *local* to
 /// the scope being filtered. In that case, the context *will not* yet have a token associated
-/// with the vertex ID of the tag's ContextField. However, in such cases, the tagged value
+/// with the [Vid] of the tag's ContextField. However, in such cases, the tagged value
 /// is *never* optional relative to the current scope, so we can safely return `false`.
 #[inline(always)]
 fn is_tag_optional_and_missing<'query, DataToken: Clone + Debug + 'query>(
