@@ -117,7 +117,7 @@ impl ParsedDirective {
 }
 
 /// Attempts to extract the query root from an [ExecutableDocument]
-/// 
+///
 /// May return [ParseError] if the query is empty, there is no query root, or
 /// the query root is not formatted properly
 fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field>, ParseError> {

@@ -254,7 +254,7 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
 }
 
 /// A GraphQL `@transform` directive.
-/// 
+///
 /// For example, the following GraphQL and Rust would be equivalent:
 /// ```graphql
 /// @transform(op: "count")
