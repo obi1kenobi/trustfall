@@ -307,7 +307,6 @@ impl Argument {
 /// name @filter(op: "=", values: ["$input"])
 /// ```
 /// would produce the `Operation::Equals` variant, for example.
-/// ```
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation<LeftT, RightT>
