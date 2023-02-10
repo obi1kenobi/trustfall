@@ -54,9 +54,10 @@ pub struct EdgeParameters(
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")] pub BTreeMap<Arc<str>, FieldValue>,
 );
 
-/// IR of components of a query, containing information about the vertex ID
-/// of the root of the query, as well as well as maps of all vertices, edges,
-/// folds, and outputs of the query.
+/// A complete component of a query; may itself contain one or more components.
+///
+/// Contains information about the Vid where the component is rooted,
+/// as well as well as maps of all vertices, edges, folds, and outputs from this component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IRQueryComponent {
     /// The [Vid] of the root, or entry point, of the query.
