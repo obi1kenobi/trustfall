@@ -347,9 +347,47 @@ fn validate_argument_type(
     }
 }
 
+/// An `Adapter` is an entry point between the Trustfall query engine and an
+/// external API, file, database or whatever.
+/// 
+/// By providing Trustfall with ways of finding and relating the `DataToken`s
+/// for your particular data source, it can be queried together with other data
+/// sources.
 pub trait Adapter<'token> {
     type DataToken: Clone + Debug + 'token;
 
+    /// Retrieves an iterator of `DataToken` from an entry point for this
+    /// adapter based on the name of the entry point and which parameters is to
+    /// passed to it.
+    /// 
+    /// Arguments:
+    /// * `edge`: The name of the query field as a string
+    /// * `parameters`: Arguments passed to the field
+    /// * `query_hint`: An optional already interpreted and indexed query for
+    ///                 some arguments to speed up the query
+    /// * `vertex_hint`: The Vertex ID
+    ///
+    /// In GraphQL, this would be correspond to all fields the _Root_ type or
+    /// the _Query_ type. In the following GraphQL schema, `student` is a field
+    /// of the Query type, but `homework` and `name` are not. This means that
+    /// while `student` is a starting token, `homework` and `name` are not.
+    /// ```graphql
+    /// type Query {
+    ///     student(name: String!): Student!
+    /// }
+    ///
+    /// type Student {
+    ///     name: String!
+    ///     homework: [Homework]!
+    /// }
+    ///
+    /// // ...
+    /// ```
+    /// 
+    /// In this example, `edge` would be `"student"`, `parameters` would be be a
+    /// `BTreeMap` containing a mapping `name` to some [FieldValue::String]
+    /// value. The returned would be an iterator over a single `Student`-like
+    /// `DataToken`.
     fn get_starting_tokens(
         &mut self,
         edge: Arc<str>,
