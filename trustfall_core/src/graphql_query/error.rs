@@ -1,3 +1,4 @@
+//! Errors from parsing GraphQL
 use async_graphql_parser::Pos;
 use async_graphql_value::Value;
 use serde::{ser::Error as SerError, Deserialize, Serialize, Serializer};
