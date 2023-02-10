@@ -349,7 +349,7 @@ fn validate_argument_type(
 
 /// An `Adapter` is an entry point between the Trustfall query engine and an
 /// external API, file, database or whatever.
-/// 
+///
 /// By providing Trustfall with ways of finding and relating the `DataToken`s
 /// for your particular data source, it can be queried together with other data
 /// sources.
@@ -359,7 +359,7 @@ pub trait Adapter<'token> {
     /// Retrieves an iterator of `DataToken` from an entry point for this
     /// adapter based on the name of the entry point and which parameters is to
     /// passed to it.
-    /// 
+    ///
     /// Arguments:
     /// * `edge`: The name of the query field as a string
     /// * `parameters`: Arguments passed to the field
@@ -383,7 +383,7 @@ pub trait Adapter<'token> {
     ///
     /// // ...
     /// ```
-    /// 
+    ///
     /// In this example, `edge` would be `"student"`, `parameters` would be be a
     /// `BTreeMap` containing a mapping `name` to some [FieldValue::String]
     /// value. The returned would be an iterator over a single `Student`-like
