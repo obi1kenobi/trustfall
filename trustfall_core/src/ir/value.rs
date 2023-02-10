@@ -1,7 +1,12 @@
+/// IR of the values of GraphQL fields.
+
 use async_graphql_value::{ConstValue, Number, Value};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// Values of fields in GraphQL types.
+/// 
+/// For version that is serialized as an untagged enum, see [TransparentValue].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FieldValue {
     // Order may matter here! Deserialization, if ever configured for untagged serialization,
@@ -10,9 +15,11 @@ pub enum FieldValue {
     // This is because we want to prioritize the standard Integer GraphQL type over our custom u64,
     // and prioritize exact integers over lossy floats.
     Null,
-    Int64(i64), // AKA Integer
+    /// AKA integer
+    Int64(i64),
     Uint64(u64),
-    Float64(f64), // AKA Float, and also not allowed to be NaN
+    /// AKA Float, and also not allowed to be NaN
+    Float64(f64),
     String(String),
     Boolean(bool),
     DateTimeUtc(DateTime<Utc>),
@@ -20,7 +27,9 @@ pub enum FieldValue {
     List(Vec<FieldValue>),
 }
 
-/// Same as FieldValue, but serialized as an untagged enum,
+/// Values of fields in GraphQL types.
+///
+/// Same as [FieldValue], but serialized as an untagged enum,
 /// which may be more suitable e.g. when serializing to JSON.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -190,6 +199,7 @@ impl From<bool> for FieldValue {
     }
 }
 
+/// Represents a finite (non-infinite, not-NaN) [f64] value
 pub struct FiniteF64(f64);
 impl From<FiniteF64> for FieldValue {
     fn from(f: FiniteF64) -> FieldValue {
@@ -320,6 +330,7 @@ impl<T: Clone + Into<FieldValue>> From<&[T]> for FieldValue {
     }
 }
 
+/// Converts a JSON number to a [FieldValue]
 fn convert_number_to_field_value(n: &Number) -> Result<FieldValue, String> {
     // The order here matters!
     // Int64 must be before Uint64, which must be before Float64.
