@@ -358,12 +358,17 @@ fn validate_argument_type(
 /// would be on the form
 ///
 /// ```
-/// # use std::{rc::Rc, };
+/// # use std::rc::Rc;
+/// #[derive(Debug, Clone)]
 /// struct Student {
 ///     name: String,
 ///     homework: Vec<Homework>,
 /// };
+/// 
+/// #[derive(Debug, Clone)]
 /// struct Homework;
+/// 
+/// #[derive(Debug, Clone)]
 /// enum DataToken {
 ///     StudentToken(Rc<Student>),
 ///     HomeworkToken(Rc<Homework>),
@@ -372,8 +377,8 @@ fn validate_argument_type(
 pub trait Adapter<'token> {
     type DataToken: Clone + Debug + 'token;
 
-    /// Retrieves an iterator of `DataToken` from an entry point for this
-    /// adapter based on the name of the entry point and which parameters is to
+    /// Retrieves an iterator of `DataToken`s from an entry point for this
+    /// adapter based on the name of the entry point and which parameters is
     /// passed to it.
     ///
     /// Arguments:
@@ -402,7 +407,7 @@ pub trait Adapter<'token> {
     ///
     /// In this example, `edge` would be `"student"`, `parameters` would be be a
     /// `BTreeMap` containing a mapping `name` to some [FieldValue::String]
-    /// value. The returned would be an iterator over a single `Student`-like
+    /// value. The returned value would be an iterator over a single `Student`-like
     /// `DataToken`.
     fn get_starting_tokens(
         &mut self,
@@ -492,6 +497,56 @@ pub trait Adapter<'token> {
     ///         }))
     ///     };
     /// }
+    /// ```
+    ///
+    /// which in our case would be expanded to (here with type annotations)
+    /// ```
+    /// # use trustfall_core::{interpreter::DataContext, ir::FieldValue};
+    /// # use std::rc::Rc;
+    /// # #[derive(Debug, Clone)]
+    /// # struct Student {
+    /// #     name: String,
+    /// #     homework: Vec<Homework>,
+    /// # };
+    /// # #[derive(Debug, Clone)]
+    /// # struct Homework;
+    /// # #[derive(Debug, Clone)]
+    /// # enum DataToken {
+    /// #     StudentToken(Rc<Student>),
+    /// #     HomeworkToken(Rc<Homework>),
+    /// # }
+    /// 
+    /// impl DataToken {
+    ///     pub fn as_student(&self) -> Option<&Student> {
+    ///         match self {
+    ///             DataToken::StudentToken(s) => Some(s.as_ref()),
+    ///             _ => None,
+    ///         }
+    ///     }
+    /// }
+    /// 
+    /// // ...
+    /// 
+    /// # fn expanded(data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>>>)
+    /// # -> Box<dyn Iterator<Item = (DataContext<DataToken>, FieldValue)>> {
+    /// Box::new(data_contexts.map(|ctx| {
+    ///     let stud: Option<&Student> = (&ctx
+    ///         .current_token)       // Option<Token>
+    ///         .as_ref()             // Option<&Token>
+    ///         .map(|t: &DataToken| {
+    ///             t                 // &Token
+    ///                 .as_student() // Option<&Student>
+    ///                 .unwrap()     // Option<Option<&Student> => Option<&Student>
+    ///         });
+    ///
+    ///     let value: FieldValue = match stud {
+    ///         None => FieldValue::Null,
+    ///         Some(s) => (&s.name).into(),
+    ///     };
+    /// 
+    ///     (ctx, value)
+    /// }))
+    /// # }
     /// ```
     #[allow(clippy::type_complexity)]
     fn project_property(
