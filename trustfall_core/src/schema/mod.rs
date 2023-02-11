@@ -813,7 +813,7 @@ mod tests {
 
     use super::{error::InvalidSchemaError, Schema};
 
-    #[parameterize("trustfall_core/src/resources/test_data/schema_errors", "*.graphql")]
+    #[parameterize("trustfall_core/test_data/tests/schema_errors", "*.graphql")]
     fn schema_errors(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
         input_path.push(format!("{stem}.graphql"));
@@ -835,7 +835,7 @@ mod tests {
         }
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/valid_schemas", "*.graphql")]
+    #[parameterize("trustfall_core/test_data/tests/valid_schemas", "*.graphql")]
     fn valid_schemas(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
         input_path.push(format!("{stem}.graphql"));
@@ -855,7 +855,7 @@ mod tests {
 
     #[test]
     fn schema_subtypes() {
-        let input_data = include_str!("../resources/schemas/numbers.graphql");
+        let input_data = include_str!("../../test_data/schemas/numbers.graphql");
         let schema = Schema::parse(input_data).expect("valid schema");
 
         assert!(schema.subtypes("Nonexistent").is_none());

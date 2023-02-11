@@ -571,22 +571,22 @@ mod tests {
         assert_eq!(check_parsed, constructed_test_item);
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/parse_errors")]
+    #[parameterize("trustfall_core/test_data/tests/parse_errors")]
     fn parse_errors(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".parse-error.ron")
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/frontend_errors")]
+    #[parameterize("trustfall_core/test_data/tests/frontend_errors")]
     fn frontend_errors(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".graphql-parsed.ron")
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/execution_errors")]
+    #[parameterize("trustfall_core/test_data/tests/execution_errors")]
     fn execution_errors(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".graphql-parsed.ron")
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/valid_queries")]
+    #[parameterize("trustfall_core/test_data/tests/valid_queries")]
     fn valid_queries(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".graphql-parsed.ron")
     }
