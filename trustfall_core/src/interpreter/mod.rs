@@ -347,9 +347,68 @@ fn validate_argument_type(
     }
 }
 
+/// An `Adapter` is an entry point between the Trustfall query engine and an
+/// external API, file, database or whatever.
+///
+/// By providing Trustfall with ways of finding and relating the `DataToken`s
+/// for your particular data source, it can be queried together with other data
+/// sources.
+///
+/// Although `DataToken` may be anything within the constraints, normally it
+/// would be on the form
+///
+/// ```
+/// # use std::rc::Rc;
+/// #[derive(Debug, Clone)]
+/// struct Student {
+///     name: String,
+///     homework: Vec<Homework>,
+/// };
+///
+/// #[derive(Debug, Clone)]
+/// struct Homework;
+///
+/// #[derive(Debug, Clone)]
+/// enum DataToken {
+///     StudentToken(Rc<Student>),
+///     HomeworkToken(Rc<Homework>),
+/// }
+/// ```
 pub trait Adapter<'token> {
     type DataToken: Clone + Debug + 'token;
 
+    /// Retrieves an iterator of `DataToken`s from an entry point for this
+    /// adapter based on the name of the entry point and which parameters is
+    /// passed to it.
+    ///
+    /// Arguments:
+    /// * `edge`: The name of the query field as a string
+    /// * `parameters`: Arguments passed to the field
+    /// * `query_hint`: An optional already interpreted and indexed query for
+    ///                 some arguments to speed up the query
+    /// * `vertex_hint`:
+    ///
+    /// In GraphQL, this would be correspond to all fields the _Root_ type or
+    /// the _Query_ type. In the following GraphQL schema, `student` is a field
+    /// of the Query type, but `homework` and `name` are not. This means that
+    /// while `student` is a starting token, `homework` and `name` are not.
+    /// ```graphql
+    /// type Query {
+    ///     student(name: String!): Student!
+    /// }
+    ///
+    /// type Student {
+    ///     name: String!
+    ///     homework: [Homework]!
+    /// }
+    ///
+    /// // ...
+    /// ```
+    ///
+    /// In this example, `edge` would be `"student"`, `parameters` would be be a
+    /// `BTreeMap` containing a mapping `name` to some [FieldValue::String]
+    /// value. The returned value would be an iterator over a single `Student`-like
+    /// `DataToken`.
     fn get_starting_tokens(
         &mut self,
         edge: Arc<str>,
@@ -358,6 +417,137 @@ pub trait Adapter<'token> {
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::DataToken> + 'token>;
 
+    /// Implement a property on all `DataTokens` in an iterator of contexts,
+    /// returning an iterator over tuples of context-value pairs.
+    ///
+    /// Arguments:
+    /// * `data_contexts`: Tokens and their contexts, such as other known tokens
+    /// * `current_type_name`: The name of the current type
+    /// * `field_name`: The name of the field having this property
+    /// * `query_hint`
+    /// * `vertex_hint`
+    ///
+    /// In GraphQL this would correspond to retrieving a field from another
+    /// field.
+    /// ```graphql
+    /// type Student {
+    ///     name: String!
+    ///     homework: [Homework]!
+    /// }
+    /// ```
+    ///
+    /// Using the schema above, to retrieve the name of a `"student"`
+    /// `DataToken` would require a call like the following, assuming `ctx`
+    /// contains a `DataToken`.
+    ///
+    /// ```ignore
+    /// project_property(ctx, "Student", "name", query_hint, vertex_hint)
+    /// ```
+    ///
+    /// Normally implementing this requires a lot of repetition as all
+    /// properties are added to the types that contains them (like all GraphQL
+    /// fields with a property called `"name"` of type `String`). This can be be
+    /// made easier by using declarative macros, for example like so
+    ///
+    /// ```ignore
+    /// fn project_property(
+    ///    data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+    ///    current_type_name: Arc<str>,
+    ///    field_name: Arc<str>,
+    ///    query_hint: InterpretedQuery,
+    ///    vertex_hint: Vid,
+    /// ) {
+    ///     match ((&current_type_name).as_ref(), &field_name.as_ref()) => {
+    ///         ("Student", "name") => impl_property!(data_contexts, as_student, name),
+    ///          // ...
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// where `impl_property!` simply maps over all contexts, creating a new
+    /// iterator of ([DataContext], [FieldValue]) by converting to a student
+    /// using a `as_student` method implemented on `DataToken` and then
+    /// retrieving the `name` attribute of it.
+    ///
+    /// This relies on that the `DataToken` type all implement `as_student`,
+    /// returning an `Option` if the conversion succeeded, thus ignoring all
+    /// tokens that can not be converted to a student (in this example, probably
+    /// a `Homework` `DataToken`) and setting the value of their `name` as a
+    /// [FieldValue::Null].
+    ///
+    /// A simple example of this is the following taken from the `hackernews`
+    /// demo in the `trustfall` repository:
+    ///
+    /// ```
+    /// macro_rules! impl_property {
+    ///     ($data_contexts:ident, $conversion:ident, $attr:ident) => {
+    ///         Box::new($data_contexts.map(|ctx| {
+    ///             let token = ctx
+    ///                 .current_token
+    ///                 .as_ref()
+    ///                 .map(|token| token.$conversion().unwrap());
+    ///             let value = match token {
+    ///                 None => FieldValue::Null,
+    ///                 Some(t) => (&t.$attr).into(),
+    ///                 #[allow(unreachable_patterns)]
+    ///                 _ => unreachable!(),
+    ///             };
+    ///
+    ///             (ctx, value)
+    ///         }))
+    ///     };
+    /// }
+    /// ```
+    ///
+    /// which in our case would be expanded to (here with type annotations)
+    /// ```
+    /// # use trustfall_core::{interpreter::DataContext, ir::FieldValue};
+    /// # use std::rc::Rc;
+    /// # #[derive(Debug, Clone)]
+    /// # struct Student {
+    /// #     name: String,
+    /// #     homework: Vec<Homework>,
+    /// # };
+    /// # #[derive(Debug, Clone)]
+    /// # struct Homework;
+    /// # #[derive(Debug, Clone)]
+    /// # enum DataToken {
+    /// #     StudentToken(Rc<Student>),
+    /// #     HomeworkToken(Rc<Homework>),
+    /// # }
+    ///
+    /// impl DataToken {
+    ///     pub fn as_student(&self) -> Option<&Student> {
+    ///         match self {
+    ///             DataToken::StudentToken(s) => Some(s.as_ref()),
+    ///             _ => None,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // ...
+    ///
+    /// # fn expanded(data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>>>)
+    /// # -> Box<dyn Iterator<Item = (DataContext<DataToken>, FieldValue)>> {
+    /// Box::new(data_contexts.map(|ctx| {
+    ///     let stud: Option<&Student> = (&ctx
+    ///         .current_token)       // Option<Token>
+    ///         .as_ref()             // Option<&Token>
+    ///         .map(|t: &DataToken| {
+    ///             t                 // &Token
+    ///                 .as_student() // Option<&Student>
+    ///                 .unwrap()     // Option<Option<&Student> => Option<&Student>
+    ///         });
+    ///
+    ///     let value: FieldValue = match stud {
+    ///         None => FieldValue::Null,
+    ///         Some(s) => (&s.name).into(),
+    ///     };
+    ///
+    ///     (ctx, value)
+    /// }))
+    /// # }
+    /// ```
     #[allow(clippy::type_complexity)]
     fn project_property(
         &mut self,

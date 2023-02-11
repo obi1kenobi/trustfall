@@ -146,6 +146,30 @@ macro_rules! impl_property {
     };
 }
 
+fn sketchy_example(
+    ctx: Box<dyn Iterator<Item = DataContext<Token>>>,
+) -> Box<dyn Iterator<Item = (DataContext<Token>, FieldValue)>> {
+    Box::new(ctx.map(|c| {
+        let opt_user: Option<&hn_api::types::User> = c
+            .current_token // Option<Token>
+            .as_ref() // Option<&Token>
+            .map(|t: &Token| {
+                t // &Token
+                    .as_user() // Option<&User>
+                    .unwrap() // Remove inner Option, Option<Option<&User>> => Option<User>
+            });
+        let value: FieldValue = match opt_user {
+            None => FieldValue::Null,
+            Some(t) => (&t.id).into(),
+
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        };
+
+        (c, value)
+    }))
+}
+
 impl Adapter<'static> for HackerNewsAdapter {
     type DataToken = Token;
 
