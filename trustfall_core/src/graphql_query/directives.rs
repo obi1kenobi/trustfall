@@ -11,7 +11,7 @@ use crate::ir::{Operation, TransformationKind};
 
 use super::error::ParseError;
 
-/// A value passed as an operator argument in a Trustfall query, for example as in 
+/// A value passed as an operator argument in a Trustfall query, for example as in
 /// the `value` array of the `@filter` directive (see [FilterDirective]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperatorArgument {
