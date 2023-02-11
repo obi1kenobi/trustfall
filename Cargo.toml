@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "trustfall",
     "trustfall_core",
     "trustfall_filetests_macros",
     "trustfall_derive",

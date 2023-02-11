@@ -1,12 +1,20 @@
 [package]
-name = "trustfall"
+name = "pytrustfall"
 version = "0.1.6"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
+# The name of the native library. This is the name which will be used in Python to import the
+# library (i.e. `import trustfall`). If you change this, you must also change the name of the
+# `#[pymodule]` in `src/lib.rs`.
 name = "trustfall"
+
+# "cdylib" is necessary to produce a shared library for Python to import from.
+#
+# Downstream Rust code (including any code in `bin/`, `examples/`, and `tests/`) will not be able
+# to `use pytrustfall;` unless the "rlib" or "lib" crate type is also included, e.g.:
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
