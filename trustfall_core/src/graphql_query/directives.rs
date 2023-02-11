@@ -1,3 +1,5 @@
+//! Directives in Trustfall can be identified by their prefix: `@`.
+//! This module contains the logic for parsing Trustfall query directives.
 use std::{collections::HashSet, convert::TryFrom, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{types::Directive, Positioned};
@@ -9,14 +11,39 @@ use crate::ir::{Operation, TransformationKind};
 
 use super::error::ParseError;
 
+/// A value passed as an operator argument in a Trustfall query, for example as in
+/// the `value` array of the `@filter` directive (see [FilterDirective]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperatorArgument {
+    /// Reference to a variable provided to the query. Variable names are always
+    /// prefixed with `$`.
     VariableRef(Arc<str>),
+
+    /// Reference to a tagged value encountered elsewhere
+    /// in the query and marked with the `@tag` directive -- see [TagDirective].
+    /// Tag names are always prefixed with `%`.
     TagRef(Arc<str>),
 }
 
+/// A Trustfall `@filter` directive.
+///
+/// The following Trustfall filter directive and Rust value would be
+/// equivalent:
+///
+/// ```graphql
+/// @filter(op: ">=", value: ["$some_value"])
+/// ```
+///
+/// and
+///
+/// ```ignore
+/// FilterDirective {
+///     operation: Operation::GreaterThanOrEqual((), OperatorArgument::VariableRef(Arc::new("$some_value")))
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FilterDirective {
+    /// Describes which operation should be made by the filter
     pub operation: Operation<(), OperatorArgument>,
 }
 
@@ -152,8 +179,21 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
     }
 }
 
+/// A Trustfall `@output` directive.
+///
+/// For example, the following Trustfall and Rust would be equivalent:
+/// ```graphql
+/// @output(name: "betterName")
+/// ```
+///
+/// and
+///
+/// ```ignore
+/// OutputDirective { name: Some(Arc::new("betterName"))}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct OutputDirective {
+    /// The name that should be used for this field when it is given as output
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<Arc<str>>,
 }
@@ -214,8 +254,21 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
     }
 }
 
+/// A Trustfall `@transform` directive.
+///
+/// For example, the following Trustfall and Rust would be equivalent:
+/// ```graphql
+/// @transform(op: "count")
+/// ```
+///
+/// and
+///
+/// ```ignore
+/// TransformDirective { kind: TransformationKind::Count }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformDirective {
+    /// The `op` in a GraphQL `@transform`
     pub kind: TransformationKind,
 }
 
@@ -277,6 +330,18 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
     }
 }
 
+/// A Trustfall `@tag` directive.
+///
+/// For example, the following Trustfall and Rust would be equivalent:
+/// ```graphql
+/// @tag(name: "%tag_name")
+/// ```
+///
+/// and
+///
+/// ```ignore
+/// TagDirective { name: Some(Arc::new("%tag_name"))}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TagDirective {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -337,6 +402,7 @@ impl TryFrom<&Positioned<Directive>> for TagDirective {
     }
 }
 
+/// A Trustfall `@optional` directive.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct OptionalDirective {}
 
@@ -357,6 +423,7 @@ impl TryFrom<&Positioned<Directive>> for OptionalDirective {
     }
 }
 
+/// A Trustfall `@fold` directive.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FoldDirective {}
 
@@ -377,6 +444,18 @@ impl TryFrom<&Positioned<Directive>> for FoldDirective {
     }
 }
 
+/// A Trustfall `@recurse` directive.
+///
+/// For example, the following Trustfall and Rust would be equivalent:
+/// ```graphql
+/// @recurse(depth: 1)
+/// ```
+///
+/// and
+///
+/// ```ignore
+/// RecurseDirective { depth: NonZeroUsize::new(1usize)}
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct RecurseDirective {
     pub depth: NonZeroUsize,
