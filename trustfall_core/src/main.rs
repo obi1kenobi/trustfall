@@ -46,7 +46,8 @@ use crate::{
 };
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
-    let schema_text = fs::read_to_string(format!("../test_data/{schema_name}.graphql",)).unwrap();
+    let schema_text =
+        fs::read_to_string(format!("test_data/schema/{schema_name}.graphql",)).unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
     Schema::new(schema_document).unwrap()
 }
