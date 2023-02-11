@@ -19,8 +19,9 @@ pub enum OperatorArgument {
     /// prefixed with `$`.
     VariableRef(Arc<str>),
 
-    /// Reference to a `@tag`ed value encountered elsewhere
-    /// in the query. Tag names are always prefixed with `%`.
+    /// Reference to a tagged value encountered elsewhere
+    /// in the query and marked with the `@tag` directive -- see [TagDirective].
+    /// Tag names are always prefixed with `%`.
     TagRef(Arc<str>),
 }
 
