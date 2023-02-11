@@ -13,7 +13,7 @@ cd "$(git rev-parse --show-toplevel)/trustfall_core"
 # - are relatively simple, and
 # - have specific multiline string formatting that makes GraphQL human-readable
 #   and that we want to preserve.
-find ./src/resources/test_data/ -name '*.ron' | \
+find ./test_data/tests/ -name '*.ron' | \
     grep -v '.graphql.ron' | \
     xargs -n 1 \
     sh -c '(cargo run --release reserialize $0 >$0.tmp) && mv $0.tmp $0'

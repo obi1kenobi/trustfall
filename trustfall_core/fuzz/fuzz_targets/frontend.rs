@@ -16,7 +16,7 @@ use trustfall_core::{
 
 fn get_service_doc() -> ServiceDocument {
     let mut buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    buf.push("../src/resources/schemas/filesystem.graphql");
+    buf.push("../test_data/schemas/filesystem.graphql");
     let schema_path = buf.as_path();
 
     parse_schema(fs::read_to_string(schema_path).unwrap()).unwrap()
@@ -31,7 +31,11 @@ fuzz_target!(|data: &[u8]| {
         if query_string.match_indices("...").count() <= 3 {
             if let Ok(document) = parse_query(query_string) {
                 let result = parse(&SCHEMA, &document);
-                if let Err(FrontendError::OtherError(..) | FrontendError::ParseError(ParseError::OtherError(..))) = result {
+                if let Err(
+                    FrontendError::OtherError(..)
+                    | FrontendError::ParseError(ParseError::OtherError(..)),
+                ) = result
+                {
                     unreachable!()
                 }
             }
