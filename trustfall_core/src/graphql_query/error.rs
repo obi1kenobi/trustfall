@@ -1,4 +1,4 @@
-//! Errors from parsing GraphQL
+//! Errors from parsing Trustfall queries
 use async_graphql_parser::Pos;
 use async_graphql_value::Value;
 use serde::{ser::Error as SerError, Deserialize, Serialize, Serializer};
