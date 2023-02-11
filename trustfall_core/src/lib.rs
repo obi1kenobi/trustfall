@@ -8,12 +8,15 @@ extern crate maplit;
 #[macro_use]
 extern crate lazy_static;
 
-mod filesystem_interpreter;
-mod util;
-
 pub mod frontend;
 pub mod graphql_query;
 pub mod interpreter;
 pub mod ir;
-mod numbers_interpreter;
 pub mod schema;
+mod util;
+
+#[cfg(test)]
+mod numbers_interpreter;
+
+#[cfg(test)]
+mod filesystem_interpreter;
