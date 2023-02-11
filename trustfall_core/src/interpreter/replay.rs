@@ -636,7 +636,7 @@ mod tests {
         }
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/valid_queries")]
+    #[parameterize("trustfall_core/test_data/tests/valid_queries")]
     fn parameterized_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
         input_path.push(format!("{stem}.trace.ron"));

@@ -1410,7 +1410,7 @@ mod tests {
         util::TestIRQueryResult,
     };
 
-    #[parameterize("trustfall_core/src/resources/test_data/execution_errors")]
+    #[parameterize("trustfall_core/test_data/tests/execution_errors")]
     fn parameterizable_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
         input_path.push(format!("{stem}.ir.ron"));

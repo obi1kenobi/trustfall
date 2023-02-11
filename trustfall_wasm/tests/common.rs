@@ -146,7 +146,7 @@ pub fn run_numbers_query(
     trustfall_wasm::util::initialize().expect("init failed");
 
     let schema = trustfall_core::schema::Schema::parse(include_str!(
-        "../../trustfall_core/src/resources/schemas/numbers.graphql"
+        "../../trustfall_core/test_data/schemas/numbers.graphql"
     ))
     .unwrap();
     let adapter = make_adapter();

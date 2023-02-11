@@ -1423,16 +1423,16 @@ mod tests {
 
     lazy_static! {
         static ref FILESYSTEM_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("src/resources/schemas/filesystem.graphql").unwrap())
+            Schema::parse(fs::read_to_string("test_data/schemas/filesystem.graphql").unwrap())
                 .unwrap();
         static ref NUMBERS_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("src/resources/schemas/numbers.graphql").unwrap())
+            Schema::parse(fs::read_to_string("test_data/schemas/numbers.graphql").unwrap())
                 .unwrap();
         static ref NULLABLES_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("src/resources/schemas/nullables.graphql").unwrap())
+            Schema::parse(fs::read_to_string("test_data/schemas/nullables.graphql").unwrap())
                 .unwrap();
         static ref RECURSES_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("src/resources/schemas/recurses.graphql").unwrap())
+            Schema::parse(fs::read_to_string("test_data/schemas/recurses.graphql").unwrap())
                 .unwrap();
     }
 
@@ -1446,17 +1446,17 @@ mod tests {
         assert!(!RECURSES_SCHEMA.vertex_types.is_empty());
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/frontend_errors")]
+    #[parameterize("trustfall_core/test_data/tests/frontend_errors")]
     fn frontend_errors(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".frontend-error.ron")
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/execution_errors")]
+    #[parameterize("trustfall_core/test_data/tests/execution_errors")]
     fn execution_errors(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".ir.ron")
     }
 
-    #[parameterize("trustfall_core/src/resources/test_data/valid_queries")]
+    #[parameterize("trustfall_core/test_data/tests/valid_queries")]
     fn valid_queries(base: &Path, stem: &str) {
         parameterizable_tester(base, stem, ".ir.ron")
     }
