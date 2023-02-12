@@ -2,6 +2,7 @@
 
 use hn_api::{types::Item, HnClient};
 use trustfall_core::{
+    field_property,
     interpreter::{
         basic_adapter::{BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator},
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
@@ -98,21 +99,6 @@ macro_rules! item_property_resolver {
     };
 }
 
-macro_rules! property_resolver {
-    ($conversion:ident, $attr:ident) => {
-        |vertex| -> FieldValue {
-            let vertex = vertex.$conversion().expect("conversion failed");
-            (&vertex.$attr).into()
-        }
-    };
-    ($conversion:ident, $var:ident, $b:block) => {
-        |vertex| -> FieldValue {
-            let $var = vertex.$conversion().expect("conversion failed");
-            $b
-        }
-    };
-}
-
 impl BasicAdapter<'static> for HackerNewsAdapter {
     type Vertex = Token;
 
@@ -165,61 +151,44 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
             }
 
             // properties on Job
-            ("Job", "score") => resolve_property_with(contexts, property_resolver!(as_job, score)),
-            ("Job", "title") => resolve_property_with(contexts, property_resolver!(as_job, title)),
-            ("Job", "url") => resolve_property_with(contexts, property_resolver!(as_job, url)),
+            ("Job", "score") => resolve_property_with(contexts, field_property!(as_job, score)),
+            ("Job", "title") => resolve_property_with(contexts, field_property!(as_job, title)),
+            ("Job", "url") => resolve_property_with(contexts, field_property!(as_job, url)),
 
             // properties on Story
             ("Story", "byUsername") => {
-                resolve_property_with(contexts, property_resolver!(as_story, by))
+                resolve_property_with(contexts, field_property!(as_story, by))
             }
-            ("Story", "text") => {
-                resolve_property_with(contexts, property_resolver!(as_story, text))
-            }
+            ("Story", "text") => resolve_property_with(contexts, field_property!(as_story, text)),
             ("Story", "commentsCount") => {
-                resolve_property_with(contexts, property_resolver!(as_story, descendants))
+                resolve_property_with(contexts, field_property!(as_story, descendants))
             }
-            ("Story", "score") => {
-                resolve_property_with(contexts, property_resolver!(as_story, score))
-            }
-            ("Story", "title") => {
-                resolve_property_with(contexts, property_resolver!(as_story, title))
-            }
-            ("Story", "url") => resolve_property_with(contexts, property_resolver!(as_story, url)),
+            ("Story", "score") => resolve_property_with(contexts, field_property!(as_story, score)),
+            ("Story", "title") => resolve_property_with(contexts, field_property!(as_story, title)),
+            ("Story", "url") => resolve_property_with(contexts, field_property!(as_story, url)),
 
             // properties on Comment
             ("Comment", "byUsername") => {
-                resolve_property_with(contexts, property_resolver!(as_comment, by))
+                resolve_property_with(contexts, field_property!(as_comment, by))
             }
             ("Comment", "text") => {
-                resolve_property_with(contexts, property_resolver!(as_comment, text))
+                resolve_property_with(contexts, field_property!(as_comment, text))
             }
             ("Comment", "childCount") => resolve_property_with(
                 contexts,
-                property_resolver!(as_comment, comment, {
-                    comment
-                        .kids
-                        .as_ref()
-                        .map(|v| v.len() as u64)
-                        .unwrap_or(0)
-                        .into()
+                field_property!(as_comment, kids, {
+                    kids.as_ref().map(|v| v.len() as u64).unwrap_or(0).into()
                 }),
             ),
 
             // properties on User
-            ("User", "id") => resolve_property_with(contexts, property_resolver!(as_user, id)),
-            ("User", "karma") => {
-                resolve_property_with(contexts, property_resolver!(as_user, karma))
-            }
-            ("User", "about") => {
-                resolve_property_with(contexts, property_resolver!(as_user, about))
-            }
+            ("User", "id") => resolve_property_with(contexts, field_property!(as_user, id)),
+            ("User", "karma") => resolve_property_with(contexts, field_property!(as_user, karma)),
+            ("User", "about") => resolve_property_with(contexts, field_property!(as_user, about)),
             ("User", "unixCreatedAt") => {
-                resolve_property_with(contexts, property_resolver!(as_user, created))
+                resolve_property_with(contexts, field_property!(as_user, created))
             }
-            ("User", "delay") => {
-                resolve_property_with(contexts, property_resolver!(as_user, delay))
-            }
+            ("User", "delay") => resolve_property_with(contexts, field_property!(as_user, delay)),
             _ => unreachable!(),
         }
     }
