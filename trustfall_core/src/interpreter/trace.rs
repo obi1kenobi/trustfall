@@ -173,21 +173,21 @@ fn make_iter_with_pre_action<T, I: Iterator<Item = T>, F: Fn()>(
 }
 
 #[derive(Debug, Clone)]
-pub struct AdapterTap<'token, Vertex, AdapterT>
+pub struct AdapterTap<'vertex, Vertex, AdapterT>
 where
-    AdapterT: Adapter<'token, Vertex = Vertex>,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'token,
+    AdapterT: Adapter<'vertex, Vertex = Vertex>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
     for<'de2> Vertex: Deserialize<'de2>,
 {
     tracer: Rc<RefCell<Trace<Vertex>>>,
     inner: AdapterT,
-    _phantom: PhantomData<&'token ()>,
+    _phantom: PhantomData<&'vertex ()>,
 }
 
-impl<'token, Vertex, AdapterT> AdapterTap<'token, Vertex, AdapterT>
+impl<'vertex, Vertex, AdapterT> AdapterTap<'vertex, Vertex, AdapterT>
 where
-    AdapterT: Adapter<'token, Vertex = Vertex>,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'token,
+    AdapterT: Adapter<'vertex, Vertex = Vertex>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
     for<'de2> Vertex: Deserialize<'de2>,
 {
     pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<Vertex>>>) -> Self {
@@ -208,13 +208,13 @@ where
 }
 
 #[allow(dead_code)]
-pub(crate) fn tap_results<'token, Vertex, AdapterT>(
-    adapter_tap: Rc<RefCell<AdapterTap<'token, Vertex, AdapterT>>>,
-    result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'token,
-) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'token
+pub(crate) fn tap_results<'vertex, Vertex, AdapterT>(
+    adapter_tap: Rc<RefCell<AdapterTap<'vertex, Vertex, AdapterT>>>,
+    result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex,
+) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex
 where
-    AdapterT: Adapter<'token, Vertex = Vertex> + 'token,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'token,
+    AdapterT: Adapter<'vertex, Vertex = Vertex> + 'vertex,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
     for<'de2> Vertex: Deserialize<'de2>,
 {
     result_iter.map(move |result| {
@@ -228,10 +228,10 @@ where
     })
 }
 
-impl<'token, Vertex, AdapterT> Adapter<'token> for AdapterTap<'token, Vertex, AdapterT>
+impl<'vertex, Vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, Vertex, AdapterT>
 where
-    AdapterT: Adapter<'token, Vertex = Vertex>,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'token,
+    AdapterT: Adapter<'vertex, Vertex = Vertex>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
     for<'de2> Vertex: Deserialize<'de2>,
 {
     type Vertex = Vertex;
@@ -242,7 +242,7 @@ where
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'token> {
+    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::GetStartingTokens(vertex_hint)),
@@ -274,12 +274,12 @@ where
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'token> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectProperty(
@@ -347,7 +347,7 @@ where
     #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -358,9 +358,9 @@ where
         dyn Iterator<
                 Item = (
                     DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'token>,
+                    Box<dyn Iterator<Item = Self::Vertex> + 'vertex>,
                 ),
-            > + 'token,
+            > + 'vertex,
     > {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
@@ -436,7 +436,7 @@ where
                 });
 
                 let tracer_ref_7 = tracer_ref_5.clone();
-                let final_neighbor_iter: Box<dyn Iterator<Item = Vertex> + 'token> =
+                let final_neighbor_iter: Box<dyn Iterator<Item = Vertex> + 'vertex> =
                     Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
                         tracer_ref_7.borrow_mut().record(
                             TraceOpContent::OutputIteratorExhausted,
@@ -451,12 +451,12 @@ where
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'token> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::CanCoerceToType(

@@ -373,8 +373,8 @@ fn validate_argument_type(
     }
 }
 
-pub trait Adapter<'token> {
-    type Vertex: Clone + Debug + 'token;
+pub trait Adapter<'vertex> {
+    type Vertex: Clone + Debug + 'vertex;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -382,23 +382,23 @@ pub trait Adapter<'token> {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'token>;
+    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'vertex>;
 
     #[allow(clippy::type_complexity)]
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'token>;
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'vertex>;
 
     #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -409,17 +409,17 @@ pub trait Adapter<'token> {
         dyn Iterator<
                 Item = (
                     DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'token>,
+                    Box<dyn Iterator<Item = Self::Vertex> + 'vertex>,
                 ),
-            > + 'token,
+            > + 'vertex,
     >;
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'token>;
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'vertex>;
 }
