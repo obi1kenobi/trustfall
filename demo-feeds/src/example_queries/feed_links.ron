@@ -3,7 +3,7 @@ InputQuery (
 {
     Feed {
         id @output
-        feedType @output
+        feed_type @output
 
         title_: title {
             src @output

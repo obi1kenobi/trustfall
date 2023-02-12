@@ -12,7 +12,7 @@ InputQuery (
 
             title_: title {
                 content @output
-                contentType @output
+                content_type @output
             }
         }
     }

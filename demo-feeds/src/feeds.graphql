@@ -106,8 +106,8 @@ https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Link.html
 type FeedLink {
     href: String!
     rel: String
-    media_type: String
-    href_lang: String
+    mediaType: String
+    hrefLang: String
     title: String
     length: Int  # The length of the resource, in bytes.
 }
