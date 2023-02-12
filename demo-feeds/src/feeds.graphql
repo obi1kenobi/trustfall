@@ -2,17 +2,25 @@ schema {
     query: RootSchemaQuery
 }
 directive @filter(
-    """Name of the filter operation to perform."""
+    """
+    Name of the filter operation to perform.
+    """
     op: String!
-    """List of string operands for the operator."""
+    """
+    List of string operands for the operator.
+    """
     value: [String!]
 ) on FIELD | INLINE_FRAGMENT
 directive @tag(
-    """Name to apply to the given property field."""
+    """
+    Name to apply to the given property field.
+    """
     name: String
 ) on FIELD
 directive @output(
-    """What to designate the output field generated from this property field."""
+    """
+    What to designate the output field generated from this property field.
+    """
     name: String
 ) on FIELD
 directive @optional on FIELD
@@ -40,13 +48,12 @@ type RootSchemaQuery {
 https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Feed.html
 """
 type Feed {
-    feedType: String!
+    feed_type: String!
     id: String!
     updated: DateTime
     language: String
     published: DateTime
-    ttl: Int  # number of minutes that indicates how long a channel can be cached before refreshing from the source.
-
+    ttl: Int # number of minutes that indicates how long a channel can be cached before refreshing from the source.
     title: FeedText
     description: FeedText
     rights: FeedText
@@ -65,7 +72,7 @@ type Feed {
 https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Text.html
 """
 type FeedText {
-    contentType: String!  # TODO: this is actually a proper Mime type object
+    content_type: String! # TODO: this is actually a proper Mime type object
     content: String!
     src: String
 }
@@ -95,8 +102,8 @@ https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Content.html
 """
 type FeedContent {
     body: String
-    contentType: String!  # TODO: this is actually a proper Mime type object
-    length: Int  # length of the content in bytes
+    content_type: String! # TODO: this is actually a proper Mime type object
+    length: Int # length of the content in bytes
     src: FeedLink
 }
 
@@ -106,10 +113,10 @@ https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Link.html
 type FeedLink {
     href: String!
     rel: String
-    mediaType: String
-    hrefLang: String
+    media_type: String
+    href_lang: String
     title: String
-    length: Int  # The length of the resource, in bytes.
+    length: Int # The length of the resource, in bytes.
 }
 
 """
@@ -121,6 +128,5 @@ type ChannelImage {
     width: Int
     height: Int
     description: String
-
     link: FeedLink
 }
