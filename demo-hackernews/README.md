@@ -49,9 +49,9 @@ The project consists of the following components:
 - `adapter.rs` defines the `HackerNewsAdapter` struct, which implements
   the `trustfall_core::interpreter::Adapter` trait and connects the query engine
   to the HackerNews API.
-    - The `get_starting_tokens` method is what produces the initial iterator of `Token` vertices
+    - The `resolve_starting_vertices` method is what produces the initial iterator of `Token` vertices
       corresponding to the root edge at which querying starts (e.g. `FrontPage`).
-    - The `project_property` method is used to get property values for each `Token` in an iterator.
+    - The `resolve_property` method is used to get property values for each `Token` in an iterator.
     - The `project_neighbors` method is used to get the neighboring vertices (`Token`s)
       across a particular edge, for each `Token` in an iterator.
     - The `can_coerce_to_type` method is kind of like the Python `isinstance()` function:

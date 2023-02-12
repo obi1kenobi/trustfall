@@ -205,7 +205,7 @@ impl ContextIterator {
 }
 
 /// The (context, value) iterator item returned by the WASM version
-/// of the project_property() adapter method.
+/// of the resolve_property() adapter method.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndValue {
     #[serde(rename = "localId")]

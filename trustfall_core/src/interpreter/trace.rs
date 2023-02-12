@@ -272,10 +272,10 @@ where
         )
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -284,7 +284,7 @@ where
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectProperty(
                 vertex_hint,
-                current_type_name.clone(),
+                type_name.clone(),
                 field_name.clone(),
             )),
             None,
@@ -314,9 +314,9 @@ where
                 context
             }),
         );
-        let inner_iter = self.inner.project_property(
+        let inner_iter = self.inner.resolve_property(
             wrapped_contexts,
-            current_type_name,
+            type_name,
             field_name,
             query_hint,
             vertex_hint,
@@ -348,7 +348,7 @@ where
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
@@ -366,7 +366,7 @@ where
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectNeighbors(
                 vertex_hint,
-                current_type_name.clone(),
+                type_name.clone(),
                 edge_hint,
             )),
             None,
@@ -398,7 +398,7 @@ where
         );
         let inner_iter = self.inner.project_neighbors(
             wrapped_contexts,
-            current_type_name,
+            type_name,
             edge_name,
             parameters,
             query_hint,
@@ -452,7 +452,7 @@ where
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -461,7 +461,7 @@ where
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::CanCoerceToType(
                 vertex_hint,
-                current_type_name.clone(),
+                type_name.clone(),
                 coerce_to_type_name.clone(),
             )),
             None,
@@ -493,7 +493,7 @@ where
         );
         let inner_iter = self.inner.can_coerce_to_type(
             wrapped_contexts,
-            current_type_name,
+            type_name,
             coerce_to_type_name,
             query_hint,
             vertex_hint,

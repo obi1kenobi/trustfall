@@ -260,7 +260,7 @@ export class MyAdapter implements Adapter<Vertex> {
 
   *projectProperty(
     data_contexts: IterableIterator<JsContext<Vertex>>,
-    current_type_name: string,
+    type_name: string,
     field_name: string
   ): IterableIterator<ContextAndValue> {
     if (field_name === '__typename') {
@@ -274,10 +274,10 @@ export class MyAdapter implements Adapter<Vertex> {
     }
 
     if (
-      current_type_name === 'Item' ||
-      current_type_name === 'Story' ||
-      current_type_name === 'Job' ||
-      current_type_name === 'Comment'
+      type_name === 'Item' ||
+      type_name === 'Story' ||
+      type_name === 'Job' ||
+      type_name === 'Comment'
     ) {
       switch (field_name) {
         case 'url': {
@@ -317,7 +317,7 @@ export class MyAdapter implements Adapter<Vertex> {
         default: {
           const fieldKey = HNItemFieldMappings[field_name];
           if (fieldKey == undefined) {
-            throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
+            throw new Error(`Unexpected property for type ${type_name}: ${field_name}`);
           }
 
           for (const ctx of data_contexts) {
@@ -330,7 +330,7 @@ export class MyAdapter implements Adapter<Vertex> {
           }
         }
       }
-    } else if (current_type_name === 'User') {
+    } else if (type_name === 'User') {
       switch (field_name) {
         case 'url': {
           for (const ctx of data_contexts) {
@@ -369,7 +369,7 @@ export class MyAdapter implements Adapter<Vertex> {
         default: {
           const fieldKey = HNUserFieldMappings[field_name];
           if (fieldKey == undefined) {
-            throw new Error(`Unexpected property for type ${current_type_name}: ${field_name}`);
+            throw new Error(`Unexpected property for type ${type_name}: ${field_name}`);
           }
 
           for (const ctx of data_contexts) {
@@ -381,7 +381,7 @@ export class MyAdapter implements Adapter<Vertex> {
           }
         }
       }
-    } else if (current_type_name === 'Webpage') {
+    } else if (type_name === 'Webpage') {
       if (field_name === 'url') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
@@ -391,26 +391,26 @@ export class MyAdapter implements Adapter<Vertex> {
           };
         }
       } else {
-        throw new Error(`Unexpected property: ${current_type_name} ${field_name}`);
+        throw new Error(`Unexpected property: ${type_name} ${field_name}`);
       }
     } else {
-      throw new Error(`Unexpected type+property for type ${current_type_name}: ${field_name}`);
+      throw new Error(`Unexpected type+property for type ${type_name}: ${field_name}`);
     }
   }
 
   *projectNeighbors(
     data_contexts: IterableIterator<JsContext<Vertex>>,
-    current_type_name: string,
+    type_name: string,
     edge_name: string,
     parameters: JsEdgeParameters
   ): IterableIterator<ContextAndNeighborsIterator<Vertex>> {
     if (
-      current_type_name === 'Story' ||
-      current_type_name === 'Job' ||
-      current_type_name === 'Comment'
+      type_name === 'Story' ||
+      type_name === 'Job' ||
+      type_name === 'Comment'
     ) {
       if (edge_name === 'link') {
-        if (current_type_name === 'Story') {
+        if (type_name === 'Story') {
           // Link submission stories have the submitted URL as a link.
           // Text submission stories can have multiple links in the text.
           for (const ctx of data_contexts) {
@@ -437,7 +437,7 @@ export class MyAdapter implements Adapter<Vertex> {
               neighbors,
             };
           }
-        } else if (current_type_name === 'Comment') {
+        } else if (type_name === 'Comment') {
           // Comments can only have links in their text content.
           for (const ctx of data_contexts) {
             const vertex = ctx.currentToken;
@@ -452,7 +452,7 @@ export class MyAdapter implements Adapter<Vertex> {
               neighbors,
             };
           }
-        } else if (current_type_name === 'Job') {
+        } else if (type_name === 'Job') {
           // Jobs only have the submitted URL as a link.
           for (const ctx of data_contexts) {
             const vertex = ctx.currentToken;
@@ -469,7 +469,7 @@ export class MyAdapter implements Adapter<Vertex> {
             };
           }
         } else {
-          throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
+          throw new Error(`Not implemented: ${type_name} ${edge_name} ${parameters}`);
         }
       } else if (edge_name === 'byUser') {
         for (const ctx of data_contexts) {
@@ -511,9 +511,9 @@ export class MyAdapter implements Adapter<Vertex> {
           }
         }
       } else {
-        throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
+        throw new Error(`Not implemented: ${type_name} ${edge_name} ${parameters}`);
       }
-    } else if (current_type_name === 'User') {
+    } else if (type_name === 'User') {
       if (edge_name === 'submitted') {
         for (const ctx of data_contexts) {
           const vertex = ctx.currentToken;
@@ -537,19 +537,19 @@ export class MyAdapter implements Adapter<Vertex> {
           };
         }
       } else {
-        throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
+        throw new Error(`Not implemented: ${type_name} ${edge_name} ${parameters}`);
       }
     } else {
-      throw new Error(`Not implemented: ${current_type_name} ${edge_name} ${parameters}`);
+      throw new Error(`Not implemented: ${type_name} ${edge_name} ${parameters}`);
     }
   }
 
   *canCoerceToType(
     data_contexts: IterableIterator<JsContext<Vertex>>,
-    current_type_name: string,
+    type_name: string,
     coerce_to_type_name: string
   ): IterableIterator<ContextAndBool> {
-    if (current_type_name === 'Item' || current_type_name === 'Webpage') {
+    if (type_name === 'Item' || type_name === 'Webpage') {
       if (coerce_to_type_name === 'Item') {
         // The Item type is abstract, we need to check if the vertex is any of the Item subtypes.
         for (const ctx of data_contexts) {
@@ -570,7 +570,7 @@ export class MyAdapter implements Adapter<Vertex> {
         }
       }
     } else {
-      throw new Error(`Unexpected coercion from ${current_type_name} to ${coerce_to_type_name}`);
+      throw new Error(`Unexpected coercion from ${type_name} to ${coerce_to_type_name}`);
     }
   }
 }

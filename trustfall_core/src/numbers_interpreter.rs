@@ -211,15 +211,15 @@ impl Adapter<'static> for NumbersAdapter {
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)>> {
-        match (current_type_name.as_ref(), field_name.as_ref()) {
+        match (type_name.as_ref(), field_name.as_ref()) {
             ("Number" | "Prime" | "Composite" | "Neither", "value") => {
                 resolve_property_with(data_contexts, |vertex| vertex.value().into())
             }
@@ -242,7 +242,7 @@ impl Adapter<'static> for NumbersAdapter {
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
@@ -257,7 +257,7 @@ impl Adapter<'static> for NumbersAdapter {
         >,
     > {
         let mut primes = btreeset![2, 3];
-        match (current_type_name.as_ref(), edge_name.as_ref()) {
+        match (type_name.as_ref(), edge_name.as_ref()) {
             ("Number" | "Prime" | "Composite", "predecessor") => {
                 resolve_neighbors_with(data_contexts, move |vertex| {
                     let value = match &vertex {
@@ -358,7 +358,7 @@ impl Adapter<'static> for NumbersAdapter {
             _ => {
                 unreachable!(
                     "Unexpected edge {} on vertex type {}",
-                    &edge_name, &current_type_name
+                    &edge_name, &type_name
                 );
             }
         }
@@ -367,12 +367,12 @@ impl Adapter<'static> for NumbersAdapter {
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)>> {
-        match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
+        match (type_name.as_ref(), coerce_to_type_name.as_ref()) {
             ("Number", "Prime") => resolve_coercion_with(data_contexts, |vertex| {
                 matches!(vertex, NumbersToken::Prime(..))
             }),
@@ -381,7 +381,7 @@ impl Adapter<'static> for NumbersAdapter {
             }),
             _ => unimplemented!(
                 "Unexpected coercion attempted: {} {}",
-                current_type_name,
+                type_name,
                 coerce_to_type_name
             ),
         }

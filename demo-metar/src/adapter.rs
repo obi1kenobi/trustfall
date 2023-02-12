@@ -101,15 +101,15 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'a> {
-        match current_type_name.as_ref() {
+        match type_name.as_ref() {
             "MetarReport" => {
                 match field_name.as_ref() {
                     // TODO: implement __typename
@@ -167,7 +167,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
@@ -181,7 +181,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                 ),
             > + 'a,
     > {
-        match (current_type_name.as_ref(), edge_name.as_ref()) {
+        match (type_name.as_ref(), edge_name.as_ref()) {
             ("MetarReport", "cloudCover") => {
                 assert!(parameters.is_none());
 
@@ -207,7 +207,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,

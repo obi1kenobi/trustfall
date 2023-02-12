@@ -385,10 +385,10 @@ pub trait Adapter<'token> {
     ) -> Box<dyn Iterator<Item = Self::Vertex> + 'token>;
 
     #[allow(clippy::type_complexity)]
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -399,7 +399,7 @@ pub trait Adapter<'token> {
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
@@ -417,7 +417,7 @@ pub trait Adapter<'token> {
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,

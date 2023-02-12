@@ -155,10 +155,10 @@ where
         )
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: std::sync::Arc<str>,
+        type_name: std::sync::Arc<str>,
         field_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
@@ -166,7 +166,7 @@ where
         <Self as BasicAdapter>::resolve_property(
             self,
             contexts,
-            current_type_name.as_ref(),
+            type_name.as_ref(),
             field_name.as_ref(),
         )
     }
@@ -174,7 +174,7 @@ where
     fn project_neighbors(
         &mut self,
         contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: std::sync::Arc<str>,
+        type_name: std::sync::Arc<str>,
         edge_name: std::sync::Arc<str>,
         parameters: Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
@@ -191,7 +191,7 @@ where
         <Self as BasicAdapter>::resolve_neighbors(
             self,
             contexts,
-            current_type_name.as_ref(),
+            type_name.as_ref(),
             edge_name.as_ref(),
             parameters.as_deref(),
         )
@@ -200,7 +200,7 @@ where
     fn can_coerce_to_type(
         &mut self,
         contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
-        current_type_name: std::sync::Arc<str>,
+        type_name: std::sync::Arc<str>,
         coerce_to_type_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
@@ -208,7 +208,7 @@ where
         <Self as BasicAdapter>::resolve_coercion(
             self,
             contexts,
-            current_type_name.as_ref(),
+            type_name.as_ref(),
             coerce_to_type_name.as_ref(),
         )
     }

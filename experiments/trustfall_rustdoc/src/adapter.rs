@@ -492,10 +492,10 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
@@ -509,7 +509,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                 None => (ctx, FieldValue::Null),
             }))
         } else {
-            match current_type_name.as_ref() {
+            match type_name.as_ref() {
                 "Crate" => {
                     Box::new(data_contexts.map(move |ctx| {
                         property_mapper(ctx, field_name.as_ref(), get_crate_property)
@@ -579,7 +579,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         property_mapper(ctx, field_name.as_ref(), get_raw_type_property)
                     }))
                 }
-                _ => unreachable!("project_property {current_type_name} {field_name}"),
+                _ => unreachable!("resolve_property {type_name} {field_name}"),
             }
         }
     }
@@ -587,7 +587,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
@@ -601,7 +601,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                 ),
             > + 'a,
     > {
-        match current_type_name.as_ref() {
+        match type_name.as_ref() {
             "CrateDiff" => match edge_name.as_ref() {
                 "current" => Box::new(data_contexts.map(move |ctx| {
                     let neighbors: Box<dyn Iterator<Item = Self::Vertex> + 'a> = match &ctx
@@ -634,7 +634,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 _ => {
-                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "Crate" => {
@@ -693,9 +693,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
 
                         (ctx, neighbors)
                     })),
-                    _ => unreachable!(
-                        "project_neighbors {current_type_name} {edge_name} {parameters:?}"
-                    ),
+                    _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
                 }
             }
             "Importable" | "ImplOwner" | "Struct" | "Enum" | "Trait" | "Function"
@@ -769,9 +767,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                             (ctx, neighbors)
                         }))
                     }
-                    _ => unreachable!(
-                        "project_neighbors {current_type_name} {edge_name} {parameters:?}"
-                    ),
+                    _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
                 }
             }
             "Item" | "ImplOwner" | "Struct" | "StructField" | "Enum" | "Variant"
@@ -814,9 +810,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
 
                         (ctx, neighbors)
                     })),
-                    _ => unreachable!(
-                        "project_neighbors {current_type_name} {edge_name} {parameters:?}"
-                    ),
+                    _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
                 }
             }
             "ImplOwner" | "Struct" | "Enum"
@@ -905,7 +899,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     }))
                 }
                 _ => {
-                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "Enum" => match edge_name.as_ref() {
@@ -941,7 +935,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     }))
                 }
                 _ => {
-                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "StructField" => match edge_name.as_ref() {
@@ -961,7 +955,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 _ => {
-                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "Impl" => match edge_name.as_ref() {
@@ -1086,7 +1080,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     }))
                 }
                 _ => {
-                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "ImplementedTrait" => match edge_name.as_ref() {
@@ -1107,22 +1101,22 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 _ => {
-                    unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}")
+                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
-            _ => unreachable!("project_neighbors {current_type_name} {edge_name} {parameters:?}"),
+            _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
         }
     }
 
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'a> {
-        match current_type_name.as_ref() {
+        match type_name.as_ref() {
             "Item" | "Variant" | "FunctionLike" | "Importable" | "ImplOwner" | "RawType"
             | "ResolvedPathType" => {
                 Box::new(data_contexts.map(move |ctx| {
@@ -1154,7 +1148,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, can_coerce)
                 }))
             }
-            _ => unreachable!("can_coerce_to_type {current_type_name} {coerce_to_type_name}"),
+            _ => unreachable!("can_coerce_to_type {type_name} {coerce_to_type_name}"),
         }
     }
 }

@@ -400,7 +400,7 @@ where
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::Vertex> + 'trace> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a get_starting_tokens() call operation, but found none.");
+            .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
         if let TraceOpContent::Call(FunctionCall::GetStartingTokens(vid)) = trace_op.content {
@@ -416,23 +416,23 @@ where
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'trace> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a project_property() call operation, but found none.");
+            .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, type_name, property)) =
+        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, op_type_name, property)) =
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
-            assert_eq!(*type_name, current_type_name);
+            assert_eq!(*op_type_name, type_name);
             assert_eq!(*property, field_name);
 
             Box::new(TraceReaderProjectPropertiesIter {
@@ -451,7 +451,7 @@ where
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
@@ -466,14 +466,14 @@ where
             > + 'trace,
     > {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a project_property() call operation, but found none.");
+            .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, type_name, eid)) =
+        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, op_type_name, eid)) =
             &trace_op.content
         {
             assert_eq!(vid, &vertex_hint);
-            assert_eq!(type_name, &current_type_name);
+            assert_eq!(op_type_name, &type_name);
             assert_eq!(eid, &edge_hint);
 
             Box::new(TraceReaderProjectNeighborsIter {
@@ -491,7 +491,7 @@ where
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -504,7 +504,7 @@ where
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
-            assert_eq!(*from_type, current_type_name);
+            assert_eq!(*from_type, type_name);
             assert_eq!(*to_type, coerce_to_type_name);
 
             Box::new(TraceReaderCanCoerceIter {

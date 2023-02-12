@@ -209,7 +209,7 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
 ) -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
     let ir_query = &query.indexed_query.ir_query;
     let mut output_names: Vec<Arc<str>> = ir_query.root_component.outputs.keys().cloned().collect();
-    output_names.sort_unstable(); // to ensure deterministic project_property() ordering
+    output_names.sort_unstable(); // to ensure deterministic resolve_property() ordering
 
     let mut output_iterator = iterator;
 
@@ -221,11 +221,11 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
             context.move_to_token(new_token)
         }));
 
-        let current_type_name = &ir_query.root_component.vertices[&vertex_id].type_name;
+        let type_name = &ir_query.root_component.vertices[&vertex_id].type_name;
         let mut adapter_ref = adapter.borrow_mut();
-        let field_data_iterator = adapter_ref.project_property(
+        let field_data_iterator = adapter_ref.resolve_property(
             moved_iterator,
-            current_type_name.clone(),
+            type_name.clone(),
             context_field.field_name.clone(),
             query.clone(),
             vertex_id,
@@ -363,10 +363,10 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 > = Box::new(iterator.map(move |x| x.activate_token(&vertex_id)));
 
                 let field_vertex = &parent_component.vertices[&field.vertex_id];
-                let current_type_name = &field_vertex.type_name;
-                let context_and_value_iterator = adapter_ref.project_property(
+                let type_name = &field_vertex.type_name;
+                let context_and_value_iterator = adapter_ref.resolve_property(
                     activated_vertex_iterator,
-                    current_type_name.clone(),
+                    type_name.clone(),
                     field.field_name.clone(),
                     query.clone(),
                     field.vertex_id,
@@ -404,10 +404,10 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let expanding_from_vid = expanding_from.vid;
     let activated_vertex_iterator: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query> =
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
-    let current_type_name = &expanding_from.type_name;
+    let type_name = &expanding_from.type_name;
     let edge_iterator = adapter_ref.project_neighbors(
         activated_vertex_iterator,
-        current_type_name.clone(),
+        type_name.clone(),
         fold.edge_name.clone(),
         fold.parameters.clone(),
         query.clone(),
@@ -478,7 +478,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
 
     // Compute the outputs from this fold.
     let mut output_names: Vec<Arc<str>> = fold.component.outputs.keys().cloned().collect();
-    output_names.sort_unstable(); // to ensure deterministic project_property() ordering
+    output_names.sort_unstable(); // to ensure deterministic resolve_property() ordering
 
     let cloned_adapter = adapter.clone();
     let cloned_query = query.clone();
@@ -519,7 +519,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
             .collect();
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
-        // Skip the adapter project_property() calls and add the empty output values directly.
+        // Skip the adapter resolve_property() calls and add the empty output values directly.
         if fold_elements.is_empty() {
             // We need to make sure any outputs from any nested @fold components (recursively)
             // are set to empty lists.
@@ -546,7 +546,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 }));
 
                 let mut adapter_ref = cloned_adapter.borrow_mut();
-                let field_data_iterator = adapter_ref.project_property(
+                let field_data_iterator = adapter_ref.resolve_property(
                     moved_iterator,
                     fold.component.vertices[&vertex_id].type_name.clone(),
                     context_field.field_name.clone(),
@@ -914,11 +914,11 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
             context.move_to_token(new_token)
         });
 
-        let current_type_name = &vertex.type_name;
+        let type_name = &vertex.type_name;
         let mut adapter_ref = adapter.borrow_mut();
-        let context_and_value_iterator = adapter_ref.project_property(
+        let context_and_value_iterator = adapter_ref.resolve_property(
             Box::new(moved_iterator),
-            current_type_name.clone(),
+            type_name.clone(),
             context_field.field_name.clone(),
             query.clone(),
             vertex_id,
@@ -968,11 +968,11 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
     local_field: &LocalField,
     iterator: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<Vertex>> + 'query> {
-    let current_type_name = &component.vertices[&current_vid].type_name;
+    let type_name = &component.vertices[&current_vid].type_name;
     let mut adapter_ref = adapter.borrow_mut();
-    let context_and_value_iterator = adapter_ref.project_property(
+    let context_and_value_iterator = adapter_ref.resolve_property(
         iterator,
-        current_type_name.clone(),
+        type_name.clone(),
         local_field.field_name.clone(),
         query.clone(),
         current_vid,
@@ -1116,11 +1116,11 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     let expanding_vertex_iterator: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query> =
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
 
-    let current_type_name = &expanding_from.type_name;
+    let type_name = &expanding_from.type_name;
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.project_neighbors(
         expanding_vertex_iterator,
-        current_type_name.clone(),
+        type_name.clone(),
         edge_name.clone(),
         edge_parameters.clone(),
         query.clone(),

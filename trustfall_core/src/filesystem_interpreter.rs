@@ -272,15 +272,15 @@ impl Adapter<'static> for FilesystemInterpreter {
         Box::new(OriginIterator::new(token))
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = ContextAndValue>> {
-        match current_type_name.as_ref() {
+        match type_name.as_ref() {
             "Directory" => match field_name.as_ref() {
                 "name" => Box::new(data_contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
@@ -339,7 +339,7 @@ impl Adapter<'static> for FilesystemInterpreter {
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
@@ -353,7 +353,7 @@ impl Adapter<'static> for FilesystemInterpreter {
             ),
         >,
     > {
-        match (current_type_name.as_ref(), edge_name.as_ref()) {
+        match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {
                 let iterator: ContextIterator = ContextIterator::new(
                     self.origin.clone(),
@@ -377,7 +377,7 @@ impl Adapter<'static> for FilesystemInterpreter {
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,

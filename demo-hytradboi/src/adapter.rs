@@ -227,15 +227,15 @@ impl Adapter<'static> for DemoAdapter {
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)>> {
-        match (current_type_name.as_ref(), field_name.as_ref()) {
+        match (type_name.as_ref(), field_name.as_ref()) {
             (_, "__typename") => Box::new(data_contexts.map(|ctx| {
                 let value = match ctx.current_token.as_ref() {
                     Some(token) => token.typename().into(),
@@ -369,7 +369,7 @@ impl Adapter<'static> for DemoAdapter {
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         _parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
@@ -383,7 +383,7 @@ impl Adapter<'static> for DemoAdapter {
             ),
         >,
     > {
-        match (current_type_name.as_ref(), edge_name.as_ref()) {
+        match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(data_contexts.map(|ctx| {
                 let token = &ctx.current_token;
                 let neighbors: Box<dyn Iterator<Item = Self::Vertex>> = match token {
@@ -690,14 +690,14 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            _ => unreachable!("{} {}", current_type_name.as_ref(), edge_name.as_ref()),
+            _ => unreachable!("{} {}", type_name.as_ref(), edge_name.as_ref()),
         }
     }
 
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
@@ -712,7 +712,7 @@ impl Adapter<'static> for DemoAdapter {
             // This "match" is loop-invariant, and can be hoisted outside the map() call
             // at the cost of a bit of code repetition.
 
-            let can_coerce = match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
+            let can_coerce = match (type_name.as_ref(), coerce_to_type_name.as_ref()) {
                 ("HackerNewsItem", "HackerNewsJob") => token.as_job().is_some(),
                 ("HackerNewsItem", "HackerNewsStory") => token.as_story().is_some(),
                 ("HackerNewsItem", "HackerNewsComment") => token.as_comment().is_some(),

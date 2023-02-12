@@ -92,7 +92,7 @@ macro_rules! property_group {
 }
 
 #[macro_export]
-macro_rules! project_property {
+macro_rules! resolve_property {
     ($ctxs:ident, $type_name:ident, $field_name:ident,
         [
             $(

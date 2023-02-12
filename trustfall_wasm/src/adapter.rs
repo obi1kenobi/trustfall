@@ -17,17 +17,17 @@ extern "C" {
     pub type JsAdapter;
 
     #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
-    pub fn get_starting_tokens(
+    pub fn resolve_starting_vertices(
         this: &JsAdapter,
         edge: &str,
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "projectProperty")]
-    pub fn project_property(
+    pub fn resolve_property(
         this: &JsAdapter,
         data_contexts: ContextIterator,
-        current_type_name: &str,
+        type_name: &str,
         field_name: &str,
     ) -> js_sys::Iterator;
 
@@ -35,7 +35,7 @@ extern "C" {
     pub fn project_neighbors(
         this: &JsAdapter,
         data_contexts: ContextIterator,
-        current_type_name: &str,
+        type_name: &str,
         edge_name: &str,
         parameters: JsValue,
     ) -> js_sys::Iterator;
@@ -44,7 +44,7 @@ extern "C" {
     pub fn can_coerce_to_type(
         this: &JsAdapter,
         data_contexts: ContextIterator,
-        current_type_name: &str,
+        type_name: &str,
         coerce_to_type_name: &str,
     ) -> js_sys::Iterator;
 }
@@ -268,14 +268,14 @@ impl Adapter<'static> for AdapterShim {
         let parameters: JsEdgeParameters = parameters.into();
         let js_iter = self
             .inner
-            .get_starting_tokens(edge_name.as_ref(), parameters.into_js_dict());
+            .resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
         Box::new(TokenIterator::new(js_iter.into_iter()))
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -284,14 +284,14 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner
-                .project_property(ctx_iter, current_type_name.as_ref(), field_name.as_ref());
+                .resolve_property(ctx_iter, type_name.as_ref(), field_name.as_ref());
         Box::new(ContextAndValueIterator::new(js_iter, registry))
     }
 
     fn project_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
@@ -311,7 +311,7 @@ impl Adapter<'static> for AdapterShim {
 
         let js_iter = self.inner.project_neighbors(
             ctx_iter,
-            current_type_name.as_ref(),
+            type_name.as_ref(),
             edge_name.as_ref(),
             parameters.into_js_dict(),
         );
@@ -325,7 +325,7 @@ impl Adapter<'static> for AdapterShim {
     fn can_coerce_to_type(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
-        current_type_name: Arc<str>,
+        type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -334,7 +334,7 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let js_iter = self.inner.can_coerce_to_type(
             ctx_iter,
-            current_type_name.as_ref(),
+            type_name.as_ref(),
             coerce_to_type_name.as_ref(),
         );
         Box::new(ContextAndBoolIterator::new(js_iter, registry))
