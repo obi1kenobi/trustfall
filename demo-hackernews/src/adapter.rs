@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
-use std::sync::Arc;
-
 use hn_api::{types::Item, HnClient};
 use trustfall_core::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
-    ir::{EdgeParameters, Eid, FieldValue, Vid},
+    interpreter::basic_adapter::{
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator,
+    },
+    ir::{EdgeParameters, FieldValue},
 };
 
 use crate::token::Token;
@@ -146,17 +146,15 @@ macro_rules! impl_property {
     };
 }
 
-impl Adapter<'static> for HackerNewsAdapter {
-    type DataToken = Token;
+impl BasicAdapter<'static> for HackerNewsAdapter {
+    type Vertex = Token;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken>> {
-        match edge.as_ref() {
+        edge_name: &str,
+        parameters: Option<&EdgeParameters>,
+    ) -> VertexIterator<'static, Self::Vertex> {
+        match edge_name {
             "FrontPage" => self.front_page(),
             "Top" => {
                 // TODO: This is unergonomic, build a more convenient API here.
@@ -184,38 +182,36 @@ impl Adapter<'static> for HackerNewsAdapter {
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
-        match (current_type_name.as_ref(), field_name.as_ref()) {
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &str,
+        property_name: &str,
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+        match (type_name, property_name) {
             // properties on Item and its implementers
-            ("Item" | "Story" | "Job" | "Comment", "id") => impl_item_property!(data_contexts, id),
+            ("Item" | "Story" | "Job" | "Comment", "id") => impl_item_property!(contexts, id),
             ("Item" | "Story" | "Job" | "Comment", "unixTime") => {
-                impl_item_property!(data_contexts, time)
+                impl_item_property!(contexts, time)
             }
 
             // properties on Job
-            ("Job", "score") => impl_property!(data_contexts, as_job, score),
-            ("Job", "title") => impl_property!(data_contexts, as_job, title),
-            ("Job", "url") => impl_property!(data_contexts, as_job, url),
+            ("Job", "score") => impl_property!(contexts, as_job, score),
+            ("Job", "title") => impl_property!(contexts, as_job, title),
+            ("Job", "url") => impl_property!(contexts, as_job, url),
 
             // properties on Story
-            ("Story", "byUsername") => impl_property!(data_contexts, as_story, by),
-            ("Story", "text") => impl_property!(data_contexts, as_story, text),
-            ("Story", "commentsCount") => impl_property!(data_contexts, as_story, descendants),
-            ("Story", "score") => impl_property!(data_contexts, as_story, score),
-            ("Story", "title") => impl_property!(data_contexts, as_story, title),
-            ("Story", "url") => impl_property!(data_contexts, as_story, url),
+            ("Story", "byUsername") => impl_property!(contexts, as_story, by),
+            ("Story", "text") => impl_property!(contexts, as_story, text),
+            ("Story", "commentsCount") => impl_property!(contexts, as_story, descendants),
+            ("Story", "score") => impl_property!(contexts, as_story, score),
+            ("Story", "title") => impl_property!(contexts, as_story, title),
+            ("Story", "url") => impl_property!(contexts, as_story, url),
 
             // properties on Comment
-            ("Comment", "byUsername") => impl_property!(data_contexts, as_comment, by),
-            ("Comment", "text") => impl_property!(data_contexts, as_comment, text),
-            ("Comment", "childCount") => impl_property!(data_contexts, as_comment, comment, {
+            ("Comment", "byUsername") => impl_property!(contexts, as_comment, by),
+            ("Comment", "text") => impl_property!(contexts, as_comment, text),
+            ("Comment", "childCount") => impl_property!(contexts, as_comment, comment, {
                 comment
                     .kids
                     .as_ref()
@@ -225,38 +221,42 @@ impl Adapter<'static> for HackerNewsAdapter {
             }),
 
             // properties on User
-            ("User", "id") => impl_property!(data_contexts, as_user, id),
-            ("User", "karma") => impl_property!(data_contexts, as_user, karma),
-            ("User", "about") => impl_property!(data_contexts, as_user, about),
-            ("User", "unixCreatedAt") => impl_property!(data_contexts, as_user, created),
-            ("User", "delay") => impl_property!(data_contexts, as_user, delay),
+            ("User", "id") => impl_property!(contexts, as_user, id),
+            ("User", "karma") => impl_property!(contexts, as_user, karma),
+            ("User", "about") => impl_property!(contexts, as_user, about),
+            ("User", "unixCreatedAt") => impl_property!(contexts, as_user, created),
+            ("User", "delay") => impl_property!(contexts, as_user, delay),
             _ => unreachable!(),
         }
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        _parameters: Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-        _edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
-            ),
-        >,
-    > {
-        match (current_type_name.as_ref(), edge_name.as_ref()) {
-            ("Story", "byUser") => Box::new(data_contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
-                    None => Box::new(std::iter::empty()),
-                    Some(token) => {
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &str,
+        edge_name: &str,
+        _parameters: Option<&EdgeParameters>,
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+        fn resolve_neighbors_inner(
+            contexts: ContextIterator<'static, Token>,
+            edge_resolver: impl Fn(&Token) -> VertexIterator<'static, Token> + 'static,
+        ) -> ContextOutcomeIterator<'static, Token, VertexIterator<'static, Token>> {
+            Box::new(contexts.map(move |ctx| match ctx.current_token.as_ref() {
+                None => {
+                    let no_neighbors: VertexIterator<'static, Token> = Box::new(std::iter::empty());
+                    (ctx, no_neighbors)
+                }
+                Some(token) => {
+                    let neighbors = edge_resolver(token);
+                    (ctx, neighbors)
+                }
+            }))
+        }
+
+        match (type_name, edge_name) {
+            ("Story", "byUser") => {
+                let edge_resolver =
+                    |token: &Self::Vertex| -> VertexIterator<'static, Self::Vertex> {
                         let story = token.as_story().unwrap();
                         let author = story.by.as_str();
                         match CLIENT.get_user(author) {
@@ -270,53 +270,44 @@ impl Adapter<'static> for HackerNewsAdapter {
                                 Box::new(std::iter::empty())
                             }
                         }
-                    }
-                };
+                    };
+                resolve_neighbors_inner(contexts, edge_resolver)
+            }
+            ("Story", "comment") => {
+                let edge_resolver = |token: &Self::Vertex| {
+                    let story = token.as_story().unwrap();
+                    let comment_ids = story.kids.clone().unwrap_or_default();
+                    let story_id = story.id;
 
-                (ctx, neighbors)
-            })),
-            ("Story", "comment") => Box::new(data_contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
-                    None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let story = token.as_story().unwrap();
-                        let comment_ids = story.kids.clone().unwrap_or_default();
-                        let story_id = story.id;
-
-                        let neighbors_iter =
-                            comment_ids.into_iter().filter_map(move |comment_id| {
-                                match CLIENT.get_item(comment_id) {
-                                    Ok(None) => None,
-                                    Ok(Some(item)) => {
-                                        if let Item::Comment(comment) = item {
-                                            Some(comment.into())
-                                        } else {
-                                            unreachable!()
-                                        }
-                                    }
-                                    Err(e) => {
-                                        eprintln!(
-                                            "API error while fetching story {story_id} comment {comment_id}: {e}",
-                                        );
-                                        None
+                    let neighbors: VertexIterator<'static, Self::Vertex> =
+                        Box::new(comment_ids.into_iter().filter_map(move |comment_id| {
+                            match CLIENT.get_item(comment_id) {
+                                Ok(None) => None,
+                                Ok(Some(item)) => {
+                                    if let Item::Comment(comment) = item {
+                                        Some(comment.into())
+                                    } else {
+                                        unreachable!()
                                     }
                                 }
-                            });
+                                Err(e) => {
+                                    eprintln!(
+                                        "API error while fetching story {story_id} comment {comment_id}: {e}",
+                                    );
+                                    None
+                                }
+                            }
+                        }));
 
-                        Box::new(neighbors_iter)
-                    }
+                    neighbors
                 };
-
-                (ctx, neighbors)
-            })),
-            ("Comment", "byUser") => Box::new(data_contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
-                    None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
-                        let author = comment.by.as_str();
+                resolve_neighbors_inner(contexts, edge_resolver)
+            }
+            ("Comment", "byUser") => {
+                let edge_resolver = |token: &Self::Vertex| {
+                    let comment = token.as_comment().unwrap();
+                    let author = comment.by.as_str();
+                    let neighbors: VertexIterator<'static, Self::Vertex> =
                         match CLIENT.get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
                             Ok(Some(user)) => Box::new(std::iter::once(user.into())),
@@ -327,125 +318,117 @@ impl Adapter<'static> for HackerNewsAdapter {
                                 );
                                 Box::new(std::iter::empty())
                             }
-                        }
-                    }
+                        };
+                    neighbors
                 };
+                resolve_neighbors_inner(contexts, edge_resolver)
+            }
+            ("Comment", "parent") => {
+                let edge_resolver = |token: &Self::Vertex| {
+                    let comment = token.as_comment().unwrap();
+                    let comment_id = comment.id;
+                    let parent_id = comment.parent;
 
-                (ctx, neighbors)
-            })),
-            ("Comment", "parent") => Box::new(data_contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
-                    None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
-                        let comment_id = comment.id;
-                        let parent_id = comment.parent;
+                    let neighbors: VertexIterator<'static, Self::Vertex> = match CLIENT
+                        .get_item(parent_id)
+                    {
+                        Ok(None) => Box::new(std::iter::empty()),
+                        Ok(Some(item)) => Box::new(std::iter::once(item.into())),
+                        Err(e) => {
+                            eprintln!(
+                                "API error while fetching comment {comment_id} parent {parent_id}: {e}",
+                            );
+                            Box::new(std::iter::empty())
+                        }
+                    };
+                    neighbors
+                };
+                resolve_neighbors_inner(contexts, edge_resolver)
+            }
+            ("Comment", "reply") => {
+                let edge_resolver = |token: &Self::Vertex| {
+                    let comment = token.as_comment().unwrap();
+                    let comment_id = comment.id;
+                    let reply_ids = comment.kids.clone().unwrap_or_default();
 
-                        match CLIENT.get_item(parent_id) {
-                            Ok(None) => Box::new(std::iter::empty()),
-                            Ok(Some(item)) => Box::new(std::iter::once(item.into())),
+                    let neighbors: VertexIterator<'static, Self::Vertex> = Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
+                        match CLIENT.get_item(reply_id) {
+                            Ok(None) => None,
+                            Ok(Some(item)) => {
+                                if let Item::Comment(c) = item {
+                                    Some(c.into())
+                                } else {
+                                    unreachable!()
+                                }
+                            }
                             Err(e) => {
                                 eprintln!(
-                                    "API error while fetching comment {comment_id} parent {parent_id}: {e}",
+                                    "API error while fetching comment {comment_id} reply {reply_id}: {e}",
                                 );
-                                Box::new(std::iter::empty())
+                                None
                             }
                         }
-                    }
+                    }));
+                    neighbors
                 };
+                resolve_neighbors_inner(contexts, edge_resolver)
+            }
+            ("User", "submitted") => {
+                let edge_resolver = |token: &Self::Vertex| {
+                    let user = token.as_user().unwrap();
+                    let submitted_ids = user.submitted.clone();
 
-                (ctx, neighbors)
-            })),
-            ("Comment", "reply") => Box::new(data_contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
-                    None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
-                        let comment_id = comment.id;
-                        let reply_ids = comment.kids.clone().unwrap_or_default();
-
-                        Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
-                            match CLIENT.get_item(reply_id) {
-                                Ok(None) => None,
-                                Ok(Some(item)) => {
-                                    if let Item::Comment(c) = item {
-                                        Some(c.into())
-                                    } else {
-                                        unreachable!()
-                                    }
-                                }
-                                Err(e) => {
-                                    eprintln!(
-                                        "API error while fetching comment {comment_id} reply {reply_id}: {e}",
-                                    );
-                                    None
-                                }
-                            }
-                        }))
-                    }
-                };
-
-                (ctx, neighbors)
-            })),
-            ("User", "submitted") => Box::new(data_contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
-                    None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let user = token.as_user().unwrap();
-                        let submitted_ids = user.submitted.clone();
-
+                    let neighbors: VertexIterator<'static, Self::Vertex> =
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
                             match CLIENT.get_item(submission_id) {
                                 Ok(None) => None,
                                 Ok(Some(item)) => Some(item.into()),
                                 Err(e) => {
                                     eprintln!(
-                                        "API error while fetching submitted item {submission_id}: {e}",
-                                    );
+                                    "API error while fetching submitted item {submission_id}: {e}",
+                                );
                                     None
                                 }
                             }
-                        }))
-                    }
+                        }));
+                    neighbors
                 };
-
-                (ctx, neighbors)
-            })),
-            _ => unreachable!("{} {}", current_type_name.as_ref(), edge_name.as_ref()),
+                resolve_neighbors_inner(contexts, edge_resolver)
+            }
+            _ => unreachable!("{} {}", type_name, edge_name),
         }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
-        let iterator = data_contexts.map(move |ctx| {
-            let token = match &ctx.current_token {
-                Some(t) => t,
-                None => return (ctx, false),
-            };
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &str,
+        coerce_to_type: &str,
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+        // The coercion check always looks structurally the same,
+        // so let's extract that logic into a function parameterized only by
+        // the closure that checks whether the vertex matches the new type or not.
+        fn apply_coercion(
+            contexts: ContextIterator<'static, Token>,
+            coercion_check: impl Fn(&Token) -> bool + 'static,
+        ) -> ContextOutcomeIterator<'static, Token, bool> {
+            Box::new(contexts.map(move |ctx| {
+                let token = match &ctx.current_token {
+                    Some(t) => t,
+                    None => return (ctx, false),
+                };
 
-            // Possible optimization here:
-            // This "match" is loop-invariant, and can be hoisted outside the map() call
-            // at the cost of a bit of code repetition.
+                let can_coerce = coercion_check(token);
 
-            let can_coerce = match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
-                ("Item", "Job") => token.as_job().is_some(),
-                ("Item", "Story") => token.as_story().is_some(),
-                ("Item", "Comment") => token.as_comment().is_some(),
-                _ => unreachable!(),
-            };
+                (ctx, can_coerce)
+            }))
+        }
 
-            (ctx, can_coerce)
-        });
-
-        Box::new(iterator)
+        match (type_name, coerce_to_type) {
+            ("Item", "Job") => apply_coercion(contexts, |token| token.as_job().is_some()),
+            ("Item", "Story") => apply_coercion(contexts, |token| token.as_story().is_some()),
+            ("Item", "Comment") => apply_coercion(contexts, |token| token.as_comment().is_some()),
+            _ => unreachable!(),
+        }
     }
 }
