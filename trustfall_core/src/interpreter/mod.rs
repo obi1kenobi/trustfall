@@ -18,6 +18,7 @@ pub mod basic_adapter;
 pub mod error;
 pub mod execution;
 mod filtering;
+pub mod helpers;
 pub mod macros;
 pub mod replay;
 pub mod trace;

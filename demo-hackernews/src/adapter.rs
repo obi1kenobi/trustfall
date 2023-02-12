@@ -2,8 +2,9 @@
 
 use hn_api::{types::Item, HnClient};
 use trustfall_core::{
-    interpreter::basic_adapter::{
-        BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator,
+    interpreter::{
+        basic_adapter::{BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator},
+        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -81,68 +82,34 @@ impl HackerNewsAdapter {
     }
 }
 
-macro_rules! impl_item_property {
-    ($data_contexts:ident, $attr:ident) => {
-        Box::new($data_contexts.map(|ctx| {
-            let token = ctx.current_token.as_ref();
-            let value = match token {
-                None => FieldValue::Null,
-                Some(t) => {
-                    if let Some(s) = t.as_story() {
-                        (&s.$attr).into()
-                    } else if let Some(j) = t.as_job() {
-                        (&j.$attr).into()
-                    } else if let Some(c) = t.as_comment() {
-                        (&c.$attr).into()
-                    } else {
-                        unreachable!()
-                    }
-                }
-
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
-            };
-
-            (ctx, value)
-        }))
+macro_rules! item_property_resolver {
+    ($attr:ident) => {
+        |vertex| -> FieldValue {
+            if let Some(s) = vertex.as_story() {
+                (&s.$attr).into()
+            } else if let Some(j) = vertex.as_job() {
+                (&j.$attr).into()
+            } else if let Some(c) = vertex.as_comment() {
+                (&c.$attr).into()
+            } else {
+                unreachable!()
+            }
+        }
     };
 }
 
-macro_rules! impl_property {
-    ($data_contexts:ident, $conversion:ident, $attr:ident) => {
-        Box::new($data_contexts.map(|ctx| {
-            let token = ctx
-                .current_token
-                .as_ref()
-                .map(|token| token.$conversion().unwrap());
-            let value = match token {
-                None => FieldValue::Null,
-                Some(t) => (&t.$attr).into(),
-
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
-            };
-
-            (ctx, value)
-        }))
+macro_rules! property_resolver {
+    ($conversion:ident, $attr:ident) => {
+        |vertex| -> FieldValue {
+            let vertex = vertex.$conversion().expect("conversion failed");
+            (&vertex.$attr).into()
+        }
     };
-
-    ($data_contexts:ident, $conversion:ident, $var:ident, $b:block) => {
-        Box::new($data_contexts.map(|ctx| {
-            let token = ctx
-                .current_token
-                .as_ref()
-                .map(|token| token.$conversion().unwrap());
-            let value = match token {
-                None => FieldValue::Null,
-                Some($var) => $b,
-
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
-            };
-
-            (ctx, value)
-        }))
+    ($conversion:ident, $var:ident, $b:block) => {
+        |vertex| -> FieldValue {
+            let $var = vertex.$conversion().expect("conversion failed");
+            $b
+        }
     };
 }
 
@@ -190,42 +157,69 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match (type_name, property_name) {
             // properties on Item and its implementers
-            ("Item" | "Story" | "Job" | "Comment", "id") => impl_item_property!(contexts, id),
+            ("Item" | "Story" | "Job" | "Comment", "id") => {
+                resolve_property_with(contexts, item_property_resolver!(id))
+            }
             ("Item" | "Story" | "Job" | "Comment", "unixTime") => {
-                impl_item_property!(contexts, time)
+                resolve_property_with(contexts, item_property_resolver!(time))
             }
 
             // properties on Job
-            ("Job", "score") => impl_property!(contexts, as_job, score),
-            ("Job", "title") => impl_property!(contexts, as_job, title),
-            ("Job", "url") => impl_property!(contexts, as_job, url),
+            ("Job", "score") => resolve_property_with(contexts, property_resolver!(as_job, score)),
+            ("Job", "title") => resolve_property_with(contexts, property_resolver!(as_job, title)),
+            ("Job", "url") => resolve_property_with(contexts, property_resolver!(as_job, url)),
 
             // properties on Story
-            ("Story", "byUsername") => impl_property!(contexts, as_story, by),
-            ("Story", "text") => impl_property!(contexts, as_story, text),
-            ("Story", "commentsCount") => impl_property!(contexts, as_story, descendants),
-            ("Story", "score") => impl_property!(contexts, as_story, score),
-            ("Story", "title") => impl_property!(contexts, as_story, title),
-            ("Story", "url") => impl_property!(contexts, as_story, url),
+            ("Story", "byUsername") => {
+                resolve_property_with(contexts, property_resolver!(as_story, by))
+            }
+            ("Story", "text") => {
+                resolve_property_with(contexts, property_resolver!(as_story, text))
+            }
+            ("Story", "commentsCount") => {
+                resolve_property_with(contexts, property_resolver!(as_story, descendants))
+            }
+            ("Story", "score") => {
+                resolve_property_with(contexts, property_resolver!(as_story, score))
+            }
+            ("Story", "title") => {
+                resolve_property_with(contexts, property_resolver!(as_story, title))
+            }
+            ("Story", "url") => resolve_property_with(contexts, property_resolver!(as_story, url)),
 
             // properties on Comment
-            ("Comment", "byUsername") => impl_property!(contexts, as_comment, by),
-            ("Comment", "text") => impl_property!(contexts, as_comment, text),
-            ("Comment", "childCount") => impl_property!(contexts, as_comment, comment, {
-                comment
-                    .kids
-                    .as_ref()
-                    .map(|v| v.len() as u64)
-                    .unwrap_or(0)
-                    .into()
-            }),
+            ("Comment", "byUsername") => {
+                resolve_property_with(contexts, property_resolver!(as_comment, by))
+            }
+            ("Comment", "text") => {
+                resolve_property_with(contexts, property_resolver!(as_comment, text))
+            }
+            ("Comment", "childCount") => resolve_property_with(
+                contexts,
+                property_resolver!(as_comment, comment, {
+                    comment
+                        .kids
+                        .as_ref()
+                        .map(|v| v.len() as u64)
+                        .unwrap_or(0)
+                        .into()
+                }),
+            ),
 
             // properties on User
-            ("User", "id") => impl_property!(contexts, as_user, id),
-            ("User", "karma") => impl_property!(contexts, as_user, karma),
-            ("User", "about") => impl_property!(contexts, as_user, about),
-            ("User", "unixCreatedAt") => impl_property!(contexts, as_user, created),
-            ("User", "delay") => impl_property!(contexts, as_user, delay),
+            ("User", "id") => resolve_property_with(contexts, property_resolver!(as_user, id)),
+            ("User", "karma") => {
+                resolve_property_with(contexts, property_resolver!(as_user, karma))
+            }
+            ("User", "about") => {
+                resolve_property_with(contexts, property_resolver!(as_user, about))
+            }
+            ("User", "unixCreatedAt") => {
+                resolve_property_with(contexts, property_resolver!(as_user, created))
+            }
+            ("User", "delay") => {
+                resolve_property_with(contexts, property_resolver!(as_user, delay))
+            }
             _ => unreachable!(),
         }
     }
@@ -237,22 +231,6 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
         edge_name: &str,
         _parameters: Option<&EdgeParameters>,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
-        fn resolve_neighbors_inner(
-            contexts: ContextIterator<'static, Token>,
-            edge_resolver: impl Fn(&Token) -> VertexIterator<'static, Token> + 'static,
-        ) -> ContextOutcomeIterator<'static, Token, VertexIterator<'static, Token>> {
-            Box::new(contexts.map(move |ctx| match ctx.current_token.as_ref() {
-                None => {
-                    let no_neighbors: VertexIterator<'static, Token> = Box::new(std::iter::empty());
-                    (ctx, no_neighbors)
-                }
-                Some(token) => {
-                    let neighbors = edge_resolver(token);
-                    (ctx, neighbors)
-                }
-            }))
-        }
-
         match (type_name, edge_name) {
             ("Story", "byUser") => {
                 let edge_resolver =
@@ -271,7 +249,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                             }
                         }
                     };
-                resolve_neighbors_inner(contexts, edge_resolver)
+                resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Story", "comment") => {
                 let edge_resolver = |token: &Self::Vertex| {
@@ -301,7 +279,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
                     neighbors
                 };
-                resolve_neighbors_inner(contexts, edge_resolver)
+                resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Comment", "byUser") => {
                 let edge_resolver = |token: &Self::Vertex| {
@@ -321,7 +299,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                         };
                     neighbors
                 };
-                resolve_neighbors_inner(contexts, edge_resolver)
+                resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Comment", "parent") => {
                 let edge_resolver = |token: &Self::Vertex| {
@@ -343,7 +321,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                     };
                     neighbors
                 };
-                resolve_neighbors_inner(contexts, edge_resolver)
+                resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Comment", "reply") => {
                 let edge_resolver = |token: &Self::Vertex| {
@@ -371,7 +349,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                     }));
                     neighbors
                 };
-                resolve_neighbors_inner(contexts, edge_resolver)
+                resolve_neighbors_with(contexts, edge_resolver)
             }
             ("User", "submitted") => {
                 let edge_resolver = |token: &Self::Vertex| {
@@ -393,7 +371,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                         }));
                     neighbors
                 };
-                resolve_neighbors_inner(contexts, edge_resolver)
+                resolve_neighbors_with(contexts, edge_resolver)
             }
             _ => unreachable!("{} {}", type_name, edge_name),
         }
@@ -405,29 +383,14 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
         type_name: &str,
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
-        // The coercion check always looks structurally the same,
-        // so let's extract that logic into a function parameterized only by
-        // the closure that checks whether the vertex matches the new type or not.
-        fn apply_coercion(
-            contexts: ContextIterator<'static, Token>,
-            coercion_check: impl Fn(&Token) -> bool + 'static,
-        ) -> ContextOutcomeIterator<'static, Token, bool> {
-            Box::new(contexts.map(move |ctx| {
-                let token = match &ctx.current_token {
-                    Some(t) => t,
-                    None => return (ctx, false),
-                };
-
-                let can_coerce = coercion_check(token);
-
-                (ctx, can_coerce)
-            }))
-        }
-
         match (type_name, coerce_to_type) {
-            ("Item", "Job") => apply_coercion(contexts, |token| token.as_job().is_some()),
-            ("Item", "Story") => apply_coercion(contexts, |token| token.as_story().is_some()),
-            ("Item", "Comment") => apply_coercion(contexts, |token| token.as_comment().is_some()),
+            ("Item", "Job") => resolve_coercion_with(contexts, |token| token.as_job().is_some()),
+            ("Item", "Story") => {
+                resolve_coercion_with(contexts, |token| token.as_story().is_some())
+            }
+            ("Item", "Comment") => {
+                resolve_coercion_with(contexts, |token| token.as_comment().is_some())
+            }
             _ => unreachable!(),
         }
     }
