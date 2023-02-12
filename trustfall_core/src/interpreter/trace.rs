@@ -11,7 +11,7 @@ use crate::{
     util::BTreeMapTryInsertExt,
 };
 
-use super::InterpretedQuery;
+use super::{ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Opid(pub NonZeroUsize); // operation ID
@@ -242,7 +242,7 @@ where
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'vertex> {
+    ) -> VertexIterator<'vertex, Self::Vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::GetStartingTokens(vertex_hint)),
@@ -274,12 +274,12 @@ where
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'vertex> {
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectProperty(
@@ -296,7 +296,7 @@ where
         let tracer_ref_3 = self.tracer.clone();
         let wrapped_contexts = Box::new(
             make_iter_with_end_action(
-                make_iter_with_pre_action(data_contexts, move || {
+                make_iter_with_pre_action(contexts, move || {
                     tracer_ref_1
                         .borrow_mut()
                         .record(TraceOpContent::AdvanceInputIterator, Some(call_opid));
@@ -344,24 +344,16 @@ where
         )
     }
 
-    #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'vertex>,
-                ),
-            > + 'vertex,
-    > {
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectNeighbors(
@@ -378,7 +370,7 @@ where
         let tracer_ref_3 = self.tracer.clone();
         let wrapped_contexts = Box::new(
             make_iter_with_end_action(
-                make_iter_with_pre_action(data_contexts, move || {
+                make_iter_with_pre_action(contexts, move || {
                     tracer_ref_1
                         .borrow_mut()
                         .record(TraceOpContent::AdvanceInputIterator, Some(call_opid));
@@ -451,12 +443,12 @@ where
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'vertex> {
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::CanCoerceToType(
@@ -473,7 +465,7 @@ where
         let tracer_ref_3 = self.tracer.clone();
         let wrapped_contexts = Box::new(
             make_iter_with_end_action(
-                make_iter_with_pre_action(data_contexts, move || {
+                make_iter_with_pre_action(contexts, move || {
                     tracer_ref_1
                         .borrow_mut()
                         .record(TraceOpContent::AdvanceInputIterator, Some(call_opid));

@@ -2,9 +2,7 @@ use std::fmt::Debug;
 
 use crate::ir::{EdgeParameters, Eid, FieldValue, Vid};
 
-use super::{
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery, VertexIterator,
-};
+use super::{Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator};
 
 pub trait BasicAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
@@ -147,7 +145,7 @@ where
         parameters: Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'vertex> {
+    ) -> VertexIterator<'vertex, Self::Vertex> {
         <Self as BasicAdapter>::resolve_starting_vertices(
             self,
             edge_name.as_ref(),
@@ -157,12 +155,12 @@ where
 
     fn resolve_property(
         &mut self,
-        contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: std::sync::Arc<str>,
         field_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'vertex> {
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         <Self as BasicAdapter>::resolve_property(
             self,
             contexts,
@@ -173,21 +171,14 @@ where
 
     fn resolve_neighbors(
         &mut self,
-        contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: std::sync::Arc<str>,
         edge_name: std::sync::Arc<str>,
         parameters: Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'vertex>,
-                ),
-            > + 'vertex,
-    > {
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         <Self as BasicAdapter>::resolve_neighbors(
             self,
             contexts,
@@ -199,12 +190,12 @@ where
 
     fn resolve_coercion(
         &mut self,
-        contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: std::sync::Arc<str>,
         coerce_to_type_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'vertex> {
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         <Self as BasicAdapter>::resolve_coercion(
             self,
             contexts,

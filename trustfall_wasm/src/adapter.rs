@@ -2,13 +2,16 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 use js_sys::try_iter;
 use trustfall_core::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+        VertexIterator,
+    },
     ir::{EdgeParameters as CoreEdgeParameters, Eid, FieldValue, Vid},
 };
 use wasm_bindgen::prelude::*;
 
 use crate::shim::{
-    ContextIterator, JsEdgeParameters, JsStringConstants, ReturnedContextIdAndBool,
+    JsContextIterator, JsEdgeParameters, JsStringConstants, ReturnedContextIdAndBool,
     ReturnedContextIdAndValue,
 };
 
@@ -26,7 +29,7 @@ extern "C" {
     #[wasm_bindgen(structural, method, js_name = "projectProperty")]
     pub fn resolve_property(
         this: &JsAdapter,
-        data_contexts: ContextIterator,
+        contexts: JsContextIterator,
         type_name: &str,
         field_name: &str,
     ) -> js_sys::Iterator;
@@ -34,7 +37,7 @@ extern "C" {
     #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
     pub fn resolve_neighbors(
         this: &JsAdapter,
-        data_contexts: ContextIterator,
+        contexts: JsContextIterator,
         type_name: &str,
         edge_name: &str,
         parameters: JsValue,
@@ -43,7 +46,7 @@ extern "C" {
     #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
     pub fn resolve_coercion(
         this: &JsAdapter,
-        data_contexts: ContextIterator,
+        contexts: JsContextIterator,
         type_name: &str,
         coerce_to_type_name: &str,
     ) -> js_sys::Iterator;
@@ -264,7 +267,7 @@ impl Adapter<'static> for AdapterShim {
         parameters: Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'static> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.into();
         let js_iter = self
             .inner
@@ -274,13 +277,13 @@ impl Adapter<'static> for AdapterShim {
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'static> {
-        let ctx_iter = ContextIterator::new(data_contexts);
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+        let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner
@@ -290,22 +293,15 @@ impl Adapter<'static> for AdapterShim {
 
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'static>,
-                ),
-            > + 'static,
-    > {
-        let ctx_iter = ContextIterator::new(data_contexts);
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+        let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
         let parameters: JsEdgeParameters = parameters.into();
 
@@ -324,13 +320,13 @@ impl Adapter<'static> for AdapterShim {
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'static> {
-        let ctx_iter = ContextIterator::new(data_contexts);
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+        let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner

@@ -30,20 +30,20 @@ export interface Adapter<T> {
     ): IterableIterator<T>;
 
     projectProperty(
-        data_contexts: IterableIterator<JsContext<T>>,
+        contexts: IterableIterator<JsContext<T>>,
         type_name: string,
         field_name: string
     ): IterableIterator<ContextAndValue>;
 
     projectNeighbors(
-        data_contexts: IterableIterator<JsContext<T>>,
+        contexts: IterableIterator<JsContext<T>>,
         type_name: string,
         edge_name: string,
         parameters: JsEdgeParameters,
     ): IterableIterator<ContextAndNeighborsIterator<T>>;
 
     canCoerceToType(
-        data_contexts: IterableIterator<JsContext<T>>,
+        contexts: IterableIterator<JsContext<T>>,
         type_name: string,
         coerce_to_type_name: string
     ): IterableIterator<ContextAndBool>;

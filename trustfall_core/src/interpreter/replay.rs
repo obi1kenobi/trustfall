@@ -15,7 +15,8 @@ use crate::ir::{indexed::IndexedQuery, EdgeParameters, Eid, FieldValue, Vid};
 use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
-    Adapter, DataContext, InterpretedQuery,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+    VertexIterator,
 };
 
 #[derive(Clone, Debug)]
@@ -85,7 +86,7 @@ where
 {
     exhausted: bool,
     parent_opid: Opid,
-    data_contexts: Box<dyn Iterator<Item = DataContext<Vertex>> + 'trace>,
+    contexts: ContextIterator<'trace, Vertex>,
     input_batch: VecDeque<DataContext<Vertex>>,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
@@ -114,7 +115,7 @@ where
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
-                let input_data = self.data_contexts.next();
+                let input_data = self.contexts.next();
 
                 let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                     .expect("Expected to have an item but found none.");
@@ -166,7 +167,7 @@ where
 {
     exhausted: bool,
     parent_opid: Opid,
-    data_contexts: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query>,
+    contexts: ContextIterator<'query, Vertex>,
     input_batch: VecDeque<DataContext<Vertex>>,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
@@ -196,7 +197,7 @@ where
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
-                let input_data = self.data_contexts.next();
+                let input_data = self.contexts.next();
 
                 let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                     .expect("Expected to have an item but found none.");
@@ -249,7 +250,7 @@ where
 {
     exhausted: bool,
     parent_opid: Opid,
-    data_contexts: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query>,
+    contexts: ContextIterator<'query, Vertex>,
     input_batch: VecDeque<DataContext<Vertex>>,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
@@ -281,7 +282,7 @@ where
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
-                let input_data = self.data_contexts.next();
+                let input_data = self.contexts.next();
 
                 let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                     .expect("Expected to have an item but found none.");
@@ -398,7 +399,7 @@ where
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'trace> {
+    ) -> VertexIterator<'trace, Self::Vertex> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -418,12 +419,12 @@ where
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
+        contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'trace> {
+    ) -> ContextOutcomeIterator<'trace, Self::Vertex, FieldValue> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -438,7 +439,7 @@ where
             Box::new(TraceReaderProjectPropertiesIter {
                 exhausted: false,
                 parent_opid: *root_opid,
-                data_contexts,
+                contexts,
                 input_batch: Default::default(),
                 inner: self.next_op.clone(),
             })
@@ -447,24 +448,16 @@ where
         }
     }
 
-    #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
+        contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'trace>,
-                ),
-            > + 'trace,
-    > {
+    ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -479,7 +472,7 @@ where
             Box::new(TraceReaderProjectNeighborsIter {
                 exhausted: false,
                 parent_opid: *root_opid,
-                data_contexts,
+                contexts,
                 input_batch: Default::default(),
                 inner: self.next_op.clone(),
             })
@@ -490,12 +483,12 @@ where
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
+        contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'trace> {
+    ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -510,7 +503,7 @@ where
             Box::new(TraceReaderCanCoerceIter {
                 exhausted: false,
                 parent_opid: *root_opid,
-                data_contexts,
+                contexts,
                 input_batch: Default::default(),
                 inner: self.next_op.clone(),
             })

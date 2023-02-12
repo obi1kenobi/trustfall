@@ -3,7 +3,9 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator,
+    },
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
@@ -23,50 +25,42 @@ impl Adapter<'static> for NullablesAdapter {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex>> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         unimplemented!()
     }
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         unimplemented!()
     }
 
-    #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::Vertex>,
-                Box<dyn Iterator<Item = Self::Vertex>>,
-            ),
-        >,
-    > {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         unimplemented!()
     }
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         unimplemented!()
     }
 }

@@ -141,7 +141,7 @@ impl JsStringConstants {
 }
 
 #[wasm_bindgen]
-pub struct ContextIterator {
+pub struct JsContextIterator {
     iter: Box<dyn Iterator<Item = DataContext<JsValue>>>,
     pub(super) registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
     next_item: u32,
@@ -174,7 +174,7 @@ impl ContextIteratorItem {
 }
 
 #[wasm_bindgen]
-impl ContextIterator {
+impl JsContextIterator {
     pub(super) fn new(iter: Box<dyn Iterator<Item = DataContext<JsValue>>>) -> Self {
         Self {
             iter,

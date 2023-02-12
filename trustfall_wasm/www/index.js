@@ -80,15 +80,15 @@ class JsNumbersAdapter {
   #[wasm_bindgen(structural, method, js_name = "projectProperty")]
   pub fn resolve_property(
       this: &JsAdapter,
-      data_contexts: ContextIterator,
+      contexts: ContextIterator,
       type_name: &str,
       field_name: &str,
   ) -> js_sys::Iterator;
   */
-  *projectProperty(data_contexts, type_name, field_name) {
+  *projectProperty(contexts, type_name, field_name) {
     if (type_name === "Number" || type_name === "Prime" || type_name === "Composite") {
       if (field_name === "value") {
-        for (const ctx of data_contexts) {
+        for (const ctx of contexts) {
           const val = {
             localId: ctx.localId,
             value: ctx.currentToken,
@@ -107,16 +107,16 @@ class JsNumbersAdapter {
   #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
   pub fn resolve_neighbors(
       this: &JsAdapter,
-      data_contexts: ContextIterator,
+      contexts: ContextIterator,
       type_name: &str,
       edge_name: &str,
       parameters: Option<EdgeParameters>,
   ) -> js_sys::Iterator;
   */
-  *projectNeighbors(data_contexts, type_name, edge_name, parameters) {
+  *projectNeighbors(contexts, type_name, edge_name, parameters) {
     if (type_name === "Number" || type_name === "Prime" || type_name === "Composite") {
       if (edge_name === "successor") {
-        for (const ctx of data_contexts) {
+        for (const ctx of contexts) {
           const val = {
             localId: ctx.localId,
             neighbors: [ctx.currentToken + 1],
@@ -135,12 +135,12 @@ class JsNumbersAdapter {
   #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
   pub fn resolve_coercion(
       this: &JsAdapter,
-      data_contexts: ContextIterator,
+      contexts: ContextIterator,
       type_name: &str,
       coerce_to_type_name: &str,
   ) -> js_sys::Iterator;
   */
-  *canCoerceToType(data_contexts, type_name, coerce_to_type_name) {
+  *canCoerceToType(contexts, type_name, coerce_to_type_name) {
     const primes = {
       2: null,
       3: null,
@@ -150,7 +150,7 @@ class JsNumbersAdapter {
     };
     if (type_name === "Number") {
       if (coerce_to_type_name === "Prime") {
-        for (const ctx of data_contexts) {
+        for (const ctx of contexts) {
           var can_coerce = false;
           if (ctx.currentToken in primes) {
             can_coerce = true;
@@ -162,7 +162,7 @@ class JsNumbersAdapter {
           yield val;
         }
       } else if (coerce_to_type_name === "Composite") {
-        for (const ctx of data_contexts) {
+        for (const ctx of contexts) {
           var can_coerce = false;
           if (!(ctx.currentToken in primes || ctx.currentToken === 1)) {
             can_coerce = true;

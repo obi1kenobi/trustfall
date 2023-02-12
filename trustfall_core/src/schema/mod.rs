@@ -700,7 +700,6 @@ fn get_vertex_type_implements(vertex: &TypeDefinition) -> &[Positioned<Name>] {
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn get_field_origins(
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<BTreeMap<(Arc<str>, Arc<str>), FieldOrigin>, InvalidSchemaError> {

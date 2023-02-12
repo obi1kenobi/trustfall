@@ -600,7 +600,6 @@ fn make_duplicated_output_names_error(
     vec![FrontendError::MultipleOutputsWithSameName(conflict_info)]
 }
 
-#[allow(clippy::type_complexity)]
 fn check_for_duplicate_output_names(
     maybe_duplicated_outputs: BTreeMap<Arc<str>, Vec<FieldRef>>,
 ) -> Result<BTreeMap<Arc<str>, FieldRef>, BTreeMap<Arc<str>, Vec<FieldRef>>> {
@@ -642,7 +641,7 @@ where
     let mut property_names_by_vertex: BTreeMap<Vid, Vec<Arc<str>>> = Default::default();
 
     // (Vid, property name) -> (property name, property type, nodes that represent the property)
-    #[allow(clippy::type_complexity)]
+
     let mut properties: BTreeMap<
         (Vid, Arc<str>),
         (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
@@ -920,7 +919,7 @@ fn get_recurse_implicit_coercion(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::type_complexity)]
+
 fn make_vertex<'schema, 'query>(
     schema: &'schema Schema,
     property_names_by_vertex: &BTreeMap<Vid, Vec<Arc<str>>>,
@@ -1018,7 +1017,7 @@ fn make_vertex<'schema, 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::type_complexity)]
+
 fn fill_in_vertex_data<'schema, 'query, V, E>(
     schema: &'schema Schema,
     query: &'query Query,

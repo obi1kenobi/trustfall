@@ -382,44 +382,35 @@ pub trait Adapter<'vertex> {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'vertex>;
+    ) -> VertexIterator<'vertex, Self::Vertex>;
 
-    #[allow(clippy::type_complexity)]
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'vertex>;
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue>;
 
-    #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'vertex>,
-                ),
-            > + 'vertex,
-    >;
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>>;
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'vertex>,
+        contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'vertex>;
+    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool>;
 }

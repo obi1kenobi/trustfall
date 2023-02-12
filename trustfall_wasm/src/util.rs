@@ -1,7 +1,7 @@
 use js_sys::Object;
 use wasm_bindgen::prelude::*;
 
-use crate::shim::{ContextIterator, QueryResultIterator};
+use crate::shim::{JsContextIterator, QueryResultIterator};
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -65,7 +65,7 @@ pub fn initialize() -> Result<(), JsValue> {
     //
     // One day, it might not be required to instantiate an object and patch its prototype
     // through Javascript. That will be a day to celebrate.
-    let x = ContextIterator::new(Box::new(std::iter::empty()));
+    let x = JsContextIterator::new(Box::new(std::iter::empty()));
     iterify(&Object::get_prototype_of(&x.into()));
 
     let x: QueryResultIterator = QueryResultIterator::new(Box::new(std::iter::empty()));

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     interpreter::{
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        Adapter, DataContext, InterpretedQuery,
+        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator,
     },
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
@@ -181,7 +181,7 @@ impl Adapter<'static> for NumbersAdapter {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex>> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         let mut primes = btreeset![2, 3];
         match edge_name.as_ref() {
             "Zero" => Box::new(std::iter::once(make_number_token(&mut primes, 0))),
@@ -213,24 +213,24 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match (type_name.as_ref(), field_name.as_ref()) {
             ("Number" | "Prime" | "Composite" | "Neither", "value") => {
-                resolve_property_with(data_contexts, |vertex| vertex.value().into())
+                resolve_property_with(contexts, |vertex| vertex.value().into())
             }
             ("Number" | "Prime" | "Composite" | "Neither", "name") => {
-                resolve_property_with(data_contexts, |vertex| vertex.name().into())
+                resolve_property_with(contexts, |vertex| vertex.name().into())
             }
             ("Number" | "Prime" | "Composite" | "Neither", "vowelsInName") => {
-                resolve_property_with(data_contexts, |vertex| vertex.vowels_in_name().into())
+                resolve_property_with(contexts, |vertex| vertex.vowels_in_name().into())
             }
             ("Number" | "Prime" | "Composite" | "Neither", "__typename") => {
-                resolve_property_with(data_contexts, |vertex| vertex.typename().into())
+                resolve_property_with(contexts, |vertex| vertex.typename().into())
             }
             (type_name, property_name) => {
                 unreachable!("failed to resolve type {type_name} property {property_name}")
@@ -238,28 +238,20 @@ impl Adapter<'static> for NumbersAdapter {
         }
     }
 
-    #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::Vertex>,
-                Box<dyn Iterator<Item = Self::Vertex>>,
-            ),
-        >,
-    > {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Number" | "Prime" | "Composite", "predecessor") => {
-                resolve_neighbors_with(data_contexts, move |vertex| {
+                resolve_neighbors_with(contexts, move |vertex| {
                     let value = match &vertex {
                         NumbersToken::Neither(inner) => inner.value(),
                         NumbersToken::Prime(inner) => inner.value(),
@@ -273,7 +265,7 @@ impl Adapter<'static> for NumbersAdapter {
                 })
             }
             ("Number" | "Prime" | "Composite", "successor") => {
-                resolve_neighbors_with(data_contexts, move |vertex| {
+                resolve_neighbors_with(contexts, move |vertex| {
                     let value = match &vertex {
                         NumbersToken::Neither(inner) => inner.value(),
                         NumbersToken::Prime(inner) => inner.value(),
@@ -283,7 +275,7 @@ impl Adapter<'static> for NumbersAdapter {
                 })
             }
             ("Number" | "Prime" | "Composite", "multiple") => {
-                resolve_neighbors_with(data_contexts, move |vertex| {
+                resolve_neighbors_with(contexts, move |vertex| {
                     match vertex {
                         NumbersToken::Neither(..) => Box::new(std::iter::empty()),
                         NumbersToken::Prime(vertex) => {
@@ -317,7 +309,7 @@ impl Adapter<'static> for NumbersAdapter {
                 })
             }
             ("Composite", "primeFactor") => {
-                resolve_neighbors_with(data_contexts, move |vertex| match vertex {
+                resolve_neighbors_with(contexts, move |vertex| match vertex {
                     NumbersToken::Composite(vertex) => {
                         let factors = &vertex.1;
                         Box::new(
@@ -332,7 +324,7 @@ impl Adapter<'static> for NumbersAdapter {
                 })
             }
             ("Composite", "divisor") => {
-                resolve_neighbors_with(data_contexts, move |vertex| match vertex {
+                resolve_neighbors_with(contexts, move |vertex| match vertex {
                     NumbersToken::Composite(vertex) => {
                         let value = vertex.0;
                         if value <= 0 {
@@ -366,17 +358,17 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type_name.as_ref()) {
-            ("Number", "Prime") => resolve_coercion_with(data_contexts, |vertex| {
-                matches!(vertex, NumbersToken::Prime(..))
-            }),
-            ("Number", "Composite") => resolve_coercion_with(data_contexts, |vertex| {
+            ("Number", "Prime") => {
+                resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersToken::Prime(..)))
+            }
+            ("Number", "Composite") => resolve_coercion_with(contexts, |vertex| {
                 matches!(vertex, NumbersToken::Composite(..))
             }),
             _ => unimplemented!(

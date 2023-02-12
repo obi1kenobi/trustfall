@@ -1,7 +1,9 @@
 use std::{iter, sync::Arc};
 
 use trustfall_core::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator,
+    },
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
@@ -75,7 +77,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'a> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
             "LatestMetarReportForAirport" => {
@@ -103,48 +105,48 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'a> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "MetarReport" => {
                 match field_name.as_ref() {
                     // TODO: implement __typename
-                    "stationId" => non_float_field!(data_contexts, Token::MetarReport, station_id),
-                    "rawReport" => non_float_field!(data_contexts, Token::MetarReport, raw_report),
+                    "stationId" => non_float_field!(contexts, Token::MetarReport, station_id),
+                    "rawReport" => non_float_field!(contexts, Token::MetarReport, raw_report),
                     "observationTime" => {
-                        non_float_field!(data_contexts, Token::MetarReport, observation_time)
+                        non_float_field!(contexts, Token::MetarReport, observation_time)
                     }
-                    "latitude" => float_field!(data_contexts, Token::MetarReport, latitude),
-                    "longitude" => float_field!(data_contexts, Token::MetarReport, longitude),
+                    "latitude" => float_field!(contexts, Token::MetarReport, latitude),
+                    "longitude" => float_field!(contexts, Token::MetarReport, longitude),
                     "windSpeedKts" => {
-                        non_float_field!(data_contexts, Token::MetarReport, wind_speed_kts)
+                        non_float_field!(contexts, Token::MetarReport, wind_speed_kts)
                     }
                     "windDirection" => {
-                        non_float_field!(data_contexts, Token::MetarReport, wind_direction)
+                        non_float_field!(contexts, Token::MetarReport, wind_direction)
                     }
                     "windGustsKts" => {
-                        non_float_field!(data_contexts, Token::MetarReport, wind_gusts_kts)
+                        non_float_field!(contexts, Token::MetarReport, wind_gusts_kts)
                     }
-                    "temperature" => float_field!(data_contexts, Token::MetarReport, temperature),
-                    "dewpoint" => float_field!(data_contexts, Token::MetarReport, dewpoint),
+                    "temperature" => float_field!(contexts, Token::MetarReport, temperature),
+                    "dewpoint" => float_field!(contexts, Token::MetarReport, dewpoint),
                     "visibilityUnlimited" => {
-                        non_float_field!(data_contexts, Token::MetarReport, visibility_unlimited)
+                        non_float_field!(contexts, Token::MetarReport, visibility_unlimited)
                     }
                     "visibilityMinimal" => {
-                        non_float_field!(data_contexts, Token::MetarReport, visibility_minimal)
+                        non_float_field!(contexts, Token::MetarReport, visibility_minimal)
                     }
                     "visibilityStatuteMi" => {
-                        float_field!(data_contexts, Token::MetarReport, visibility_statute_mi)
+                        float_field!(contexts, Token::MetarReport, visibility_statute_mi)
                     }
                     "altimeterInHg" => {
-                        float_field!(data_contexts, Token::MetarReport, altimeter_in_hg)
+                        float_field!(contexts, Token::MetarReport, altimeter_in_hg)
                     }
                     "seaLevelPressureMb" => {
-                        float_field!(data_contexts, Token::MetarReport, sea_level_pressure_mb)
+                        float_field!(contexts, Token::MetarReport, sea_level_pressure_mb)
                     }
                     unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
@@ -152,9 +154,9 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
             "MetarCloudCover" => {
                 match field_name.as_ref() {
                     // TODO: implement __typename
-                    "skyCover" => non_float_field!(data_contexts, Token::CloudCover, sky_cover),
+                    "skyCover" => non_float_field!(contexts, Token::CloudCover, sky_cover),
                     "baseAltitude" => {
-                        non_float_field!(data_contexts, Token::CloudCover, base_altitude)
+                        non_float_field!(contexts, Token::CloudCover, base_altitude)
                     }
                     unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
@@ -163,39 +165,30 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         }
     }
 
-    #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::Vertex>,
-                    Box<dyn Iterator<Item = Self::Vertex> + 'a>,
-                ),
-            > + 'a,
-    > {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("MetarReport", "cloudCover") => {
                 assert!(parameters.is_none());
 
-                Box::new(data_contexts.map(|ctx| {
-                    let neighbors: Box<dyn Iterator<Item = Self::Vertex> + 'a> =
-                        match &ctx.current_token {
-                            Some(token) => match token {
-                                &Token::MetarReport(metar) => {
-                                    Box::new(metar.cloud_cover.iter().map(|c| c.into()))
-                                }
-                                _ => unreachable!(),
-                            },
-                            None => Box::new(iter::empty()),
-                        };
+                Box::new(contexts.map(|ctx| {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        Some(token) => match token {
+                            &Token::MetarReport(metar) => {
+                                Box::new(metar.cloud_cover.iter().map(|c| c.into()))
+                            }
+                            _ => unreachable!(),
+                        },
+                        None => Box::new(iter::empty()),
+                    };
                     (ctx, neighbors)
                 }))
             }
@@ -206,12 +199,12 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     #[allow(unused_variables)]
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'a> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         todo!()
     }
 }

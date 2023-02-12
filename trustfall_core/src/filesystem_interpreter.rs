@@ -2,7 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::interpreter::{Adapter, DataContext, InterpretedQuery};
+use crate::interpreter::{
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery, VertexIterator,
+};
 use crate::ir::{EdgeParameters, Eid, FieldValue, Vid};
 use std::fs::{self, ReadDir};
 use std::iter;
@@ -170,13 +172,13 @@ type ContextAndIterableOfEdges = (
     Box<dyn Iterator<Item = FilesystemToken>>,
 );
 
-struct ContextIterator {
+struct EdgeResolverIterator {
     origin: Rc<String>,
     contexts: Box<dyn Iterator<Item = DataContext<FilesystemToken>>>,
     edge_resolver: IndividualEdgeResolver,
 }
 
-impl ContextIterator {
+impl EdgeResolverIterator {
     pub fn new(
         origin: Rc<String>,
         contexts: Box<dyn Iterator<Item = DataContext<FilesystemToken>>>,
@@ -190,7 +192,7 @@ impl ContextIterator {
     }
 }
 
-impl Iterator for ContextIterator {
+impl Iterator for EdgeResolverIterator {
     type Item = (
         DataContext<FilesystemToken>,
         Box<dyn Iterator<Item = FilesystemToken>>,
@@ -262,7 +264,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = FilesystemToken>> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_none());
         let token = DirectoryToken {
@@ -274,15 +276,15 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = ContextAndValue>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "Directory" => match field_name.as_ref() {
-                "name" => Box::new(data_contexts.map(|context| match context.current_token {
+                "name" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::Directory(ref x)) => {
                         let value = FieldValue::String(x.name.clone());
@@ -290,7 +292,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                     }
                     _ => unreachable!(),
                 })),
-                "path" => Box::new(data_contexts.map(|context| match context.current_token {
+                "path" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::Directory(ref x)) => {
                         let value = FieldValue::String(x.path.clone());
@@ -301,7 +303,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                 _ => todo!(),
             },
             "File" => match field_name.as_ref() {
-                "name" => Box::new(data_contexts.map(|context| match context.current_token {
+                "name" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
                         let value = FieldValue::String(x.name.clone());
@@ -309,7 +311,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                     }
                     _ => unreachable!(),
                 })),
-                "path" => Box::new(data_contexts.map(|context| match context.current_token {
+                "path" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
                         let value = FieldValue::String(x.path.clone());
@@ -317,7 +319,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                     }
                     _ => unreachable!(),
                 })),
-                "extension" => Box::new(data_contexts.map(|context| match context.current_token {
+                "extension" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
                         let value = x
@@ -335,37 +337,29 @@ impl Adapter<'static> for FilesystemInterpreter {
         }
     }
 
-    #[allow(clippy::type_complexity)]
     fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::Vertex>,
-                Box<dyn Iterator<Item = Self::Vertex>>,
-            ),
-        >,
-    > {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {
-                let iterator: ContextIterator = ContextIterator::new(
+                let iterator = EdgeResolverIterator::new(
                     self.origin.clone(),
-                    data_contexts,
+                    contexts,
                     directory_contains_file_handler,
                 );
                 Box::from(iterator)
             }
             ("Directory", "out_Directory_Subdirectory") => {
-                let iterator: ContextIterator = ContextIterator::new(
+                let iterator = EdgeResolverIterator::new(
                     self.origin.clone(),
-                    data_contexts,
+                    contexts,
                     directory_subdirectory_handler,
                 );
                 Box::from(iterator)
@@ -376,12 +370,12 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         todo!()
     }
 }
