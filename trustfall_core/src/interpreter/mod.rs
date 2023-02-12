@@ -34,8 +34,7 @@ pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + '
 /// This type is usually an input to adapter resolver functions. Calling those functions
 /// asks them to resolve a property, edge, or type coercion for the particular vertex
 /// the context is currently processing at that point in the query.
-pub type ContextIterator<'vertex, VertexT> =
-    Box<dyn Iterator<Item = DataContext<VertexT>> + 'vertex>;
+pub type ContextIterator<'vertex, VertexT> = VertexIterator<'vertex, DataContext<VertexT>>;
 
 /// Iterator of (context, outcome) tuples: the output type of most resolver functions.
 ///

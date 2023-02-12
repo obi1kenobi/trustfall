@@ -25,8 +25,12 @@ use crate::{
     util::BTreeMapTryInsertExt,
 };
 
-use super::{error::QueryArgumentsError, Adapter, ContextIterator, DataContext, InterpretedQuery};
+use super::{
+    error::QueryArgumentsError, Adapter, ContextIterator, DataContext, InterpretedQuery,
+    VertexIterator,
+};
 
+#[allow(clippy::type_complexity)]
 pub fn interpret_ir<'query, Vertex>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
     indexed_query: Arc<IndexedQuery>,
@@ -454,7 +458,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     });
 
     // Apply post-fold filters.
-    let mut post_filtered_iterator: Box<dyn Iterator<Item = DataContext<Vertex>>> =
+    let mut post_filtered_iterator: VertexIterator<'query, DataContext<Vertex>> =
         Box::new(folded_iterator);
     let adapter_ref = adapter.as_ref();
     for post_fold_filter in fold.post_filters.iter() {
@@ -528,7 +532,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
             }
         } else {
             // Iterate through the elements of the fold and get the values we need.
-            let mut output_iterator: Box<dyn Iterator<Item = DataContext<Vertex>>> =
+            let mut output_iterator: VertexIterator<'query, DataContext<Vertex>> =
                 Box::new(fold_elements.clone().into_iter());
             for output_name in output_names.iter() {
                 let context_field = &fold.component.outputs[output_name.as_ref()];
@@ -980,7 +984,7 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
 
 struct EdgeExpander<'query, Vertex: Clone + Debug + 'query> {
     context: DataContext<Vertex>,
-    neighbor_tokens: Box<dyn Iterator<Item = Vertex> + 'query>,
+    neighbor_tokens: VertexIterator<'query, Vertex>,
     is_optional_edge: bool,
     has_neighbors: bool,
     neighbors_ended: bool,
@@ -990,7 +994,7 @@ struct EdgeExpander<'query, Vertex: Clone + Debug + 'query> {
 impl<'query, Vertex: Clone + Debug + 'query> EdgeExpander<'query, Vertex> {
     pub fn new(
         context: DataContext<Vertex>,
-        neighbor_tokens: Box<dyn Iterator<Item = Vertex> + 'query>,
+        neighbor_tokens: VertexIterator<'query, Vertex>,
         is_optional_edge: bool,
     ) -> EdgeExpander<'query, Vertex> {
         EdgeExpander {
@@ -1276,7 +1280,7 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
 struct RecursiveEdgeExpander<'query, Vertex: Clone + Debug + 'query> {
     context: Option<DataContext<Vertex>>,
     neighbor_base: Option<DataContext<Vertex>>,
-    neighbor_tokens: Box<dyn Iterator<Item = Vertex> + 'query>,
+    neighbor_tokens: VertexIterator<'query, Vertex>,
     has_neighbors: bool,
     neighbors_ended: bool,
 }
@@ -1284,7 +1288,7 @@ struct RecursiveEdgeExpander<'query, Vertex: Clone + Debug + 'query> {
 impl<'query, Vertex: Clone + Debug + 'query> RecursiveEdgeExpander<'query, Vertex> {
     pub fn new(
         context: DataContext<Vertex>,
-        neighbor_tokens: Box<dyn Iterator<Item = Vertex> + 'query>,
+        neighbor_tokens: VertexIterator<'query, Vertex>,
     ) -> RecursiveEdgeExpander<'query, Vertex> {
         RecursiveEdgeExpander {
             context: Some(context),

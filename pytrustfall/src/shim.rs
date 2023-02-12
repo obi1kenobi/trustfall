@@ -214,10 +214,10 @@ impl Context {
 }
 
 #[pyclass(unsendable)]
-pub struct ContextIterator(Box<dyn Iterator<Item = Context>>);
+pub struct ContextIterator(VertexIterator<'static, Context>);
 
 impl ContextIterator {
-    fn new(inner: Box<dyn Iterator<Item = DataContext<Arc<Py<PyAny>>>>>) -> Self {
+    fn new(inner: VertexIterator<'static, DataContext<Arc<Py<PyAny>>>>) -> Self {
         Self(Box::new(inner.map(Context)))
     }
 }
@@ -433,7 +433,7 @@ impl PythonProjectNeighborsIterator {
 impl Iterator for PythonProjectNeighborsIterator {
     type Item = (
         DataContext<Arc<Py<PyAny>>>,
-        Box<dyn Iterator<Item = Arc<Py<PyAny>>>>,
+        VertexIterator<'static, Arc<Py<PyAny>>>,
     );
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -454,7 +454,7 @@ impl Iterator for PythonProjectNeighborsIterator {
                     // Iterators return self when __iter__() is called.
                     let neighbors_iter = make_iterator(py, neighbors_iterable).unwrap();
 
-                    let neighbors: Box<dyn Iterator<Item = Arc<Py<PyAny>>>> =
+                    let neighbors: VertexIterator<'static, Arc<Py<PyAny>>> =
                         Box::new(PythonTokenIterator::new(neighbors_iter));
                     Some((context.0, neighbors))
                 }

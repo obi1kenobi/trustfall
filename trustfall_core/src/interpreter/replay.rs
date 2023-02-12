@@ -261,10 +261,7 @@ where
     for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
-    type Item = (
-        DataContext<Vertex>,
-        Box<dyn Iterator<Item = Vertex> + 'query>,
-    );
+    type Item = (DataContext<Vertex>, VertexIterator<'query, Vertex>);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);

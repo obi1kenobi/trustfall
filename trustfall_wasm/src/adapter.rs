@@ -150,10 +150,7 @@ impl ContextAndNeighborsIterator {
 }
 
 impl Iterator for ContextAndNeighborsIterator {
-    type Item = (
-        DataContext<JsValue>,
-        Box<dyn Iterator<Item = JsValue> + 'static>,
-    );
+    type Item = (DataContext<JsValue>, VertexIterator<'static, JsValue>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let iter_next = self

@@ -428,7 +428,7 @@ where
                 });
 
                 let tracer_ref_7 = tracer_ref_5.clone();
-                let final_neighbor_iter: Box<dyn Iterator<Item = Vertex> + 'vertex> =
+                let final_neighbor_iter: VertexIterator<'vertex, Vertex> =
                     Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
                         tracer_ref_7.borrow_mut().record(
                             TraceOpContent::OutputIteratorExhausted,

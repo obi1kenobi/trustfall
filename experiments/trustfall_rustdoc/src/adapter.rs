@@ -963,7 +963,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                                 };
 
                                 let impl_token = token.as_impl().expect("not an Impl token");
-                                let provided_methods: Box<dyn Iterator<Item = &Id>> = if impl_token
+                                let provided_methods: VertexIterator<'a, &Id> = if impl_token
                                     .provided_trait_methods
                                     .is_empty()
                                 {

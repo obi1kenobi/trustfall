@@ -166,22 +166,22 @@ impl Iterator for SubdirectoryIterator {
 pub type ContextAndValue = (DataContext<FilesystemToken>, FieldValue);
 
 type IndividualEdgeResolver =
-    fn(Rc<String>, &FilesystemToken) -> Box<dyn Iterator<Item = FilesystemToken>>;
+    fn(Rc<String>, &FilesystemToken) -> VertexIterator<'static, FilesystemToken>;
 type ContextAndIterableOfEdges = (
     DataContext<FilesystemToken>,
-    Box<dyn Iterator<Item = FilesystemToken>>,
+    VertexIterator<'static, FilesystemToken>,
 );
 
 struct EdgeResolverIterator {
     origin: Rc<String>,
-    contexts: Box<dyn Iterator<Item = DataContext<FilesystemToken>>>,
+    contexts: VertexIterator<'static, DataContext<FilesystemToken>>,
     edge_resolver: IndividualEdgeResolver,
 }
 
 impl EdgeResolverIterator {
     pub fn new(
         origin: Rc<String>,
-        contexts: Box<dyn Iterator<Item = DataContext<FilesystemToken>>>,
+        contexts: VertexIterator<'static, DataContext<FilesystemToken>>,
         edge_resolver: IndividualEdgeResolver,
     ) -> Self {
         Self {
@@ -195,7 +195,7 @@ impl EdgeResolverIterator {
 impl Iterator for EdgeResolverIterator {
     type Item = (
         DataContext<FilesystemToken>,
-        Box<dyn Iterator<Item = FilesystemToken>>,
+        VertexIterator<'static, FilesystemToken>,
     );
 
     fn next(&mut self) -> Option<ContextAndIterableOfEdges> {
@@ -235,7 +235,7 @@ pub struct FileToken {
 fn directory_contains_file_handler(
     origin: Rc<String>,
     token: &FilesystemToken,
-) -> Box<dyn Iterator<Item = FilesystemToken>> {
+) -> VertexIterator<'static, FilesystemToken> {
     let directory_token = match token {
         FilesystemToken::Directory(dir) => dir,
         _ => unreachable!(),
@@ -246,7 +246,7 @@ fn directory_contains_file_handler(
 fn directory_subdirectory_handler(
     origin: Rc<String>,
     token: &FilesystemToken,
-) -> Box<dyn Iterator<Item = FilesystemToken>> {
+) -> VertexIterator<'static, FilesystemToken> {
     let directory_token = match token {
         FilesystemToken::Directory(dir) => dir,
         _ => unreachable!(),

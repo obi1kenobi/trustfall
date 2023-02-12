@@ -3,7 +3,10 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use trustfall_core::{interpreter::DataContext, ir::FieldValue};
+use trustfall_core::{
+    interpreter::{DataContext, VertexIterator},
+    ir::FieldValue,
+};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -142,7 +145,7 @@ impl JsStringConstants {
 
 #[wasm_bindgen]
 pub struct JsContextIterator {
-    iter: Box<dyn Iterator<Item = DataContext<JsValue>>>,
+    iter: VertexIterator<'static, DataContext<JsValue>>,
     pub(super) registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
     next_item: u32,
 }
@@ -175,7 +178,7 @@ impl ContextIteratorItem {
 
 #[wasm_bindgen]
 impl JsContextIterator {
-    pub(super) fn new(iter: Box<dyn Iterator<Item = DataContext<JsValue>>>) -> Self {
+    pub(super) fn new(iter: VertexIterator<'static, DataContext<JsValue>>) -> Self {
         Self {
             iter,
             registry: Rc::from(RefCell::new(Default::default())),

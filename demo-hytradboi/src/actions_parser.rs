@@ -2,13 +2,14 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use octorust::types::ContentFile;
+use trustfall_core::interpreter::VertexIterator;
 use yaml_rust::{Yaml, YamlLoader};
 
 use crate::token::{ActionsImportedStep, ActionsJob, ActionsRunStep, Token};
 
 pub(crate) fn get_jobs_in_workflow_file(
     content: Rc<ContentFile>,
-) -> Box<dyn Iterator<Item = Token>> {
+) -> VertexIterator<'static, Token> {
     let file_content =
         String::from_utf8(base64::decode(content.content.replace('\n', "")).unwrap()).unwrap();
     let docs = match YamlLoader::load_from_str(file_content.as_str()) {
@@ -25,7 +26,7 @@ pub(crate) fn get_jobs_in_workflow_file(
 
     Box::new(
         docs.into_iter()
-            .flat_map(move |workflow_yaml| -> Box<dyn Iterator<Item = Token>> {
+            .flat_map(move |workflow_yaml| -> VertexIterator<'static, Token> {
                 let jobs_element = workflow_yaml["jobs"].clone();
                 if jobs_element.is_badvalue() {
                     eprintln!(
@@ -63,7 +64,7 @@ pub(crate) fn get_jobs_in_workflow_file(
     )
 }
 
-pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = Token>> {
+pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> VertexIterator<'static, Token> {
     let steps = job.yaml["steps"].clone();
     if steps.is_badvalue() || !steps.is_array() {
         eprintln!("invalid yaml, no 'steps' array in workflow job yaml: {job:?}",);
@@ -100,7 +101,7 @@ pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> Box<dyn Iterator<Item = T
     }))
 }
 
-pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> Box<dyn Iterator<Item = Token>> {
+pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> VertexIterator<'static, Token> {
     let step_hash = match step.yaml.clone() {
         Yaml::Hash(h) => h,
         _ => unreachable!(),
