@@ -52,7 +52,11 @@ in the `demo-hytradboi` directory:
 For a brief overview of the query language and an example of using it to query APIs, check the
 `demo-hackernews` directory for a simpler demo only querying the HackerNews APIs: [link](https://github.com/obi1kenobi/trustfall/tree/main/demo-hackernews).
 
-Python bindings are available, and are built automatically on every change to the engine; the most recent version may be downloaded [here](https://github.com/obi1kenobi/trustfall/releases). A getting started guide for Python is
+The easiest way to plug in a new data source is by implementing
+[the `BasicAdapter` trait](https://docs.rs/trustfall_core/latest/trustfall_core/interpreter/basic_adapter/trait.BasicAdapter.html).
+
+Python bindings are available, and are built automatically on every change to the engine;
+the most recent version may be downloaded [here](https://github.com/obi1kenobi/trustfall/releases). A getting started guide for Python is
 forthcoming ([tracking issue](https://github.com/obi1kenobi/trustfall/issues/16)); in the meantime,
 the best resource is the Python bindings'
 [test suite](https://github.com/obi1kenobi/trustfall/blob/main/pytrustfall/pytrustfall/tests/test_execution.py).
