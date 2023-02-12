@@ -117,8 +117,8 @@ fn check_fuzzed(path: &str, schema_name: &str) {
 fn trace_with_adapter<'a, AdapterT>(adapter: AdapterT, test_query: TestIRQuery)
 where
     AdapterT: Adapter<'a> + Clone + 'a,
-    AdapterT::DataToken: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de> AdapterT::DataToken: Deserialize<'de>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize,
+    for<'de> AdapterT::Vertex: Deserialize<'de>,
 {
     let query = Arc::new(test_query.ir_query.clone().try_into().unwrap());
     let arguments: Arc<BTreeMap<_, _>> = Arc::new(

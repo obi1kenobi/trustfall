@@ -254,7 +254,7 @@ fn directory_subdirectory_handler(
 
 #[allow(unused_variables)]
 impl Adapter<'static> for FilesystemInterpreter {
-    type DataToken = FilesystemToken;
+    type Vertex = FilesystemToken;
 
     fn get_starting_tokens(
         &mut self,
@@ -274,7 +274,7 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn project_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         current_type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
@@ -338,7 +338,7 @@ impl Adapter<'static> for FilesystemInterpreter {
     #[allow(clippy::type_complexity)]
     fn project_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         current_type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -348,8 +348,8 @@ impl Adapter<'static> for FilesystemInterpreter {
     ) -> Box<
         dyn Iterator<
             Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
+                DataContext<Self::Vertex>,
+                Box<dyn Iterator<Item = Self::Vertex>>,
             ),
         >,
     > {
@@ -376,12 +376,12 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn can_coerce_to_type(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         current_type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)>> {
         todo!()
     }
 }

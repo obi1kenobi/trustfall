@@ -67,7 +67,7 @@ macro_rules! float_field {
 }
 
 impl<'a> Adapter<'a> for MetarAdapter<'a> {
-    type DataToken = Token<'a>;
+    type Vertex = Token<'a>;
 
     fn get_starting_tokens(
         &mut self,
@@ -75,7 +75,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'a> {
+    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'a> {
         match edge.as_ref() {
             "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
             "LatestMetarReportForAirport" => {
@@ -103,12 +103,12 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
 
     fn project_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'a>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         current_type_name: Arc<str>,
         field_name: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'a> {
         match current_type_name.as_ref() {
             "MetarReport" => {
                 match field_name.as_ref() {
@@ -166,7 +166,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     #[allow(clippy::type_complexity)]
     fn project_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'a>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         current_type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -176,8 +176,8 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     ) -> Box<
         dyn Iterator<
                 Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'a>,
+                    DataContext<Self::Vertex>,
+                    Box<dyn Iterator<Item = Self::Vertex> + 'a>,
                 ),
             > + 'a,
     > {
@@ -186,7 +186,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                 assert!(parameters.is_none());
 
                 Box::new(data_contexts.map(|ctx| {
-                    let neighbors: Box<dyn Iterator<Item = Self::DataToken> + 'a> =
+                    let neighbors: Box<dyn Iterator<Item = Self::Vertex> + 'a> =
                         match &ctx.current_token {
                             Some(token) => match token {
                                 &Token::MetarReport(metar) => {
@@ -206,12 +206,12 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     #[allow(unused_variables)]
     fn can_coerce_to_type(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'a>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         current_type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'a> {
         todo!()
     }
 }

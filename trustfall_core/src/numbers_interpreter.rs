@@ -173,7 +173,7 @@ pub(crate) struct NumbersAdapter;
 
 #[allow(unused_variables)]
 impl Adapter<'static> for NumbersAdapter {
-    type DataToken = NumbersToken;
+    type Vertex = NumbersToken;
 
     fn get_starting_tokens(
         &mut self,
@@ -181,7 +181,7 @@ impl Adapter<'static> for NumbersAdapter {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken>> {
+    ) -> Box<dyn Iterator<Item = Self::Vertex>> {
         let mut primes = btreeset![2, 3];
         match edge.as_ref() {
             "Zero" => Box::new(std::iter::once(make_number_token(&mut primes, 0))),
@@ -213,12 +213,12 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn project_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         current_type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)>> {
         match (current_type_name.as_ref(), field_name.as_ref()) {
             ("Number" | "Prime" | "Composite" | "Neither", "value") => {
                 resolve_property_with(data_contexts, |vertex| vertex.value().into())
@@ -241,7 +241,7 @@ impl Adapter<'static> for NumbersAdapter {
     #[allow(clippy::type_complexity)]
     fn project_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         current_type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -251,8 +251,8 @@ impl Adapter<'static> for NumbersAdapter {
     ) -> Box<
         dyn Iterator<
             Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
+                DataContext<Self::Vertex>,
+                Box<dyn Iterator<Item = Self::Vertex>>,
             ),
         >,
     > {
@@ -366,12 +366,12 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn can_coerce_to_type(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         current_type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)>> {
         match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
             ("Number", "Prime") => resolve_coercion_with(data_contexts, |vertex| {
                 matches!(vertex, NumbersToken::Prime(..))

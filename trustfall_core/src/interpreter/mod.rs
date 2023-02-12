@@ -24,14 +24,14 @@ pub mod replay;
 pub mod trace;
 
 #[derive(Debug, Clone)]
-pub struct DataContext<DataToken: Clone + Debug> {
-    pub current_token: Option<DataToken>,
-    tokens: BTreeMap<Vid, Option<DataToken>>,
+pub struct DataContext<Vertex: Clone + Debug> {
+    pub current_token: Option<Vertex>,
+    tokens: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
-    suspended_tokens: Vec<Option<DataToken>>,
-    folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
+    suspended_tokens: Vec<Option<Vertex>>,
+    folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
-    piggyback: Option<Vec<DataContext<DataToken>>>,
+    piggyback: Option<Vec<DataContext<Vertex>>>,
     imported_tags: BTreeMap<FieldRef, FieldValue>,
 }
 
@@ -60,41 +60,41 @@ impl From<ValueOrVec> for FieldValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound = "DataToken: Serialize, for<'de2> DataToken: Deserialize<'de2>")]
-struct SerializableContext<DataToken>
+#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+struct SerializableContext<Vertex>
 where
-    DataToken: Clone + Debug + Serialize,
-    for<'d> DataToken: Deserialize<'d>,
+    Vertex: Clone + Debug + Serialize,
+    for<'d> Vertex: Deserialize<'d>,
 {
-    current_token: Option<DataToken>,
-    tokens: BTreeMap<Vid, Option<DataToken>>,
+    current_token: Option<Vertex>,
+    tokens: BTreeMap<Vid, Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     values: Vec<FieldValue>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    suspended_tokens: Vec<Option<DataToken>>,
+    suspended_tokens: Vec<Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    folded_contexts: BTreeMap<Eid, Vec<DataContext<DataToken>>>,
+    folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    piggyback: Option<Vec<DataContext<DataToken>>>,
+    piggyback: Option<Vec<DataContext<Vertex>>>,
 
     /// Tagged values imported from an ancestor component of the one currently being evaluated.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     imported_tags: BTreeMap<FieldRef, FieldValue>,
 }
 
-impl<DataToken> From<SerializableContext<DataToken>> for DataContext<DataToken>
+impl<Vertex> From<SerializableContext<Vertex>> for DataContext<Vertex>
 where
-    DataToken: Clone + Debug + Serialize,
-    for<'d> DataToken: Deserialize<'d>,
+    Vertex: Clone + Debug + Serialize,
+    for<'d> Vertex: Deserialize<'d>,
 {
-    fn from(context: SerializableContext<DataToken>) -> Self {
+    fn from(context: SerializableContext<Vertex>) -> Self {
         Self {
             current_token: context.current_token,
             tokens: context.tokens,
@@ -108,12 +108,12 @@ where
     }
 }
 
-impl<DataToken> From<DataContext<DataToken>> for SerializableContext<DataToken>
+impl<Vertex> From<DataContext<Vertex>> for SerializableContext<Vertex>
 where
-    DataToken: Clone + Debug + Serialize,
-    for<'d> DataToken: Deserialize<'d>,
+    Vertex: Clone + Debug + Serialize,
+    for<'d> Vertex: Deserialize<'d>,
 {
-    fn from(context: DataContext<DataToken>) -> Self {
+    fn from(context: DataContext<Vertex>) -> Self {
         Self {
             current_token: context.current_token,
             tokens: context.tokens,
@@ -127,8 +127,8 @@ where
     }
 }
 
-impl<DataToken: Clone + Debug> DataContext<DataToken> {
-    pub fn new(token: Option<DataToken>) -> DataContext<DataToken> {
+impl<Vertex: Clone + Debug> DataContext<Vertex> {
+    pub fn new(token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
             current_token: token,
             piggyback: None,
@@ -147,7 +147,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
             .unwrap();
     }
 
-    fn activate_token(self, vid: &Vid) -> DataContext<DataToken> {
+    fn activate_token(self, vid: &Vid) -> DataContext<Vertex> {
         DataContext {
             current_token: self.tokens[vid].clone(),
             tokens: self.tokens,
@@ -160,7 +160,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
         }
     }
 
-    fn split_and_move_to_token(&self, new_token: Option<DataToken>) -> DataContext<DataToken> {
+    fn split_and_move_to_token(&self, new_token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
             current_token: new_token,
             tokens: self.tokens.clone(),
@@ -173,7 +173,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
         }
     }
 
-    fn move_to_token(self, new_token: Option<DataToken>) -> DataContext<DataToken> {
+    fn move_to_token(self, new_token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
             current_token: new_token,
             tokens: self.tokens,
@@ -186,7 +186,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
         }
     }
 
-    fn ensure_suspended(mut self) -> DataContext<DataToken> {
+    fn ensure_suspended(mut self) -> DataContext<Vertex> {
         if let Some(token) = self.current_token {
             self.suspended_tokens.push(Some(token));
             DataContext {
@@ -204,7 +204,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
         }
     }
 
-    fn ensure_unsuspended(mut self) -> DataContext<DataToken> {
+    fn ensure_unsuspended(mut self) -> DataContext<Vertex> {
         match self.current_token {
             None => {
                 let current_token = self.suspended_tokens.pop().unwrap();
@@ -224,7 +224,7 @@ impl<DataToken: Clone + Debug> DataContext<DataToken> {
     }
 }
 
-impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> {
+impl<Vertex: Debug + Clone + PartialEq> PartialEq for DataContext<Vertex> {
     fn eq(&self, other: &Self) -> bool {
         self.current_token == other.current_token
             && self.tokens == other.tokens
@@ -236,12 +236,12 @@ impl<DataToken: Debug + Clone + PartialEq> PartialEq for DataContext<DataToken> 
     }
 }
 
-impl<DataToken: Debug + Clone + PartialEq + Eq> Eq for DataContext<DataToken> {}
+impl<Vertex: Debug + Clone + PartialEq + Eq> Eq for DataContext<Vertex> {}
 
-impl<DataToken> Serialize for DataContext<DataToken>
+impl<Vertex> Serialize for DataContext<Vertex>
 where
-    DataToken: Debug + Clone + Serialize,
-    for<'d> DataToken: Deserialize<'d>,
+    Vertex: Debug + Clone + Serialize,
+    for<'d> Vertex: Deserialize<'d>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -252,10 +252,10 @@ where
     }
 }
 
-impl<'de, DataToken> Deserialize<'de> for DataContext<DataToken>
+impl<'de, Vertex> Deserialize<'de> for DataContext<Vertex>
 where
-    DataToken: Debug + Clone + Serialize,
-    for<'d> DataToken: Deserialize<'d>,
+    Vertex: Debug + Clone + Serialize,
+    for<'d> Vertex: Deserialize<'d>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -349,7 +349,7 @@ fn validate_argument_type(
 }
 
 pub trait Adapter<'token> {
-    type DataToken: Clone + Debug + 'token;
+    type Vertex: Clone + Debug + 'token;
 
     fn get_starting_tokens(
         &mut self,
@@ -357,23 +357,23 @@ pub trait Adapter<'token> {
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'token>;
+    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'token>;
 
     #[allow(clippy::type_complexity)]
     fn project_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         current_type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'token>;
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'token>;
 
     #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
     fn project_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         current_type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -383,18 +383,18 @@ pub trait Adapter<'token> {
     ) -> Box<
         dyn Iterator<
                 Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'token>,
+                    DataContext<Self::Vertex>,
+                    Box<dyn Iterator<Item = Self::Vertex> + 'token>,
                 ),
             > + 'token,
     >;
 
     fn can_coerce_to_type(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         current_type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'token>;
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'token>;
 }

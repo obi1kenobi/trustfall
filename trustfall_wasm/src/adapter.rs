@@ -256,7 +256,7 @@ impl AdapterShim {
 
 #[allow(unused_variables)]
 impl Adapter<'static> for AdapterShim {
-    type DataToken = JsValue;
+    type Vertex = JsValue;
 
     fn get_starting_tokens(
         &mut self,
@@ -264,7 +264,7 @@ impl Adapter<'static> for AdapterShim {
         parameters: Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'static> {
+    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'static> {
         let parameters: JsEdgeParameters = parameters.into();
         let js_iter = self
             .inner
@@ -274,12 +274,12 @@ impl Adapter<'static> for AdapterShim {
 
     fn project_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'static>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
         current_type_name: Arc<str>,
         field_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'static> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'static> {
         let ctx_iter = ContextIterator::new(data_contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter =
@@ -290,7 +290,7 @@ impl Adapter<'static> for AdapterShim {
 
     fn project_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'static>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
         current_type_name: Arc<str>,
         edge_name: Arc<str>,
         parameters: Option<Arc<CoreEdgeParameters>>,
@@ -300,8 +300,8 @@ impl Adapter<'static> for AdapterShim {
     ) -> Box<
         dyn Iterator<
                 Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'static>,
+                    DataContext<Self::Vertex>,
+                    Box<dyn Iterator<Item = Self::Vertex> + 'static>,
                 ),
             > + 'static,
     > {
@@ -324,12 +324,12 @@ impl Adapter<'static> for AdapterShim {
 
     fn can_coerce_to_type(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'static>,
+        data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
         current_type_name: Arc<str>,
         coerce_to_type_name: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'static> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'static> {
         let ctx_iter = ContextIterator::new(data_contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter = self.inner.can_coerce_to_type(

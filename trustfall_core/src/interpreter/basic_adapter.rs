@@ -162,7 +162,7 @@ impl<'token, T> Adapter<'token> for T
 where
     T: BasicAdapter<'token>,
 {
-    type DataToken = T::Vertex;
+    type Vertex = T::Vertex;
 
     fn get_starting_tokens(
         &mut self,
@@ -170,7 +170,7 @@ where
         parameters: Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'token> {
+    ) -> Box<dyn Iterator<Item = Self::Vertex> + 'token> {
         <Self as BasicAdapter>::resolve_starting_vertices(
             self,
             edge.as_ref(),
@@ -180,12 +180,12 @@ where
 
     fn project_property(
         &mut self,
-        contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         current_type_name: std::sync::Arc<str>,
         field_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'token> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, FieldValue)> + 'token> {
         <Self as BasicAdapter>::resolve_property(
             self,
             contexts,
@@ -196,7 +196,7 @@ where
 
     fn project_neighbors(
         &mut self,
-        contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         current_type_name: std::sync::Arc<str>,
         edge_name: std::sync::Arc<str>,
         parameters: Option<std::sync::Arc<EdgeParameters>>,
@@ -206,8 +206,8 @@ where
     ) -> Box<
         dyn Iterator<
                 Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'token>,
+                    DataContext<Self::Vertex>,
+                    Box<dyn Iterator<Item = Self::Vertex> + 'token>,
                 ),
             > + 'token,
     > {
@@ -222,12 +222,12 @@ where
 
     fn can_coerce_to_type(
         &mut self,
-        contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'token>,
+        contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         current_type_name: std::sync::Arc<str>,
         coerce_to_type_name: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'token> {
+    ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'token> {
         <Self as BasicAdapter>::resolve_coercion(
             self,
             contexts,

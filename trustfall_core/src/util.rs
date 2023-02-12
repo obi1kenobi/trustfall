@@ -188,15 +188,15 @@ pub(crate) struct TestIRQuery {
 pub(crate) type TestIRQueryResult = Result<TestIRQuery, FrontendError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "DataToken: Serialize, for<'de2> DataToken: Deserialize<'de2>")]
-pub(crate) struct TestInterpreterOutputTrace<DataToken>
+#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+pub(crate) struct TestInterpreterOutputTrace<Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
     pub(crate) schema_name: String,
 
-    pub(crate) trace: Trace<DataToken>,
+    pub(crate) trace: Trace<Vertex>,
 
     pub(crate) results: Vec<BTreeMap<Arc<str>, FieldValue>>,
 }
