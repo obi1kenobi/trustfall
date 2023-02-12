@@ -405,7 +405,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let activated_vertex_iterator: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query> =
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
     let type_name = &expanding_from.type_name;
-    let edge_iterator = adapter_ref.project_neighbors(
+    let edge_iterator = adapter_ref.resolve_neighbors(
         activated_vertex_iterator,
         type_name.clone(),
         fold.edge_name.clone(),
@@ -1033,7 +1033,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
         self.ended = true;
 
         // If there's no current token, there couldn't possibly be neighbors.
-        // If this assertion trips, the adapter's project_neighbors() implementation illegally
+        // If this assertion trips, the adapter's resolve_neighbors() implementation illegally
         // returned neighbors for a non-existent vertex.
         if self.context.current_token.is_none() {
             assert!(!self.has_neighbors);
@@ -1118,7 +1118,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 
     let type_name = &expanding_from.type_name;
     let mut adapter_ref = adapter.borrow_mut();
-    let edge_iterator = adapter_ref.project_neighbors(
+    let edge_iterator = adapter_ref.resolve_neighbors(
         expanding_vertex_iterator,
         type_name.clone(),
         edge_name.clone(),
@@ -1261,7 +1261,7 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     iterator: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query>,
 ) -> Box<dyn Iterator<Item = DataContext<Vertex>> + 'query> {
     let mut adapter_ref = adapter.borrow_mut();
-    let edge_iterator = adapter_ref.project_neighbors(
+    let edge_iterator = adapter_ref.resolve_neighbors(
         iterator,
         expanding_from_type,
         edge_name.clone(),
@@ -1337,7 +1337,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
                 self.neighbors_ended = true;
 
                 // If there's no current token, there couldn't possibly be neighbors.
-                // If this assertion trips, the adapter's project_neighbors() implementation
+                // If this assertion trips, the adapter's resolve_neighbors() implementation
                 // illegally returned neighbors for a non-existent vertex.
                 if let Some(context) = &self.context {
                     if context.current_token.is_none() {

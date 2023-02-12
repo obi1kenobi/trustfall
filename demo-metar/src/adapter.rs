@@ -164,7 +164,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     }
 
     #[allow(clippy::type_complexity)]
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         type_name: Arc<str>,

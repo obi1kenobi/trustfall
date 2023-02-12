@@ -32,7 +32,7 @@ extern "C" {
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
-    pub fn project_neighbors(
+    pub fn resolve_neighbors(
         this: &JsAdapter,
         data_contexts: ContextIterator,
         type_name: &str,
@@ -288,7 +288,7 @@ impl Adapter<'static> for AdapterShim {
         Box::new(ContextAndValueIterator::new(js_iter, registry))
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
         type_name: Arc<str>,
@@ -309,7 +309,7 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let parameters: JsEdgeParameters = parameters.into();
 
-        let js_iter = self.inner.project_neighbors(
+        let js_iter = self.inner.resolve_neighbors(
             ctx_iter,
             type_name.as_ref(),
             edge_name.as_ref(),

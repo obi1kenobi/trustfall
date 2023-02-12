@@ -53,7 +53,7 @@ use wasm_bindgen::prelude::*;
 
         /*
         #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
-        pub fn project_neighbors(
+        pub fn resolve_neighbors(
             this: &JsAdapter,
             data_contexts: ContextIterator,
             type_name: &str,

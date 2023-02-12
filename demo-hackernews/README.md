@@ -52,7 +52,7 @@ The project consists of the following components:
     - The `resolve_starting_vertices` method is what produces the initial iterator of `Token` vertices
       corresponding to the root edge at which querying starts (e.g. `FrontPage`).
     - The `resolve_property` method is used to get property values for each `Token` in an iterator.
-    - The `project_neighbors` method is used to get the neighboring vertices (`Token`s)
+    - The `resolve_neighbors` method is used to get the neighboring vertices (`Token`s)
       across a particular edge, for each `Token` in an iterator.
     - The `can_coerce_to_type` method is kind of like the Python `isinstance()` function:
       for each `Token` in an iterable, it checks whether that `Token`'s type can be narrowed

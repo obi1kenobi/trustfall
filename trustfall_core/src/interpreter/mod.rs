@@ -396,7 +396,7 @@ pub trait Adapter<'token> {
 
     #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         type_name: Arc<str>,

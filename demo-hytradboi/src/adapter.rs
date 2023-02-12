@@ -366,7 +366,7 @@ impl Adapter<'static> for DemoAdapter {
         }
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         type_name: Arc<str>,

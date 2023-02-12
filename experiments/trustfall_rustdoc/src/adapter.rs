@@ -584,7 +584,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         }
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         type_name: Arc<str>,
@@ -634,7 +634,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 _ => {
-                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
+                    unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "Crate" => {
@@ -693,7 +693,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
 
                         (ctx, neighbors)
                     })),
-                    _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
+                    _ => unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}"),
                 }
             }
             "Importable" | "ImplOwner" | "Struct" | "Enum" | "Trait" | "Function"
@@ -767,7 +767,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                             (ctx, neighbors)
                         }))
                     }
-                    _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
+                    _ => unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}"),
                 }
             }
             "Item" | "ImplOwner" | "Struct" | "StructField" | "Enum" | "Variant"
@@ -810,7 +810,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
 
                         (ctx, neighbors)
                     })),
-                    _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
+                    _ => unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}"),
                 }
             }
             "ImplOwner" | "Struct" | "Enum"
@@ -899,7 +899,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     }))
                 }
                 _ => {
-                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
+                    unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "Enum" => match edge_name.as_ref() {
@@ -935,7 +935,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     }))
                 }
                 _ => {
-                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
+                    unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "StructField" => match edge_name.as_ref() {
@@ -955,7 +955,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 _ => {
-                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
+                    unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "Impl" => match edge_name.as_ref() {
@@ -1080,7 +1080,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     }))
                 }
                 _ => {
-                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
+                    unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
             "ImplementedTrait" => match edge_name.as_ref() {
@@ -1101,10 +1101,10 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 _ => {
-                    unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}")
+                    unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}")
                 }
             },
-            _ => unreachable!("project_neighbors {type_name} {edge_name} {parameters:?}"),
+            _ => unreachable!("resolve_neighbors {type_name} {edge_name} {parameters:?}"),
         }
     }
 

@@ -171,7 +171,7 @@ where
         )
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
         contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         type_name: std::sync::Arc<str>,
