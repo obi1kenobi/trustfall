@@ -121,7 +121,7 @@ macro_rules! project_property {
 macro_rules! neighbor_stub {
     ($ctxs:ident, $lt:lifetime, $token_variant:path $(| $other_variant:path)*, $token:ident, $impl:tt) => {
         Box::new($ctxs.map(move |ctx| {
-            let neighbors: Box<dyn Iterator<Item = Self::DataToken> + $lt> =
+            let neighbors: Box<dyn Iterator<Item = <Self as Adapter>::DataToken> + $lt> =
                 match &ctx.current_token {
                     Some($token_variant($token)) => $impl,
                     $( Some($other_variant($token)) => $impl, )*

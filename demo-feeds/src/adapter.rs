@@ -1,10 +1,11 @@
-use std::sync::Arc;
-
 use feed_rs::model::{Content, Entry, Feed, FeedType, Image, Link, Text};
 use trustfall_core::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
-    ir::{EdgeParameters, Eid, FieldValue, Vid},
-    project_neighbors, project_property,
+    field_property,
+    interpreter::{
+        basic_adapter::{BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator},
+        helpers::{resolve_neighbors_with as neighbors, resolve_property_with as property},
+    },
+    ir::{EdgeParameters, FieldValue},
 };
 
 #[derive(Debug)]
@@ -28,159 +29,181 @@ pub(crate) enum Token<'a> {
     FeedContent(&'a Content),
 }
 
-impl<'a> Adapter<'a> for FeedAdapter<'a> {
-    type DataToken = Token<'a>;
+macro_rules! impl_downcast {
+    ($name:ident, $output:ident, $arm:path) => {
+        fn $name(&self) -> Option<&'a $output> {
+            match self {
+                $arm(x) => Some(*x),
+                _ => None,
+            }
+        }
+    };
+}
 
-    fn get_starting_tokens(
+impl<'a> Token<'a> {
+    impl_downcast!(as_feed, Feed, Self::Feed);
+    impl_downcast!(as_feed_text, Text, Self::FeedText);
+    impl_downcast!(as_channel_image, Image, Self::ChannelImage);
+    impl_downcast!(as_feed_link, Link, Self::FeedLink);
+    impl_downcast!(as_feed_entry, Entry, Self::FeedEntry);
+    impl_downcast!(as_feed_content, Content, Self::FeedContent);
+}
+
+macro_rules! iterable {
+    ($conversion:ident, $field:ident, $neighbor_variant:path) => {
+        |vertex| -> VertexIterator<'a, Self::Vertex> {
+            let vertex = vertex.$conversion().expect("conversion failed");
+            let neighbors = vertex.$field.iter().map($neighbor_variant);
+            Box::new(neighbors)
+        }
+    };
+}
+
+impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
+    type Vertex = Token<'a>;
+
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        _parameters: Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'a> {
-        match edge.as_ref() {
+        edge_name: &str,
+        _parameters: Option<&EdgeParameters>,
+    ) -> VertexIterator<'a, Self::Vertex> {
+        match edge_name {
             "Feed" => Box::new(self.data.iter().map(Token::Feed)),
             "FeedAtUrl" => {
                 todo!()
             }
-            _ => unimplemented!("{}", edge),
+            _ => unimplemented!("{}", edge_name),
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'a>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'a> {
-        project_property! {
-            data_contexts, current_type_name, field_name, [
-                {
-                    Feed, Token::Feed, [
-                        id,
-                        updated,
-                        language,
-                        published,
-                        ttl,
-                        (feedType, token, {
-                            let value = match token.feed_type {
-                                FeedType::Atom => "Atom",
-                                FeedType::JSON => "JSON",
-                                FeedType::RSS0 => "RSS0",
-                                FeedType::RSS1 => "RSS1",
-                                FeedType::RSS2 => "RSS2",
-                            };
-                            value.to_owned().into()
-                        }),
-                    ],
-                },
-                {
-                    FeedText, Token::FeedText, [
-                        content,
-                        src,
-                        (contentType, token, {
-                            token.content_type.essence_str().to_owned().into()
-                        }),
-                    ],
-                },
-                {
-                    FeedEntry, Token::FeedEntry, [
-                        id,
-                        source,
-                        updated,
-                        published,
-                    ],
-                },
-                {
-                    FeedContent, Token::FeedContent, [
-                        body,
-                        length,
-                        (contentType, token, {
-                            token.content_type.essence_str().to_owned().into()
-                        }),
-                    ]
-                },
-                {
-                    FeedLink, Token::FeedLink, [
-                        href,
-                        rel,
-                        media_type,
-                        href_lang,
-                        title,
-                        length,
-                    ]
-                },
-                {
-                    ChannelImage, Token::ChannelImage, [
-                        uri,
-                        title,
-                        width,
-                        height,
-                        description,
-                    ],
-                },
-            ],
-        }
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn project_neighbors(
-        &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'a>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        _parameters: Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-        _edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'a>,
+        contexts: ContextIterator<'a, Self::Vertex>,
+        type_name: &str,
+        property_name: &str,
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+        match type_name {
+            "Feed" => match property_name {
+                "id" => property(contexts, field_property!(as_feed, id)),
+                "updated" => property(contexts, field_property!(as_feed, updated)),
+                "language" => property(contexts, field_property!(as_feed, language)),
+                "published" => property(contexts, field_property!(as_feed, published)),
+                "ttl" => property(contexts, field_property!(as_feed, ttl)),
+                "feed_type" => property(
+                    contexts,
+                    field_property!(as_feed, feed_type, {
+                        let value = match feed_type {
+                            FeedType::Atom => "Atom",
+                            FeedType::JSON => "JSON",
+                            FeedType::RSS0 => "RSS0",
+                            FeedType::RSS1 => "RSS1",
+                            FeedType::RSS2 => "RSS2",
+                        };
+                        value.to_owned().into()
+                    }),
                 ),
-            > + 'a,
-    > {
-        project_neighbors!(data_contexts, 'a, current_type_name, edge_name, [
-            {
-                Feed, Token::Feed, [
-                    (title, Token::FeedText),
-                    (description, Token::FeedText),
-                    (rights, Token::FeedText),
-                    (icon, Token::ChannelImage),
-                    (links, Token::FeedLink),
-                    (entries, Token::FeedEntry),
-                ],
-            }, {
-                FeedEntry, Token::FeedEntry, [
-                    (title, Token::FeedText),
-                    (content, Token::FeedContent),
-                    (links, Token::FeedLink),
-                    (summary, Token::FeedText),
-                    (rights, Token::FeedText),
-                ],
-            }, {
-                FeedContent, Token::FeedContent, [
-                    (src, Token::FeedLink),
-                ],
-            }, {
-                ChannelImage, Token::ChannelImage, [
-                    (link, Token::FeedLink),
-                ],
-            }
-        ])
+                _ => unreachable!("type {type_name} property {property_name} not found"),
+            },
+            "FeedText" => match property_name {
+                "content" => property(contexts, field_property!(as_feed_text, content)),
+                "src" => property(contexts, field_property!(as_feed_text, src)),
+                "content_type" => property(
+                    contexts,
+                    field_property!(as_feed_text, content_type, {
+                        content_type.essence_str().to_owned().into()
+                    }),
+                ),
+                _ => unreachable!("type {type_name} property {property_name} not found"),
+            },
+            "FeedEntry" => match property_name {
+                "id" => property(contexts, field_property!(as_feed_entry, id)),
+                "source" => property(contexts, field_property!(as_feed_entry, source)),
+                "updated" => property(contexts, field_property!(as_feed_entry, updated)),
+                "published" => property(contexts, field_property!(as_feed_entry, published)),
+                _ => unreachable!("type {type_name} property {property_name} not found"),
+            },
+            "FeedContent" => match property_name {
+                "body" => property(contexts, field_property!(as_feed_content, body)),
+                "length" => property(contexts, field_property!(as_feed_content, length)),
+                "content_type" => property(
+                    contexts,
+                    field_property!(as_feed_content, content_type, {
+                        content_type.essence_str().to_owned().into()
+                    }),
+                ),
+                _ => unreachable!("type {type_name} property {property_name} not found"),
+            },
+            "FeedLink" => match property_name {
+                "href" => property(contexts, field_property!(as_feed_link, href)),
+                "rel" => property(contexts, field_property!(as_feed_link, rel)),
+                "media_type" => property(contexts, field_property!(as_feed_link, media_type)),
+                "href_lang" => property(contexts, field_property!(as_feed_link, href_lang)),
+                "title" => property(contexts, field_property!(as_feed_link, title)),
+                "length" => property(contexts, field_property!(as_feed_link, length)),
+                _ => unreachable!("type {type_name} property {property_name} not found"),
+            },
+            "ChannelImage" => match property_name {
+                "uri" => property(contexts, field_property!(as_channel_image, uri)),
+                "title" => property(contexts, field_property!(as_channel_image, title)),
+                "width" => property(contexts, field_property!(as_channel_image, width)),
+                "height" => property(contexts, field_property!(as_channel_image, height)),
+                "description" => property(contexts, field_property!(as_channel_image, description)),
+                _ => unreachable!("type {type_name} property {property_name} not found"),
+            },
+            _ => unreachable!("type {type_name} not found"),
+        }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_neighbors(
         &mut self,
-        _data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'a>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'a> {
-        unimplemented!("{} -> {}", current_type_name, coerce_to_type_name)
+        contexts: ContextIterator<'a, Self::Vertex>,
+        type_name: &str,
+        edge_name: &str,
+        _parameters: Option<&EdgeParameters>,
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+        match type_name {
+            "Feed" => match edge_name {
+                "title" => neighbors(contexts, iterable!(as_feed, title, Token::FeedText)),
+                "description" => {
+                    neighbors(contexts, iterable!(as_feed, description, Token::FeedText))
+                }
+                "rights" => neighbors(contexts, iterable!(as_feed, rights, Token::FeedText)),
+                "icon" => neighbors(contexts, iterable!(as_feed, icon, Token::ChannelImage)),
+                "links" => neighbors(contexts, iterable!(as_feed, links, Token::FeedLink)),
+                "entries" => neighbors(contexts, iterable!(as_feed, entries, Token::FeedEntry)),
+                _ => unreachable!("type {type_name} edge {edge_name} not found"),
+            },
+            "FeedEntry" => match edge_name {
+                "title" => neighbors(contexts, iterable!(as_feed_entry, title, Token::FeedText)),
+                "content" => neighbors(
+                    contexts,
+                    iterable!(as_feed_entry, content, Token::FeedContent),
+                ),
+                "links" => neighbors(contexts, iterable!(as_feed_entry, links, Token::FeedLink)),
+                "summary" => {
+                    neighbors(contexts, iterable!(as_feed_entry, summary, Token::FeedText))
+                }
+                "rights" => neighbors(contexts, iterable!(as_feed_entry, rights, Token::FeedText)),
+                _ => unreachable!("type {type_name} edge {edge_name} not found"),
+            },
+            "FeedContent" => match edge_name {
+                "src" => neighbors(contexts, iterable!(as_feed_content, src, Token::FeedLink)),
+                _ => unreachable!("type {type_name} edge {edge_name} not found"),
+            },
+            "ChannelImage" => match edge_name {
+                "link" => neighbors(contexts, iterable!(as_channel_image, link, Token::FeedLink)),
+                _ => unreachable!("type {type_name} edge {edge_name} not found"),
+            },
+            _ => unreachable!("type {type_name} not found"),
+        }
+    }
+
+    fn resolve_coercion(
+        &mut self,
+        _contexts: ContextIterator<'a, Self::Vertex>,
+        type_name: &str,
+        coerce_to_type: &str,
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+        unimplemented!("{type_name} -> {coerce_to_type}")
     }
 }
