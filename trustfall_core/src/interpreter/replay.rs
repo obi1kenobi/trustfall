@@ -488,7 +488,7 @@ where
         }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'trace>,
         type_name: Arc<str>,
@@ -497,7 +497,7 @@ where
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'trace> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a can_coerce_to_type() call operation, but found none.");
+            .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
         if let TraceOpContent::Call(FunctionCall::CanCoerceToType(vid, from_type, to_type)) =

@@ -694,7 +694,7 @@ impl Adapter<'static> for DemoAdapter {
         }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>>>,
         type_name: Arc<str>,

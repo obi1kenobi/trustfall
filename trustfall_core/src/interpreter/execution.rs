@@ -95,13 +95,8 @@ where
     Vertex: Clone + Debug + 'query,
 {
     let mut adapter_ref = adapter.borrow_mut();
-    let coercion_iter = adapter_ref.can_coerce_to_type(
-        iterator,
-        coerced_from,
-        coerce_to,
-        query.clone(),
-        vertex.vid,
-    );
+    let coercion_iter =
+        adapter_ref.resolve_coercion(iterator, coerced_from, coerce_to, query.clone(), vertex.vid);
 
     Box::new(coercion_iter.filter_map(
         |(ctx, can_coerce)| {
@@ -1210,7 +1205,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     for _ in 2..=max_depth {
         if let Some(coerce_to) = recursive.coerce_to.as_ref() {
             let mut adapter_ref = adapter.borrow_mut();
-            let coercion_iter = adapter_ref.can_coerce_to_type(
+            let coercion_iter = adapter_ref.resolve_coercion(
                 recursion_iterator,
                 edge_endpoint_type.clone(),
                 coerce_to.clone(),

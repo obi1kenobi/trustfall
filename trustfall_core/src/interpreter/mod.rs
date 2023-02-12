@@ -414,7 +414,7 @@ pub trait Adapter<'token> {
             > + 'token,
     >;
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         type_name: Arc<str>,

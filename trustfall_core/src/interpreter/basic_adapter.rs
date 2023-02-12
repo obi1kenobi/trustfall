@@ -197,7 +197,7 @@ where
         )
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         type_name: std::sync::Arc<str>,

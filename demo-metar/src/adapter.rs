@@ -204,7 +204,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     }
 
     #[allow(unused_variables)]
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         type_name: Arc<str>,

@@ -449,7 +449,7 @@ where
         )
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'token>,
         type_name: Arc<str>,
@@ -491,7 +491,7 @@ where
                 context
             }),
         );
-        let inner_iter = self.inner.can_coerce_to_type(
+        let inner_iter = self.inner.resolve_coercion(
             wrapped_contexts,
             type_name,
             coerce_to_type_name,

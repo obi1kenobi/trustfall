@@ -1108,7 +1108,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'a>,
         type_name: Arc<str>,
@@ -1148,7 +1148,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, can_coerce)
                 }))
             }
-            _ => unreachable!("can_coerce_to_type {type_name} {coerce_to_type_name}"),
+            _ => unreachable!("resolve_coercion {type_name} {coerce_to_type_name}"),
         }
     }
 }

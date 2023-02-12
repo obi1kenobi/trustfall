@@ -166,7 +166,7 @@ type Letter implements Named {
 
         /*
         #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
-        pub fn can_coerce_to_type(
+        pub fn resolve_coercion(
             this: &JsAdapter,
             data_contexts: ContextIterator,
             type_name: &str,

@@ -54,10 +54,10 @@ The project consists of the following components:
     - The `resolve_property` method is used to get property values for each `Token` in an iterator.
     - The `resolve_neighbors` method is used to get the neighboring vertices (`Token`s)
       across a particular edge, for each `Token` in an iterator.
-    - The `can_coerce_to_type` method is kind of like the Python `isinstance()` function:
+    - The `resolve_coercion` method is kind of like the Python `isinstance()` function:
       for each `Token` in an iterable, it checks whether that `Token`'s type can be narrowed
       to a more derived type than it previously represented. For example, if the `Token` originally
-      represented `interface Animal`, `can_coerce_to_type` may be used to check whether the `Token`
+      represented `interface Animal`, `resolve_coercion` may be used to check whether the `Token`
       is actually of `type Dog implements Animal`.
 - `main.rs` is a simple CLI app that can execute query files in `ron` format.
 

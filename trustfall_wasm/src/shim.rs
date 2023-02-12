@@ -214,7 +214,7 @@ pub struct ReturnedContextIdAndValue {
 }
 
 /// The (context, can_coerce) iterator item returned by the WASM version
-/// of the can_coerce_to_type() adapter method.
+/// of the resolve_coercion() adapter method.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReturnedContextIdAndBool {
     #[serde(rename = "localId")]

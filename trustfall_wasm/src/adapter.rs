@@ -41,7 +41,7 @@ extern "C" {
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
-    pub fn can_coerce_to_type(
+    pub fn resolve_coercion(
         this: &JsAdapter,
         data_contexts: ContextIterator,
         type_name: &str,
@@ -322,7 +322,7 @@ impl Adapter<'static> for AdapterShim {
         ))
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
         data_contexts: Box<dyn Iterator<Item = DataContext<Self::Vertex>> + 'static>,
         type_name: Arc<str>,
@@ -332,11 +332,9 @@ impl Adapter<'static> for AdapterShim {
     ) -> Box<dyn Iterator<Item = (DataContext<Self::Vertex>, bool)> + 'static> {
         let ctx_iter = ContextIterator::new(data_contexts);
         let registry = ctx_iter.registry.clone();
-        let js_iter = self.inner.can_coerce_to_type(
-            ctx_iter,
-            type_name.as_ref(),
-            coerce_to_type_name.as_ref(),
-        );
+        let js_iter =
+            self.inner
+                .resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type_name.as_ref());
         Box::new(ContextAndBoolIterator::new(js_iter, registry))
     }
 }
