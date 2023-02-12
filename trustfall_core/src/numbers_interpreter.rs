@@ -4,9 +4,11 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
+        Adapter, DataContext, InterpretedQuery,
+    },
     ir::{EdgeParameters, Eid, FieldValue, Vid},
-    project_property,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,6 +98,24 @@ impl Number for CompositeNumber {
 
     fn value(&self) -> i64 {
         self.0
+    }
+}
+
+impl Number for NumbersToken {
+    fn typename(&self) -> &'static str {
+        match self {
+            NumbersToken::Neither(x) => x.typename(),
+            NumbersToken::Prime(x) => x.typename(),
+            NumbersToken::Composite(x) => x.typename(),
+        }
+    }
+
+    fn value(&self) -> i64 {
+        match self {
+            NumbersToken::Neither(x) => x.value(),
+            NumbersToken::Prime(x) => x.value(),
+            NumbersToken::Composite(x) => x.value(),
+        }
     }
 }
 
@@ -199,32 +219,22 @@ impl Adapter<'static> for NumbersAdapter {
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
-        project_property! {
-            data_contexts, current_type_name, field_name, [
-                {
-                    Number | Prime | Composite,
-                    NumbersToken::Neither | NumbersToken::Prime | NumbersToken::Composite, [
-                        (value, token, {
-                            FieldValue::Int64(token.value())
-                        }),
-                        (name, token, {
-                            match token.name() {
-                                None => FieldValue::Null,
-                                Some(x) => FieldValue::String(x.to_string()),
-                            }
-                        }),
-                        (vowelsInName, token, {
-                            match token.vowels_in_name() {
-                                None => FieldValue::Null,
-                                Some(v) => FieldValue::List(v.into_iter().map(FieldValue::String).collect_vec()),
-                            }
-                        }),
-                        (__typename, token, {
-                            token.typename().into()
-                        })
-                    ],
-                }
-            ]
+        match (current_type_name.as_ref(), field_name.as_ref()) {
+            ("Number" | "Prime" | "Composite" | "Neither", "value") => {
+                resolve_property_with(data_contexts, |vertex| vertex.value().into())
+            }
+            ("Number" | "Prime" | "Composite" | "Neither", "name") => {
+                resolve_property_with(data_contexts, |vertex| vertex.name().into())
+            }
+            ("Number" | "Prime" | "Composite" | "Neither", "vowelsInName") => {
+                resolve_property_with(data_contexts, |vertex| vertex.vowels_in_name().into())
+            }
+            ("Number" | "Prime" | "Composite" | "Neither", "__typename") => {
+                resolve_property_with(data_contexts, |vertex| vertex.typename().into())
+            }
+            (type_name, property_name) => {
+                unreachable!("failed to resolve type {type_name} property {property_name}")
+            }
         }
     }
 
@@ -247,55 +257,37 @@ impl Adapter<'static> for NumbersAdapter {
         >,
     > {
         let mut primes = btreeset![2, 3];
-        match (edge_name.as_ref(), current_type_name.as_ref()) {
-            ("predecessor", "Number" | "Prime" | "Composite") => {
-                Box::new(data_contexts.map(move |ctx| {
-                    let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match &ctx
-                        .current_token
-                    {
-                        None => Box::new(std::iter::empty()),
-                        Some(token) => {
-                            let value = match &token {
-                                NumbersToken::Neither(inner) => inner.value(),
-                                NumbersToken::Prime(inner) => inner.value(),
-                                NumbersToken::Composite(inner) => inner.value(),
-                            };
-                            if value > 0 {
-                                Box::new(std::iter::once(make_number_token(&mut primes, value - 1)))
-                            } else {
-                                Box::new(std::iter::empty())
-                            }
-                        }
+        match (current_type_name.as_ref(), edge_name.as_ref()) {
+            ("Number" | "Prime" | "Composite", "predecessor") => {
+                resolve_neighbors_with(data_contexts, move |vertex| {
+                    let value = match &vertex {
+                        NumbersToken::Neither(inner) => inner.value(),
+                        NumbersToken::Prime(inner) => inner.value(),
+                        NumbersToken::Composite(inner) => inner.value(),
                     };
-
-                    (ctx, neighbors)
-                }))
+                    if value > 0 {
+                        Box::new(std::iter::once(make_number_token(&mut primes, value - 1)))
+                    } else {
+                        Box::new(std::iter::empty())
+                    }
+                })
             }
-            ("successor", "Number" | "Prime" | "Composite") => {
-                Box::new(data_contexts.map(move |ctx| {
-                    let neighbors: Box<dyn Iterator<Item = NumbersToken>> = match &ctx.current_token
-                    {
-                        None => Box::new(std::iter::empty()),
-                        Some(token) => {
-                            let value = match &token {
-                                NumbersToken::Neither(inner) => inner.value(),
-                                NumbersToken::Prime(inner) => inner.value(),
-                                NumbersToken::Composite(inner) => inner.value(),
-                            };
-                            Box::new(std::iter::once(make_number_token(&mut primes, value + 1)))
-                        }
+            ("Number" | "Prime" | "Composite", "successor") => {
+                resolve_neighbors_with(data_contexts, move |vertex| {
+                    let value = match &vertex {
+                        NumbersToken::Neither(inner) => inner.value(),
+                        NumbersToken::Prime(inner) => inner.value(),
+                        NumbersToken::Composite(inner) => inner.value(),
                     };
-
-                    (ctx, neighbors)
-                }))
+                    Box::new(std::iter::once(make_number_token(&mut primes, value + 1)))
+                })
             }
-            ("multiple", "Number" | "Prime" | "Composite") => {
-                Box::new(data_contexts.map(move |ctx| {
-                    let neighbors: Box<dyn Iterator<Item = NumbersToken>> = match &ctx.current_token
-                    {
-                        None | Some(NumbersToken::Neither(..)) => Box::new(std::iter::empty()),
-                        Some(NumbersToken::Prime(token)) => {
-                            let value = token.0;
+            ("Number" | "Prime" | "Composite", "multiple") => {
+                resolve_neighbors_with(data_contexts, move |vertex| {
+                    match vertex {
+                        NumbersToken::Neither(..) => Box::new(std::iter::empty()),
+                        NumbersToken::Prime(vertex) => {
+                            let value = vertex.0;
                             let mut local_primes = primes.clone();
 
                             let max_multiple =
@@ -310,8 +302,8 @@ impl Adapter<'static> for NumbersAdapter {
                                 make_number_token(&mut local_primes, next_value)
                             }))
                         }
-                        Some(NumbersToken::Composite(token)) => {
-                            let value = token.0;
+                        NumbersToken::Composite(vertex) => {
+                            let value = vertex.0;
                             let mut local_primes = primes.clone();
 
                             let max_multiple =
@@ -321,16 +313,13 @@ impl Adapter<'static> for NumbersAdapter {
                                 make_number_token(&mut local_primes, next_value)
                             }))
                         }
-                    };
-
-                    (ctx, neighbors)
-                }))
+                    }
+                })
             }
-            ("primeFactor", "Composite") => Box::new(data_contexts.map(move |ctx| {
-                let neighbors: Box<dyn Iterator<Item = NumbersToken>> = match &ctx.current_token {
-                    None => Box::new(std::iter::empty()),
-                    Some(NumbersToken::Composite(token)) => {
-                        let factors = &token.1;
+            ("Composite", "primeFactor") => {
+                resolve_neighbors_with(data_contexts, move |vertex| match vertex {
+                    NumbersToken::Composite(vertex) => {
+                        let factors = &vertex.1;
                         Box::new(
                             factors
                                 .iter()
@@ -339,16 +328,13 @@ impl Adapter<'static> for NumbersAdapter {
                                 .into_iter(),
                         )
                     }
-                    _ => unreachable!("primeFactor Composite {:?}", ctx.current_token),
-                };
-
-                (ctx, neighbors)
-            })),
-            ("divisor", "Composite") => Box::new(data_contexts.map(move |ctx| {
-                let neighbors: Box<dyn Iterator<Item = NumbersToken>> = match &ctx.current_token {
-                    None => Box::new(std::iter::empty()),
-                    Some(NumbersToken::Composite(token)) => {
-                        let value = token.0;
+                    _ => unreachable!("{vertex:?}"),
+                })
+            }
+            ("Composite", "divisor") => {
+                resolve_neighbors_with(data_contexts, move |vertex| match vertex {
+                    NumbersToken::Composite(vertex) => {
+                        let value = vertex.0;
                         if value <= 0 {
                             Box::new(std::iter::empty())
                         } else {
@@ -366,11 +352,9 @@ impl Adapter<'static> for NumbersAdapter {
                             )
                         }
                     }
-                    _ => unreachable!("divisor Composite {:?}", ctx.current_token),
-                };
-
-                (ctx, neighbors)
-            })),
+                    _ => unreachable!("{vertex:?}"),
+                })
+            }
             _ => {
                 unreachable!(
                     "Unexpected edge {} on vertex type {}",
@@ -389,16 +373,12 @@ impl Adapter<'static> for NumbersAdapter {
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
         match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
-            ("Number", "Prime") => Box::new(data_contexts.map(move |context| {
-                let token = &context.current_token;
-                let can_coerce = matches!(token, Some(NumbersToken::Prime(..)));
-                (context, can_coerce)
-            })),
-            ("Number", "Composite") => Box::new(data_contexts.map(move |context| {
-                let token = &context.current_token;
-                let can_coerce = matches!(token, Some(NumbersToken::Composite(..)));
-                (context, can_coerce)
-            })),
+            ("Number", "Prime") => resolve_coercion_with(data_contexts, |vertex| {
+                matches!(vertex, NumbersToken::Prime(..))
+            }),
+            ("Number", "Composite") => resolve_coercion_with(data_contexts, |vertex| {
+                matches!(vertex, NumbersToken::Composite(..))
+            }),
             _ => unimplemented!(
                 "Unexpected coercion attempted: {} {}",
                 current_type_name,
