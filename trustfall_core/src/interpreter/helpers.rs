@@ -67,9 +67,7 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 macro_rules! field_property {
     // If the data is a field directly on the vertex type.
     ($field:ident) => {
-        |vertex| -> FieldValue {
-            (&vertex.$field).into()
-        }
+        |vertex| -> FieldValue { (&vertex.$field).into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
@@ -94,9 +92,7 @@ macro_rules! field_property {
 macro_rules! accessor_property {
     // If the data is available as an accessor method on the vertex type.
     ($accessor:ident) => {
-        |vertex| -> FieldValue {
-            (&vertex.$accessor()).into()
-        }
+        |vertex| -> FieldValue { (&vertex.$accessor()).into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before using the accessor.
