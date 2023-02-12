@@ -256,14 +256,14 @@ fn directory_subdirectory_handler(
 impl Adapter<'static> for FilesystemInterpreter {
     type Vertex = FilesystemToken;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
+        edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = FilesystemToken>> {
-        assert!(edge.as_ref() == "OriginDirectory");
+        assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_none());
         let token = DirectoryToken {
             name: "<origin>".to_owned(),

@@ -258,9 +258,9 @@ impl AdapterShim {
 impl Adapter<'static> for AdapterShim {
     type Vertex = JsValue;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
+        edge_name: Arc<str>,
         parameters: Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
@@ -268,7 +268,7 @@ impl Adapter<'static> for AdapterShim {
         let parameters: JsEdgeParameters = parameters.into();
         let js_iter = self
             .inner
-            .get_starting_tokens(edge.as_ref(), parameters.into_js_dict());
+            .get_starting_tokens(edge_name.as_ref(), parameters.into_js_dict());
         Box::new(TokenIterator::new(js_iter.into_iter()))
     }
 

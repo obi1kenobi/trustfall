@@ -5,12 +5,9 @@ use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
-        basic_adapter::{
-            BasicAdapter, ContextIterator as BaseContextIterator, ContextOutcomeIterator,
-            VertexIterator,
-        },
-        execution::interpret_ir,
-        DataContext,
+        basic_adapter::BasicAdapter, execution::interpret_ir,
+        ContextIterator as BaseContextIterator, ContextOutcomeIterator, DataContext,
+        VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };

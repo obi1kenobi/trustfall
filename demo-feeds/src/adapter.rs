@@ -2,8 +2,9 @@ use feed_rs::model::{Content, Entry, Feed, FeedType, Image, Link, Text};
 use trustfall_core::{
     field_property,
     interpreter::{
-        basic_adapter::{BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator},
+        basic_adapter::BasicAdapter,
         helpers::{resolve_neighbors_with as neighbors, resolve_property_with as property},
+        ContextIterator, ContextOutcomeIterator, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };

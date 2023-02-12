@@ -45,7 +45,7 @@ where
     let mut adapter_ref = adapter.borrow_mut();
     let mut iterator: Box<dyn Iterator<Item = DataContext<Vertex>> + 'query> = Box::new(
         adapter_ref
-            .get_starting_tokens(
+            .resolve_starting_vertices(
                 root_edge.clone(),
                 root_edge_parameters.clone(),
                 query.clone(),

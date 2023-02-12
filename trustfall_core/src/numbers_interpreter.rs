@@ -175,15 +175,15 @@ pub(crate) struct NumbersAdapter;
 impl Adapter<'static> for NumbersAdapter {
     type Vertex = NumbersToken;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
+        edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::Vertex>> {
         let mut primes = btreeset![2, 3];
-        match edge.as_ref() {
+        match edge_name.as_ref() {
             "Zero" => Box::new(std::iter::once(make_number_token(&mut primes, 0))),
             "One" => Box::new(std::iter::once(make_number_token(&mut primes, 1))),
             "Two" => Box::new(std::iter::once(make_number_token(&mut primes, 2))),
@@ -207,7 +207,7 @@ impl Adapter<'static> for NumbersAdapter {
                     )
                 }
             }
-            _ => unimplemented!("{}", edge),
+            _ => unimplemented!("{edge_name}"),
         }
     }
 

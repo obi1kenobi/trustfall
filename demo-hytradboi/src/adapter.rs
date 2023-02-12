@@ -191,14 +191,14 @@ macro_rules! impl_property {
 impl Adapter<'static> for DemoAdapter {
     type Vertex = Token;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
+        edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::Vertex>> {
-        match edge.as_ref() {
+        match edge_name.as_ref() {
             "HackerNewsFrontPage" => self.front_page(),
             "HackerNewsTop" => {
                 // TODO: This is unergonomic, build a more convenient API here.

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::ir::FieldValue;
 
-use super::basic_adapter::{ContextIterator, ContextOutcomeIterator, VertexIterator};
+use super::{ContextIterator, ContextOutcomeIterator, VertexIterator};
 
 /// Helper for implementing [`BasicAdapter::resolve_property`] and equivalents.
 ///

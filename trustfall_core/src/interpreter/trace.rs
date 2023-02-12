@@ -236,7 +236,7 @@ where
 {
     type Vertex = Vertex;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
         edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
@@ -252,7 +252,7 @@ where
 
         let inner_iter =
             self.inner
-                .get_starting_tokens(edge_name, parameters, query_hint, vertex_hint);
+                .resolve_starting_vertices(edge_name, parameters, query_hint, vertex_hint);
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
         Box::new(

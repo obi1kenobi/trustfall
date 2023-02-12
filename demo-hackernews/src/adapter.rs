@@ -4,8 +4,9 @@ use hn_api::{types::Item, HnClient};
 use trustfall_core::{
     field_property,
     interpreter::{
-        basic_adapter::{BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator},
+        basic_adapter::BasicAdapter,
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
+        ContextIterator, ContextOutcomeIterator, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };

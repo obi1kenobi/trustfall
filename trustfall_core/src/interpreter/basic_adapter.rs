@@ -2,32 +2,9 @@ use std::fmt::Debug;
 
 use crate::ir::{EdgeParameters, Eid, FieldValue, Vid};
 
-use super::{Adapter, DataContext, InterpretedQuery};
-
-/// An iterator of vertices representing data points we are querying.
-pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
-
-/// An iterator of query contexts: bookkeeping structs we use to build up the query results.
-///
-/// Each context represents a possible result of the query. At each query processing step,
-/// all the contexts at that step have fulfilled all the query conditions thus far.
-///
-/// This type is usually an input to adapter resolver functions. Calling those functions
-/// asks them to resolve a property, edge, or type coercion for the particular vertex
-/// the context is currently processing at that point in the query.
-pub type ContextIterator<'vertex, VertexT> =
-    Box<dyn Iterator<Item = DataContext<VertexT>> + 'vertex>;
-
-/// Iterator of (context, outcome) tuples: the output type of most resolver functions.
-///
-/// Resolver functions produce an output value for each context:
-/// - resolve_property() produces that property's value;
-/// - resolve_neighbors() produces an iterator of neighboring vertices along an edge;
-/// - resolve_coercion() gives a bool representing whether the vertex is of the desired type.
-///
-/// This type lets us write those output types in a slightly more readable way.
-pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
-    Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
+use super::{
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery, VertexIterator,
+};
 
 pub trait BasicAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
@@ -164,16 +141,16 @@ where
 {
     type Vertex = T::Vertex;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: std::sync::Arc<str>,
+        edge_name: std::sync::Arc<str>,
         parameters: Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::Vertex> + 'token> {
         <Self as BasicAdapter>::resolve_starting_vertices(
             self,
-            edge.as_ref(),
+            edge_name.as_ref(),
             parameters.as_deref(),
         )
     }

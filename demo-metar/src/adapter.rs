@@ -69,14 +69,14 @@ macro_rules! float_field {
 impl<'a> Adapter<'a> for MetarAdapter<'a> {
     type Vertex = Token<'a>;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
+        edge_name: Arc<str>,
         parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::Vertex> + 'a> {
-        match edge.as_ref() {
+        match edge_name.as_ref() {
             "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
             "LatestMetarReportForAirport" => {
                 let station_code = match parameters

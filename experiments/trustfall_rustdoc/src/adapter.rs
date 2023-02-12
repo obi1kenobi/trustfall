@@ -469,14 +469,14 @@ fn property_mapper<'a>(
 impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     type Vertex = Token<'a>;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
+        edge_name: Arc<str>,
         _parameters: Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> Box<dyn Iterator<Item = Self::Vertex> + 'a> {
-        match edge.as_ref() {
+        match edge_name.as_ref() {
             "Crate" => Box::new(std::iter::once(Token::new_crate(
                 Origin::CurrentCrate,
                 self.current_crate,
@@ -488,7 +488,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     kind: TokenKind::CrateDiff((self.current_crate, previous_crate)),
                 }))
             }
-            _ => unreachable!("{edge}"),
+            _ => unreachable!("{edge_name}"),
         }
     }
 
