@@ -195,8 +195,8 @@ impl Adapter<'static> for DemoAdapter {
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> VertexIterator<'static, Self::Vertex> {
@@ -205,6 +205,7 @@ impl Adapter<'static> for DemoAdapter {
             "HackerNewsTop" => {
                 // TODO: This is unergonomic, build a more convenient API here.
                 let max = parameters
+                    .as_deref()
                     .unwrap()
                     .0
                     .get("max")
@@ -214,6 +215,7 @@ impl Adapter<'static> for DemoAdapter {
             "HackerNewsLatestStories" => {
                 // TODO: This is unergonomic, build a more convenient API here.
                 let max = parameters
+                    .as_deref()
                     .unwrap()
                     .0
                     .get("max")
@@ -232,12 +234,12 @@ impl Adapter<'static> for DemoAdapter {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
-        match (type_name.as_ref(), field_name.as_ref()) {
+        match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
                 let value = match ctx.current_token.as_ref() {
                     Some(token) => token.typename().into(),
@@ -371,9 +373,9 @@ impl Adapter<'static> for DemoAdapter {
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        _parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        _parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
@@ -692,11 +694,13 @@ impl Adapter<'static> for DemoAdapter {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+        let type_name = type_name.clone();
+        let coerce_to_type = coerce_to_type.clone();
         let iterator = contexts.map(move |ctx| {
             let token = match &ctx.current_token {
                 Some(t) => t,

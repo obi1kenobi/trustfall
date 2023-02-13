@@ -73,8 +73,8 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> VertexIterator<'a, Self::Vertex> {
@@ -106,14 +106,14 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "MetarReport" => {
-                match field_name.as_ref() {
+                match property_name.as_ref() {
                     // TODO: implement __typename
                     "stationId" => non_float_field!(contexts, Token::MetarReport, station_id),
                     "rawReport" => non_float_field!(contexts, Token::MetarReport, raw_report),
@@ -152,7 +152,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                 }
             }
             "MetarCloudCover" => {
-                match field_name.as_ref() {
+                match property_name.as_ref() {
                     // TODO: implement __typename
                     "skyCover" => non_float_field!(contexts, Token::CloudCover, sky_cover),
                     "baseAltitude" => {
@@ -168,9 +168,9 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
@@ -200,8 +200,8 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {

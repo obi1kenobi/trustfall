@@ -260,12 +260,12 @@ impl Adapter<'static> for AdapterShim {
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<CoreEdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> VertexIterator<'static, Self::Vertex> {
-        let parameters: JsEdgeParameters = parameters.into();
+        let parameters: JsEdgeParameters = parameters.clone().into();
         let js_iter = self
             .inner
             .resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
@@ -275,8 +275,8 @@ impl Adapter<'static> for AdapterShim {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
@@ -284,23 +284,23 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner
-                .resolve_property(ctx_iter, type_name.as_ref(), field_name.as_ref());
+                .resolve_property(ctx_iter, type_name.as_ref(), property_name.as_ref());
         Box::new(ContextAndValueIterator::new(js_iter, registry))
     }
 
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<CoreEdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
-        let parameters: JsEdgeParameters = parameters.into();
+        let parameters: JsEdgeParameters = parameters.clone().into();
 
         let js_iter = self.inner.resolve_neighbors(
             ctx_iter,
@@ -318,8 +318,8 @@ impl Adapter<'static> for AdapterShim {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {

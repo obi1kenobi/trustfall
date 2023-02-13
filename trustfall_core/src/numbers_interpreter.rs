@@ -177,8 +177,8 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> VertexIterator<'static, Self::Vertex> {
@@ -189,7 +189,7 @@ impl Adapter<'static> for NumbersAdapter {
             "Two" => Box::new(std::iter::once(make_number_token(&mut primes, 2))),
             "Four" => Box::new(std::iter::once(make_number_token(&mut primes, 4))),
             "Number" | "NumberImplicitNullDefault" => {
-                let parameters = &parameters.unwrap().0;
+                let parameters = &parameters.as_deref().unwrap().0;
                 let min_value = parameters
                     .get("min")
                     .and_then(FieldValue::as_i64)
@@ -214,12 +214,12 @@ impl Adapter<'static> for NumbersAdapter {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
-        match (type_name.as_ref(), field_name.as_ref()) {
+        match (type_name.as_ref(), property_name.as_ref()) {
             ("Number" | "Prime" | "Composite" | "Neither", "value") => {
                 resolve_property_with(contexts, |vertex| vertex.value().into())
             }
@@ -241,14 +241,15 @@ impl Adapter<'static> for NumbersAdapter {
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
+        let parameters = parameters.clone();
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Number" | "Prime" | "Composite", "predecessor") => {
                 resolve_neighbors_with(contexts, move |vertex| {
@@ -359,8 +360,8 @@ impl Adapter<'static> for NumbersAdapter {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {

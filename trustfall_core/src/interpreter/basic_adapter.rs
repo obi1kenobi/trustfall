@@ -141,8 +141,8 @@ where
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: std::sync::Arc<str>,
-        parameters: Option<std::sync::Arc<EdgeParameters>>,
+        edge_name: &std::sync::Arc<str>,
+        parameters: &Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> VertexIterator<'vertex, Self::Vertex> {
@@ -156,8 +156,8 @@ where
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
-        type_name: std::sync::Arc<str>,
-        field_name: std::sync::Arc<str>,
+        type_name: &std::sync::Arc<str>,
+        property_name: &std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
@@ -165,16 +165,16 @@ where
             self,
             contexts,
             type_name.as_ref(),
-            field_name.as_ref(),
+            property_name.as_ref(),
         )
     }
 
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
-        type_name: std::sync::Arc<str>,
-        edge_name: std::sync::Arc<str>,
-        parameters: Option<std::sync::Arc<EdgeParameters>>,
+        type_name: &std::sync::Arc<str>,
+        edge_name: &std::sync::Arc<str>,
+        parameters: &Option<std::sync::Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
@@ -191,8 +191,8 @@ where
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
-        type_name: std::sync::Arc<str>,
-        coerce_to_type: std::sync::Arc<str>,
+        type_name: &std::sync::Arc<str>,
+        coerce_to_type: &std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {

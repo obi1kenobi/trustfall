@@ -49,8 +49,8 @@ where
     let mut iterator: ContextIterator<'query, Vertex> = Box::new(
         adapter_ref
             .resolve_starting_vertices(
-                root_edge.clone(),
-                root_edge_parameters.clone(),
+                root_edge,
+                root_edge_parameters,
                 query.clone(),
                 ir_query.root_component.root,
             )
@@ -79,8 +79,8 @@ where
             adapter,
             query,
             vertex,
-            coerced_from.clone(),
-            vertex.type_name.clone(),
+            coerced_from,
+            &vertex.type_name,
             iterator,
         ),
     }
@@ -90,8 +90,8 @@ fn perform_coercion<'query, Vertex>(
     adapter: &RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>,
     query: &InterpretedQuery,
     vertex: &IRVertex,
-    coerced_from: Arc<str>,
-    coerce_to: Arc<str>,
+    coerced_from: &Arc<str>,
+    coerce_to: &Arc<str>,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex>
 where
@@ -223,8 +223,8 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
         let mut adapter_ref = adapter.borrow_mut();
         let field_data_iterator = adapter_ref.resolve_property(
             moved_iterator,
-            type_name.clone(),
-            context_field.field_name.clone(),
+            type_name,
+            &context_field.field_name,
             query.clone(),
             vertex_id,
         );
@@ -363,8 +363,8 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 let type_name = &field_vertex.type_name;
                 let context_and_value_iterator = adapter_ref.resolve_property(
                     activated_vertex_iterator,
-                    type_name.clone(),
-                    field.field_name.clone(),
+                    type_name,
+                    &field.field_name,
                     query.clone(),
                     field.vertex_id,
                 );
@@ -404,9 +404,9 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let type_name = &expanding_from.type_name;
     let edge_iterator = adapter_ref.resolve_neighbors(
         activated_vertex_iterator,
-        type_name.clone(),
-        fold.edge_name.clone(),
-        fold.parameters.clone(),
+        type_name,
+        &fold.edge_name,
+        &fold.parameters,
         query.clone(),
         expanding_from.vid,
         fold.eid,
@@ -545,8 +545,8 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 let mut adapter_ref = cloned_adapter.borrow_mut();
                 let field_data_iterator = adapter_ref.resolve_property(
                     moved_iterator,
-                    fold.component.vertices[&vertex_id].type_name.clone(),
-                    context_field.field_name.clone(),
+                    &fold.component.vertices[&vertex_id].type_name,
+                    &context_field.field_name,
                     cloned_query.clone(),
                     vertex_id,
                 );
@@ -915,8 +915,8 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
         let mut adapter_ref = adapter.borrow_mut();
         let context_and_value_iterator = adapter_ref.resolve_property(
             Box::new(moved_iterator),
-            type_name.clone(),
-            context_field.field_name.clone(),
+            type_name,
+            &context_field.field_name,
             query.clone(),
             vertex_id,
         );
@@ -969,8 +969,8 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
     let mut adapter_ref = adapter.borrow_mut();
     let context_and_value_iterator = adapter_ref.resolve_property(
         iterator,
-        type_name.clone(),
-        local_field.field_name.clone(),
+        type_name,
+        &local_field.field_name,
         query.clone(),
         current_vid,
     );
@@ -1117,9 +1117,9 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
         expanding_vertex_iterator,
-        type_name.clone(),
-        edge_name.clone(),
-        edge_parameters.clone(),
+        type_name,
+        edge_name,
+        edge_parameters,
         query.clone(),
         expanding_from.vid,
         edge_id,
@@ -1189,7 +1189,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
         adapter.clone(),
         query,
         component,
-        expanding_from.type_name.clone(),
+        &expanding_from.type_name,
         expanding_from,
         expanding_to,
         edge_id,
@@ -1209,8 +1209,8 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
             let mut adapter_ref = adapter.borrow_mut();
             let coercion_iter = adapter_ref.resolve_coercion(
                 recursion_iterator,
-                edge_endpoint_type.clone(),
-                coerce_to.clone(),
+                edge_endpoint_type,
+                coerce_to,
                 query.clone(),
                 expanding_from_vid,
             );
@@ -1231,7 +1231,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
             adapter.clone(),
             query,
             component,
-            recursing_from.clone(),
+            recursing_from,
             expanding_from,
             expanding_to,
             edge_id,
@@ -1249,7 +1249,7 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
     query: &InterpretedQuery,
     _component: &IRQueryComponent,
-    expanding_from_type: Arc<str>,
+    expanding_from_type: &Arc<str>,
     expanding_from: &IRVertex,
     _expanding_to: &IRVertex,
     edge_id: Eid,
@@ -1261,8 +1261,8 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     let edge_iterator = adapter_ref.resolve_neighbors(
         iterator,
         expanding_from_type,
-        edge_name.clone(),
-        edge_parameters.clone(),
+        edge_name,
+        edge_parameters,
         query.clone(),
         expanding_from.vid,
         edge_id,

@@ -474,8 +474,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        _parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        _parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> VertexIterator<'a, Self::Vertex> {
@@ -498,12 +498,12 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-        if field_name.as_ref() == "__typename" {
+        if property_name.as_ref() == "__typename" {
             Box::new(contexts.map(|ctx| match &ctx.current_token {
                 Some(token) => {
                     let value = token.typename().into();
@@ -512,77 +512,66 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                 None => (ctx, FieldValue::Null),
             }))
         } else {
+            let property_name = property_name.clone();
             match type_name.as_ref() {
-                "Crate" => {
-                    Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_crate_property)
-                    }))
-                }
-                "Item" => {
-                    Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_item_property)
-                    }))
-                }
+                "Crate" => Box::new(contexts.map(move |ctx| {
+                    property_mapper(ctx, property_name.as_ref(), get_crate_property)
+                })),
+                "Item" => Box::new(contexts.map(move |ctx| {
+                    property_mapper(ctx, property_name.as_ref(), get_item_property)
+                })),
                 "ImplOwner" | "Struct" | "StructField" | "Enum" | "Variant" | "PlainVariant"
                 | "TupleVariant" | "StructVariant" | "Trait" | "Function" | "Method" | "Impl"
                     if matches!(
-                        field_name.as_ref(),
+                        property_name.as_ref(),
                         "id" | "crate_id" | "name" | "docs" | "attrs" | "visibility_limit"
                     ) =>
                 {
                     // properties inherited from Item, accesssed on Item subtypes
                     Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_item_property)
+                        property_mapper(ctx, property_name.as_ref(), get_item_property)
                     }))
                 }
                 "Struct" => Box::new(contexts.map(move |ctx| {
-                    property_mapper(ctx, field_name.as_ref(), get_struct_property)
+                    property_mapper(ctx, property_name.as_ref(), get_struct_property)
                 })),
-                "Enum" => {
-                    Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_enum_property)
-                    }))
-                }
-                "Span" => {
-                    Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_span_property)
-                    }))
-                }
-                "Path" => {
-                    Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_path_property)
-                    }))
-                }
+                "Enum" => Box::new(contexts.map(move |ctx| {
+                    property_mapper(ctx, property_name.as_ref(), get_enum_property)
+                })),
+                "Span" => Box::new(contexts.map(move |ctx| {
+                    property_mapper(ctx, property_name.as_ref(), get_span_property)
+                })),
+                "Path" => Box::new(contexts.map(move |ctx| {
+                    property_mapper(ctx, property_name.as_ref(), get_path_property)
+                })),
                 "ImportablePath" => Box::new(contexts.map(move |ctx| {
-                    property_mapper(ctx, field_name.as_ref(), get_importable_path_property)
+                    property_mapper(ctx, property_name.as_ref(), get_importable_path_property)
                 })),
                 "FunctionLike" | "Function" | "Method"
-                    if matches!(field_name.as_ref(), "const" | "unsafe" | "async") =>
+                    if matches!(property_name.as_ref(), "const" | "unsafe" | "async") =>
                 {
                     Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_function_like_property)
+                        property_mapper(ctx, property_name.as_ref(), get_function_like_property)
                     }))
                 }
-                "Impl" => {
-                    Box::new(contexts.map(move |ctx| {
-                        property_mapper(ctx, field_name.as_ref(), get_impl_property)
-                    }))
-                }
+                "Impl" => Box::new(contexts.map(move |ctx| {
+                    property_mapper(ctx, property_name.as_ref(), get_impl_property)
+                })),
                 "Attribute" => Box::new(contexts.map(move |ctx| {
-                    property_mapper(ctx, field_name.as_ref(), get_attribute_property)
+                    property_mapper(ctx, property_name.as_ref(), get_attribute_property)
                 })),
                 "ImplementedTrait" => Box::new(contexts.map(move |ctx| {
-                    property_mapper(ctx, field_name.as_ref(), get_implemented_trait_property)
+                    property_mapper(ctx, property_name.as_ref(), get_implemented_trait_property)
                 })),
                 "RawType" | "ResolvedPathType" | "PrimitiveType"
-                    if matches!(field_name.as_ref(), "name") =>
+                    if matches!(property_name.as_ref(), "name") =>
                 {
                     Box::new(contexts.map(move |ctx| {
                         // fields from "RawType"
-                        property_mapper(ctx, field_name.as_ref(), get_raw_type_property)
+                        property_mapper(ctx, property_name.as_ref(), get_raw_type_property)
                     }))
                 }
-                _ => unreachable!("resolve_property {type_name} {field_name}"),
+                _ => unreachable!("resolve_property {type_name} {property_name}"),
             }
         }
     }
@@ -590,9 +579,9 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
@@ -1092,11 +1081,12 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+        let coerce_to_type = coerce_to_type.clone();
         match type_name.as_ref() {
             "Item" | "Variant" | "FunctionLike" | "Importable" | "ImplOwner" | "RawType"
             | "ResolvedPathType" => {

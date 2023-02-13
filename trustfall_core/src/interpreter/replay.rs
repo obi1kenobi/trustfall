@@ -392,8 +392,8 @@ where
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> VertexIterator<'trace, Self::Vertex> {
@@ -417,8 +417,8 @@ where
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'trace, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, FieldValue> {
@@ -430,8 +430,8 @@ where
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
-            assert_eq!(*op_type_name, type_name);
-            assert_eq!(*property, field_name);
+            assert_eq!(op_type_name, type_name);
+            assert_eq!(property, property_name);
 
             Box::new(TraceReaderProjectPropertiesIter {
                 exhausted: false,
@@ -448,9 +448,9 @@ where
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'trace, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
@@ -463,7 +463,7 @@ where
             &trace_op.content
         {
             assert_eq!(vid, &vertex_hint);
-            assert_eq!(op_type_name, &type_name);
+            assert_eq!(op_type_name, type_name);
             assert_eq!(eid, &edge_hint);
 
             Box::new(TraceReaderProjectNeighborsIter {
@@ -481,8 +481,8 @@ where
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'trace, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
@@ -494,8 +494,8 @@ where
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
-            assert_eq!(*from_type, type_name);
-            assert_eq!(*to_type, coerce_to_type);
+            assert_eq!(from_type, type_name);
+            assert_eq!(to_type, coerce_to_type);
 
             Box::new(TraceReaderCanCoerceIter {
                 exhausted: false,

@@ -238,8 +238,8 @@ where
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> VertexIterator<'vertex, Self::Vertex> {
@@ -275,8 +275,8 @@ where
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
@@ -285,7 +285,7 @@ where
             TraceOpContent::Call(FunctionCall::ProjectProperty(
                 vertex_hint,
                 type_name.clone(),
-                field_name.clone(),
+                property_name.clone(),
             )),
             None,
         );
@@ -317,7 +317,7 @@ where
         let inner_iter = self.inner.resolve_property(
             wrapped_contexts,
             type_name,
-            field_name,
+            property_name,
             query_hint,
             vertex_hint,
         );
@@ -347,9 +347,9 @@ where
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
@@ -444,8 +444,8 @@ where
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {

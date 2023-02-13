@@ -260,8 +260,8 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> VertexIterator<'static, Self::Vertex> {
@@ -277,13 +277,13 @@ impl Adapter<'static> for FilesystemInterpreter {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        field_name: Arc<str>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
-            "Directory" => match field_name.as_ref() {
+            "Directory" => match property_name.as_ref() {
                 "name" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::Directory(ref x)) => {
@@ -302,7 +302,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                 })),
                 _ => todo!(),
             },
-            "File" => match field_name.as_ref() {
+            "File" => match property_name.as_ref() {
                 "name" => Box::new(contexts.map(|context| match context.current_token {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
@@ -340,9 +340,9 @@ impl Adapter<'static> for FilesystemInterpreter {
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
@@ -371,8 +371,8 @@ impl Adapter<'static> for FilesystemInterpreter {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: Arc<str>,
-        coerce_to_type: Arc<str>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
