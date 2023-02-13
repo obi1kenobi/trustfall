@@ -237,8 +237,8 @@ macro_rules! field_property {
 ///     property_name: &str,
 /// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
 ///     match (type_name, property_name) {
-///         ("User", "id") => resolve_property_with(contexts, field_property!(as_user, id)),
-///         ("User", "age") => resolve_property_with(contexts, accessor_property!(as_user, age)),
+///         ("User", "id") => resolve_property_with(contexts, field_property!(id)),
+///         ("User", "age") => resolve_property_with(contexts, accessor_property!(age)),
 ///         // ...
 ///         _ => unreachable!()
 ///     }
