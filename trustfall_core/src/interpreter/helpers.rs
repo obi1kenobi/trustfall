@@ -9,8 +9,8 @@ use super::basic_adapter::{ContextIterator, ContextOutcomeIterator, VertexIterat
 /// Takes a property-resolver function and applies it over each of the vertices
 /// in the input context iterator, one at a time.
 ///
-/// Often used with the [`field_property!`](crate::field_property) and
-/// [`accessor_property!`](crate::accessor_property)
+/// Often used with resolvers from the [`field_property!`](crate::field_property) and
+/// [`accessor_property!`](crate::accessor_property) macros.
 pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'static,
@@ -69,7 +69,7 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 ///
 /// Generally used with [`resolve_property_with`].
 ///
-/// Retrieves a [FieldValue] from a vertex by converting it to the proper type,
+/// Retrieves a [`FieldValue`] from a vertex by converting it to the proper type,
 /// and then retrieving the field of a struct.
 ///
 /// If the property is computed by a function, use
@@ -79,12 +79,13 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// ```
 /// # use std::rc::Rc;
 /// # use trustfall_core::{
-/// #    field_property,
-/// #    ir::FieldValue,
-/// #    interpreter::{
-/// #            helpers::resolve_property_with, basic_adapter::{ContextIterator, ContextOutcomeIterator}
-/// #        }
-/// #    };
+/// #     field_property,
+/// #     interpreter::{
+/// #         basic_adapter::{ContextIterator, ContextOutcomeIterator},
+/// #         helpers::resolve_property_with,
+/// #     },
+/// #     ir::FieldValue,
+/// # };
 /// #[derive(Debug, Clone)]
 /// struct User {
 ///     id: String
@@ -115,12 +116,13 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// ```
 /// # use std::rc::Rc;
 /// # use trustfall_core::{
-/// #    field_property,
-/// #    ir::FieldValue,
-/// #    interpreter::{
-/// #            helpers::resolve_property_with, basic_adapter::{ContextIterator, ContextOutcomeIterator}
-/// #        }
-/// #    };
+/// #     field_property,
+/// #     interpreter::{
+/// #         basic_adapter::{ContextIterator, ContextOutcomeIterator},
+/// #         helpers::resolve_property_with,
+/// #     },
+/// #     ir::FieldValue,
+/// # };
 /// #[derive(Debug, Clone)]
 /// struct User {
 ///     id: String,
@@ -203,18 +205,18 @@ macro_rules! field_property {
 /// # Examples
 ///
 /// In the following example, `name` would be accessed using a field, but the
-/// age is accessed using a function
-///
+/// age is accessed using a function:
 /// ```rust
 /// # use std::rc::Rc;
 /// # use trustfall_core::{
-/// #    field_property,
-/// #    accessor_property,
-/// #    ir::FieldValue,
-/// #    interpreter::{
-/// #            helpers::resolve_property_with, basic_adapter::{ContextIterator, ContextOutcomeIterator}
-/// #        }
-/// #    };
+/// #     accessor_property,
+/// #     field_property,
+/// #     interpreter::{
+/// #         basic_adapter::{ContextIterator, ContextOutcomeIterator},
+/// #         helpers::resolve_property_with,
+/// #     },
+/// #     ir::FieldValue,
+/// # };
 /// #[derive(Debug, Clone)]
 /// struct User {
 ///     id: String
