@@ -67,10 +67,13 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 
 /// Helper for making property resolver functions based on fields.
 ///
-/// Generally used sed by [`resolve_property_with`]
+/// Generally used with [`resolve_property_with`].
 ///
 /// Retrieves a [FieldValue] from a vertex by converting it to the proper type,
-/// and then retrieving the attribute
+/// and then retrieving the field of a struct.
+///
+/// If the property is computed by a function, use
+/// [`accessor_property!`](crate::accessor_property) instead.
 ///
 /// # Examples
 /// ```
@@ -88,15 +91,60 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 ///     // ...
 /// }
 ///
+/// // In implementation of `BasicAdapter`
+/// fn resolve_property(
+///     // &mut self,
+///     contexts: ContextIterator<'static, User>,
+///     type_name: &str,
+///     property_name: &str,
+/// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
+///     match (type_name, property_name) {
+///         ("User", "id") => {
+///             resolve_property_with(contexts, field_property!(id)) // Macro used here
+///         },
+///         // ...
+///         _ => unreachable!()
+///     }
+/// }
+/// ```
+///
+/// Sometimes a vertex may have to be converted to another type before the
+/// property can be accessed. To do this, simply pass a conversion method
+/// implemented on the `Vertex` type (in this case `as_user`) to the macro like
+/// in the example below.
+/// ```
+/// # use std::rc::Rc;
+/// # use trustfall_core::{
+/// #    field_property,
+/// #    ir::FieldValue,
+/// #    interpreter::{
+/// #            helpers::resolve_property_with, basic_adapter::{ContextIterator, ContextOutcomeIterator}
+/// #        }
+/// #    };
 /// #[derive(Debug, Clone)]
-/// enum Vertex {
-///     UserVertex(Rc<User>)
+/// struct User {
+///     id: String,
 ///     // ...
 /// }
+///
+/// #[derive(Debug, Clone)]
+/// struct Bot {
+///     user: User,
+///     purpose: String,
+/// }
+///
+/// #[derive(Debug, Clone)]
+/// enum Vertex {
+///     UserVertex(Rc<User>),
+///     BotVertex(Rc<Bot>),
+///     // ...
+/// }
+///
 /// impl Vertex {
 ///     pub fn as_user(&self) -> Option<&User> {
 ///         match self {
 ///             Vertex::UserVertex(u) => Some(u.as_ref()),
+///             Vertex::BotVertex(b) => Some(&b.user),
 ///             _ => None,
 ///         }
 ///     }
@@ -104,19 +152,24 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// }
 ///
 /// // In implementation of `BasicAdapter`
-/// fn resolve_property(
-///     // &mut self,
-///     contexts: ContextIterator<'static, Vertex>,
-///     type_name: &str,
-///     property_name: &str,
-/// ) -> ContextOutcomeIterator<'static, Vertex, FieldValue> {
-///     match (type_name, property_name) {
-///         ("User", "id") => resolve_property_with(contexts, field_property!(as_user, id)), // Macro used here
-///         // ...
-///         _ => unreachable!()
-///     }
-/// }
+/// # fn resolve_property(
+/// #    // &mut self,
+/// #    contexts: ContextIterator<'static, Vertex>,
+/// #    type_name: &str,
+/// #    property_name: &str,
+/// # ) -> ContextOutcomeIterator<'static, Vertex, FieldValue> {
+/// #    match (type_name, property_name) {
+/// ("User" | "Bot", "id") => {
+///     resolve_property_with(contexts, field_property!(as_user, id)) // Macro used here
+/// },
+/// #        // ...
+/// #        _ => unreachable!()
+/// #    }
+/// # }
 /// ```
+///
+/// It is also possible to pass a code block to additionally handle the
+/// property.
 #[macro_export]
 macro_rules! field_property {
     // If the data is a field directly on the vertex type.
@@ -176,28 +229,13 @@ macro_rules! field_property {
 ///     }
 /// }
 ///
-/// #[derive(Debug, Clone)]
-/// enum Vertex {
-///     UserVertex(Rc<User>)
-///     // ...
-/// }
-/// impl Vertex {
-///     pub fn as_user(&self) -> Option<&User> {
-///         match self {
-///             Vertex::UserVertex(u) => Some(u.as_ref()),
-///             _ => None,
-///         }
-///     }
-///     // ...
-/// }
-///
 /// // In implementation of `BasicAdapter`
 /// fn resolve_property(
 ///     // &mut self,
-///     contexts: ContextIterator<'static, Vertex>,
+///     contexts: ContextIterator<'static, User>,
 ///     type_name: &str,
 ///     property_name: &str,
-/// ) -> ContextOutcomeIterator<'static, Vertex, FieldValue> {
+/// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
 ///     match (type_name, property_name) {
 ///         ("User", "id") => resolve_property_with(contexts, field_property!(as_user, id)),
 ///         ("User", "age") => resolve_property_with(contexts, accessor_property!(as_user, age)),
@@ -206,6 +244,10 @@ macro_rules! field_property {
 ///     }
 /// }
 /// ```
+///
+/// The usage of conversion functions and possible extra processing with a code
+/// block is analogous to the ones used with
+/// [`field_property!`](crate::field_property).
 #[macro_export]
 macro_rules! accessor_property {
     // If the data is available as an accessor method on the vertex type.
