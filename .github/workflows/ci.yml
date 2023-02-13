@@ -140,6 +140,11 @@ jobs:
           command: fmt
           args: -- --check
 
+      - name: cargo doc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --all-features --no-deps --document-private-items
+
   rust-tests:
     name: Run tests
     runs-on: ubuntu-latest
