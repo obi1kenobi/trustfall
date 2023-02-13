@@ -11,6 +11,8 @@ use super::basic_adapter::{ContextIterator, ContextOutcomeIterator, VertexIterat
 ///
 /// Often used with resolvers from the [`field_property!`](crate::field_property) and
 /// [`accessor_property!`](crate::accessor_property) macros.
+///
+/// [`BasicAdapter::resolve_property`]: super::basic_adapter::BasicAdapter::resolve_property
 pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'static,
@@ -28,6 +30,8 @@ pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 ///
 /// Takes a neighbor-resolver function and applies it over each of the vertices
 /// in the input context iterator, one at a time.
+///
+/// [`BasicAdapter::resolve_neighbors`]: super::basic_adapter::BasicAdapter::resolve_neighbors
 pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
     mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'static,
@@ -52,6 +56,8 @@ pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 ///
 /// Takes a coercion-resolver function and applies it over each of the vertices
 /// in the input context iterator, one at a time.
+///
+/// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
 pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'static,
