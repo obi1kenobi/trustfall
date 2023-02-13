@@ -1093,7 +1093,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
@@ -1106,7 +1106,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         Some(token) => {
                             let actual_type_name = token.typename();
 
-                            match coerce_to_type_name.as_ref() {
+                            match coerce_to_type.as_ref() {
                                 "Variant" => matches!(
                                     actual_type_name,
                                     "PlainVariant" | "TupleVariant" | "StructVariant"
@@ -1120,7 +1120,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                                     // The remaining types are final (don't have any subtypes)
                                     // so we can just compare the actual type name to
                                     // the type we are attempting to coerce to.
-                                    actual_type_name == coerce_to_type_name.as_ref()
+                                    actual_type_name == coerce_to_type.as_ref()
                                 }
                             }
                         }
@@ -1129,7 +1129,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, can_coerce)
                 }))
             }
-            _ => unreachable!("resolve_coercion {type_name} {coerce_to_type_name}"),
+            _ => unreachable!("resolve_coercion {type_name} {coerce_to_type}"),
         }
     }
 }

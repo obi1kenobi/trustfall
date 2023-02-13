@@ -201,7 +201,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {

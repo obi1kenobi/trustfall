@@ -360,11 +360,11 @@ impl Adapter<'static> for NumbersAdapter {
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
-        match (type_name.as_ref(), coerce_to_type_name.as_ref()) {
+        match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => {
                 resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersToken::Prime(..)))
             }
@@ -374,7 +374,7 @@ impl Adapter<'static> for NumbersAdapter {
             _ => unimplemented!(
                 "Unexpected coercion attempted: {} {}",
                 type_name,
-                coerce_to_type_name
+                coerce_to_type
             ),
         }
     }

@@ -445,7 +445,7 @@ where
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
@@ -454,7 +454,7 @@ where
             TraceOpContent::Call(FunctionCall::CanCoerceToType(
                 vertex_hint,
                 type_name.clone(),
-                coerce_to_type_name.clone(),
+                coerce_to_type.clone(),
             )),
             None,
         );
@@ -486,7 +486,7 @@ where
         let inner_iter = self.inner.resolve_coercion(
             wrapped_contexts,
             type_name,
-            coerce_to_type_name,
+            coerce_to_type,
             query_hint,
             vertex_hint,
         );

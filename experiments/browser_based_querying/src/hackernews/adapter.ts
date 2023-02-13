@@ -547,10 +547,10 @@ export class MyAdapter implements Adapter<Vertex> {
   *canCoerceToType(
     contexts: IterableIterator<JsContext<Vertex>>,
     type_name: string,
-    coerce_to_type_name: string
+    coerce_to_type: string
   ): IterableIterator<ContextAndBool> {
     if (type_name === 'Item' || type_name === 'Webpage') {
-      if (coerce_to_type_name === 'Item') {
+      if (coerce_to_type === 'Item') {
         // The Item type is abstract, we need to check if the vertex is any of the Item subtypes.
         for (const ctx of contexts) {
           const vertex = ctx.currentToken;
@@ -565,12 +565,12 @@ export class MyAdapter implements Adapter<Vertex> {
           const vertex = ctx.currentToken;
           yield {
             localId: ctx.localId,
-            value: vertex?.__typename === coerce_to_type_name,
+            value: vertex?.__typename === coerce_to_type,
           };
         }
       }
     } else {
-      throw new Error(`Unexpected coercion from ${type_name} to ${coerce_to_type_name}`);
+      throw new Error(`Unexpected coercion from ${type_name} to ${coerce_to_type}`);
     }
   }
 }

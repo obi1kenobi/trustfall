@@ -48,7 +48,7 @@ extern "C" {
         this: &JsAdapter,
         contexts: JsContextIterator,
         type_name: &str,
-        coerce_to_type_name: &str,
+        coerce_to_type: &str,
     ) -> js_sys::Iterator;
 }
 
@@ -319,7 +319,7 @@ impl Adapter<'static> for AdapterShim {
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
@@ -327,7 +327,7 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner
-                .resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type_name.as_ref());
+                .resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type.as_ref());
         Box::new(ContextAndBoolIterator::new(js_iter, registry))
     }
 }

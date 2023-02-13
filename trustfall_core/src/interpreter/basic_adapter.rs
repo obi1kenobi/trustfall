@@ -192,7 +192,7 @@ where
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: std::sync::Arc<str>,
-        coerce_to_type_name: std::sync::Arc<str>,
+        coerce_to_type: std::sync::Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
@@ -200,7 +200,7 @@ where
             self,
             contexts,
             type_name.as_ref(),
-            coerce_to_type_name.as_ref(),
+            coerce_to_type.as_ref(),
         )
     }
 }

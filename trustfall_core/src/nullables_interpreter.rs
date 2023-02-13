@@ -57,7 +57,7 @@ impl Adapter<'static> for NullablesAdapter {
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {

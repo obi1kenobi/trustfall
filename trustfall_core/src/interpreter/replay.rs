@@ -482,7 +482,7 @@ where
         &mut self,
         contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
@@ -495,7 +495,7 @@ where
         {
             assert_eq!(*vid, vertex_hint);
             assert_eq!(*from_type, type_name);
-            assert_eq!(*to_type, coerce_to_type_name);
+            assert_eq!(*to_type, coerce_to_type);
 
             Box::new(TraceReaderCanCoerceIter {
                 exhausted: false,

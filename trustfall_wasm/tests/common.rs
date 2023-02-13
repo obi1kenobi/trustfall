@@ -85,10 +85,10 @@ use wasm_bindgen::prelude::*;
             this: &JsAdapter,
             contexts: ContextIterator,
             type_name: &str,
-            coerce_to_type_name: &str,
+            coerce_to_type: &str,
         ) -> js_sys::Iterator;
         */
-        *canCoerceToType(contexts, type_name, coerce_to_type_name) {
+        *canCoerceToType(contexts, type_name, coerce_to_type) {
             const primes = {
                 2: null,
                 3: null,
@@ -97,7 +97,7 @@ use wasm_bindgen::prelude::*;
                 11: null,
             };
             if (type_name === "Number") {
-                if (coerce_to_type_name === "Prime") {
+                if (coerce_to_type === "Prime") {
                     for (const ctx of contexts) {
                         var can_coerce = false;
                         if (ctx.currentToken in primes) {
@@ -109,7 +109,7 @@ use wasm_bindgen::prelude::*;
                         };
                         yield val;
                     }
-                } else if (coerce_to_type_name === "Composite") {
+                } else if (coerce_to_type === "Composite") {
                     for (const ctx of contexts) {
                         var can_coerce = false;
                         if (!(ctx.currentToken in primes || ctx.currentToken === 1)) {
@@ -122,10 +122,10 @@ use wasm_bindgen::prelude::*;
                         yield val;
                     }
                 } else {
-                    throw `unreachable coercion type name: ${type_name} ${coerce_to_type_name}`;
+                    throw `unreachable coercion type name: ${type_name} ${coerce_to_type}`;
                 }
             } else {
-                throw `unreachable type name: ${type_name} ${coerce_to_type_name}`;
+                throw `unreachable type name: ${type_name} ${coerce_to_type}`;
             }
         }
     }

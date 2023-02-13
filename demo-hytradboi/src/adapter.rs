@@ -693,7 +693,7 @@ impl Adapter<'static> for DemoAdapter {
         &mut self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        coerce_to_type: Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
@@ -707,7 +707,7 @@ impl Adapter<'static> for DemoAdapter {
             // This "match" is loop-invariant, and can be hoisted outside the map() call
             // at the cost of a bit of code repetition.
 
-            let can_coerce = match (type_name.as_ref(), coerce_to_type_name.as_ref()) {
+            let can_coerce = match (type_name.as_ref(), coerce_to_type.as_ref()) {
                 ("HackerNewsItem", "HackerNewsJob") => token.as_job().is_some(),
                 ("HackerNewsItem", "HackerNewsStory") => token.as_story().is_some(),
                 ("HackerNewsItem", "HackerNewsComment") => token.as_comment().is_some(),

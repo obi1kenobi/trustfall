@@ -45,7 +45,7 @@ export interface Adapter<T> {
     canCoerceToType(
         contexts: IterableIterator<JsContext<T>>,
         type_name: string,
-        coerce_to_type_name: string
+        coerce_to_type: string
     ): IterableIterator<ContextAndBool>;
 }
 
