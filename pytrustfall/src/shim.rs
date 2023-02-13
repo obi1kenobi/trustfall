@@ -5,12 +5,9 @@ use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
-        basic_adapter::{
-            BasicAdapter, ContextIterator as BaseContextIterator, ContextOutcomeIterator,
-            VertexIterator,
-        },
-        execution::interpret_ir,
-        DataContext,
+        basic_adapter::BasicAdapter, execution::interpret_ir,
+        ContextIterator as BaseContextIterator, ContextOutcomeIterator, DataContext,
+        VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -217,10 +214,10 @@ impl Context {
 }
 
 #[pyclass(unsendable)]
-pub struct ContextIterator(Box<dyn Iterator<Item = Context>>);
+pub struct ContextIterator(VertexIterator<'static, Context>);
 
 impl ContextIterator {
-    fn new(inner: Box<dyn Iterator<Item = DataContext<Arc<Py<PyAny>>>>>) -> Self {
+    fn new(inner: VertexIterator<'static, DataContext<Arc<Py<PyAny>>>>) -> Self {
         Self(Box::new(inner.map(Context)))
     }
 }
@@ -267,11 +264,11 @@ impl BasicAdapter<'static> for AdapterShim {
 
     fn resolve_property(
         &mut self,
-        data_contexts: BaseContextIterator<'static, Self::Vertex>,
+        contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &str,
         property_name: &str,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
-        let contexts = ContextIterator::new(data_contexts);
+        let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
@@ -290,12 +287,12 @@ impl BasicAdapter<'static> for AdapterShim {
 
     fn resolve_neighbors(
         &mut self,
-        data_contexts: BaseContextIterator<'static, Self::Vertex>,
+        contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
         parameters: Option<&EdgeParameters>,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
-        let contexts = ContextIterator::new(data_contexts);
+        let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
             let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
                 x.0.iter()
@@ -320,11 +317,11 @@ impl BasicAdapter<'static> for AdapterShim {
 
     fn resolve_coercion(
         &mut self,
-        data_contexts: BaseContextIterator<'static, Self::Vertex>,
+        contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &str,
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
-        let contexts = ContextIterator::new(data_contexts);
+        let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
@@ -434,10 +431,9 @@ impl PythonProjectNeighborsIterator {
 }
 
 impl Iterator for PythonProjectNeighborsIterator {
-    #[allow(clippy::type_complexity)]
     type Item = (
         DataContext<Arc<Py<PyAny>>>,
-        Box<dyn Iterator<Item = Arc<Py<PyAny>>>>,
+        VertexIterator<'static, Arc<Py<PyAny>>>,
     );
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -458,7 +454,7 @@ impl Iterator for PythonProjectNeighborsIterator {
                     // Iterators return self when __iter__() is called.
                     let neighbors_iter = make_iterator(py, neighbors_iterable).unwrap();
 
-                    let neighbors: Box<dyn Iterator<Item = Arc<Py<PyAny>>>> =
+                    let neighbors: VertexIterator<'static, Arc<Py<PyAny>>> =
                         Box::new(PythonTokenIterator::new(neighbors_iter));
                     Some((context.0, neighbors))
                 }

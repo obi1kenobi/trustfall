@@ -92,7 +92,7 @@ macro_rules! property_group {
 }
 
 #[macro_export]
-macro_rules! project_property {
+macro_rules! resolve_property {
     ($ctxs:ident, $type_name:ident, $field_name:ident,
         [
             $(
@@ -121,7 +121,7 @@ macro_rules! project_property {
 macro_rules! neighbor_stub {
     ($ctxs:ident, $lt:lifetime, $token_variant:path $(| $other_variant:path)*, $token:ident, $impl:tt) => {
         Box::new($ctxs.map(move |ctx| {
-            let neighbors: Box<dyn Iterator<Item = <Self as Adapter>::DataToken> + $lt> =
+            let neighbors: VertexIterator<$lt, <Self as Adapter>::Vertex>> =
                 match &ctx.current_token {
                     Some($token_variant($token)) => $impl,
                     $( Some($other_variant($token)) => $impl, )*
@@ -224,7 +224,7 @@ macro_rules! neighbor_group {
 }
 
 #[macro_export]
-macro_rules! project_neighbors {
+macro_rules! resolve_neighbors {
     ($ctxs:ident, $lt:lifetime, $type_name_var:ident, $edge_name_var:ident,
         [
             $(
@@ -250,7 +250,7 @@ macro_rules! project_neighbors {
 }
 
 #[macro_export]
-macro_rules! project_neighbors2_match_arm {
+macro_rules! resolve_neighbors2_match_arm {
     // token field is same as edge name, so this is just reading the next variant
     ($ctxs:ident, $lt:lifetime, $edge_name:ident, $token_variant:path $(| $other_variant:path)*, $next_variant:path $(,)?) => {
         $crate::neighbor_stub!(
@@ -277,7 +277,7 @@ macro_rules! project_neighbors2_match_arm {
 
 // TODO: figure out whether we want both this macro and the other neighbors macro, or just one
 #[macro_export]
-macro_rules! project_neighbors2 {
+macro_rules! resolve_neighbors2 {
     ($ctxs:ident, $lt:lifetime, $type_name_var:ident, $edge_name_var:ident,
         [
             $(
@@ -293,7 +293,7 @@ macro_rules! project_neighbors2 {
         match ($edge_name_var.as_ref(), $type_name_var.as_ref()) {
             $(
                 (stringify!($edge_name), stringify!($type_option)) $(| (stringify!($edge_name), stringify!($other_type_option)))* => {
-                    $crate::project_neighbors2_match_arm!($ctxs, $lt, $edge_name, $token_variant $(| $other_variant)*, $rest )
+                    $crate::resolve_neighbors2_match_arm!($ctxs, $lt, $edge_name, $token_variant $(| $other_variant)*, $rest )
                 }
             )+
             _ => unreachable!(

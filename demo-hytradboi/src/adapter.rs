@@ -8,7 +8,9 @@ use lazy_static::__Deref;
 use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
 use trustfall_core::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator,
+    },
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
@@ -51,11 +53,11 @@ impl DemoAdapter {
         Self
     }
 
-    fn front_page(&self) -> Box<dyn Iterator<Item = Token>> {
+    fn front_page(&self) -> VertexIterator<'static, Token> {
         self.top(Some(30))
     }
 
-    fn top(&self, max: Option<usize>) -> Box<dyn Iterator<Item = Token>> {
+    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
         let iterator = HN_CLIENT
             .get_top_stories()
             .unwrap()
@@ -72,7 +74,7 @@ impl DemoAdapter {
         Box::new(iterator)
     }
 
-    fn latest_stories(&self, max: Option<usize>) -> Box<dyn Iterator<Item = Token>> {
+    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
         // Unfortunately, the HN crate we're using doesn't support getting the new stories,
         // so we're doing it manually here.
         let story_ids: Vec<u32> =
@@ -96,7 +98,7 @@ impl DemoAdapter {
         Box::new(iterator)
     }
 
-    fn user(&self, username: &str) -> Box<dyn Iterator<Item = Token>> {
+    fn user(&self, username: &str) -> VertexIterator<'static, Token> {
         match HN_CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
@@ -114,7 +116,7 @@ impl DemoAdapter {
         }
     }
 
-    fn most_downloaded_crates(&self) -> Box<dyn Iterator<Item = Token>> {
+    fn most_downloaded_crates(&self) -> VertexIterator<'static, Token> {
         Box::new(
             CratesPager::new(CRATES_CLIENT.deref())
                 .into_iter()
@@ -124,8 +126,8 @@ impl DemoAdapter {
 }
 
 macro_rules! impl_item_property {
-    ($data_contexts:ident, $attr:ident) => {
-        Box::new($data_contexts.map(|ctx| {
+    ($contexts:ident, $attr:ident) => {
+        Box::new($contexts.map(|ctx| {
             let token = ctx.current_token.as_ref();
             let value = match token {
                 None => FieldValue::Null,
@@ -151,8 +153,8 @@ macro_rules! impl_item_property {
 }
 
 macro_rules! impl_property {
-    ($data_contexts:ident, $conversion:ident, $attr:ident) => {
-        Box::new($data_contexts.map(|ctx| {
+    ($contexts:ident, $conversion:ident, $attr:ident) => {
+        Box::new($contexts.map(|ctx| {
             let token = ctx
                 .current_token
                 .as_ref()
@@ -169,8 +171,8 @@ macro_rules! impl_property {
         }))
     };
 
-    ($data_contexts:ident, $conversion:ident, $var:ident, $b:block) => {
-        Box::new($data_contexts.map(|ctx| {
+    ($contexts:ident, $conversion:ident, $var:ident, $b:block) => {
+        Box::new($contexts.map(|ctx| {
             let token = ctx
                 .current_token
                 .as_ref()
@@ -189,20 +191,21 @@ macro_rules! impl_property {
 }
 
 impl Adapter<'static> for DemoAdapter {
-    type DataToken = Token;
+    type Vertex = Token;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken>> {
-        match edge.as_ref() {
+    ) -> VertexIterator<'static, Self::Vertex> {
+        match edge_name.as_ref() {
             "HackerNewsFrontPage" => self.front_page(),
             "HackerNewsTop" => {
                 // TODO: This is unergonomic, build a more convenient API here.
                 let max = parameters
+                    .as_deref()
                     .unwrap()
                     .0
                     .get("max")
@@ -212,6 +215,7 @@ impl Adapter<'static> for DemoAdapter {
             "HackerNewsLatestStories" => {
                 // TODO: This is unergonomic, build a more convenient API here.
                 let max = parameters
+                    .as_deref()
                     .unwrap()
                     .0
                     .get("max")
@@ -227,16 +231,16 @@ impl Adapter<'static> for DemoAdapter {
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
-        match (current_type_name.as_ref(), field_name.as_ref()) {
-            (_, "__typename") => Box::new(data_contexts.map(|ctx| {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+        match (type_name.as_ref(), property_name.as_ref()) {
+            (_, "__typename") => Box::new(contexts.map(|ctx| {
                 let value = match ctx.current_token.as_ref() {
                     Some(token) => token.typename().into(),
                     None => FieldValue::Null,
@@ -249,34 +253,34 @@ impl Adapter<'static> for DemoAdapter {
             (
                 "HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment",
                 "id",
-            ) => impl_item_property!(data_contexts, id),
+            ) => impl_item_property!(contexts, id),
             (
                 "HackerNewsItem" | "HackerNewsStory" | "HackerNewsJob" | "HackerNewsComment",
                 "unixTime",
             ) => {
-                impl_item_property!(data_contexts, time)
+                impl_item_property!(contexts, time)
             }
 
             // properties on HackerNewsJob
-            ("HackerNewsJob", "score") => impl_property!(data_contexts, as_job, score),
-            ("HackerNewsJob", "title") => impl_property!(data_contexts, as_job, title),
-            ("HackerNewsJob", "url") => impl_property!(data_contexts, as_job, url),
+            ("HackerNewsJob", "score") => impl_property!(contexts, as_job, score),
+            ("HackerNewsJob", "title") => impl_property!(contexts, as_job, title),
+            ("HackerNewsJob", "url") => impl_property!(contexts, as_job, url),
 
             // properties on HackerNewsStory
-            ("HackerNewsStory", "byUsername") => impl_property!(data_contexts, as_story, by),
-            ("HackerNewsStory", "text") => impl_property!(data_contexts, as_story, text),
+            ("HackerNewsStory", "byUsername") => impl_property!(contexts, as_story, by),
+            ("HackerNewsStory", "text") => impl_property!(contexts, as_story, text),
             ("HackerNewsStory", "commentsCount") => {
-                impl_property!(data_contexts, as_story, descendants)
+                impl_property!(contexts, as_story, descendants)
             }
-            ("HackerNewsStory", "score") => impl_property!(data_contexts, as_story, score),
-            ("HackerNewsStory", "title") => impl_property!(data_contexts, as_story, title),
-            ("HackerNewsStory", "url") => impl_property!(data_contexts, as_story, url),
+            ("HackerNewsStory", "score") => impl_property!(contexts, as_story, score),
+            ("HackerNewsStory", "title") => impl_property!(contexts, as_story, title),
+            ("HackerNewsStory", "url") => impl_property!(contexts, as_story, url),
 
             // properties on HackerNewsComment
-            ("HackerNewsComment", "byUsername") => impl_property!(data_contexts, as_comment, by),
-            ("HackerNewsComment", "text") => impl_property!(data_contexts, as_comment, text),
+            ("HackerNewsComment", "byUsername") => impl_property!(contexts, as_comment, by),
+            ("HackerNewsComment", "text") => impl_property!(contexts, as_comment, text),
             ("HackerNewsComment", "childCount") => {
-                impl_property!(data_contexts, as_comment, comment, {
+                impl_property!(contexts, as_comment, comment, {
                     comment
                         .kids
                         .as_ref()
@@ -287,78 +291,78 @@ impl Adapter<'static> for DemoAdapter {
             }
 
             // properties on HackerNewsUser
-            ("HackerNewsUser", "id") => impl_property!(data_contexts, as_user, id),
-            ("HackerNewsUser", "karma") => impl_property!(data_contexts, as_user, karma),
-            ("HackerNewsUser", "about") => impl_property!(data_contexts, as_user, about),
-            ("HackerNewsUser", "unixCreatedAt") => impl_property!(data_contexts, as_user, created),
-            ("HackerNewsUser", "delay") => impl_property!(data_contexts, as_user, delay),
+            ("HackerNewsUser", "id") => impl_property!(contexts, as_user, id),
+            ("HackerNewsUser", "karma") => impl_property!(contexts, as_user, karma),
+            ("HackerNewsUser", "about") => impl_property!(contexts, as_user, about),
+            ("HackerNewsUser", "unixCreatedAt") => impl_property!(contexts, as_user, created),
+            ("HackerNewsUser", "delay") => impl_property!(contexts, as_user, delay),
 
             // properties on Crate
-            ("Crate", "name") => impl_property!(data_contexts, as_crate, name),
-            ("Crate", "latestVersion") => impl_property!(data_contexts, as_crate, max_version),
+            ("Crate", "name") => impl_property!(contexts, as_crate, name),
+            ("Crate", "latestVersion") => impl_property!(contexts, as_crate, max_version),
 
             // properties on Webpage
             ("Webpage" | "Repository" | "GitHubRepository", "url") => {
-                impl_property!(data_contexts, as_webpage, url, { url.into() })
+                impl_property!(contexts, as_webpage, url, { url.into() })
             }
 
             // properties on GitHubRepository
             ("GitHubRepository", "owner") => {
-                impl_property!(data_contexts, as_github_repository, repo, {
+                impl_property!(contexts, as_github_repository, repo, {
                     let (owner, _) = get_owner_and_repo(repo);
                     owner.into()
                 })
             }
             ("GitHubRepository", "name") => {
-                impl_property!(data_contexts, as_github_repository, name)
+                impl_property!(contexts, as_github_repository, name)
             }
             ("GitHubRepository", "fullName") => {
-                impl_property!(data_contexts, as_github_repository, full_name)
+                impl_property!(contexts, as_github_repository, full_name)
             }
             ("GitHubRepository", "lastModified") => {
-                impl_property!(data_contexts, as_github_repository, updated_at)
+                impl_property!(contexts, as_github_repository, updated_at)
             }
 
             // properties on GitHubWorkflow
-            ("GitHubWorkflow", "name") => impl_property!(data_contexts, as_github_workflow, wf, {
+            ("GitHubWorkflow", "name") => impl_property!(contexts, as_github_workflow, wf, {
                 wf.workflow.name.as_str().into()
             }),
-            ("GitHubWorkflow", "path") => impl_property!(data_contexts, as_github_workflow, wf, {
+            ("GitHubWorkflow", "path") => impl_property!(contexts, as_github_workflow, wf, {
                 wf.workflow.path.as_str().into()
             }),
 
             // properties on GitHubActionsJob
             ("GitHubActionsJob", "name") => {
-                impl_property!(data_contexts, as_github_actions_job, name)
+                impl_property!(contexts, as_github_actions_job, name)
             }
             ("GitHubActionsJob", "runsOn") => {
-                impl_property!(data_contexts, as_github_actions_job, runs_on)
+                impl_property!(contexts, as_github_actions_job, runs_on)
             }
 
             // properties on GitHubActionsStep and its implementers
             (
                 "GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep",
                 "name",
-            ) => impl_property!(data_contexts, as_github_actions_step, step_name, {
+            ) => impl_property!(contexts, as_github_actions_step, step_name, {
                 step_name.map(|x| x.to_string()).into()
             }),
 
             // properties on GitHubActionsImportedStep
             ("GitHubActionsImportedStep", "uses") => {
-                impl_property!(data_contexts, as_github_actions_imported_step, uses)
+                impl_property!(contexts, as_github_actions_imported_step, uses)
             }
 
             // properties on GitHubActionsRunStep
             ("GitHubActionsRunStep", "run") => {
-                impl_property!(data_contexts, as_github_actions_run_step, run)
+                impl_property!(contexts, as_github_actions_run_step, run)
             }
 
             // properties on NameValuePair
-            ("NameValuePair", "name") => impl_property!(data_contexts, as_name_value_pair, pair, {
+            ("NameValuePair", "name") => impl_property!(contexts, as_name_value_pair, pair, {
                 pair.0.clone().into()
             }),
             ("NameValuePair", "value") => {
-                impl_property!(data_contexts, as_name_value_pair, pair, {
+                impl_property!(contexts, as_name_value_pair, pair, {
                     pair.1.clone().into()
                 })
             }
@@ -366,27 +370,20 @@ impl Adapter<'static> for DemoAdapter {
         }
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        _parameters: Option<Arc<EdgeParameters>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        _parameters: &Option<Arc<EdgeParameters>>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
         _edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
-            ),
-        >,
-    > {
-        match (current_type_name.as_ref(), edge_name.as_ref()) {
-            ("HackerNewsStory", "byUser") => Box::new(data_contexts.map(|ctx| {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+        match (type_name.as_ref(), edge_name.as_ref()) {
+            ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {
                 let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let story = token.as_story().unwrap();
@@ -407,9 +404,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsStory", "comment") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsStory", "comment") => Box::new(contexts.map(|ctx| {
                 let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let story = token.as_story().unwrap();
@@ -442,9 +439,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsStory", "link") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsStory", "link") => Box::new(contexts.map(|ctx| {
                 let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let story = token.as_story().unwrap();
@@ -460,9 +457,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsJob", "link") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsJob", "link") => Box::new(contexts.map(|ctx| {
                 let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let job = token.as_job().unwrap();
@@ -477,9 +474,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsComment", "byUser") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsComment", "byUser") => Box::new(contexts.map(|ctx| {
                 let token = &ctx.current_token;
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let comment = token.as_comment().unwrap();
@@ -500,9 +497,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsComment", "parent") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsComment", "parent") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let comment = token.as_comment().unwrap();
@@ -524,9 +521,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsComment", "topmostAncestor") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsComment", "topmostAncestor") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let comment = token.as_comment().unwrap();
@@ -561,9 +558,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsComment", "reply") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsComment", "reply") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let comment = token.as_comment().unwrap();
@@ -593,9 +590,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("HackerNewsUser", "submitted") => Box::new(data_contexts.map(|ctx| {
+            ("HackerNewsUser", "submitted") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let user = token.as_user().unwrap();
@@ -618,9 +615,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("Crate", "repository") => Box::new(data_contexts.map(|ctx| {
+            ("Crate", "repository") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let cr = token.as_crate().unwrap();
@@ -636,9 +633,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("GitHubRepository", "workflows") => Box::new(data_contexts.map(|ctx| {
+            ("GitHubRepository", "workflows") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => Box::new(
                         WorkflowsPager::new(GITHUB_CLIENT.clone(), token, RUNTIME.deref())
@@ -649,9 +646,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("GitHubWorkflow", "jobs") => Box::new(data_contexts.map(|ctx| {
+            ("GitHubWorkflow", "jobs") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
                         let workflow = token.as_github_workflow().unwrap();
@@ -670,9 +667,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("GitHubActionsJob", "step") => Box::new(data_contexts.map(|ctx| {
+            ("GitHubActionsJob", "step") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(Token::GitHubActionsJob(job)) => get_steps_in_job(job),
                     _ => unreachable!(),
@@ -680,9 +677,9 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            ("GitHubActionsRunStep", "env") => Box::new(data_contexts.map(|ctx| {
+            ("GitHubActionsRunStep", "env") => Box::new(contexts.map(|ctx| {
                 let token = ctx.current_token.clone();
-                let neighbors: Box<dyn Iterator<Item = Self::DataToken>> = match token {
+                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(Token::GitHubActionsRunStep(s)) => get_env_for_run_step(s),
                     _ => unreachable!(),
@@ -690,19 +687,21 @@ impl Adapter<'static> for DemoAdapter {
 
                 (ctx, neighbors)
             })),
-            _ => unreachable!("{} {}", current_type_name.as_ref(), edge_name.as_ref()),
+            _ => unreachable!("{} {}", type_name.as_ref(), edge_name.as_ref()),
         }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         _query_hint: InterpretedQuery,
         _vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
-        let iterator = data_contexts.map(move |ctx| {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+        let type_name = type_name.clone();
+        let coerce_to_type = coerce_to_type.clone();
+        let iterator = contexts.map(move |ctx| {
             let token = match &ctx.current_token {
                 Some(t) => t,
                 None => return (ctx, false),
@@ -712,7 +711,7 @@ impl Adapter<'static> for DemoAdapter {
             // This "match" is loop-invariant, and can be hoisted outside the map() call
             // at the cost of a bit of code repetition.
 
-            let can_coerce = match (current_type_name.as_ref(), coerce_to_type_name.as_ref()) {
+            let can_coerce = match (type_name.as_ref(), coerce_to_type.as_ref()) {
                 ("HackerNewsItem", "HackerNewsJob") => token.as_job().is_some(),
                 ("HackerNewsItem", "HackerNewsStory") => token.as_story().is_some(),
                 ("HackerNewsItem", "HackerNewsComment") => token.as_comment().is_some(),

@@ -4,8 +4,9 @@ use hn_api::{types::Item, HnClient};
 use trustfall_core::{
     field_property,
     interpreter::{
-        basic_adapter::{BasicAdapter, ContextIterator, ContextOutcomeIterator, VertexIterator},
+        basic_adapter::BasicAdapter,
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
+        ContextIterator, ContextOutcomeIterator, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -19,11 +20,11 @@ lazy_static! {
 pub struct HackerNewsAdapter;
 
 impl HackerNewsAdapter {
-    fn front_page(&self) -> Box<dyn Iterator<Item = Token>> {
+    fn front_page(&self) -> VertexIterator<'static, Token> {
         self.top(Some(30))
     }
 
-    fn top(&self, max: Option<usize>) -> Box<dyn Iterator<Item = Token>> {
+    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
         let iterator = CLIENT
             .get_top_stories()
             .unwrap()
@@ -40,7 +41,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn latest_stories(&self, max: Option<usize>) -> Box<dyn Iterator<Item = Token>> {
+    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
         // Unfortunately, the HN crate we're using doesn't support getting the new stories,
         // so we're doing it manually here.
         let story_ids: Vec<u32> =
@@ -64,7 +65,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn user(&self, username: &str) -> Box<dyn Iterator<Item = Token>> {
+    fn user(&self, username: &str) -> VertexIterator<'static, Token> {
         match CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.

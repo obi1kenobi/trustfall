@@ -63,7 +63,7 @@ type Letter implements Named {
 class JsNumbersAdapter {
   /*
   #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
-  pub fn get_starting_tokens(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
+  pub fn resolve_starting_vertices(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
   */
   *getStartingTokens(edge, parameters) {
     if (edge === "Number") {
@@ -78,17 +78,17 @@ class JsNumbersAdapter {
 
   /*
   #[wasm_bindgen(structural, method, js_name = "projectProperty")]
-  pub fn project_property(
+  pub fn resolve_property(
       this: &JsAdapter,
-      data_contexts: ContextIterator,
-      current_type_name: &str,
+      contexts: ContextIterator,
+      type_name: &str,
       field_name: &str,
   ) -> js_sys::Iterator;
   */
-  *projectProperty(data_contexts, current_type_name, field_name) {
-    if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
+  *projectProperty(contexts, type_name, field_name) {
+    if (type_name === "Number" || type_name === "Prime" || type_name === "Composite") {
       if (field_name === "value") {
-        for (const ctx of data_contexts) {
+        for (const ctx of contexts) {
           const val = {
             localId: ctx.localId,
             value: ctx.currentToken,
@@ -96,27 +96,27 @@ class JsNumbersAdapter {
           yield val;
         }
       } else {
-        throw `unreachable field name: ${current_type_name} ${field_name}`;
+        throw `unreachable field name: ${type_name} ${field_name}`;
       }
     } else {
-      throw `unreachable type name: ${current_type_name} ${field_name}`;
+      throw `unreachable type name: ${type_name} ${field_name}`;
     }
   }
 
   /*
   #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
-  pub fn project_neighbors(
+  pub fn resolve_neighbors(
       this: &JsAdapter,
-      data_contexts: ContextIterator,
-      current_type_name: &str,
+      contexts: ContextIterator,
+      type_name: &str,
       edge_name: &str,
       parameters: Option<EdgeParameters>,
   ) -> js_sys::Iterator;
   */
-  *projectNeighbors(data_contexts, current_type_name, edge_name, parameters) {
-    if (current_type_name === "Number" || current_type_name === "Prime" || current_type_name === "Composite") {
+  *projectNeighbors(contexts, type_name, edge_name, parameters) {
+    if (type_name === "Number" || type_name === "Prime" || type_name === "Composite") {
       if (edge_name === "successor") {
-        for (const ctx of data_contexts) {
+        for (const ctx of contexts) {
           const val = {
             localId: ctx.localId,
             neighbors: [ctx.currentToken + 1],
@@ -124,23 +124,23 @@ class JsNumbersAdapter {
           yield val;
         }
       } else {
-        throw `unreachable neighbor name: ${current_type_name} ${field_name}`;
+        throw `unreachable neighbor name: ${type_name} ${field_name}`;
       }
     } else {
-      throw `unreachable type name: ${current_type_name} ${field_name}`;
+      throw `unreachable type name: ${type_name} ${field_name}`;
     }
   }
 
   /*
   #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
-  pub fn can_coerce_to_type(
+  pub fn resolve_coercion(
       this: &JsAdapter,
-      data_contexts: ContextIterator,
-      current_type_name: &str,
-      coerce_to_type_name: &str,
+      contexts: ContextIterator,
+      type_name: &str,
+      coerce_to_type: &str,
   ) -> js_sys::Iterator;
   */
-  *canCoerceToType(data_contexts, current_type_name, coerce_to_type_name) {
+  *canCoerceToType(contexts, type_name, coerce_to_type) {
     const primes = {
       2: null,
       3: null,
@@ -148,9 +148,9 @@ class JsNumbersAdapter {
       7: null,
       11: null,
     };
-    if (current_type_name === "Number") {
-      if (coerce_to_type_name === "Prime") {
-        for (const ctx of data_contexts) {
+    if (type_name === "Number") {
+      if (coerce_to_type === "Prime") {
+        for (const ctx of contexts) {
           var can_coerce = false;
           if (ctx.currentToken in primes) {
             can_coerce = true;
@@ -161,8 +161,8 @@ class JsNumbersAdapter {
           };
           yield val;
         }
-      } else if (coerce_to_type_name === "Composite") {
-        for (const ctx of data_contexts) {
+      } else if (coerce_to_type === "Composite") {
+        for (const ctx of contexts) {
           var can_coerce = false;
           if (!(ctx.currentToken in primes || ctx.currentToken === 1)) {
             can_coerce = true;
@@ -174,10 +174,10 @@ class JsNumbersAdapter {
           yield val;
         }
       } else {
-        throw `unreachable coercion type name: ${current_type_name} ${coerce_to_type_name}`;
+        throw `unreachable coercion type name: ${type_name} ${coerce_to_type}`;
       }
     } else {
-      throw `unreachable type name: ${current_type_name} ${coerce_to_type_name}`;
+      throw `unreachable type name: ${type_name} ${coerce_to_type}`;
     }
   }
 }

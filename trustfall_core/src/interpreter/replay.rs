@@ -15,16 +15,17 @@ use crate::ir::{indexed::IndexedQuery, EdgeParameters, Eid, FieldValue, Vid};
 use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
-    Adapter, DataContext, InterpretedQuery,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+    VertexIterator,
 };
 
 #[derive(Clone, Debug)]
-struct TraceReaderAdapter<'trace, DataToken>
+struct TraceReaderAdapter<'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
-    next_op: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
+    next_op: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
 fn advance_ref_iter<T, Iter: Iterator<Item = T>>(iter: &RefCell<Iter>) -> Option<T> {
@@ -34,23 +35,23 @@ fn advance_ref_iter<T, Iter: Iterator<Item = T>>(iter: &RefCell<Iter>) -> Option
 }
 
 #[derive(Debug)]
-struct TraceReaderStartingTokensIter<'trace, DataToken>
+struct TraceReaderStartingTokensIter<'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
     exhausted: bool,
     parent_opid: Opid,
-    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
+    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
 #[allow(unused_variables)]
-impl<'trace, DataToken> Iterator for TraceReaderStartingTokensIter<'trace, DataToken>
+impl<'trace, Vertex> Iterator for TraceReaderStartingTokensIter<'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
-    type Item = DataToken;
+    type Item = Vertex;
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -78,25 +79,25 @@ where
     }
 }
 
-struct TraceReaderProjectPropertiesIter<'trace, DataToken>
+struct TraceReaderProjectPropertiesIter<'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
     exhausted: bool,
     parent_opid: Opid,
-    data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'trace>,
-    input_batch: VecDeque<DataContext<DataToken>>,
-    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
+    contexts: ContextIterator<'trace, Vertex>,
+    input_batch: VecDeque<DataContext<Vertex>>,
+    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
 #[allow(unused_variables)]
-impl<'trace, DataToken> Iterator for TraceReaderProjectPropertiesIter<'trace, DataToken>
+impl<'trace, Vertex> Iterator for TraceReaderProjectPropertiesIter<'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
-    type Item = (DataContext<DataToken>, FieldValue);
+    type Item = (DataContext<Vertex>, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -114,7 +115,7 @@ where
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
-                let input_data = self.data_contexts.next();
+                let input_data = self.contexts.next();
 
                 let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                     .expect("Expected to have an item but found none.");
@@ -158,27 +159,27 @@ where
     }
 }
 
-struct TraceReaderCanCoerceIter<'query, 'trace, DataToken>
+struct TraceReaderCanCoerceIter<'query, 'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
     exhausted: bool,
     parent_opid: Opid,
-    data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-    input_batch: VecDeque<DataContext<DataToken>>,
-    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
+    contexts: ContextIterator<'query, Vertex>,
+    input_batch: VecDeque<DataContext<Vertex>>,
+    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
 #[allow(unused_variables)]
-impl<'query, 'trace, DataToken> Iterator for TraceReaderCanCoerceIter<'query, 'trace, DataToken>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderCanCoerceIter<'query, 'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
-    type Item = (DataContext<DataToken>, bool);
+    type Item = (DataContext<Vertex>, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -196,7 +197,7 @@ where
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
-                let input_data = self.data_contexts.next();
+                let input_data = self.contexts.next();
 
                 let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                     .expect("Expected to have an item but found none.");
@@ -241,30 +242,26 @@ where
     }
 }
 
-struct TraceReaderProjectNeighborsIter<'query, 'trace, DataToken>
+struct TraceReaderProjectNeighborsIter<'query, 'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
     exhausted: bool,
     parent_opid: Opid,
-    data_contexts: Box<dyn Iterator<Item = DataContext<DataToken>> + 'query>,
-    input_batch: VecDeque<DataContext<DataToken>>,
-    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
+    contexts: ContextIterator<'query, Vertex>,
+    input_batch: VecDeque<DataContext<Vertex>>,
+    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
-impl<'query, 'trace, DataToken> Iterator
-    for TraceReaderProjectNeighborsIter<'query, 'trace, DataToken>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderProjectNeighborsIter<'query, 'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
-    type Item = (
-        DataContext<DataToken>,
-        Box<dyn Iterator<Item = DataToken> + 'query>,
-    );
+    type Item = (DataContext<Vertex>, VertexIterator<'query, Vertex>);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -282,7 +279,7 @@ where
             );
 
             if let TraceOpContent::AdvanceInputIterator = &input_op.content {
-                let input_data = self.data_contexts.next();
+                let input_data = self.contexts.next();
 
                 let (_, input_op) = advance_ref_iter(self.inner.as_ref())
                     .expect("Expected to have an item but found none.");
@@ -335,26 +332,26 @@ where
     }
 }
 
-struct TraceReaderNeighborIter<'query, 'trace, DataToken>
+struct TraceReaderNeighborIter<'query, 'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
     exhausted: bool,
     parent_iterator_opid: Opid,
     next_index: usize,
-    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<DataToken>>>>,
+    inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
     _phantom: PhantomData<&'query ()>,
 }
 
-impl<'query, 'trace, DataToken> Iterator for TraceReaderNeighborIter<'query, 'trace, DataToken>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderNeighborIter<'query, 'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
-    type Item = DataToken;
+    type Item = Vertex;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (_, trace_op) = advance_ref_iter(self.inner.as_ref())
@@ -386,22 +383,22 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'trace, DataToken> Adapter<'trace> for TraceReaderAdapter<'trace, DataToken>
+impl<'trace, Vertex> Adapter<'trace> for TraceReaderAdapter<'trace, Vertex>
 where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
+    for<'de2> Vertex: Deserialize<'de2>,
 {
-    type DataToken = DataToken;
+    type Vertex = Vertex;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'trace> {
+    ) -> VertexIterator<'trace, Self::Vertex> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a get_starting_tokens() call operation, but found none.");
+            .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
         if let TraceOpContent::Call(FunctionCall::GetStartingTokens(vid)) = trace_op.content {
@@ -417,29 +414,29 @@ where
         }
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'trace>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
+        contexts: ContextIterator<'trace, Self::Vertex>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'trace> {
+    ) -> ContextOutcomeIterator<'trace, Self::Vertex, FieldValue> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a project_property() call operation, but found none.");
+            .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, type_name, property)) =
+        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, op_type_name, property)) =
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
-            assert_eq!(*type_name, current_type_name);
-            assert_eq!(*property, field_name);
+            assert_eq!(op_type_name, type_name);
+            assert_eq!(property, property_name);
 
             Box::new(TraceReaderProjectPropertiesIter {
                 exhausted: false,
                 parent_opid: *root_opid,
-                data_contexts,
+                contexts,
                 input_batch: Default::default(),
                 inner: self.next_op.clone(),
             })
@@ -448,39 +445,31 @@ where
         }
     }
 
-    #[allow(clippy::type_complexity)]
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'trace>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        contexts: ContextIterator<'trace, Self::Vertex>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'trace>,
-                ),
-            > + 'trace,
-    > {
+    ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a project_property() call operation, but found none.");
+            .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, type_name, eid)) =
+        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, op_type_name, eid)) =
             &trace_op.content
         {
             assert_eq!(vid, &vertex_hint);
-            assert_eq!(type_name, &current_type_name);
+            assert_eq!(op_type_name, type_name);
             assert_eq!(eid, &edge_hint);
 
             Box::new(TraceReaderProjectNeighborsIter {
                 exhausted: false,
                 parent_opid: *root_opid,
-                data_contexts,
+                contexts,
                 input_batch: Default::default(),
                 inner: self.next_op.clone(),
             })
@@ -489,29 +478,29 @@ where
         }
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'trace>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        contexts: ContextIterator<'trace, Self::Vertex>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'trace> {
+    ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
-            .expect("Expected a can_coerce_to_type() call operation, but found none.");
+            .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
         if let TraceOpContent::Call(FunctionCall::CanCoerceToType(vid, from_type, to_type)) =
             &trace_op.content
         {
             assert_eq!(*vid, vertex_hint);
-            assert_eq!(*from_type, current_type_name);
-            assert_eq!(*to_type, coerce_to_type_name);
+            assert_eq!(from_type, type_name);
+            assert_eq!(to_type, coerce_to_type);
 
             Box::new(TraceReaderCanCoerceIter {
                 exhausted: false,
                 parent_opid: *root_opid,
-                data_contexts,
+                contexts,
                 input_batch: Default::default(),
                 inner: self.next_op.clone(),
             })
@@ -522,13 +511,13 @@ where
 }
 
 #[allow(dead_code)]
-pub fn assert_interpreted_results<'query, 'trace, DataToken>(
-    trace: &Trace<DataToken>,
+pub fn assert_interpreted_results<'query, 'trace, Vertex>(
+    trace: &Trace<Vertex>,
     expected_results: &[BTreeMap<Arc<str>, FieldValue>],
     complete: bool,
 ) where
-    DataToken: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> DataToken: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
+    for<'de2> Vertex: Deserialize<'de2>,
     'trace: 'query,
 {
     let next_op = Rc::new(RefCell::new(trace.ops.iter()));

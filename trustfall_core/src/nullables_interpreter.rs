@@ -3,7 +3,9 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator,
+    },
     ir::{EdgeParameters, Eid, FieldValue, Vid},
 };
 
@@ -15,58 +17,50 @@ pub(crate) struct NullablesAdapter;
 
 #[allow(unused_variables)]
 impl Adapter<'static> for NullablesAdapter {
-    type DataToken = NullablesToken;
+    type Vertex = NullablesToken;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken>> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         unimplemented!()
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         unimplemented!()
     }
 
-    #[allow(clippy::type_complexity)]
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<EdgeParameters>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<EdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-            Item = (
-                DataContext<Self::DataToken>,
-                Box<dyn Iterator<Item = Self::DataToken>>,
-            ),
-        >,
-    > {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         unimplemented!()
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>>>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)>> {
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         unimplemented!()
     }
 }

@@ -49,15 +49,15 @@ The project consists of the following components:
 - `adapter.rs` defines the `HackerNewsAdapter` struct, which implements
   the `trustfall_core::interpreter::Adapter` trait and connects the query engine
   to the HackerNews API.
-    - The `get_starting_tokens` method is what produces the initial iterator of `Token` vertices
+    - The `resolve_starting_vertices` method is what produces the initial iterator of `Token` vertices
       corresponding to the root edge at which querying starts (e.g. `FrontPage`).
-    - The `project_property` method is used to get property values for each `Token` in an iterator.
-    - The `project_neighbors` method is used to get the neighboring vertices (`Token`s)
+    - The `resolve_property` method is used to get property values for each `Token` in an iterator.
+    - The `resolve_neighbors` method is used to get the neighboring vertices (`Token`s)
       across a particular edge, for each `Token` in an iterator.
-    - The `can_coerce_to_type` method is kind of like the Python `isinstance()` function:
+    - The `resolve_coercion` method is kind of like the Python `isinstance()` function:
       for each `Token` in an iterable, it checks whether that `Token`'s type can be narrowed
       to a more derived type than it previously represented. For example, if the `Token` originally
-      represented `interface Animal`, `can_coerce_to_type` may be used to check whether the `Token`
+      represented `interface Animal`, `resolve_coercion` may be used to check whether the `Token`
       is actually of `type Dog implements Animal`.
 - `main.rs` is a simple CLI app that can execute query files in `ron` format.
 

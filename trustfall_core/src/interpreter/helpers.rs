@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::ir::FieldValue;
 
-use super::basic_adapter::{ContextIterator, ContextOutcomeIterator, VertexIterator};
+use super::{ContextIterator, ContextOutcomeIterator, VertexIterator};
 
 /// Helper for implementing [`BasicAdapter::resolve_property`] and equivalents.
 ///
@@ -87,7 +87,8 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// # use trustfall_core::{
 /// #     field_property,
 /// #     interpreter::{
-/// #         basic_adapter::{ContextIterator, ContextOutcomeIterator},
+/// #         ContextIterator,
+/// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
 /// #     },
 /// #     ir::FieldValue,
@@ -124,7 +125,8 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// # use trustfall_core::{
 /// #     field_property,
 /// #     interpreter::{
-/// #         basic_adapter::{ContextIterator, ContextOutcomeIterator},
+/// #         ContextIterator,
+/// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
 /// #     },
 /// #     ir::FieldValue,
@@ -218,7 +220,8 @@ macro_rules! field_property {
 /// #     accessor_property,
 /// #     field_property,
 /// #     interpreter::{
-/// #         basic_adapter::{ContextIterator, ContextOutcomeIterator},
+/// #         ContextIterator,
+/// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
 /// #     },
 /// #     ir::FieldValue,

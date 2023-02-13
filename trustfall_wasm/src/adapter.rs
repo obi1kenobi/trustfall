@@ -2,13 +2,16 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 use js_sys::try_iter;
 use trustfall_core::{
-    interpreter::{Adapter, DataContext, InterpretedQuery},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+        VertexIterator,
+    },
     ir::{EdgeParameters as CoreEdgeParameters, Eid, FieldValue, Vid},
 };
 use wasm_bindgen::prelude::*;
 
 use crate::shim::{
-    ContextIterator, JsEdgeParameters, JsStringConstants, ReturnedContextIdAndBool,
+    JsContextIterator, JsEdgeParameters, JsStringConstants, ReturnedContextIdAndBool,
     ReturnedContextIdAndValue,
 };
 
@@ -17,35 +20,35 @@ extern "C" {
     pub type JsAdapter;
 
     #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
-    pub fn get_starting_tokens(
+    pub fn resolve_starting_vertices(
         this: &JsAdapter,
         edge: &str,
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "projectProperty")]
-    pub fn project_property(
+    pub fn resolve_property(
         this: &JsAdapter,
-        data_contexts: ContextIterator,
-        current_type_name: &str,
+        contexts: JsContextIterator,
+        type_name: &str,
         field_name: &str,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
-    pub fn project_neighbors(
+    pub fn resolve_neighbors(
         this: &JsAdapter,
-        data_contexts: ContextIterator,
-        current_type_name: &str,
+        contexts: JsContextIterator,
+        type_name: &str,
         edge_name: &str,
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
     #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
-    pub fn can_coerce_to_type(
+    pub fn resolve_coercion(
         this: &JsAdapter,
-        data_contexts: ContextIterator,
-        current_type_name: &str,
-        coerce_to_type_name: &str,
+        contexts: JsContextIterator,
+        type_name: &str,
+        coerce_to_type: &str,
     ) -> js_sys::Iterator;
 }
 
@@ -147,10 +150,7 @@ impl ContextAndNeighborsIterator {
 }
 
 impl Iterator for ContextAndNeighborsIterator {
-    type Item = (
-        DataContext<JsValue>,
-        Box<dyn Iterator<Item = JsValue> + 'static>,
-    );
+    type Item = (DataContext<JsValue>, VertexIterator<'static, JsValue>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let iter_next = self
@@ -256,62 +256,55 @@ impl AdapterShim {
 
 #[allow(unused_variables)]
 impl Adapter<'static> for AdapterShim {
-    type DataToken = JsValue;
+    type Vertex = JsValue;
 
-    fn get_starting_tokens(
+    fn resolve_starting_vertices(
         &mut self,
-        edge: Arc<str>,
-        parameters: Option<Arc<CoreEdgeParameters>>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = Self::DataToken> + 'static> {
-        let parameters: JsEdgeParameters = parameters.into();
+    ) -> VertexIterator<'static, Self::Vertex> {
+        let parameters: JsEdgeParameters = parameters.clone().into();
         let js_iter = self
             .inner
-            .get_starting_tokens(edge.as_ref(), parameters.into_js_dict());
+            .resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
         Box::new(TokenIterator::new(js_iter.into_iter()))
     }
 
-    fn project_property(
+    fn resolve_property(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'static>,
-        current_type_name: Arc<str>,
-        field_name: Arc<str>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, FieldValue)> + 'static> {
-        let ctx_iter = ContextIterator::new(data_contexts);
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+        let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner
-                .project_property(ctx_iter, current_type_name.as_ref(), field_name.as_ref());
+                .resolve_property(ctx_iter, type_name.as_ref(), property_name.as_ref());
         Box::new(ContextAndValueIterator::new(js_iter, registry))
     }
 
-    fn project_neighbors(
+    fn resolve_neighbors(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'static>,
-        current_type_name: Arc<str>,
-        edge_name: Arc<str>,
-        parameters: Option<Arc<CoreEdgeParameters>>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &Option<Arc<CoreEdgeParameters>>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
         edge_hint: Eid,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    DataContext<Self::DataToken>,
-                    Box<dyn Iterator<Item = Self::DataToken> + 'static>,
-                ),
-            > + 'static,
-    > {
-        let ctx_iter = ContextIterator::new(data_contexts);
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+        let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
-        let parameters: JsEdgeParameters = parameters.into();
+        let parameters: JsEdgeParameters = parameters.clone().into();
 
-        let js_iter = self.inner.project_neighbors(
+        let js_iter = self.inner.resolve_neighbors(
             ctx_iter,
-            current_type_name.as_ref(),
+            type_name.as_ref(),
             edge_name.as_ref(),
             parameters.into_js_dict(),
         );
@@ -322,21 +315,19 @@ impl Adapter<'static> for AdapterShim {
         ))
     }
 
-    fn can_coerce_to_type(
+    fn resolve_coercion(
         &mut self,
-        data_contexts: Box<dyn Iterator<Item = DataContext<Self::DataToken>> + 'static>,
-        current_type_name: Arc<str>,
-        coerce_to_type_name: Arc<str>,
+        contexts: ContextIterator<'static, Self::Vertex>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
         query_hint: InterpretedQuery,
         vertex_hint: Vid,
-    ) -> Box<dyn Iterator<Item = (DataContext<Self::DataToken>, bool)> + 'static> {
-        let ctx_iter = ContextIterator::new(data_contexts);
+    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+        let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
-        let js_iter = self.inner.can_coerce_to_type(
-            ctx_iter,
-            current_type_name.as_ref(),
-            coerce_to_type_name.as_ref(),
-        );
+        let js_iter =
+            self.inner
+                .resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type.as_ref());
         Box::new(ContextAndBoolIterator::new(js_iter, registry))
     }
 }
