@@ -16,7 +16,7 @@ use crate::adapter::HackerNewsAdapter;
 extern crate lazy_static;
 
 pub mod adapter;
-pub mod token;
+pub mod vertex;
 
 lazy_static! {
     static ref SCHEMA: Schema =

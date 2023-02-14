@@ -44,7 +44,7 @@ already provided by the iterator-style execution model.
 ## Components
 
 The project consists of the following components:
-- `token.rs` defines the `Token` enum which `trustfall` uses to
+- `vertex.rs` defines the `Token` enum which `trustfall` uses to
   represent vertices in the query graph.
 - `adapter.rs` defines the `HackerNewsAdapter` struct, which implements
   the `trustfall_core::interpreter::Adapter` trait and connects the query engine
