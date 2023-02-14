@@ -178,7 +178,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(4),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -201,7 +201,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(4),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -370,7 +370,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -394,7 +394,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -515,7 +515,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(4),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -540,7 +540,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(4),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -617,7 +617,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -643,7 +643,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -910,7 +910,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -936,7 +936,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -1119,7 +1119,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(9),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -1144,7 +1144,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(9),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -1260,7 +1260,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -1284,7 +1284,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(6),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(6, [
               2,
               3,
@@ -1355,7 +1355,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(9),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -1378,7 +1378,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(9),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(9, [
               3,
             ]))),

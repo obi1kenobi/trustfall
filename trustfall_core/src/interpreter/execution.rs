@@ -903,7 +903,7 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
         let moved_iterator = iterator.map(move |mut context| {
             let active_vertex = context.active_vertex.clone();
             let new_token = context.tokens[&vertex_id].clone();
-            context.suspended_tokens.push(active_vertex);
+            context.suspended_vertices.push(active_vertex);
             context.move_to_token(new_token)
         });
 
@@ -923,7 +923,7 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
 
             // Make sure that the context has the same "current" token
             // as before evaluating the context field.
-            let old_active_vertex = context.suspended_tokens.pop().unwrap();
+            let old_active_vertex = context.suspended_vertices.pop().unwrap();
             context.move_to_token(old_active_vertex)
         }))
     } else {
@@ -1170,7 +1170,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
             if context.active_vertex.is_none() {
                 // Mark that this token starts off with a None active_vertex value,
                 // so the later unsuspend() call should restore it to such a state later.
-                context.suspended_tokens.push(None);
+                context.suspended_vertices.push(None);
             }
             context.activate_token(&expanding_from_vid)
         }));

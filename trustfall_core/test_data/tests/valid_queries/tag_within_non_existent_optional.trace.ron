@@ -451,7 +451,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(3),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         )),
@@ -474,7 +474,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(3),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         ), Null)),
@@ -971,7 +971,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(3),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         )),
@@ -995,7 +995,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(3),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         ), Null)),
@@ -1579,7 +1579,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(4),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1605,7 +1605,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(4),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Composite(CompositeNumber(4, [
               2,
             ]))),

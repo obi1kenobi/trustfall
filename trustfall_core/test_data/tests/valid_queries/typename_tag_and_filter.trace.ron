@@ -108,7 +108,7 @@ TestInterpreterOutputTrace(
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(2))),
           ],
         )),
@@ -124,7 +124,7 @@ TestInterpreterOutputTrace(
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(2))),
           ],
         ), String("Neither"))),
@@ -210,7 +210,7 @@ TestInterpreterOutputTrace(
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         )),
@@ -226,7 +226,7 @@ TestInterpreterOutputTrace(
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         ), String("Prime"))),

@@ -56,7 +56,7 @@ pub struct DataContext<Vertex: Clone + Debug> {
     active_vertex: Option<Vertex>,
     tokens: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
-    suspended_tokens: Vec<Option<Vertex>>,
+    suspended_vertices: Vec<Option<Vertex>>,
     folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<Vertex>>>,
@@ -118,7 +118,7 @@ where
     values: Vec<FieldValue>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    suspended_tokens: Vec<Option<Vertex>>,
+    suspended_vertices: Vec<Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
@@ -144,7 +144,7 @@ where
             active_vertex: context.active_vertex,
             tokens: context.tokens,
             values: context.values,
-            suspended_tokens: context.suspended_tokens,
+            suspended_vertices: context.suspended_vertices,
             folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
@@ -163,7 +163,7 @@ where
             active_vertex: context.active_vertex,
             tokens: context.tokens,
             values: context.values,
-            suspended_tokens: context.suspended_tokens,
+            suspended_vertices: context.suspended_vertices,
             folded_contexts: context.folded_contexts,
             folded_values: context.folded_values,
             piggyback: context.piggyback,
@@ -179,7 +179,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
             piggyback: None,
             tokens: Default::default(),
             values: Default::default(),
-            suspended_tokens: Default::default(),
+            suspended_vertices: Default::default(),
             folded_contexts: Default::default(),
             folded_values: Default::default(),
             imported_tags: Default::default(),
@@ -197,7 +197,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
             active_vertex: self.tokens[vid].clone(),
             tokens: self.tokens,
             values: self.values,
-            suspended_tokens: self.suspended_tokens,
+            suspended_vertices: self.suspended_vertices,
             folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
@@ -210,7 +210,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
             active_vertex: new_token,
             tokens: self.tokens.clone(),
             values: self.values.clone(),
-            suspended_tokens: self.suspended_tokens.clone(),
+            suspended_vertices: self.suspended_vertices.clone(),
             folded_contexts: self.folded_contexts.clone(),
             folded_values: self.folded_values.clone(),
             piggyback: None,
@@ -223,7 +223,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
             active_vertex: new_token,
             tokens: self.tokens,
             values: self.values,
-            suspended_tokens: self.suspended_tokens,
+            suspended_vertices: self.suspended_vertices,
             folded_contexts: self.folded_contexts,
             folded_values: self.folded_values,
             piggyback: self.piggyback,
@@ -233,12 +233,12 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
 
     fn ensure_suspended(mut self) -> DataContext<Vertex> {
         if let Some(token) = self.active_vertex {
-            self.suspended_tokens.push(Some(token));
+            self.suspended_vertices.push(Some(token));
             DataContext {
                 active_vertex: None,
                 tokens: self.tokens,
                 values: self.values,
-                suspended_tokens: self.suspended_tokens,
+                suspended_vertices: self.suspended_vertices,
                 folded_contexts: self.folded_contexts,
                 folded_values: self.folded_values,
                 piggyback: self.piggyback,
@@ -252,12 +252,12 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     fn ensure_unsuspended(mut self) -> DataContext<Vertex> {
         match self.active_vertex {
             None => {
-                let active_vertex = self.suspended_tokens.pop().unwrap();
+                let active_vertex = self.suspended_vertices.pop().unwrap();
                 DataContext {
                     active_vertex,
                     tokens: self.tokens,
                     values: self.values,
-                    suspended_tokens: self.suspended_tokens,
+                    suspended_vertices: self.suspended_vertices,
                     folded_contexts: self.folded_contexts,
                     folded_values: self.folded_values,
                     piggyback: self.piggyback,
@@ -274,7 +274,7 @@ impl<Vertex: Debug + Clone + PartialEq> PartialEq for DataContext<Vertex> {
         self.active_vertex == other.active_vertex
             && self.tokens == other.tokens
             && self.values == other.values
-            && self.suspended_tokens == other.suspended_tokens
+            && self.suspended_vertices == other.suspended_vertices
             && self.folded_contexts == other.folded_contexts
             && self.piggyback == other.piggyback
             && self.imported_tags == other.imported_tags

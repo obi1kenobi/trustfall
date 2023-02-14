@@ -101,7 +101,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Neither(NeitherNumber(0))),
               ],
             ),
@@ -122,7 +122,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Neither(NeitherNumber(0))),
               ],
             ),
@@ -148,7 +148,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Neither(NeitherNumber(1))),
               ],
               piggyback: Some([
@@ -157,7 +157,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Neither(NeitherNumber(0))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Neither(NeitherNumber(0))),
                   ],
                 ),
@@ -180,7 +180,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Neither(NeitherNumber(1))),
               ],
               piggyback: Some([
@@ -189,7 +189,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Neither(NeitherNumber(0))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Neither(NeitherNumber(0))),
                   ],
                 ),
@@ -377,7 +377,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Neither(NeitherNumber(1))),
               ],
             ),
@@ -398,7 +398,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Neither(NeitherNumber(1))),
               ],
             ),
@@ -424,7 +424,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(2))),
               ],
               piggyback: Some([
@@ -433,7 +433,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Neither(NeitherNumber(1))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Neither(NeitherNumber(1))),
                   ],
                 ),
@@ -456,7 +456,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(2))),
               ],
               piggyback: Some([
@@ -465,7 +465,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Neither(NeitherNumber(1))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Neither(NeitherNumber(1))),
                   ],
                 ),
@@ -659,7 +659,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(2))),
               ],
             ),
@@ -680,7 +680,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(2))),
               ],
             ),
@@ -710,7 +710,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(3))),
               ],
               piggyback: Some([
@@ -719,7 +719,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Prime(PrimeNumber(2))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Prime(PrimeNumber(2))),
                   ],
                 ),
@@ -744,7 +744,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(3))),
               ],
               piggyback: Some([
@@ -753,7 +753,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Prime(PrimeNumber(2))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Prime(PrimeNumber(2))),
                   ],
                 ),
@@ -949,7 +949,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(3))),
               ],
             ),
@@ -972,7 +972,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(3))),
               ],
             ),
@@ -998,7 +998,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1009,7 +1009,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Prime(PrimeNumber(3))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Prime(PrimeNumber(3))),
                   ],
                 ),
@@ -1032,7 +1032,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1043,7 +1043,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Prime(PrimeNumber(3))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Prime(PrimeNumber(3))),
                   ],
                 ),
@@ -1258,7 +1258,7 @@ TestInterpreterOutputTrace(
                   2,
                 ]))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1285,7 +1285,7 @@ TestInterpreterOutputTrace(
                   2,
                 ]))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1323,7 +1323,7 @@ TestInterpreterOutputTrace(
                   2,
                 ]))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(5))),
               ],
               piggyback: Some([
@@ -1334,7 +1334,7 @@ TestInterpreterOutputTrace(
                       2,
                     ]))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Composite(CompositeNumber(4, [
                       2,
                     ]))),
@@ -1366,7 +1366,7 @@ TestInterpreterOutputTrace(
                   2,
                 ]))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(5))),
               ],
               piggyback: Some([
@@ -1377,7 +1377,7 @@ TestInterpreterOutputTrace(
                       2,
                     ]))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Composite(CompositeNumber(4, [
                       2,
                     ]))),
@@ -1599,7 +1599,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(5))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(5))),
               ],
             ),
@@ -1623,7 +1623,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(5))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Prime(PrimeNumber(5))),
               ],
             ),
@@ -1649,7 +1649,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(5))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Composite(CompositeNumber(6, [
                   2,
                   3,
@@ -1661,7 +1661,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Prime(PrimeNumber(5))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Prime(PrimeNumber(5))),
                   ],
                 ),
@@ -1684,7 +1684,7 @@ TestInterpreterOutputTrace(
               tokens: {
                 Vid(1): Some(Prime(PrimeNumber(5))),
               },
-              suspended_tokens: [
+              suspended_vertices: [
                 Some(Composite(CompositeNumber(6, [
                   2,
                   3,
@@ -1696,7 +1696,7 @@ TestInterpreterOutputTrace(
                   tokens: {
                     Vid(1): Some(Prime(PrimeNumber(5))),
                   },
-                  suspended_tokens: [
+                  suspended_vertices: [
                     Some(Prime(PrimeNumber(5))),
                   ],
                 ),

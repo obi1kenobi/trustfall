@@ -118,7 +118,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(2),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(2))),
           ],
         )),
@@ -134,7 +134,7 @@ TestInterpreterOutputTrace(
           values: [
             Int64(2),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(2))),
           ],
         ), Int64(1))),
