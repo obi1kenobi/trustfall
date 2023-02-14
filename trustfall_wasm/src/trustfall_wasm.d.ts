@@ -24,25 +24,25 @@ export interface ContextAndBool {
 }
 
 export interface Adapter<T> {
-    getStartingTokens(
+    resolveStartingVertices(
         edge: string,
         parameters: JsEdgeParameters,
     ): IterableIterator<T>;
 
-    projectProperty(
+    resolveProperty(
         contexts: IterableIterator<JsContext<T>>,
         type_name: string,
         field_name: string
     ): IterableIterator<ContextAndValue>;
 
-    projectNeighbors(
+    resolveNeighbors(
         contexts: IterableIterator<JsContext<T>>,
         type_name: string,
         edge_name: string,
         parameters: JsEdgeParameters,
     ): IterableIterator<ContextAndNeighborsIterator<T>>;
 
-    canCoerceToType(
+    resolveCoercion(
         contexts: IterableIterator<JsContext<T>>,
         type_name: string,
         coerce_to_type: string

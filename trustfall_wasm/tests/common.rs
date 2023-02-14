@@ -10,10 +10,10 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(inline_js = r#"
     class JsNumbersAdapter {
         /*
-        #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
+        #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
         pub fn resolve_starting_vertices(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
         */
-        *getStartingTokens(edge, parameters) {
+        *resolveStartingVertices(edge, parameters) {
             if (edge === "Number") {
                 const maxValue = parameters["max"];
                 for (var i = 1; i <= maxValue; i++) {
@@ -25,7 +25,7 @@ use wasm_bindgen::prelude::*;
         }
 
         /*
-        #[wasm_bindgen(structural, method, js_name = "projectProperty")]
+        #[wasm_bindgen(structural, method, js_name = "resolveProperty")]
         pub fn resolve_property(
             this: &JsAdapter,
             contexts: ContextIterator,
@@ -33,7 +33,7 @@ use wasm_bindgen::prelude::*;
             field_name: &str,
         ) -> js_sys::Iterator;
         */
-        *projectProperty(contexts, type_name, field_name) {
+        *resolveProperty(contexts, type_name, field_name) {
             if (type_name === "Number" || type_name === "Prime" || type_name === "Composite") {
                 if (field_name === "value") {
                     for (const ctx of contexts) {
@@ -52,7 +52,7 @@ use wasm_bindgen::prelude::*;
         }
 
         /*
-        #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
+        #[wasm_bindgen(structural, method, js_name = "resolveNeighbors")]
         pub fn resolve_neighbors(
             this: &JsAdapter,
             contexts: ContextIterator,
@@ -61,7 +61,7 @@ use wasm_bindgen::prelude::*;
             parameters: Option<EdgeParameters>,
         ) -> js_sys::Iterator;
         */
-        *projectNeighbors(contexts, type_name, edge_name, parameters) {
+        *resolveNeighbors(contexts, type_name, edge_name, parameters) {
             if (type_name === "Number" || type_name === "Prime" || type_name === "Composite") {
                 if (edge_name === "successor") {
                     for (const ctx of contexts) {
@@ -80,7 +80,7 @@ use wasm_bindgen::prelude::*;
         }
 
         /*
-        #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
+        #[wasm_bindgen(structural, method, js_name = "resolveCoercion")]
         pub fn resolve_coercion(
             this: &JsAdapter,
             contexts: ContextIterator,
@@ -88,7 +88,7 @@ use wasm_bindgen::prelude::*;
             coerce_to_type: &str,
         ) -> js_sys::Iterator;
         */
-        *canCoerceToType(contexts, type_name, coerce_to_type) {
+        *resolveCoercion(contexts, type_name, coerce_to_type) {
             const primes = {
                 2: null,
                 3: null,

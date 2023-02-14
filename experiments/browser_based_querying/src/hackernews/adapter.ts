@@ -179,7 +179,7 @@ export class MyAdapter implements Adapter<Vertex> {
     this.fetchPort = fetchPort;
   }
 
-  *getStartingTokens(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
+  *resolveStartingVertices(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
     if (edge === 'FrontPage') {
       return limitIterator(getTopItems(this.fetchPort), 30);
     } else if (
@@ -258,7 +258,7 @@ export class MyAdapter implements Adapter<Vertex> {
     }
   }
 
-  *projectProperty(
+  *resolveProperty(
     contexts: IterableIterator<JsContext<Vertex>>,
     type_name: string,
     field_name: string
@@ -398,7 +398,7 @@ export class MyAdapter implements Adapter<Vertex> {
     }
   }
 
-  *projectNeighbors(
+  *resolveNeighbors(
     contexts: IterableIterator<JsContext<Vertex>>,
     type_name: string,
     edge_name: string,
@@ -544,7 +544,7 @@ export class MyAdapter implements Adapter<Vertex> {
     }
   }
 
-  *canCoerceToType(
+  *resolveCoercion(
     contexts: IterableIterator<JsContext<Vertex>>,
     type_name: string,
     coerce_to_type: string
