@@ -18,8 +18,8 @@ extern crate lazy_static;
 mod actions_parser;
 mod adapter;
 mod pagers;
-mod token;
 mod util;
+mod vertex;
 
 lazy_static! {
     static ref SCHEMA: Schema =

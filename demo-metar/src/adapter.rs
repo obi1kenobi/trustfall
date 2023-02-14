@@ -39,7 +39,7 @@ impl<'a> From<&'a MetarCloudCover> for Token<'a> {
 macro_rules! non_float_field {
     ($iter: ident, $variant: path, $field: ident) => {
         Box::new($iter.map(|ctx| {
-            let value = match &ctx.current_token {
+            let value = match ctx.active_vertex() {
                 None => FieldValue::Null,
                 Some(token) => match token {
                     $variant(m) => m.$field.clone().into(),
@@ -54,7 +54,7 @@ macro_rules! non_float_field {
 macro_rules! float_field {
     ($iter: ident, $variant: path, $field: ident) => {
         Box::new($iter.map(|ctx| {
-            let value = match &ctx.current_token {
+            let value = match ctx.active_vertex() {
                 None => FieldValue::Null,
                 Some(token) => match token {
                     $variant(m) => m.$field.clone().try_into().unwrap(),
@@ -164,7 +164,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                 assert!(parameters.is_empty());
 
                 Box::new(contexts.map(|ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
                         Some(token) => match token {
                             &Token::MetarReport(metar) => {
                                 Box::new(metar.cloud_cover.iter().map(|c| c.into()))

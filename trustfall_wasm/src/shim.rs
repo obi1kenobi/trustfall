@@ -179,7 +179,7 @@ impl JsContextIterator {
         if let Some(ctx) = next {
             let next_item = self.next_item;
             self.next_item = self.next_item.wrapping_add(1);
-            let current_token = ctx.current_token.clone();
+            let current_vertex = ctx.active_vertex().cloned();
 
             let existing = self.registry.borrow_mut().insert(next_item, ctx);
             assert!(
@@ -187,7 +187,7 @@ impl JsContextIterator {
                 "id {next_item} already inserted with value {existing:?}",
             );
 
-            ContextIteratorItem::new_item(JsContext::new(next_item, current_token))
+            ContextIteratorItem::new_item(JsContext::new(next_item, current_vertex))
         } else {
             ContextIteratorItem::new_done()
         }
