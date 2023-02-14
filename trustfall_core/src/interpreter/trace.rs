@@ -246,7 +246,9 @@ where
     ) -> VertexIterator<'vertex, Self::Vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::ResolveStartingVertices(query_info.origin_vid())),
+            TraceOpContent::Call(FunctionCall::ResolveStartingVertices(
+                query_info.origin_vid(),
+            )),
             None,
         );
         drop(trace);

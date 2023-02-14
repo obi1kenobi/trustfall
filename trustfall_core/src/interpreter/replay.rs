@@ -72,7 +72,9 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex)) => Some(vertex.clone()),
+            TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex)) => {
+                Some(vertex.clone())
+            }
             _ => unreachable!(),
         }
     }

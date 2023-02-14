@@ -181,9 +181,10 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
                     iterable!(as_feed_entry, content, Vertex::FeedContent),
                 ),
                 "links" => neighbors(contexts, iterable!(as_feed_entry, links, Vertex::FeedLink)),
-                "summary" => {
-                    neighbors(contexts, iterable!(as_feed_entry, summary, Vertex::FeedText))
-                }
+                "summary" => neighbors(
+                    contexts,
+                    iterable!(as_feed_entry, summary, Vertex::FeedText),
+                ),
                 "rights" => neighbors(contexts, iterable!(as_feed_entry, rights, Vertex::FeedText)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
@@ -192,7 +193,10 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             "ChannelImage" => match edge_name {
-                "link" => neighbors(contexts, iterable!(as_channel_image, link, Vertex::FeedLink)),
+                "link" => neighbors(
+                    contexts,
+                    iterable!(as_channel_image, link, Vertex::FeedLink),
+                ),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             _ => unreachable!("type {type_name} not found"),

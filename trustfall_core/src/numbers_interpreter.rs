@@ -355,9 +355,9 @@ impl Adapter<'static> for NumbersAdapter {
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
-            ("Number", "Prime") => {
-                resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersVertex::Prime(..)))
-            }
+            ("Number", "Prime") => resolve_coercion_with(contexts, |vertex| {
+                matches!(vertex, NumbersVertex::Prime(..))
+            }),
             ("Number", "Composite") => resolve_coercion_with(contexts, |vertex| {
                 matches!(vertex, NumbersVertex::Composite(..))
             }),

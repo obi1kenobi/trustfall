@@ -335,7 +335,9 @@ fn get_item_property(item_vertex: &Token, field_name: &str) -> FieldValue {
 }
 
 fn get_struct_property(item_vertex: &Token, field_name: &str) -> FieldValue {
-    let (_, struct_item) = item_vertex.as_struct_item().expect("vertex was not a Struct");
+    let (_, struct_item) = item_vertex
+        .as_struct_item()
+        .expect("vertex was not a Struct");
     match field_name {
         "struct_type" => match struct_item.struct_type {
             rustdoc_types::StructType::Plain => "plain",
@@ -716,29 +718,30 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         let previous_crate = self.previous_crate;
 
                         Box::new(contexts.map(move |ctx| {
-                            let neighbors: VertexIterator<'a, Self::Vertex> =
-                                match ctx.active_vertex() {
-                                    None => Box::new(std::iter::empty()),
-                                    Some(vertex) => {
-                                        let origin = vertex.origin;
-                                        let item = vertex.as_item().expect("vertex was not an Item");
-                                        let item_id = &item.id;
+                            let neighbors: VertexIterator<'a, Self::Vertex> = match ctx
+                                .active_vertex()
+                            {
+                                None => Box::new(std::iter::empty()),
+                                Some(vertex) => {
+                                    let origin = vertex.origin;
+                                    let item = vertex.as_item().expect("vertex was not an Item");
+                                    let item_id = &item.id;
 
-                                        let parent_crate = match origin {
-                                            Origin::CurrentCrate => current_crate,
-                                            Origin::PreviousCrate => {
-                                                previous_crate.expect("no baseline provided")
-                                            }
-                                        };
+                                    let parent_crate = match origin {
+                                        Origin::CurrentCrate => current_crate,
+                                        Origin::PreviousCrate => {
+                                            previous_crate.expect("no baseline provided")
+                                        }
+                                    };
 
-                                        Box::new(
-                                            parent_crate
-                                                .publicly_importable_names(item_id)
-                                                .into_iter()
-                                                .map(move |x| origin.make_importable_path_vertex(x)),
-                                        )
-                                    }
-                                };
+                                    Box::new(
+                                        parent_crate
+                                            .publicly_importable_names(item_id)
+                                            .into_iter()
+                                            .map(move |x| origin.make_importable_path_vertex(x)),
+                                    )
+                                }
+                            };
 
                             (ctx, neighbors)
                         }))
