@@ -580,7 +580,7 @@ mod tests {
     use crate::{
         filesystem_interpreter::FilesystemVertex,
         interpreter::replay::assert_interpreted_results,
-        numbers_interpreter::NumbersToken,
+        numbers_interpreter::NumbersVertex,
         util::{TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace},
     };
 
@@ -610,7 +610,7 @@ mod tests {
     }
 
     fn check_numbers_trace(expected_ir: TestIRQuery, input_data: &str) {
-        match ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(input_data) {
+        match ron::from_str::<TestInterpreterOutputTrace<NumbersVertex>>(input_data) {
             Ok(test_data) => {
                 assert_eq!(expected_ir.schema_name, "numbers");
                 assert_eq!(test_data.schema_name, "numbers");

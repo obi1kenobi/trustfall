@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum NumbersToken {
+pub(crate) enum NumbersVertex {
     Neither(NeitherNumber), // zero and one
     Prime(PrimeNumber),
     Composite(CompositeNumber),
@@ -101,20 +101,20 @@ impl Number for CompositeNumber {
     }
 }
 
-impl Number for NumbersToken {
+impl Number for NumbersVertex {
     fn typename(&self) -> &'static str {
         match self {
-            NumbersToken::Neither(x) => x.typename(),
-            NumbersToken::Prime(x) => x.typename(),
-            NumbersToken::Composite(x) => x.typename(),
+            NumbersVertex::Neither(x) => x.typename(),
+            NumbersVertex::Prime(x) => x.typename(),
+            NumbersVertex::Composite(x) => x.typename(),
         }
     }
 
     fn value(&self) -> i64 {
         match self {
-            NumbersToken::Neither(x) => x.value(),
-            NumbersToken::Prime(x) => x.value(),
-            NumbersToken::Composite(x) => x.value(),
+            NumbersVertex::Neither(x) => x.value(),
+            NumbersVertex::Prime(x) => x.value(),
+            NumbersVertex::Composite(x) => x.value(),
         }
     }
 }
@@ -156,15 +156,15 @@ fn get_factors(primes: &BTreeSet<i64>, num: i64) -> BTreeSet<i64> {
     }
 }
 
-fn make_number_vertex(primes: &mut BTreeSet<i64>, num: i64) -> NumbersToken {
+fn make_number_vertex(primes: &mut BTreeSet<i64>, num: i64) -> NumbersVertex {
     if num >= 2 {
         generate_primes_up_to(primes, num);
     }
     let factors = get_factors(primes, num);
     match factors.len() {
-        0 => NumbersToken::Neither(NeitherNumber(num)),
-        1 if factors.contains(&num) => NumbersToken::Prime(PrimeNumber(num)),
-        _ => NumbersToken::Composite(CompositeNumber(num, factors)),
+        0 => NumbersVertex::Neither(NeitherNumber(num)),
+        1 if factors.contains(&num) => NumbersVertex::Prime(PrimeNumber(num)),
+        _ => NumbersVertex::Composite(CompositeNumber(num, factors)),
     }
 }
 
@@ -173,7 +173,7 @@ pub(crate) struct NumbersAdapter;
 
 #[allow(unused_variables)]
 impl Adapter<'static> for NumbersAdapter {
-    type Vertex = NumbersToken;
+    type Vertex = NumbersVertex;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -246,9 +246,9 @@ impl Adapter<'static> for NumbersAdapter {
             ("Number" | "Prime" | "Composite", "predecessor") => {
                 resolve_neighbors_with(contexts, move |vertex| {
                     let value = match &vertex {
-                        NumbersToken::Neither(inner) => inner.value(),
-                        NumbersToken::Prime(inner) => inner.value(),
-                        NumbersToken::Composite(inner) => inner.value(),
+                        NumbersVertex::Neither(inner) => inner.value(),
+                        NumbersVertex::Prime(inner) => inner.value(),
+                        NumbersVertex::Composite(inner) => inner.value(),
                     };
                     if value > 0 {
                         Box::new(std::iter::once(make_number_vertex(&mut primes, value - 1)))
@@ -260,9 +260,9 @@ impl Adapter<'static> for NumbersAdapter {
             ("Number" | "Prime" | "Composite", "successor") => {
                 resolve_neighbors_with(contexts, move |vertex| {
                     let value = match &vertex {
-                        NumbersToken::Neither(inner) => inner.value(),
-                        NumbersToken::Prime(inner) => inner.value(),
-                        NumbersToken::Composite(inner) => inner.value(),
+                        NumbersVertex::Neither(inner) => inner.value(),
+                        NumbersVertex::Prime(inner) => inner.value(),
+                        NumbersVertex::Composite(inner) => inner.value(),
                     };
                     Box::new(std::iter::once(make_number_vertex(&mut primes, value + 1)))
                 })
@@ -270,8 +270,8 @@ impl Adapter<'static> for NumbersAdapter {
             ("Number" | "Prime" | "Composite", "multiple") => {
                 resolve_neighbors_with(contexts, move |vertex| {
                     match vertex {
-                        NumbersToken::Neither(..) => Box::new(std::iter::empty()),
-                        NumbersToken::Prime(vertex) => {
+                        NumbersVertex::Neither(..) => Box::new(std::iter::empty()),
+                        NumbersVertex::Prime(vertex) => {
                             let value = vertex.0;
                             let mut local_primes = primes.clone();
 
@@ -286,7 +286,7 @@ impl Adapter<'static> for NumbersAdapter {
                                 make_number_vertex(&mut local_primes, next_value)
                             }))
                         }
-                        NumbersToken::Composite(vertex) => {
+                        NumbersVertex::Composite(vertex) => {
                             let value = vertex.0;
                             let mut local_primes = primes.clone();
 
@@ -301,7 +301,7 @@ impl Adapter<'static> for NumbersAdapter {
             }
             ("Composite", "primeFactor") => {
                 resolve_neighbors_with(contexts, move |vertex| match vertex {
-                    NumbersToken::Composite(vertex) => {
+                    NumbersVertex::Composite(vertex) => {
                         let factors = &vertex.1;
                         Box::new(
                             factors
@@ -316,7 +316,7 @@ impl Adapter<'static> for NumbersAdapter {
             }
             ("Composite", "divisor") => {
                 resolve_neighbors_with(contexts, move |vertex| match vertex {
-                    NumbersToken::Composite(vertex) => {
+                    NumbersVertex::Composite(vertex) => {
                         let value = vertex.0;
                         if value <= 0 {
                             Box::new(std::iter::empty())
@@ -356,10 +356,10 @@ impl Adapter<'static> for NumbersAdapter {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => {
-                resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersToken::Prime(..)))
+                resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersVertex::Prime(..)))
             }
             ("Number", "Composite") => resolve_coercion_with(contexts, |vertex| {
-                matches!(vertex, NumbersToken::Composite(..))
+                matches!(vertex, NumbersVertex::Composite(..))
             }),
             _ => unimplemented!(
                 "Unexpected coercion attempted: {} {}",
