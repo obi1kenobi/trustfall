@@ -47,7 +47,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -57,7 +57,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ))),
@@ -77,14 +77,14 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
             Eid(1): [
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
-                tokens: {
+                vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
@@ -104,14 +104,14 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
             Eid(1): [
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
-                tokens: {
+                vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
@@ -146,7 +146,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(15)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {},
+          vertices: {},
           imported_tags: {
             FoldSpecificField(FoldSpecificField(
               fold_eid: Eid(1),
@@ -161,7 +161,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(15)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {},
+          vertices: {},
           imported_tags: {
             FoldSpecificField(FoldSpecificField(
               fold_eid: Eid(1),
@@ -196,14 +196,14 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
             Eid(1): [
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
-                tokens: {
+                vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
@@ -211,7 +211,7 @@ TestInterpreterOutputTrace(
             Eid(2): [
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
-                tokens: {
+                vertices: {
                   Vid(3): Some(Neither(NeitherNumber(1))),
                 },
                 imported_tags: {
@@ -231,14 +231,14 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
             Eid(1): [
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
-                tokens: {
+                vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
@@ -246,7 +246,7 @@ TestInterpreterOutputTrace(
             Eid(2): [
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
-                tokens: {
+                vertices: {
                   Vid(3): Some(Neither(NeitherNumber(1))),
                 },
                 imported_tags: {

@@ -77,7 +77,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -87,7 +87,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ))),
@@ -102,13 +102,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
               suspended_vertices: [
@@ -123,13 +123,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
               suspended_vertices: [
@@ -149,13 +149,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
               suspended_vertices: [
@@ -164,7 +164,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Neither(NeitherNumber(0))),
                   },
                   suspended_vertices: [
@@ -181,13 +181,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(0))),
               },
               suspended_vertices: [
@@ -196,7 +196,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Neither(NeitherNumber(0))),
                   },
                   suspended_vertices: [
@@ -218,7 +218,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -228,7 +228,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ), false)),
@@ -243,7 +243,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -253,7 +253,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ), false)),
@@ -268,7 +268,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -278,7 +278,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ), true)),
@@ -288,7 +288,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -299,7 +299,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -310,7 +310,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -324,7 +324,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -361,7 +361,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -371,7 +371,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ), true)),
@@ -381,7 +381,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -392,7 +392,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -403,7 +403,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -417,7 +417,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -489,7 +489,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -499,7 +499,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ))),
@@ -514,13 +514,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
               suspended_vertices: [
@@ -535,13 +535,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
               suspended_vertices: [
@@ -561,13 +561,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
               suspended_vertices: [
@@ -576,7 +576,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Neither(NeitherNumber(1))),
                   },
                   suspended_vertices: [
@@ -593,13 +593,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Neither(NeitherNumber(1))),
               },
               suspended_vertices: [
@@ -608,7 +608,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Neither(NeitherNumber(1))),
                   },
                   suspended_vertices: [
@@ -632,7 +632,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -642,7 +642,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), false)),
@@ -657,7 +657,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -667,7 +667,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), true)),
@@ -677,7 +677,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -688,7 +688,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -699,7 +699,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -713,7 +713,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -750,7 +750,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -760,7 +760,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), true)),
@@ -770,7 +770,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -781,7 +781,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -792,7 +792,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -806,7 +806,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -845,7 +845,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -857,7 +857,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), false)),
@@ -907,7 +907,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -917,7 +917,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ))),
@@ -932,13 +932,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
               suspended_vertices: [
@@ -953,13 +953,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
               suspended_vertices: [
@@ -983,13 +983,13 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
               suspended_vertices: [
@@ -998,7 +998,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Prime(PrimeNumber(2))),
                   },
                   suspended_vertices: [
@@ -1017,13 +1017,13 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(2))),
               },
               suspended_vertices: [
@@ -1032,7 +1032,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Prime(PrimeNumber(2))),
                   },
                   suspended_vertices: [
@@ -1054,7 +1054,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -1064,7 +1064,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), true)),
@@ -1074,7 +1074,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -1085,7 +1085,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -1096,7 +1096,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -1110,7 +1110,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
@@ -1147,7 +1147,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -1157,7 +1157,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), true)),
@@ -1167,7 +1167,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1178,7 +1178,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1189,7 +1189,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1203,7 +1203,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1242,7 +1242,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -1254,7 +1254,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), false)),
@@ -1269,7 +1269,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -1279,7 +1279,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), true)),
@@ -1289,7 +1289,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1300,7 +1300,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1311,7 +1311,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1325,7 +1325,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1397,7 +1397,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
@@ -1407,7 +1407,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ))),
@@ -1426,13 +1426,13 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
               suspended_vertices: [
@@ -1449,13 +1449,13 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
               suspended_vertices: [
@@ -1475,13 +1475,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
               suspended_vertices: [
@@ -1492,7 +1492,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Prime(PrimeNumber(3))),
                   },
                   suspended_vertices: [
@@ -1509,13 +1509,13 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Prime(PrimeNumber(3))),
               },
               suspended_vertices: [
@@ -1526,7 +1526,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Prime(PrimeNumber(3))),
                   },
                   suspended_vertices: [
@@ -1551,7 +1551,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
@@ -1561,7 +1561,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), true)),
@@ -1571,7 +1571,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1582,7 +1582,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1593,7 +1593,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1607,7 +1607,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -1646,7 +1646,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
@@ -1658,7 +1658,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), false)),
@@ -1673,7 +1673,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
@@ -1683,7 +1683,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), true)),
@@ -1693,7 +1693,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1704,7 +1704,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1715,7 +1715,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1729,7 +1729,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(7)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
             Vid(2): Some(Prime(PrimeNumber(5))),
           },
@@ -1769,7 +1769,7 @@ TestInterpreterOutputTrace(
             2,
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
@@ -1782,7 +1782,7 @@ TestInterpreterOutputTrace(
             2,
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), false)),
@@ -1836,7 +1836,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1850,7 +1850,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1867,7 +1867,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1875,7 +1875,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1894,7 +1894,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1902,7 +1902,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1932,7 +1932,7 @@ TestInterpreterOutputTrace(
             2,
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1940,7 +1940,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1951,7 +1951,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Composite(CompositeNumber(4, [
                       2,
                     ]))),
@@ -1975,7 +1975,7 @@ TestInterpreterOutputTrace(
             2,
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1983,7 +1983,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -1994,7 +1994,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Composite(CompositeNumber(4, [
                       2,
                     ]))),
@@ -2022,7 +2022,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2036,7 +2036,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2053,7 +2053,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2065,7 +2065,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2077,7 +2077,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2090,7 +2090,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2105,7 +2105,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2123,7 +2123,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2165,7 +2165,7 @@ TestInterpreterOutputTrace(
             2,
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2180,7 +2180,7 @@ TestInterpreterOutputTrace(
             2,
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2197,7 +2197,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(7))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2209,7 +2209,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(5)),
         content: YieldFrom(CanCoerceToType(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(7))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2221,7 +2221,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(7))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2234,7 +2234,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(6)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(7))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2249,7 +2249,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -2267,7 +2267,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),

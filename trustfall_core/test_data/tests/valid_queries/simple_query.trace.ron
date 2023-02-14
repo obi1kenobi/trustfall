@@ -27,7 +27,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -37,7 +37,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ), String("zero"))),
@@ -64,7 +64,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -74,7 +74,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), String("one"))),
@@ -101,7 +101,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -111,7 +111,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), String("two"))),
@@ -138,7 +138,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         )),
@@ -148,7 +148,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(3))),
           },
         ), String("three"))),

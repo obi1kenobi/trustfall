@@ -41,7 +41,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {},
+          vertices: {},
         )),
       ),
       Opid(8): TraceOp(
@@ -51,7 +51,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {},
+          vertices: {},
         ), Int64(8))),
       ),
       Opid(9): TraceOp(
@@ -73,7 +73,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {},
+          vertices: {},
         )),
       ),
       Opid(12): TraceOp(
@@ -83,7 +83,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {},
+          vertices: {},
         ), Int64(9))),
       ),
       Opid(13): TraceOp(
@@ -93,7 +93,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -107,7 +107,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),

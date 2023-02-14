@@ -51,7 +51,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {},
+          vertices: {},
         )),
       ),
       Opid(10): TraceOp(
@@ -61,7 +61,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {},
+          vertices: {},
         ), List([
           String("e"),
           String("i"),
@@ -74,7 +74,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
@@ -88,7 +88,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
@@ -102,7 +102,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
@@ -119,7 +119,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(8, [
               2,
             ]))),
@@ -172,7 +172,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {},
+          vertices: {},
         )),
       ),
       Opid(21): TraceOp(
@@ -182,7 +182,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {},
+          vertices: {},
         ), List([
           String("i"),
           String("e"),
@@ -195,7 +195,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -209,7 +209,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -223,7 +223,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -240,7 +240,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(9, [
             3,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(9, [
               3,
             ]))),
@@ -295,7 +295,7 @@ TestInterpreterOutputTrace(
             2,
             5,
           ]))),
-          tokens: {},
+          vertices: {},
         )),
       ),
       Opid(32): TraceOp(
@@ -306,7 +306,7 @@ TestInterpreterOutputTrace(
             2,
             5,
           ]))),
-          tokens: {},
+          vertices: {},
         ), List([
           String("e"),
         ]))),
@@ -326,7 +326,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(11))),
-          tokens: {},
+          vertices: {},
         )),
       ),
       Opid(36): TraceOp(
@@ -334,7 +334,7 @@ TestInterpreterOutputTrace(
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(11))),
-          tokens: {},
+          vertices: {},
         ), List([
           String("e"),
           String("e"),

@@ -61,7 +61,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -75,7 +75,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -96,7 +96,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -104,7 +104,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -125,7 +125,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -133,7 +133,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -161,7 +161,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -169,7 +169,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -182,7 +182,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Composite(CompositeNumber(4, [
                       2,
                     ]))),
@@ -205,7 +205,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -213,7 +213,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -226,7 +226,7 @@ TestInterpreterOutputTrace(
               piggyback: Some([
                 SerializableContext(
                   active_vertex: None,
-                  tokens: {
+                  vertices: {
                     Vid(1): Some(Composite(CompositeNumber(4, [
                       2,
                     ]))),
@@ -256,7 +256,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -273,7 +273,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -302,7 +302,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -319,7 +319,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -348,7 +348,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -365,7 +365,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -394,7 +394,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -411,7 +411,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(4, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -447,7 +447,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -464,7 +464,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -510,7 +510,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -524,7 +524,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -545,7 +545,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -562,7 +562,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -591,7 +591,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -608,7 +608,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -644,7 +644,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -661,7 +661,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -717,7 +717,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -731,7 +731,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -752,7 +752,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -760,7 +760,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -781,7 +781,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -789,7 +789,7 @@ TestInterpreterOutputTrace(
           piggyback: Some([
             SerializableContext(
               active_vertex: None,
-              tokens: {
+              vertices: {
                 Vid(1): Some(Composite(CompositeNumber(4, [
                   2,
                 ]))),
@@ -817,7 +817,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -834,7 +834,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -863,7 +863,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -880,7 +880,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -909,7 +909,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -926,7 +926,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(8, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -962,7 +962,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -979,7 +979,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1025,7 +1025,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1039,7 +1039,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1060,7 +1060,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1077,7 +1077,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1106,7 +1106,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1123,7 +1123,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(16, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1159,7 +1159,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(32, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),
@@ -1176,7 +1176,7 @@ TestInterpreterOutputTrace(
           active_vertex: Some(Composite(CompositeNumber(32, [
             2,
           ]))),
-          tokens: {
+          vertices: {
             Vid(1): Some(Composite(CompositeNumber(4, [
               2,
             ]))),

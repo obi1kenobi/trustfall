@@ -212,7 +212,7 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
         let context_field = &ir_query.root_component.outputs[output_name];
         let vertex_id = context_field.vertex_id;
         let moved_iterator = Box::new(output_iterator.map(move |context| {
-            let new_token = context.tokens[&vertex_id].clone();
+            let new_token = context.vertices[&vertex_id].clone();
             context.move_to_token(new_token)
         }));
 
@@ -480,7 +480,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
         // If the @fold is inside an @optional that doesn't exist,
         // its outputs should be `null` rather than empty lists (the usual for empty folds).
         // Transformed outputs should also be `null` rather than their usual transformed defaults.
-        let did_fold_root_exist = ctx.tokens[&expanding_from_vid].is_some();
+        let did_fold_root_exist = ctx.vertices[&expanding_from_vid].is_some();
         let default_value = if did_fold_root_exist {
             Some(ValueOrVec::Vec(vec![]))
         } else {
@@ -534,7 +534,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 let context_field = &fold.component.outputs[output_name.as_ref()];
                 let vertex_id = context_field.vertex_id;
                 let moved_iterator = Box::new(output_iterator.map(move |context| {
-                    let new_token = context.tokens[&vertex_id].clone();
+                    let new_token = context.vertices[&vertex_id].clone();
                     context.move_to_token(new_token)
                 }));
 
@@ -620,7 +620,7 @@ fn is_tag_optional_and_missing<'query, Vertex: Clone + Debug + 'query>(
     // Some(None) means "there's a value associated with that Vid, and it's None".
     // None would mean that the tagged value is local, i.e. nothing is associated with that Vid yet.
     // Some(Some(token)) would mean that a vertex was found and associated with that Vid.
-    matches!(context.tokens.get(&vid), Some(None))
+    matches!(context.vertices.get(&vid), Some(None))
 }
 
 macro_rules! implement_filter {
@@ -902,7 +902,7 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
     if let Some(vertex) = component.vertices.get(&vertex_id) {
         let moved_iterator = iterator.map(move |mut context| {
             let active_vertex = context.active_vertex.clone();
-            let new_token = context.tokens[&vertex_id].clone();
+            let new_token = context.vertices[&vertex_id].clone();
             context.suspended_vertices.push(active_vertex);
             context.move_to_token(new_token)
         });
@@ -976,7 +976,7 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
 
 struct EdgeExpander<'query, Vertex: Clone + Debug + 'query> {
     context: DataContext<Vertex>,
-    neighbor_tokens: VertexIterator<'query, Vertex>,
+    neighbors: VertexIterator<'query, Vertex>,
     is_optional_edge: bool,
     has_neighbors: bool,
     neighbors_ended: bool,
@@ -986,12 +986,12 @@ struct EdgeExpander<'query, Vertex: Clone + Debug + 'query> {
 impl<'query, Vertex: Clone + Debug + 'query> EdgeExpander<'query, Vertex> {
     pub fn new(
         context: DataContext<Vertex>,
-        neighbor_tokens: VertexIterator<'query, Vertex>,
+        neighbors: VertexIterator<'query, Vertex>,
         is_optional_edge: bool,
     ) -> EdgeExpander<'query, Vertex> {
         EdgeExpander {
             context,
-            neighbor_tokens,
+            neighbors,
             is_optional_edge,
             has_neighbors: false,
             neighbors_ended: false,
@@ -1009,7 +1009,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
         }
 
         if !self.neighbors_ended {
-            let neighbor = self.neighbor_tokens.next();
+            let neighbor = self.neighbors.next();
             if neighbor.is_some() {
                 self.has_neighbors = true;
                 return Some(self.context.split_and_move_to_token(neighbor));
@@ -1270,7 +1270,7 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
 struct RecursiveEdgeExpander<'query, Vertex: Clone + Debug + 'query> {
     context: Option<DataContext<Vertex>>,
     neighbor_base: Option<DataContext<Vertex>>,
-    neighbor_tokens: VertexIterator<'query, Vertex>,
+    neighbors: VertexIterator<'query, Vertex>,
     has_neighbors: bool,
     neighbors_ended: bool,
 }
@@ -1278,12 +1278,12 @@ struct RecursiveEdgeExpander<'query, Vertex: Clone + Debug + 'query> {
 impl<'query, Vertex: Clone + Debug + 'query> RecursiveEdgeExpander<'query, Vertex> {
     pub fn new(
         context: DataContext<Vertex>,
-        neighbor_tokens: VertexIterator<'query, Vertex>,
+        neighbors: VertexIterator<'query, Vertex>,
     ) -> RecursiveEdgeExpander<'query, Vertex> {
         RecursiveEdgeExpander {
             context: Some(context),
             neighbor_base: None,
-            neighbor_tokens,
+            neighbors,
             has_neighbors: false,
             neighbors_ended: false,
         }
@@ -1295,7 +1295,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.neighbors_ended {
-            let neighbor = self.neighbor_tokens.next();
+            let neighbor = self.neighbors.next();
 
             if let Some(token) = neighbor {
                 if let Some(context) = self.context.take() {

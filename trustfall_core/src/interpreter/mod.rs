@@ -54,7 +54,7 @@ pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
 #[derive(Debug, Clone)]
 pub struct DataContext<Vertex: Clone + Debug> {
     active_vertex: Option<Vertex>,
-    tokens: BTreeMap<Vid, Option<Vertex>>,
+    vertices: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
     suspended_vertices: Vec<Option<Vertex>>,
     folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
@@ -112,7 +112,7 @@ where
     for<'d> Vertex: Deserialize<'d>,
 {
     active_vertex: Option<Vertex>,
-    tokens: BTreeMap<Vid, Option<Vertex>>,
+    vertices: BTreeMap<Vid, Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     values: Vec<FieldValue>,
@@ -142,7 +142,7 @@ where
     fn from(context: SerializableContext<Vertex>) -> Self {
         Self {
             active_vertex: context.active_vertex,
-            tokens: context.tokens,
+            vertices: context.vertices,
             values: context.values,
             suspended_vertices: context.suspended_vertices,
             folded_contexts: context.folded_contexts,
@@ -161,7 +161,7 @@ where
     fn from(context: DataContext<Vertex>) -> Self {
         Self {
             active_vertex: context.active_vertex,
-            tokens: context.tokens,
+            vertices: context.vertices,
             values: context.values,
             suspended_vertices: context.suspended_vertices,
             folded_contexts: context.folded_contexts,
@@ -177,7 +177,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
         DataContext {
             active_vertex: token,
             piggyback: None,
-            tokens: Default::default(),
+            vertices: Default::default(),
             values: Default::default(),
             suspended_vertices: Default::default(),
             folded_contexts: Default::default(),
@@ -187,15 +187,15 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     }
 
     fn record_token(&mut self, vid: Vid) {
-        self.tokens
+        self.vertices
             .insert_or_error(vid, self.active_vertex.clone())
             .unwrap();
     }
 
     fn activate_token(self, vid: &Vid) -> DataContext<Vertex> {
         DataContext {
-            active_vertex: self.tokens[vid].clone(),
-            tokens: self.tokens,
+            active_vertex: self.vertices[vid].clone(),
+            vertices: self.vertices,
             values: self.values,
             suspended_vertices: self.suspended_vertices,
             folded_contexts: self.folded_contexts,
@@ -208,7 +208,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     fn split_and_move_to_token(&self, new_token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
             active_vertex: new_token,
-            tokens: self.tokens.clone(),
+            vertices: self.vertices.clone(),
             values: self.values.clone(),
             suspended_vertices: self.suspended_vertices.clone(),
             folded_contexts: self.folded_contexts.clone(),
@@ -221,7 +221,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     fn move_to_token(self, new_token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
             active_vertex: new_token,
-            tokens: self.tokens,
+            vertices: self.vertices,
             values: self.values,
             suspended_vertices: self.suspended_vertices,
             folded_contexts: self.folded_contexts,
@@ -236,7 +236,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
             self.suspended_vertices.push(Some(token));
             DataContext {
                 active_vertex: None,
-                tokens: self.tokens,
+                vertices: self.vertices,
                 values: self.values,
                 suspended_vertices: self.suspended_vertices,
                 folded_contexts: self.folded_contexts,
@@ -255,7 +255,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
                 let active_vertex = self.suspended_vertices.pop().unwrap();
                 DataContext {
                     active_vertex,
-                    tokens: self.tokens,
+                    vertices: self.vertices,
                     values: self.values,
                     suspended_vertices: self.suspended_vertices,
                     folded_contexts: self.folded_contexts,
@@ -272,7 +272,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
 impl<Vertex: Debug + Clone + PartialEq> PartialEq for DataContext<Vertex> {
     fn eq(&self, other: &Self) -> bool {
         self.active_vertex == other.active_vertex
-            && self.tokens == other.tokens
+            && self.vertices == other.vertices
             && self.values == other.values
             && self.suspended_vertices == other.suspended_vertices
             && self.folded_contexts == other.folded_contexts

@@ -200,9 +200,9 @@ impl Iterator for EdgeResolverIterator {
 
     fn next(&mut self) -> Option<ContextAndIterableOfEdges> {
         if let Some(context) = self.contexts.next() {
-            if let Some(token) = context.active_vertex() {
-                let edge_tokens = (self.edge_resolver)(self.origin.clone(), token);
-                Some((context, edge_tokens))
+            if let Some(vertex) = context.active_vertex() {
+                let neighbors = (self.edge_resolver)(self.origin.clone(), vertex);
+                Some((context, neighbors))
             } else {
                 let empty_iterator: iter::Empty<FilesystemToken> = iter::empty();
                 Some((context, Box::new(empty_iterator)))
