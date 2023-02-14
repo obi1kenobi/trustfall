@@ -5,17 +5,17 @@ TestInterpreterOutputTrace(
       Opid(1): TraceOp(
         opid: Opid(1),
         parent_opid: None,
-        content: Call(GetStartingTokens(Vid(1))),
+        content: Call(ResolveStartingVertices(Vid(1))),
       ),
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
+        content: Call(ResolveNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "Number", "value")),
+        content: Call(ResolveProperty(Vid(1), "Number", "value")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
@@ -30,7 +30,7 @@ TestInterpreterOutputTrace(
       Opid(6): TraceOp(
         opid: Opid(6),
         parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(5)))),
+        content: YieldFrom(ResolveStartingVertices(Prime(PrimeNumber(5)))),
       ),
       Opid(7): TraceOp(
         opid: Opid(7),
@@ -45,7 +45,7 @@ TestInterpreterOutputTrace(
       Opid(8): TraceOp(
         opid: Opid(8),
         parent_opid: Some(Opid(2)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
           vertices: {
             Vid(1): Some(Prime(PrimeNumber(5))),
@@ -55,7 +55,7 @@ TestInterpreterOutputTrace(
       Opid(9): TraceOp(
         opid: Opid(9),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), "Composite", Eid(2))),
+        content: Call(ResolveNeighbors(Vid(2), "Composite", Eid(2))),
       ),
       Opid(10): TraceOp(
         opid: Opid(10),
@@ -65,7 +65,7 @@ TestInterpreterOutputTrace(
       Opid(11): TraceOp(
         opid: Opid(11),
         parent_opid: Some(Opid(8)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(10, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(10, [
           2,
           5,
         ])))),
@@ -89,7 +89,7 @@ TestInterpreterOutputTrace(
       Opid(13): TraceOp(
         opid: Opid(13),
         parent_opid: Some(Opid(9)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(10, [
             2,
             5,
@@ -105,7 +105,7 @@ TestInterpreterOutputTrace(
       Opid(14): TraceOp(
         opid: Opid(14),
         parent_opid: Some(Opid(13)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(10, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(10, [
           2,
           5,
         ])))),
@@ -113,7 +113,7 @@ TestInterpreterOutputTrace(
       Opid(15): TraceOp(
         opid: Opid(15),
         parent_opid: Some(Opid(13)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(20, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(20, [
           2,
           5,
         ])))),
@@ -121,7 +121,7 @@ TestInterpreterOutputTrace(
       Opid(16): TraceOp(
         opid: Opid(16),
         parent_opid: Some(Opid(13)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(30, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(30, [
           2,
           3,
           5,
@@ -135,7 +135,7 @@ TestInterpreterOutputTrace(
       Opid(18): TraceOp(
         opid: Opid(18),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(19): TraceOp(
         opid: Opid(19),
@@ -161,7 +161,7 @@ TestInterpreterOutputTrace(
       Opid(21): TraceOp(
         opid: Opid(21),
         parent_opid: Some(Opid(18)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(10, [
             2,
             5,
@@ -198,7 +198,7 @@ TestInterpreterOutputTrace(
       Opid(24): TraceOp(
         opid: Opid(24),
         parent_opid: Some(Opid(18)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(20, [
             2,
             5,
@@ -237,7 +237,7 @@ TestInterpreterOutputTrace(
       Opid(27): TraceOp(
         opid: Opid(27),
         parent_opid: Some(Opid(18)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(30, [
             2,
             3,
@@ -275,7 +275,7 @@ TestInterpreterOutputTrace(
       Opid(32): TraceOp(
         opid: Opid(32),
         parent_opid: Some(Opid(8)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(15, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(15, [
           3,
           5,
         ])))),
@@ -299,7 +299,7 @@ TestInterpreterOutputTrace(
       Opid(34): TraceOp(
         opid: Opid(34),
         parent_opid: Some(Opid(9)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(15, [
             3,
             5,
@@ -315,7 +315,7 @@ TestInterpreterOutputTrace(
       Opid(35): TraceOp(
         opid: Opid(35),
         parent_opid: Some(Opid(34)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(15, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(15, [
           3,
           5,
         ])))),
@@ -323,7 +323,7 @@ TestInterpreterOutputTrace(
       Opid(36): TraceOp(
         opid: Opid(36),
         parent_opid: Some(Opid(34)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(30, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(30, [
           2,
           3,
           5,
@@ -332,7 +332,7 @@ TestInterpreterOutputTrace(
       Opid(37): TraceOp(
         opid: Opid(37),
         parent_opid: Some(Opid(34)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(45, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(45, [
           3,
           5,
         ])))),
@@ -345,7 +345,7 @@ TestInterpreterOutputTrace(
       Opid(39): TraceOp(
         opid: Opid(39),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(40): TraceOp(
         opid: Opid(40),
@@ -371,7 +371,7 @@ TestInterpreterOutputTrace(
       Opid(42): TraceOp(
         opid: Opid(42),
         parent_opid: Some(Opid(39)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(15, [
             3,
             5,
@@ -410,7 +410,7 @@ TestInterpreterOutputTrace(
       Opid(45): TraceOp(
         opid: Opid(45),
         parent_opid: Some(Opid(39)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(30, [
             2,
             3,
@@ -449,7 +449,7 @@ TestInterpreterOutputTrace(
       Opid(48): TraceOp(
         opid: Opid(48),
         parent_opid: Some(Opid(39)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(45, [
             3,
             5,
@@ -500,7 +500,7 @@ TestInterpreterOutputTrace(
       Opid(56): TraceOp(
         opid: Opid(56),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(2), "Composite", "value")),
       ),
       Opid(57): TraceOp(
         opid: Opid(57),
@@ -575,7 +575,7 @@ TestInterpreterOutputTrace(
       Opid(59): TraceOp(
         opid: Opid(59),
         parent_opid: Some(Opid(56)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(10, [
             2,
             5,
@@ -710,7 +710,7 @@ TestInterpreterOutputTrace(
       Opid(62): TraceOp(
         opid: Opid(62),
         parent_opid: Some(Opid(56)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(15, [
             3,
             5,
@@ -944,7 +944,7 @@ TestInterpreterOutputTrace(
       Opid(67): TraceOp(
         opid: Opid(67),
         parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(5))),
           vertices: {
             Vid(1): Some(Prime(PrimeNumber(5))),
@@ -1131,7 +1131,7 @@ TestInterpreterOutputTrace(
       Opid(71): TraceOp(
         opid: Opid(71),
         parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Composite(CompositeNumber(6, [
+        content: YieldFrom(ResolveStartingVertices(Composite(CompositeNumber(6, [
           2,
           3,
         ])))),
@@ -1155,7 +1155,7 @@ TestInterpreterOutputTrace(
       Opid(73): TraceOp(
         opid: Opid(73),
         parent_opid: Some(Opid(2)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(6, [
             2,
             3,
@@ -1171,7 +1171,7 @@ TestInterpreterOutputTrace(
       Opid(74): TraceOp(
         opid: Opid(74),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), "Composite", Eid(2))),
+        content: Call(ResolveNeighbors(Vid(2), "Composite", Eid(2))),
       ),
       Opid(75): TraceOp(
         opid: Opid(75),
@@ -1181,7 +1181,7 @@ TestInterpreterOutputTrace(
       Opid(76): TraceOp(
         opid: Opid(76),
         parent_opid: Some(Opid(73)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(6, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(6, [
           2,
           3,
         ])))),
@@ -1205,7 +1205,7 @@ TestInterpreterOutputTrace(
       Opid(78): TraceOp(
         opid: Opid(78),
         parent_opid: Some(Opid(74)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(6, [
             2,
             3,
@@ -1221,7 +1221,7 @@ TestInterpreterOutputTrace(
       Opid(79): TraceOp(
         opid: Opid(79),
         parent_opid: Some(Opid(78)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(6, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(6, [
           2,
           3,
         ])))),
@@ -1229,7 +1229,7 @@ TestInterpreterOutputTrace(
       Opid(80): TraceOp(
         opid: Opid(80),
         parent_opid: Some(Opid(78)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(12, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(12, [
           2,
           3,
         ])))),
@@ -1237,7 +1237,7 @@ TestInterpreterOutputTrace(
       Opid(81): TraceOp(
         opid: Opid(81),
         parent_opid: Some(Opid(78)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(18, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(18, [
           2,
           3,
         ])))),
@@ -1250,7 +1250,7 @@ TestInterpreterOutputTrace(
       Opid(83): TraceOp(
         opid: Opid(83),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(84): TraceOp(
         opid: Opid(84),
@@ -1276,7 +1276,7 @@ TestInterpreterOutputTrace(
       Opid(86): TraceOp(
         opid: Opid(86),
         parent_opid: Some(Opid(83)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(6, [
             2,
             3,
@@ -1313,7 +1313,7 @@ TestInterpreterOutputTrace(
       Opid(89): TraceOp(
         opid: Opid(89),
         parent_opid: Some(Opid(83)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(12, [
             2,
             3,
@@ -1350,7 +1350,7 @@ TestInterpreterOutputTrace(
       Opid(92): TraceOp(
         opid: Opid(92),
         parent_opid: Some(Opid(83)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(18, [
             2,
             3,
@@ -1386,7 +1386,7 @@ TestInterpreterOutputTrace(
       Opid(97): TraceOp(
         opid: Opid(97),
         parent_opid: Some(Opid(73)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(12, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(12, [
           2,
           3,
         ])))),
@@ -1410,7 +1410,7 @@ TestInterpreterOutputTrace(
       Opid(99): TraceOp(
         opid: Opid(99),
         parent_opid: Some(Opid(74)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(12, [
             2,
             3,
@@ -1426,7 +1426,7 @@ TestInterpreterOutputTrace(
       Opid(100): TraceOp(
         opid: Opid(100),
         parent_opid: Some(Opid(99)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(12, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(12, [
           2,
           3,
         ])))),
@@ -1434,7 +1434,7 @@ TestInterpreterOutputTrace(
       Opid(101): TraceOp(
         opid: Opid(101),
         parent_opid: Some(Opid(99)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(24, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(24, [
           2,
           3,
         ])))),
@@ -1442,7 +1442,7 @@ TestInterpreterOutputTrace(
       Opid(102): TraceOp(
         opid: Opid(102),
         parent_opid: Some(Opid(99)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(36, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(36, [
           2,
           3,
         ])))),
@@ -1455,7 +1455,7 @@ TestInterpreterOutputTrace(
       Opid(104): TraceOp(
         opid: Opid(104),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(105): TraceOp(
         opid: Opid(105),
@@ -1481,7 +1481,7 @@ TestInterpreterOutputTrace(
       Opid(107): TraceOp(
         opid: Opid(107),
         parent_opid: Some(Opid(104)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(12, [
             2,
             3,
@@ -1518,7 +1518,7 @@ TestInterpreterOutputTrace(
       Opid(110): TraceOp(
         opid: Opid(110),
         parent_opid: Some(Opid(104)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(24, [
             2,
             3,
@@ -1555,7 +1555,7 @@ TestInterpreterOutputTrace(
       Opid(113): TraceOp(
         opid: Opid(113),
         parent_opid: Some(Opid(104)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(36, [
             2,
             3,
@@ -1591,7 +1591,7 @@ TestInterpreterOutputTrace(
       Opid(118): TraceOp(
         opid: Opid(118),
         parent_opid: Some(Opid(73)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(18, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(18, [
           2,
           3,
         ])))),
@@ -1615,7 +1615,7 @@ TestInterpreterOutputTrace(
       Opid(120): TraceOp(
         opid: Opid(120),
         parent_opid: Some(Opid(74)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(18, [
             2,
             3,
@@ -1631,7 +1631,7 @@ TestInterpreterOutputTrace(
       Opid(121): TraceOp(
         opid: Opid(121),
         parent_opid: Some(Opid(120)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(18, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(18, [
           2,
           3,
         ])))),
@@ -1639,7 +1639,7 @@ TestInterpreterOutputTrace(
       Opid(122): TraceOp(
         opid: Opid(122),
         parent_opid: Some(Opid(120)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(36, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(36, [
           2,
           3,
         ])))),
@@ -1647,7 +1647,7 @@ TestInterpreterOutputTrace(
       Opid(123): TraceOp(
         opid: Opid(123),
         parent_opid: Some(Opid(120)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(54, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(54, [
           2,
           3,
         ])))),
@@ -1660,7 +1660,7 @@ TestInterpreterOutputTrace(
       Opid(125): TraceOp(
         opid: Opid(125),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(126): TraceOp(
         opid: Opid(126),
@@ -1686,7 +1686,7 @@ TestInterpreterOutputTrace(
       Opid(128): TraceOp(
         opid: Opid(128),
         parent_opid: Some(Opid(125)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(18, [
             2,
             3,
@@ -1723,7 +1723,7 @@ TestInterpreterOutputTrace(
       Opid(131): TraceOp(
         opid: Opid(131),
         parent_opid: Some(Opid(125)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(36, [
             2,
             3,
@@ -1760,7 +1760,7 @@ TestInterpreterOutputTrace(
       Opid(134): TraceOp(
         opid: Opid(134),
         parent_opid: Some(Opid(125)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(54, [
             2,
             3,
@@ -1811,7 +1811,7 @@ TestInterpreterOutputTrace(
       Opid(142): TraceOp(
         opid: Opid(142),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(2), "Composite", "value")),
       ),
       Opid(143): TraceOp(
         opid: Opid(143),
@@ -1884,7 +1884,7 @@ TestInterpreterOutputTrace(
       Opid(145): TraceOp(
         opid: Opid(145),
         parent_opid: Some(Opid(142)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(6, [
             2,
             3,
@@ -2015,7 +2015,7 @@ TestInterpreterOutputTrace(
       Opid(148): TraceOp(
         opid: Opid(148),
         parent_opid: Some(Opid(142)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(12, [
             2,
             3,
@@ -2146,7 +2146,7 @@ TestInterpreterOutputTrace(
       Opid(151): TraceOp(
         opid: Opid(151),
         parent_opid: Some(Opid(142)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(18, [
             2,
             3,
@@ -2445,7 +2445,7 @@ TestInterpreterOutputTrace(
       Opid(156): TraceOp(
         opid: Opid(156),
         parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(6, [
             2,
             3,
@@ -2705,7 +2705,7 @@ TestInterpreterOutputTrace(
       Opid(160): TraceOp(
         opid: Opid(160),
         parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(7)))),
+        content: YieldFrom(ResolveStartingVertices(Prime(PrimeNumber(7)))),
       ),
       Opid(161): TraceOp(
         opid: Opid(161),
@@ -2720,7 +2720,7 @@ TestInterpreterOutputTrace(
       Opid(162): TraceOp(
         opid: Opid(162),
         parent_opid: Some(Opid(2)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(7))),
           vertices: {
             Vid(1): Some(Prime(PrimeNumber(7))),
@@ -2730,7 +2730,7 @@ TestInterpreterOutputTrace(
       Opid(163): TraceOp(
         opid: Opid(163),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(2), "Composite", Eid(2))),
+        content: Call(ResolveNeighbors(Vid(2), "Composite", Eid(2))),
       ),
       Opid(164): TraceOp(
         opid: Opid(164),
@@ -2740,7 +2740,7 @@ TestInterpreterOutputTrace(
       Opid(165): TraceOp(
         opid: Opid(165),
         parent_opid: Some(Opid(162)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(14, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(14, [
           2,
           7,
         ])))),
@@ -2764,7 +2764,7 @@ TestInterpreterOutputTrace(
       Opid(167): TraceOp(
         opid: Opid(167),
         parent_opid: Some(Opid(163)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(14, [
             2,
             7,
@@ -2780,7 +2780,7 @@ TestInterpreterOutputTrace(
       Opid(168): TraceOp(
         opid: Opid(168),
         parent_opid: Some(Opid(167)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(14, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(14, [
           2,
           7,
         ])))),
@@ -2788,7 +2788,7 @@ TestInterpreterOutputTrace(
       Opid(169): TraceOp(
         opid: Opid(169),
         parent_opid: Some(Opid(167)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(28, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(28, [
           2,
           7,
         ])))),
@@ -2796,7 +2796,7 @@ TestInterpreterOutputTrace(
       Opid(170): TraceOp(
         opid: Opid(170),
         parent_opid: Some(Opid(167)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(42, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(42, [
           2,
           3,
           7,
@@ -2810,7 +2810,7 @@ TestInterpreterOutputTrace(
       Opid(172): TraceOp(
         opid: Opid(172),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(173): TraceOp(
         opid: Opid(173),
@@ -2836,7 +2836,7 @@ TestInterpreterOutputTrace(
       Opid(175): TraceOp(
         opid: Opid(175),
         parent_opid: Some(Opid(172)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(14, [
             2,
             7,
@@ -2873,7 +2873,7 @@ TestInterpreterOutputTrace(
       Opid(178): TraceOp(
         opid: Opid(178),
         parent_opid: Some(Opid(172)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(28, [
             2,
             7,
@@ -2912,7 +2912,7 @@ TestInterpreterOutputTrace(
       Opid(181): TraceOp(
         opid: Opid(181),
         parent_opid: Some(Opid(172)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(42, [
             2,
             3,
@@ -2950,7 +2950,7 @@ TestInterpreterOutputTrace(
       Opid(186): TraceOp(
         opid: Opid(186),
         parent_opid: Some(Opid(162)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(21, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(21, [
           3,
           7,
         ])))),
@@ -2974,7 +2974,7 @@ TestInterpreterOutputTrace(
       Opid(188): TraceOp(
         opid: Opid(188),
         parent_opid: Some(Opid(163)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(21, [
             3,
             7,
@@ -2990,7 +2990,7 @@ TestInterpreterOutputTrace(
       Opid(189): TraceOp(
         opid: Opid(189),
         parent_opid: Some(Opid(188)),
-        content: YieldFrom(ProjectNeighborsInner(0, Composite(CompositeNumber(21, [
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(21, [
           3,
           7,
         ])))),
@@ -2998,7 +2998,7 @@ TestInterpreterOutputTrace(
       Opid(190): TraceOp(
         opid: Opid(190),
         parent_opid: Some(Opid(188)),
-        content: YieldFrom(ProjectNeighborsInner(1, Composite(CompositeNumber(42, [
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(42, [
           2,
           3,
           7,
@@ -3007,7 +3007,7 @@ TestInterpreterOutputTrace(
       Opid(191): TraceOp(
         opid: Opid(191),
         parent_opid: Some(Opid(188)),
-        content: YieldFrom(ProjectNeighborsInner(2, Composite(CompositeNumber(63, [
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(63, [
           3,
           7,
         ])))),
@@ -3020,7 +3020,7 @@ TestInterpreterOutputTrace(
       Opid(193): TraceOp(
         opid: Opid(193),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(3), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(3), "Composite", "value")),
       ),
       Opid(194): TraceOp(
         opid: Opid(194),
@@ -3046,7 +3046,7 @@ TestInterpreterOutputTrace(
       Opid(196): TraceOp(
         opid: Opid(196),
         parent_opid: Some(Opid(193)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(21, [
             3,
             7,
@@ -3085,7 +3085,7 @@ TestInterpreterOutputTrace(
       Opid(199): TraceOp(
         opid: Opid(199),
         parent_opid: Some(Opid(193)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(42, [
             2,
             3,
@@ -3124,7 +3124,7 @@ TestInterpreterOutputTrace(
       Opid(202): TraceOp(
         opid: Opid(202),
         parent_opid: Some(Opid(193)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(63, [
             3,
             7,
@@ -3175,7 +3175,7 @@ TestInterpreterOutputTrace(
       Opid(210): TraceOp(
         opid: Opid(210),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "Composite", "value")),
+        content: Call(ResolveProperty(Vid(2), "Composite", "value")),
       ),
       Opid(211): TraceOp(
         opid: Opid(211),
@@ -3250,7 +3250,7 @@ TestInterpreterOutputTrace(
       Opid(213): TraceOp(
         opid: Opid(213),
         parent_opid: Some(Opid(210)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(14, [
             2,
             7,
@@ -3385,7 +3385,7 @@ TestInterpreterOutputTrace(
       Opid(216): TraceOp(
         opid: Opid(216),
         parent_opid: Some(Opid(210)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Composite(CompositeNumber(21, [
             3,
             7,
@@ -3619,7 +3619,7 @@ TestInterpreterOutputTrace(
       Opid(221): TraceOp(
         opid: Opid(221),
         parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
+        content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Prime(PrimeNumber(7))),
           vertices: {
             Vid(1): Some(Prime(PrimeNumber(7))),

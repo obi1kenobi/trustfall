@@ -91,14 +91,16 @@ where
     ProduceQueryResult(BTreeMap<Arc<str>, FieldValue>),
 }
 
+#[allow(clippy::enum_variant_names)] // the variant names match the functions they represent
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FunctionCall {
-    GetStartingTokens(Vid),                   // vertex ID
-    ProjectProperty(Vid, Arc<str>, Arc<str>), // vertex ID + type name + name of the property
-    ProjectNeighbors(Vid, Arc<str>, Eid),     // vertex ID + type name + edge ID
-    CanCoerceToType(Vid, Arc<str>, Arc<str>), // vertex ID + current type + coerced-to type
+    ResolveStartingVertices(Vid),             // vertex ID
+    ResolveProperty(Vid, Arc<str>, Arc<str>), // vertex ID + type name + name of the property
+    ResolveNeighbors(Vid, Arc<str>, Eid),     // vertex ID + type name + edge ID
+    ResolveCoercion(Vid, Arc<str>, Arc<str>), // vertex ID + current type + coerced-to type
 }
 
+#[allow(clippy::enum_variant_names)] // the variant names match the functions they represent
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
 pub enum YieldValue<Vertex>
@@ -106,11 +108,11 @@ where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize,
     for<'de2> Vertex: Deserialize<'de2>,
 {
-    GetStartingTokens(Vertex),
-    ProjectProperty(DataContext<Vertex>, FieldValue),
-    ProjectNeighborsOuter(DataContext<Vertex>),
-    ProjectNeighborsInner(usize, Vertex), // iterable index + produced element
-    CanCoerceToType(DataContext<Vertex>, bool),
+    ResolveStartingVertices(Vertex),
+    ResolveProperty(DataContext<Vertex>, FieldValue),
+    ResolveNeighborsOuter(DataContext<Vertex>),
+    ResolveNeighborsInner(usize, Vertex), // iterable index + produced element
+    ResolveCoercion(DataContext<Vertex>, bool),
 }
 
 pub struct OnIterEnd<T, I: Iterator<Item = T>, F: FnOnce()> {
@@ -244,7 +246,7 @@ where
     ) -> VertexIterator<'vertex, Self::Vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::GetStartingTokens(query_info.origin_vid())),
+            TraceOpContent::Call(FunctionCall::ResolveStartingVertices(query_info.origin_vid())),
             None,
         );
         drop(trace);
@@ -264,7 +266,7 @@ where
             })
             .map(move |vertex| {
                 tracer_ref_2.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(vertex.clone())),
+                    TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex.clone())),
                     Some(call_opid),
                 );
 
@@ -282,7 +284,7 @@ where
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::ProjectProperty(
+            TraceOpContent::Call(FunctionCall::ResolveProperty(
                 query_info.origin_vid(),
                 type_name.clone(),
                 property_name.clone(),
@@ -330,7 +332,7 @@ where
             })
             .map(move |(context, value)| {
                 tracer_ref_5.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::ProjectProperty(
+                    TraceOpContent::YieldFrom(YieldValue::ResolveProperty(
                         context.clone(),
                         value.clone(),
                     )),
@@ -352,7 +354,7 @@ where
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::ProjectNeighbors(
+            TraceOpContent::Call(FunctionCall::ResolveNeighbors(
                 query_info.origin_vid(),
                 type_name.clone(),
                 query_info
@@ -405,7 +407,7 @@ where
             .map(move |(context, neighbor_iter)| {
                 let mut trace = tracer_ref_5.borrow_mut();
                 let outer_iterator_opid = trace.record(
-                    TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsOuter(context.clone())),
+                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(context.clone())),
                     Some(call_opid),
                 );
                 drop(trace);
@@ -413,7 +415,7 @@ where
                 let tracer_ref_6 = tracer_ref_5.clone();
                 let tapped_neighbor_iter = neighbor_iter.enumerate().map(move |(pos, vertex)| {
                     tracer_ref_6.borrow_mut().record(
-                        TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(
+                        TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(
                             pos,
                             vertex.clone(),
                         )),
@@ -446,7 +448,7 @@ where
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::CanCoerceToType(
+            TraceOpContent::Call(FunctionCall::ResolveCoercion(
                 query_info.origin_vid(),
                 type_name.clone(),
                 coerce_to_type.clone(),
@@ -494,7 +496,7 @@ where
             })
             .map(move |(context, can_coerce)| {
                 tracer_ref_5.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::CanCoerceToType(
+                    TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(
                         context.clone(),
                         can_coerce,
                     )),

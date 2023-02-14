@@ -72,7 +72,7 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(vertex)) => Some(vertex.clone()),
+            TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex)) => Some(vertex.clone()),
             _ => unreachable!(),
         }
     }
@@ -143,7 +143,7 @@ where
         };
 
         match &next_op.content {
-            TraceOpContent::YieldFrom(YieldValue::ProjectProperty(trace_context, value)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveProperty(trace_context, value)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(trace_context, &input_context);
                 Some((input_context, value.clone()))
@@ -226,7 +226,7 @@ where
         };
 
         match &next_op.content {
-            TraceOpContent::YieldFrom(YieldValue::CanCoerceToType(trace_context, can_coerce)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(trace_context, can_coerce)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(trace_context, &input_context);
                 Some((input_context, *can_coerce))
@@ -241,7 +241,7 @@ where
     }
 }
 
-struct TraceReaderProjectNeighborsIter<'query, 'trace, Vertex>
+struct TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -254,7 +254,7 @@ where
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
-impl<'query, 'trace, Vertex> Iterator for TraceReaderProjectNeighborsIter<'query, 'trace, Vertex>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -308,7 +308,7 @@ where
         };
 
         match &next_op.content {
-            TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsOuter(trace_context)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(trace_context)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(trace_context, &input_context);
 
@@ -371,7 +371,7 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(index, vertex)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(index, vertex)) => {
                 assert_eq!(self.next_index, *index);
                 self.next_index += 1;
                 Some(vertex.clone())
@@ -399,7 +399,7 @@ where
             .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::GetStartingTokens(vid)) = trace_op.content {
+        if let TraceOpContent::Call(FunctionCall::ResolveStartingVertices(vid)) = trace_op.content {
             assert_eq!(vid, query_info.origin_vid());
             assert!(query_info.origin_crossing_eid().is_none());
 
@@ -424,7 +424,7 @@ where
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, op_type_name, property)) =
+        if let TraceOpContent::Call(FunctionCall::ResolveProperty(vid, op_type_name, property)) =
             &trace_op.content
         {
             assert_eq!(*vid, query_info.origin_vid());
@@ -456,14 +456,14 @@ where
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, op_type_name, eid)) =
+        if let TraceOpContent::Call(FunctionCall::ResolveNeighbors(vid, op_type_name, eid)) =
             &trace_op.content
         {
             assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(op_type_name, type_name);
             assert_eq!(Some(*eid), query_info.origin_crossing_eid());
 
-            Box::new(TraceReaderProjectNeighborsIter {
+            Box::new(TraceReaderResolveNeighborsIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 contexts,
@@ -486,7 +486,7 @@ where
             .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::CanCoerceToType(vid, from_type, to_type)) =
+        if let TraceOpContent::Call(FunctionCall::ResolveCoercion(vid, from_type, to_type)) =
             &trace_op.content
         {
             assert_eq!(*vid, query_info.origin_vid());

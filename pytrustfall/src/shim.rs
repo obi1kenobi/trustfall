@@ -280,7 +280,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 .unwrap();
 
             let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonProjectPropertyIterator::new(iter))
+            Box::new(PythonResolvePropertyIterator::new(iter))
         })
     }
 
@@ -309,7 +309,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 .unwrap();
 
             let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonProjectNeighborsIterator::new(iter))
+            Box::new(PythonResolveNeighborsIterator::new(iter))
         })
     }
 
@@ -332,7 +332,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 .unwrap();
 
             let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonCanCoerceToTypeIterator::new(iter))
+            Box::new(PythonResolveCoercionIterator::new(iter))
         })
     }
 }
@@ -368,17 +368,17 @@ impl Iterator for PythonTokenIterator {
     }
 }
 
-struct PythonProjectPropertyIterator {
+struct PythonResolvePropertyIterator {
     underlying: Py<PyAny>,
 }
 
-impl PythonProjectPropertyIterator {
+impl PythonResolvePropertyIterator {
     fn new(underlying: Py<PyAny>) -> Self {
         Self { underlying }
     }
 }
 
-impl Iterator for PythonProjectPropertyIterator {
+impl Iterator for PythonResolvePropertyIterator {
     type Item = (DataContext<Arc<Py<PyAny>>>, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -418,17 +418,17 @@ impl Iterator for PythonProjectPropertyIterator {
     }
 }
 
-struct PythonProjectNeighborsIterator {
+struct PythonResolveNeighborsIterator {
     underlying: Py<PyAny>,
 }
 
-impl PythonProjectNeighborsIterator {
+impl PythonResolveNeighborsIterator {
     fn new(underlying: Py<PyAny>) -> Self {
         Self { underlying }
     }
 }
 
-impl Iterator for PythonProjectNeighborsIterator {
+impl Iterator for PythonResolveNeighborsIterator {
     type Item = (
         DataContext<Arc<Py<PyAny>>>,
         VertexIterator<'static, Arc<Py<PyAny>>>,
@@ -470,17 +470,17 @@ impl Iterator for PythonProjectNeighborsIterator {
     }
 }
 
-struct PythonCanCoerceToTypeIterator {
+struct PythonResolveCoercionIterator {
     underlying: Py<PyAny>,
 }
 
-impl PythonCanCoerceToTypeIterator {
+impl PythonResolveCoercionIterator {
     fn new(underlying: Py<PyAny>) -> Self {
         Self { underlying }
     }
 }
 
-impl Iterator for PythonCanCoerceToTypeIterator {
+impl Iterator for PythonResolveCoercionIterator {
     type Item = (DataContext<Arc<Py<PyAny>>>, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
