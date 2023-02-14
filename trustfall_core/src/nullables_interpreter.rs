@@ -8,14 +8,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct NullablesToken;
+pub(crate) struct NullablesVertex;
 
 #[derive(Debug, Clone)]
 pub(crate) struct NullablesAdapter;
 
 #[allow(unused_variables)]
 impl Adapter<'static> for NullablesAdapter {
-    type Vertex = NullablesToken;
+    type Vertex = NullablesVertex;
 
     fn resolve_starting_vertices(
         &mut self,

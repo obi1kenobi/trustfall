@@ -21,7 +21,7 @@ impl<'a> FeedAdapter<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Token<'a> {
+pub(crate) enum Vertex<'a> {
     Feed(&'a Feed),
     FeedText(&'a Text),
     ChannelImage(&'a Image),
@@ -41,7 +41,7 @@ macro_rules! impl_downcast {
     };
 }
 
-impl<'a> Token<'a> {
+impl<'a> Vertex<'a> {
     impl_downcast!(as_feed, Feed, Self::Feed);
     impl_downcast!(as_feed_text, Text, Self::FeedText);
     impl_downcast!(as_channel_image, Image, Self::ChannelImage);
@@ -61,7 +61,7 @@ macro_rules! iterable {
 }
 
 impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
-    type Vertex = Token<'a>;
+    type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -69,7 +69,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         _parameters: &EdgeParameters,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name {
-            "Feed" => Box::new(self.data.iter().map(Token::Feed)),
+            "Feed" => Box::new(self.data.iter().map(Vertex::Feed)),
             "FeedAtUrl" => {
                 todo!()
             }
@@ -164,35 +164,35 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name {
             "Feed" => match edge_name {
-                "title" => neighbors(contexts, iterable!(as_feed, title, Token::FeedText)),
+                "title" => neighbors(contexts, iterable!(as_feed, title, Vertex::FeedText)),
                 "description" => {
-                    neighbors(contexts, iterable!(as_feed, description, Token::FeedText))
+                    neighbors(contexts, iterable!(as_feed, description, Vertex::FeedText))
                 }
-                "rights" => neighbors(contexts, iterable!(as_feed, rights, Token::FeedText)),
-                "icon" => neighbors(contexts, iterable!(as_feed, icon, Token::ChannelImage)),
-                "links" => neighbors(contexts, iterable!(as_feed, links, Token::FeedLink)),
-                "entries" => neighbors(contexts, iterable!(as_feed, entries, Token::FeedEntry)),
+                "rights" => neighbors(contexts, iterable!(as_feed, rights, Vertex::FeedText)),
+                "icon" => neighbors(contexts, iterable!(as_feed, icon, Vertex::ChannelImage)),
+                "links" => neighbors(contexts, iterable!(as_feed, links, Vertex::FeedLink)),
+                "entries" => neighbors(contexts, iterable!(as_feed, entries, Vertex::FeedEntry)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             "FeedEntry" => match edge_name {
-                "title" => neighbors(contexts, iterable!(as_feed_entry, title, Token::FeedText)),
+                "title" => neighbors(contexts, iterable!(as_feed_entry, title, Vertex::FeedText)),
                 "content" => neighbors(
                     contexts,
-                    iterable!(as_feed_entry, content, Token::FeedContent),
+                    iterable!(as_feed_entry, content, Vertex::FeedContent),
                 ),
-                "links" => neighbors(contexts, iterable!(as_feed_entry, links, Token::FeedLink)),
+                "links" => neighbors(contexts, iterable!(as_feed_entry, links, Vertex::FeedLink)),
                 "summary" => {
-                    neighbors(contexts, iterable!(as_feed_entry, summary, Token::FeedText))
+                    neighbors(contexts, iterable!(as_feed_entry, summary, Vertex::FeedText))
                 }
-                "rights" => neighbors(contexts, iterable!(as_feed_entry, rights, Token::FeedText)),
+                "rights" => neighbors(contexts, iterable!(as_feed_entry, rights, Vertex::FeedText)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             "FeedContent" => match edge_name {
-                "src" => neighbors(contexts, iterable!(as_feed_content, src, Token::FeedLink)),
+                "src" => neighbors(contexts, iterable!(as_feed_content, src, Vertex::FeedLink)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             "ChannelImage" => match edge_name {
-                "link" => neighbors(contexts, iterable!(as_channel_image, link, Token::FeedLink)),
+                "link" => neighbors(contexts, iterable!(as_channel_image, link, Vertex::FeedLink)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             _ => unreachable!("type {type_name} not found"),

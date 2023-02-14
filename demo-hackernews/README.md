@@ -44,20 +44,20 @@ already provided by the iterator-style execution model.
 ## Components
 
 The project consists of the following components:
-- `vertex.rs` defines the `Token` enum which `trustfall` uses to
+- `vertex.rs` defines the `Vertex` enum which `trustfall` uses to
   represent vertices in the query graph.
 - `adapter.rs` defines the `HackerNewsAdapter` struct, which implements
   the `trustfall_core::interpreter::Adapter` trait and connects the query engine
   to the HackerNews API.
-    - The `resolve_starting_vertices` method is what produces the initial iterator of `Token` vertices
+    - The `resolve_starting_vertices` method is what produces the initial iterator of `Vertex` vertices
       corresponding to the root edge at which querying starts (e.g. `FrontPage`).
-    - The `resolve_property` method is used to get property values for each `Token` in an iterator.
-    - The `resolve_neighbors` method is used to get the neighboring vertices (`Token`s)
-      across a particular edge, for each `Token` in an iterator.
+    - The `resolve_property` method is used to get property values for each `Vertex` in an iterator.
+    - The `resolve_neighbors` method is used to get the neighboring vertices (`Vertex`s)
+      across a particular edge, for each `Vertex` in an iterator.
     - The `resolve_coercion` method is kind of like the Python `isinstance()` function:
-      for each `Token` in an iterable, it checks whether that `Token`'s type can be narrowed
-      to a more derived type than it previously represented. For example, if the `Token` originally
-      represented `interface Animal`, `resolve_coercion` may be used to check whether the `Token`
+      for each `Vertex` in an iterable, it checks whether that `Vertex`'s type can be narrowed
+      to a more derived type than it previously represented. For example, if the `Vertex` originally
+      represented `interface Animal`, `resolve_coercion` may be used to check whether the `Vertex`
       is actually of `type Dog implements Animal`.
 - `main.rs` is a simple CLI app that can execute query files in `ron` format.
 

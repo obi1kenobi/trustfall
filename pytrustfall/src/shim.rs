@@ -257,7 +257,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 )
                 .unwrap();
             let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonTokenIterator::new(iter))
+            Box::new(PythonVertexIterator::new(iter))
         })
     }
 
@@ -337,17 +337,17 @@ impl BasicAdapter<'static> for AdapterShim {
     }
 }
 
-struct PythonTokenIterator {
+struct PythonVertexIterator {
     underlying: Py<PyAny>,
 }
 
-impl PythonTokenIterator {
+impl PythonVertexIterator {
     fn new(underlying: Py<PyAny>) -> Self {
         Self { underlying }
     }
 }
 
-impl Iterator for PythonTokenIterator {
+impl Iterator for PythonVertexIterator {
     type Item = Arc<Py<PyAny>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -453,7 +453,7 @@ impl Iterator for PythonResolveNeighborsIterator {
                     let neighbors_iter = make_iterator(py, neighbors_iterable).unwrap();
 
                     let neighbors: VertexIterator<'static, Arc<Py<PyAny>>> =
-                        Box::new(PythonTokenIterator::new(neighbors_iter));
+                        Box::new(PythonVertexIterator::new(neighbors_iter));
                     Some((context.0, neighbors))
                 }
                 Err(e) => {
