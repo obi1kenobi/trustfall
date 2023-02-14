@@ -4,6 +4,7 @@ use crate::ir::{Eid, FieldValue, IRQuery, Vid};
 
 use super::InterpretedQuery;
 
+/// Information about the query being processed.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct QueryInfo {
@@ -35,10 +36,12 @@ impl QueryInfo {
         &self.query.arguments
     }
 
+    /// The unique ID of the vertex at the query location where this [`QueryInfo`] was provided.
     pub fn origin_vid(&self) -> Vid {
         self.current_vertex
     }
 
+    /// If the query location of this [`QueryInfo`] was at an edge, this is the edge's unique ID.
     pub fn origin_crossing_eid(&self) -> Option<Eid> {
         self.crossing_eid
     }
