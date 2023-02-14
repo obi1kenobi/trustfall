@@ -11,7 +11,7 @@ use crate::{
     util::BTreeMapTryInsertExt,
 };
 
-use super::{ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator};
+use super::{ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Opid(pub NonZeroUsize); // operation ID
@@ -240,19 +240,20 @@ where
         &mut self,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> VertexIterator<'vertex, Self::Vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::GetStartingTokens(vertex_hint)),
+            TraceOpContent::Call(FunctionCall::GetStartingTokens(query_info.origin_vid())),
             None,
         );
         drop(trace);
 
-        let inner_iter =
-            self.inner
-                .resolve_starting_vertices(edge_name, parameters, query_hint, vertex_hint);
+        assert!(query_info.origin_crossing_eid().is_none());
+
+        let inner_iter = self
+            .inner
+            .resolve_starting_vertices(edge_name, parameters, query_info);
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
         Box::new(
@@ -277,19 +278,20 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectProperty(
-                vertex_hint,
+                query_info.origin_vid(),
                 type_name.clone(),
                 property_name.clone(),
             )),
             None,
         );
         drop(trace);
+
+        assert!(query_info.origin_crossing_eid().is_none());
 
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
@@ -314,13 +316,9 @@ where
                 context
             }),
         );
-        let inner_iter = self.inner.resolve_property(
-            wrapped_contexts,
-            type_name,
-            property_name,
-            query_hint,
-            vertex_hint,
-        );
+        let inner_iter =
+            self.inner
+                .resolve_property(wrapped_contexts, type_name, property_name, query_info);
 
         let tracer_ref_4 = self.tracer.clone();
         let tracer_ref_5 = self.tracer.clone();
@@ -350,16 +348,16 @@ where
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ProjectNeighbors(
-                vertex_hint,
+                query_info.origin_vid(),
                 type_name.clone(),
-                edge_hint,
+                query_info
+                    .origin_crossing_eid()
+                    .expect("no Eid when projecting neighbors"),
             )),
             None,
         );
@@ -393,9 +391,7 @@ where
             type_name,
             edge_name,
             parameters,
-            query_hint,
-            vertex_hint,
-            edge_hint,
+            query_info,
         );
 
         let tracer_ref_4 = self.tracer.clone();
@@ -446,19 +442,20 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::CanCoerceToType(
-                vertex_hint,
+                query_info.origin_vid(),
                 type_name.clone(),
                 coerce_to_type.clone(),
             )),
             None,
         );
         drop(trace);
+
+        assert!(query_info.origin_crossing_eid().is_none());
 
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
@@ -483,13 +480,9 @@ where
                 context
             }),
         );
-        let inner_iter = self.inner.resolve_coercion(
-            wrapped_contexts,
-            type_name,
-            coerce_to_type,
-            query_hint,
-            vertex_hint,
-        );
+        let inner_iter =
+            self.inner
+                .resolve_coercion(wrapped_contexts, type_name, coerce_to_type, query_info);
 
         let tracer_ref_4 = self.tracer.clone();
         let tracer_ref_5 = self.tracer.clone();

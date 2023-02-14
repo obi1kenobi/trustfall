@@ -19,9 +19,12 @@ pub mod error;
 pub mod execution;
 mod filtering;
 pub mod helpers;
+mod hints;
 pub mod macros;
 pub mod replay;
 pub mod trace;
+
+pub use hints::QueryInfo;
 
 /// An iterator of vertices representing data points we are querying.
 pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
@@ -379,8 +382,7 @@ pub trait Adapter<'vertex> {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> VertexIterator<'vertex, Self::Vertex>;
 
     fn resolve_property(
@@ -388,8 +390,7 @@ pub trait Adapter<'vertex> {
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue>;
 
     #[allow(clippy::too_many_arguments)]
@@ -399,9 +400,7 @@ pub trait Adapter<'vertex> {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>>;
 
     fn resolve_coercion(
@@ -409,7 +408,6 @@ pub trait Adapter<'vertex> {
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool>;
 }

@@ -1,10 +1,8 @@
 use std::{iter, sync::Arc};
 
 use trustfall_core::{
-    interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator,
-    },
-    ir::{EdgeParameters, Eid, FieldValue, Vid},
+    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator},
+    ir::{EdgeParameters, FieldValue},
 };
 
 use crate::metar::{MetarCloudCover, MetarReport};
@@ -75,8 +73,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
@@ -108,8 +105,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "MetarReport" => {
@@ -171,9 +167,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-        _edge_hint: Eid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("MetarReport", "cloudCover") => {
@@ -202,8 +196,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         todo!()
     }

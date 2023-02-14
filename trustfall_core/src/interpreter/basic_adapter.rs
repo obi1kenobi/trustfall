@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::ir::{EdgeParameters, Eid, FieldValue, Vid};
+use crate::ir::{EdgeParameters, FieldValue};
 
-use super::{Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, VertexIterator};
+use super::{hints::QueryInfo, Adapter, ContextIterator, ContextOutcomeIterator, VertexIterator};
 
 pub trait BasicAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
@@ -143,8 +143,7 @@ where
         &mut self,
         edge_name: &std::sync::Arc<str>,
         parameters: &Option<std::sync::Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> VertexIterator<'vertex, Self::Vertex> {
         <Self as BasicAdapter>::resolve_starting_vertices(
             self,
@@ -158,8 +157,7 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         property_name: &std::sync::Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         <Self as BasicAdapter>::resolve_property(
             self,
@@ -175,9 +173,7 @@ where
         type_name: &std::sync::Arc<str>,
         edge_name: &std::sync::Arc<str>,
         parameters: &Option<std::sync::Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-        _edge_hint: Eid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         <Self as BasicAdapter>::resolve_neighbors(
             self,
@@ -193,8 +189,7 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         coerce_to_type: &std::sync::Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         <Self as BasicAdapter>::resolve_coercion(
             self,
