@@ -50,6 +50,7 @@ pub type ContextIterator<'vertex, VertexT> = VertexIterator<'vertex, DataContext
 pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
     Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
 
+/// A partial result of a Trustfall query within the interpreter defined in this module.
 #[derive(Debug, Clone)]
 pub struct DataContext<Vertex: Clone + Debug> {
     current_token: Option<Vertex>,
@@ -63,6 +64,17 @@ pub struct DataContext<Vertex: Clone + Debug> {
 }
 
 impl<Vertex: Clone + Debug> DataContext<Vertex> {
+    /// The vertex currently being processed.
+    ///
+    /// For contexts passed to an [`Adapter`] resolver method,
+    /// this is the vertex whose data needs to be resolved.
+    ///
+    /// The active vertex may be `None` when processing an `@optional` part
+    /// of a Trustfall query whose data did not exist. In that case:
+    /// - [`Adapter::resolve_property`] must produce [`FieldValue::Null`] for that context.
+    /// - [`Adapter::resolve_neighbors`] must produce an empty iterator of neighbors
+    ///   such as `Box::new(std::iter::empty())` for that context.
+    /// - [`Adapter::resolve_coercion`] must produce a `false` coercion outcome for that context.
     pub fn active_vertex(&self) -> Option<&Vertex> {
         self.current_token.as_ref()
     }
@@ -433,7 +445,7 @@ pub trait Adapter<'vertex> {
     /// - Produce `(context, property_value)` tuples with the property's value for that context.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
-    /// - When a context's active vertex is `None`, its property value is `FieldValue::Null`.
+    /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
