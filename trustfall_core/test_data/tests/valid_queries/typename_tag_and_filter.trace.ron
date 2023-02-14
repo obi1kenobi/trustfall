@@ -5,27 +5,27 @@ TestInterpreterOutputTrace(
       Opid(1): TraceOp(
         opid: Opid(1),
         parent_opid: None,
-        content: Call(GetStartingTokens(Vid(1))),
+        content: Call(ResolveStartingVertices(Vid(1))),
       ),
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
+        content: Call(ResolveNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(2), "Number", "__typename")),
+        content: Call(ResolveProperty(Vid(2), "Number", "__typename")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "Number", "__typename")),
+        content: Call(ResolveProperty(Vid(1), "Number", "__typename")),
       ),
       Opid(5): TraceOp(
         opid: Opid(5),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "Number", "value")),
+        content: Call(ResolveProperty(Vid(1), "Number", "value")),
       ),
       Opid(6): TraceOp(
         opid: Opid(6),
@@ -50,14 +50,14 @@ TestInterpreterOutputTrace(
       Opid(10): TraceOp(
         opid: Opid(10),
         parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Neither(NeitherNumber(1)))),
+        content: YieldFrom(ResolveStartingVertices(Neither(NeitherNumber(1)))),
       ),
       Opid(11): TraceOp(
         opid: Opid(11),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          active_vertex: Some(Neither(NeitherNumber(1))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -65,9 +65,9 @@ TestInterpreterOutputTrace(
       Opid(12): TraceOp(
         opid: Opid(12),
         parent_opid: Some(Opid(2)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(1))),
-          tokens: {
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
+          active_vertex: Some(Neither(NeitherNumber(1))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ))),
@@ -75,14 +75,14 @@ TestInterpreterOutputTrace(
       Opid(13): TraceOp(
         opid: Opid(13),
         parent_opid: Some(Opid(12)),
-        content: YieldFrom(ProjectNeighborsInner(0, Prime(PrimeNumber(2)))),
+        content: YieldFrom(ResolveNeighborsInner(0, Prime(PrimeNumber(2)))),
       ),
       Opid(14): TraceOp(
         opid: Opid(14),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         )),
@@ -90,9 +90,9 @@ TestInterpreterOutputTrace(
       Opid(15): TraceOp(
         opid: Opid(15),
         parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
         ), String("Prime"))),
@@ -101,14 +101,14 @@ TestInterpreterOutputTrace(
         opid: Opid(16),
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(1))),
-          tokens: {
+          active_vertex: Some(Neither(NeitherNumber(1))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(2))),
           ],
         )),
@@ -116,15 +116,15 @@ TestInterpreterOutputTrace(
       Opid(17): TraceOp(
         opid: Opid(17),
         parent_opid: Some(Opid(4)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(1))),
-          tokens: {
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Neither(NeitherNumber(1))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(1))),
           },
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(2))),
           ],
         ), String("Neither"))),
@@ -152,14 +152,14 @@ TestInterpreterOutputTrace(
       Opid(22): TraceOp(
         opid: Opid(22),
         parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Prime(PrimeNumber(2)))),
+        content: YieldFrom(ResolveStartingVertices(Prime(PrimeNumber(2)))),
       ),
       Opid(23): TraceOp(
         opid: Opid(23),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -167,9 +167,9 @@ TestInterpreterOutputTrace(
       Opid(24): TraceOp(
         opid: Opid(24),
         parent_opid: Some(Opid(2)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ))),
@@ -177,14 +177,14 @@ TestInterpreterOutputTrace(
       Opid(25): TraceOp(
         opid: Opid(25),
         parent_opid: Some(Opid(24)),
-        content: YieldFrom(ProjectNeighborsInner(0, Prime(PrimeNumber(3)))),
+        content: YieldFrom(ResolveNeighborsInner(0, Prime(PrimeNumber(3)))),
       ),
       Opid(26): TraceOp(
         opid: Opid(26),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(3))),
-          tokens: {
+          active_vertex: Some(Prime(PrimeNumber(3))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         )),
@@ -192,9 +192,9 @@ TestInterpreterOutputTrace(
       Opid(27): TraceOp(
         opid: Opid(27),
         parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(3))),
-          tokens: {
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(3))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
         ), String("Prime"))),
@@ -203,14 +203,14 @@ TestInterpreterOutputTrace(
         opid: Opid(28),
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         )),
@@ -218,15 +218,15 @@ TestInterpreterOutputTrace(
       Opid(29): TraceOp(
         opid: Opid(29),
         parent_opid: Some(Opid(4)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           values: [
             String("Prime"),
           ],
-          suspended_tokens: [
+          suspended_vertices: [
             Some(Prime(PrimeNumber(3))),
           ],
         ), String("Prime"))),
@@ -235,8 +235,8 @@ TestInterpreterOutputTrace(
         opid: Opid(30),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },
@@ -245,9 +245,9 @@ TestInterpreterOutputTrace(
       Opid(31): TraceOp(
         opid: Opid(31),
         parent_opid: Some(Opid(5)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Prime(PrimeNumber(2))),
-          tokens: {
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
             Vid(1): Some(Prime(PrimeNumber(2))),
             Vid(2): Some(Prime(PrimeNumber(3))),
           },

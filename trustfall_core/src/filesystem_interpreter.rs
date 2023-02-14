@@ -27,28 +27,28 @@ impl FilesystemInterpreter {
 
 #[derive(Debug)]
 struct OriginIterator {
-    origin_token: DirectoryToken,
+    origin_vertex: DirectoryVertex,
     produced: bool,
 }
 
 impl OriginIterator {
-    pub fn new(token: DirectoryToken) -> OriginIterator {
+    pub fn new(vertex: DirectoryVertex) -> OriginIterator {
         OriginIterator {
-            origin_token: token,
+            origin_vertex: vertex,
             produced: false,
         }
     }
 }
 
 impl Iterator for OriginIterator {
-    type Item = FilesystemToken;
+    type Item = FilesystemVertex;
 
-    fn next(&mut self) -> Option<FilesystemToken> {
+    fn next(&mut self) -> Option<FilesystemVertex> {
         if self.produced {
             None
         } else {
             self.produced = true;
-            Some(FilesystemToken::Directory(self.origin_token.clone()))
+            Some(FilesystemVertex::Directory(self.origin_vertex.clone()))
         }
     }
 }
@@ -56,12 +56,12 @@ impl Iterator for OriginIterator {
 #[derive(Debug)]
 struct DirectoryContainsFileIterator {
     origin: Rc<String>,
-    directory: DirectoryToken,
+    directory: DirectoryVertex,
     file_iter: ReadDir,
 }
 
 impl DirectoryContainsFileIterator {
-    pub fn new(origin: Rc<String>, directory: &DirectoryToken) -> DirectoryContainsFileIterator {
+    pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> DirectoryContainsFileIterator {
         let mut buf = PathBuf::new();
         buf.extend([&*origin, &directory.path]);
         DirectoryContainsFileIterator {
@@ -73,9 +73,9 @@ impl DirectoryContainsFileIterator {
 }
 
 impl Iterator for DirectoryContainsFileIterator {
-    type Item = FilesystemToken;
+    type Item = FilesystemVertex;
 
-    fn next(&mut self) -> Option<FilesystemToken> {
+    fn next(&mut self) -> Option<FilesystemVertex> {
         loop {
             if let Some(outcome) = self.file_iter.next() {
                 match outcome {
@@ -91,12 +91,12 @@ impl Iterator for DirectoryContainsFileIterator {
                             let extension = Path::new(&name)
                                 .extension()
                                 .map(|x| x.to_str().unwrap().to_owned());
-                            let result = FileToken {
+                            let result = FileVertex {
                                 name,
                                 extension,
                                 path: buf.to_str().unwrap().to_owned(),
                             };
-                            return Some(FilesystemToken::File(result));
+                            return Some(FilesystemVertex::File(result));
                         }
                     }
                     _ => continue,
@@ -111,12 +111,12 @@ impl Iterator for DirectoryContainsFileIterator {
 #[derive(Debug)]
 struct SubdirectoryIterator {
     origin: Rc<String>,
-    directory: DirectoryToken,
+    directory: DirectoryVertex,
     dir_iter: ReadDir,
 }
 
 impl SubdirectoryIterator {
-    pub fn new(origin: Rc<String>, directory: &DirectoryToken) -> Self {
+    pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> Self {
         let mut buf = PathBuf::new();
         buf.extend([&*origin, &directory.path]);
         Self {
@@ -128,9 +128,9 @@ impl SubdirectoryIterator {
 }
 
 impl Iterator for SubdirectoryIterator {
-    type Item = FilesystemToken;
+    type Item = FilesystemVertex;
 
-    fn next(&mut self) -> Option<FilesystemToken> {
+    fn next(&mut self) -> Option<FilesystemVertex> {
         loop {
             if let Some(outcome) = self.dir_iter.next() {
                 match outcome {
@@ -147,11 +147,11 @@ impl Iterator for SubdirectoryIterator {
 
                             let mut buf = PathBuf::new();
                             buf.extend([&self.directory.path, &name]);
-                            let result = DirectoryToken {
+                            let result = DirectoryVertex {
                                 name,
                                 path: buf.to_str().unwrap().to_owned(),
                             };
-                            return Some(FilesystemToken::Directory(result));
+                            return Some(FilesystemVertex::Directory(result));
                         }
                     }
                     _ => continue,
@@ -163,25 +163,25 @@ impl Iterator for SubdirectoryIterator {
     }
 }
 
-pub type ContextAndValue = (DataContext<FilesystemToken>, FieldValue);
+pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
 type IndividualEdgeResolver =
-    fn(Rc<String>, &FilesystemToken) -> VertexIterator<'static, FilesystemToken>;
+    fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'static, FilesystemVertex>;
 type ContextAndIterableOfEdges = (
-    DataContext<FilesystemToken>,
-    VertexIterator<'static, FilesystemToken>,
+    DataContext<FilesystemVertex>,
+    VertexIterator<'static, FilesystemVertex>,
 );
 
 struct EdgeResolverIterator {
     origin: Rc<String>,
-    contexts: VertexIterator<'static, DataContext<FilesystemToken>>,
+    contexts: VertexIterator<'static, DataContext<FilesystemVertex>>,
     edge_resolver: IndividualEdgeResolver,
 }
 
 impl EdgeResolverIterator {
     pub fn new(
         origin: Rc<String>,
-        contexts: VertexIterator<'static, DataContext<FilesystemToken>>,
+        contexts: VertexIterator<'static, DataContext<FilesystemVertex>>,
         edge_resolver: IndividualEdgeResolver,
     ) -> Self {
         Self {
@@ -194,17 +194,17 @@ impl EdgeResolverIterator {
 
 impl Iterator for EdgeResolverIterator {
     type Item = (
-        DataContext<FilesystemToken>,
-        VertexIterator<'static, FilesystemToken>,
+        DataContext<FilesystemVertex>,
+        VertexIterator<'static, FilesystemVertex>,
     );
 
     fn next(&mut self) -> Option<ContextAndIterableOfEdges> {
         if let Some(context) = self.contexts.next() {
-            if let Some(token) = context.active_vertex() {
-                let edge_tokens = (self.edge_resolver)(self.origin.clone(), token);
-                Some((context, edge_tokens))
+            if let Some(vertex) = context.active_vertex() {
+                let neighbors = (self.edge_resolver)(self.origin.clone(), vertex);
+                Some((context, neighbors))
             } else {
-                let empty_iterator: iter::Empty<FilesystemToken> = iter::empty();
+                let empty_iterator: iter::Empty<FilesystemVertex> = iter::empty();
                 Some((context, Box::new(empty_iterator)))
             }
         } else {
@@ -214,19 +214,19 @@ impl Iterator for EdgeResolverIterator {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FilesystemToken {
-    Directory(DirectoryToken),
-    File(FileToken),
+pub enum FilesystemVertex {
+    Directory(DirectoryVertex),
+    File(FileVertex),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DirectoryToken {
+pub struct DirectoryVertex {
     pub name: String,
     pub path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FileToken {
+pub struct FileVertex {
     pub name: String,
     pub extension: Option<String>,
     pub path: String,
@@ -234,29 +234,29 @@ pub struct FileToken {
 
 fn directory_contains_file_handler(
     origin: Rc<String>,
-    token: &FilesystemToken,
-) -> VertexIterator<'static, FilesystemToken> {
-    let directory_token = match token {
-        FilesystemToken::Directory(dir) => dir,
+    vertex: &FilesystemVertex,
+) -> VertexIterator<'static, FilesystemVertex> {
+    let directory_vertex = match vertex {
+        FilesystemVertex::Directory(dir) => dir,
         _ => unreachable!(),
     };
-    Box::from(DirectoryContainsFileIterator::new(origin, directory_token))
+    Box::from(DirectoryContainsFileIterator::new(origin, directory_vertex))
 }
 
 fn directory_subdirectory_handler(
     origin: Rc<String>,
-    token: &FilesystemToken,
-) -> VertexIterator<'static, FilesystemToken> {
-    let directory_token = match token {
-        FilesystemToken::Directory(dir) => dir,
+    vertex: &FilesystemVertex,
+) -> VertexIterator<'static, FilesystemVertex> {
+    let directory_vertex = match vertex {
+        FilesystemVertex::Directory(dir) => dir,
         _ => unreachable!(),
     };
-    Box::from(SubdirectoryIterator::new(origin, directory_token))
+    Box::from(SubdirectoryIterator::new(origin, directory_vertex))
 }
 
 #[allow(unused_variables)]
 impl Adapter<'static> for FilesystemInterpreter {
-    type Vertex = FilesystemToken;
+    type Vertex = FilesystemVertex;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -266,11 +266,11 @@ impl Adapter<'static> for FilesystemInterpreter {
     ) -> VertexIterator<'static, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_empty());
-        let token = DirectoryToken {
+        let vertex = DirectoryVertex {
             name: "<origin>".to_owned(),
             path: "".to_owned(),
         };
-        Box::new(OriginIterator::new(token))
+        Box::new(OriginIterator::new(vertex))
     }
 
     fn resolve_property(
@@ -284,7 +284,7 @@ impl Adapter<'static> for FilesystemInterpreter {
             "Directory" => match property_name.as_ref() {
                 "name" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
-                    Some(FilesystemToken::Directory(ref x)) => {
+                    Some(FilesystemVertex::Directory(ref x)) => {
                         let value = FieldValue::String(x.name.clone());
                         (context, value)
                     }
@@ -292,18 +292,22 @@ impl Adapter<'static> for FilesystemInterpreter {
                 })),
                 "path" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
-                    Some(FilesystemToken::Directory(ref x)) => {
+                    Some(FilesystemVertex::Directory(ref x)) => {
                         let value = FieldValue::String(x.path.clone());
                         (context, value)
                     }
                     _ => unreachable!(),
+                })),
+                "__typename" => Box::new(contexts.map(|context| match context.active_vertex() {
+                    None => (context, FieldValue::Null),
+                    Some(_) => (context, "Directory".into()),
                 })),
                 _ => todo!(),
             },
             "File" => match property_name.as_ref() {
                 "name" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
-                    Some(FilesystemToken::File(ref x)) => {
+                    Some(FilesystemVertex::File(ref x)) => {
                         let value = FieldValue::String(x.name.clone());
                         (context, value)
                     }
@@ -311,7 +315,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                 })),
                 "path" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
-                    Some(FilesystemToken::File(ref x)) => {
+                    Some(FilesystemVertex::File(ref x)) => {
                         let value = FieldValue::String(x.path.clone());
                         (context, value)
                     }
@@ -319,7 +323,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                 })),
                 "extension" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
-                    Some(FilesystemToken::File(ref x)) => {
+                    Some(FilesystemVertex::File(ref x)) => {
                         let value = x
                             .extension
                             .clone()
@@ -328,6 +332,10 @@ impl Adapter<'static> for FilesystemInterpreter {
                         (context, value)
                     }
                     _ => unreachable!(),
+                })),
+                "__typename" => Box::new(contexts.map(|context| match context.active_vertex() {
+                    None => (context, FieldValue::Null),
+                    Some(_) => (context, "File".into()),
                 })),
                 _ => todo!(),
             },

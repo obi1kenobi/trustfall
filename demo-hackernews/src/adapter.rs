@@ -11,7 +11,7 @@ use trustfall_core::{
     ir::{EdgeParameters, FieldValue},
 };
 
-use crate::token::Token;
+use crate::vertex::Vertex;
 
 lazy_static! {
     static ref CLIENT: HnClient = HnClient::init().unwrap();
@@ -20,11 +20,11 @@ lazy_static! {
 pub struct HackerNewsAdapter;
 
 impl HackerNewsAdapter {
-    fn front_page(&self) -> VertexIterator<'static, Token> {
+    fn front_page(&self) -> VertexIterator<'static, Vertex> {
         self.top(Some(30))
     }
 
-    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
+    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
         let iterator = CLIENT
             .get_top_stories()
             .unwrap()
@@ -41,7 +41,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
+    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
         // Unfortunately, the HN crate we're using doesn't support getting the new stories,
         // so we're doing it manually here.
         let story_ids: Vec<u32> =
@@ -65,12 +65,12 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn user(&self, username: &str) -> VertexIterator<'static, Token> {
+    fn user(&self, username: &str) -> VertexIterator<'static, Vertex> {
         match CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
-                let token = Token::from(user);
-                Box::new(std::iter::once(token))
+                let vertex = Vertex::from(user);
+                Box::new(std::iter::once(vertex))
             }
             Ok(None) => {
                 // The request succeeded but did not find a user by that name.
@@ -101,7 +101,7 @@ macro_rules! item_property_resolver {
 }
 
 impl BasicAdapter<'static> for HackerNewsAdapter {
-    type Vertex = Token;
+    type Vertex = Vertex;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -194,8 +194,8 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
                 let edge_resolver =
-                    |token: &Self::Vertex| -> VertexIterator<'static, Self::Vertex> {
-                        let story = token.as_story().unwrap();
+                    |vertex: &Self::Vertex| -> VertexIterator<'static, Self::Vertex> {
+                        let story = vertex.as_story().unwrap();
                         let author = story.by.as_str();
                         match CLIENT.get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
@@ -212,8 +212,8 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Story", "comment") => {
-                let edge_resolver = |token: &Self::Vertex| {
-                    let story = token.as_story().unwrap();
+                let edge_resolver = |vertex: &Self::Vertex| {
+                    let story = vertex.as_story().unwrap();
                     let comment_ids = story.kids.clone().unwrap_or_default();
                     let story_id = story.id;
 
@@ -242,8 +242,8 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Comment", "byUser") => {
-                let edge_resolver = |token: &Self::Vertex| {
-                    let comment = token.as_comment().unwrap();
+                let edge_resolver = |vertex: &Self::Vertex| {
+                    let comment = vertex.as_comment().unwrap();
                     let author = comment.by.as_str();
                     let neighbors: VertexIterator<'static, Self::Vertex> =
                         match CLIENT.get_user(author) {
@@ -262,8 +262,8 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Comment", "parent") => {
-                let edge_resolver = |token: &Self::Vertex| {
-                    let comment = token.as_comment().unwrap();
+                let edge_resolver = |vertex: &Self::Vertex| {
+                    let comment = vertex.as_comment().unwrap();
                     let comment_id = comment.id;
                     let parent_id = comment.parent;
 
@@ -284,8 +284,8 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Comment", "reply") => {
-                let edge_resolver = |token: &Self::Vertex| {
-                    let comment = token.as_comment().unwrap();
+                let edge_resolver = |vertex: &Self::Vertex| {
+                    let comment = vertex.as_comment().unwrap();
                     let comment_id = comment.id;
                     let reply_ids = comment.kids.clone().unwrap_or_default();
 
@@ -312,8 +312,8 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("User", "submitted") => {
-                let edge_resolver = |token: &Self::Vertex| {
-                    let user = token.as_user().unwrap();
+                let edge_resolver = |vertex: &Self::Vertex| {
+                    let user = vertex.as_user().unwrap();
                     let submitted_ids = user.submitted.clone();
 
                     let neighbors: VertexIterator<'static, Self::Vertex> =
@@ -344,12 +344,12 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         match (type_name, coerce_to_type) {
-            ("Item", "Job") => resolve_coercion_with(contexts, |token| token.as_job().is_some()),
+            ("Item", "Job") => resolve_coercion_with(contexts, |vertex| vertex.as_job().is_some()),
             ("Item", "Story") => {
-                resolve_coercion_with(contexts, |token| token.as_story().is_some())
+                resolve_coercion_with(contexts, |vertex| vertex.as_story().is_some())
             }
             ("Item", "Comment") => {
-                resolve_coercion_with(contexts, |token| token.as_comment().is_some())
+                resolve_coercion_with(contexts, |vertex| vertex.as_comment().is_some())
             }
             _ => unreachable!(),
         }

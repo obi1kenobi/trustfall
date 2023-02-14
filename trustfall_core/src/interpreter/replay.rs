@@ -34,7 +34,7 @@ fn advance_ref_iter<T, Iter: Iterator<Item = T>>(iter: &RefCell<Iter>) -> Option
 }
 
 #[derive(Debug)]
-struct TraceReaderStartingTokensIter<'trace, Vertex>
+struct TraceReaderStartingVerticesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -45,7 +45,7 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'trace, Vertex> Iterator for TraceReaderStartingTokensIter<'trace, Vertex>
+impl<'trace, Vertex> Iterator for TraceReaderStartingVerticesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -72,13 +72,15 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(token)) => Some(token.clone()),
+            TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex)) => {
+                Some(vertex.clone())
+            }
             _ => unreachable!(),
         }
     }
 }
 
-struct TraceReaderProjectPropertiesIter<'trace, Vertex>
+struct TraceReaderResolvePropertiesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -91,7 +93,7 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'trace, Vertex> Iterator for TraceReaderProjectPropertiesIter<'trace, Vertex>
+impl<'trace, Vertex> Iterator for TraceReaderResolvePropertiesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -143,7 +145,7 @@ where
         };
 
         match &next_op.content {
-            TraceOpContent::YieldFrom(YieldValue::ProjectProperty(trace_context, value)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveProperty(trace_context, value)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(trace_context, &input_context);
                 Some((input_context, value.clone()))
@@ -158,7 +160,7 @@ where
     }
 }
 
-struct TraceReaderCanCoerceIter<'query, 'trace, Vertex>
+struct TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -172,7 +174,7 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'query, 'trace, Vertex> Iterator for TraceReaderCanCoerceIter<'query, 'trace, Vertex>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -226,7 +228,7 @@ where
         };
 
         match &next_op.content {
-            TraceOpContent::YieldFrom(YieldValue::CanCoerceToType(trace_context, can_coerce)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(trace_context, can_coerce)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(trace_context, &input_context);
                 Some((input_context, *can_coerce))
@@ -241,7 +243,7 @@ where
     }
 }
 
-struct TraceReaderProjectNeighborsIter<'query, 'trace, Vertex>
+struct TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -254,7 +256,7 @@ where
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
-impl<'query, 'trace, Vertex> Iterator for TraceReaderProjectNeighborsIter<'query, 'trace, Vertex>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -308,7 +310,7 @@ where
         };
 
         match &next_op.content {
-            TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsOuter(trace_context)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(trace_context)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(trace_context, &input_context);
 
@@ -371,10 +373,10 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(index, token)) => {
+            TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(index, vertex)) => {
                 assert_eq!(self.next_index, *index);
                 self.next_index += 1;
-                Some(token.clone())
+                Some(vertex.clone())
             }
             _ => unreachable!(),
         }
@@ -399,11 +401,11 @@ where
             .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::GetStartingTokens(vid)) = trace_op.content {
+        if let TraceOpContent::Call(FunctionCall::ResolveStartingVertices(vid)) = trace_op.content {
             assert_eq!(vid, query_info.origin_vid());
             assert!(query_info.origin_crossing_eid().is_none());
 
-            Box::new(TraceReaderStartingTokensIter {
+            Box::new(TraceReaderStartingVerticesIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 inner: self.next_op.clone(),
@@ -424,7 +426,7 @@ where
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, op_type_name, property)) =
+        if let TraceOpContent::Call(FunctionCall::ResolveProperty(vid, op_type_name, property)) =
             &trace_op.content
         {
             assert_eq!(*vid, query_info.origin_vid());
@@ -432,7 +434,7 @@ where
             assert_eq!(property, property_name);
             assert!(query_info.origin_crossing_eid().is_none());
 
-            Box::new(TraceReaderProjectPropertiesIter {
+            Box::new(TraceReaderResolvePropertiesIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 contexts,
@@ -456,14 +458,14 @@ where
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, op_type_name, eid)) =
+        if let TraceOpContent::Call(FunctionCall::ResolveNeighbors(vid, op_type_name, eid)) =
             &trace_op.content
         {
             assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(op_type_name, type_name);
             assert_eq!(Some(*eid), query_info.origin_crossing_eid());
 
-            Box::new(TraceReaderProjectNeighborsIter {
+            Box::new(TraceReaderResolveNeighborsIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 contexts,
@@ -486,7 +488,7 @@ where
             .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
-        if let TraceOpContent::Call(FunctionCall::CanCoerceToType(vid, from_type, to_type)) =
+        if let TraceOpContent::Call(FunctionCall::ResolveCoercion(vid, from_type, to_type)) =
             &trace_op.content
         {
             assert_eq!(*vid, query_info.origin_vid());
@@ -494,7 +496,7 @@ where
             assert_eq!(to_type, coerce_to_type);
             assert!(query_info.origin_crossing_eid().is_none());
 
-            Box::new(TraceReaderCanCoerceIter {
+            Box::new(TraceReaderResolveCoercionIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 contexts,
@@ -578,16 +580,16 @@ mod tests {
     use trustfall_filetests_macros::parameterize;
 
     use crate::{
-        filesystem_interpreter::FilesystemToken,
+        filesystem_interpreter::FilesystemVertex,
         interpreter::replay::assert_interpreted_results,
-        numbers_interpreter::NumbersToken,
+        numbers_interpreter::NumbersVertex,
         util::{TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace},
     };
 
-    fn check_trace<Token>(expected_ir: TestIRQuery, test_data: TestInterpreterOutputTrace<Token>)
+    fn check_trace<Vertex>(expected_ir: TestIRQuery, test_data: TestInterpreterOutputTrace<Vertex>)
     where
-        Token: Debug + Clone + PartialEq + Eq + Serialize,
-        for<'de> Token: Deserialize<'de>,
+        Vertex: Debug + Clone + PartialEq + Eq + Serialize,
+        for<'de> Vertex: Deserialize<'de>,
     {
         // Ensure that the trace file's IR hasn't drifted away from the IR file of the same name.
         assert_eq!(expected_ir.ir_query, test_data.trace.ir_query);
@@ -597,7 +599,7 @@ mod tests {
     }
 
     fn check_filesystem_trace(expected_ir: TestIRQuery, input_data: &str) {
-        match ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(input_data) {
+        match ron::from_str::<TestInterpreterOutputTrace<FilesystemVertex>>(input_data) {
             Ok(test_data) => {
                 assert_eq!(expected_ir.schema_name, "filesystem");
                 assert_eq!(test_data.schema_name, "filesystem");
@@ -610,7 +612,7 @@ mod tests {
     }
 
     fn check_numbers_trace(expected_ir: TestIRQuery, input_data: &str) {
-        match ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(input_data) {
+        match ron::from_str::<TestInterpreterOutputTrace<NumbersVertex>>(input_data) {
             Ok(test_data) => {
                 assert_eq!(expected_ir.schema_name, "numbers");
                 assert_eq!(test_data.schema_name, "numbers");

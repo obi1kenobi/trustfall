@@ -19,18 +19,18 @@ impl<'a> MetarAdapter<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Token<'a> {
+pub(crate) enum Vertex<'a> {
     MetarReport(&'a MetarReport),
     CloudCover(&'a MetarCloudCover),
 }
 
-impl<'a> From<&'a MetarReport> for Token<'a> {
+impl<'a> From<&'a MetarReport> for Vertex<'a> {
     fn from(v: &'a MetarReport) -> Self {
         Self::MetarReport(v)
     }
 }
 
-impl<'a> From<&'a MetarCloudCover> for Token<'a> {
+impl<'a> From<&'a MetarCloudCover> for Vertex<'a> {
     fn from(v: &'a MetarCloudCover) -> Self {
         Self::CloudCover(v)
     }
@@ -41,7 +41,7 @@ macro_rules! non_float_field {
         Box::new($iter.map(|ctx| {
             let value = match ctx.active_vertex() {
                 None => FieldValue::Null,
-                Some(token) => match token {
+                Some(vertex) => match vertex {
                     $variant(m) => m.$field.clone().into(),
                     _ => unreachable!(),
                 },
@@ -56,7 +56,7 @@ macro_rules! float_field {
         Box::new($iter.map(|ctx| {
             let value = match ctx.active_vertex() {
                 None => FieldValue::Null,
-                Some(token) => match token {
+                Some(vertex) => match vertex {
                     $variant(m) => m.$field.clone().try_into().unwrap(),
                     _ => unreachable!(),
                 },
@@ -67,7 +67,7 @@ macro_rules! float_field {
 }
 
 impl<'a> Adapter<'a> for MetarAdapter<'a> {
-    type Vertex = Token<'a>;
+    type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -101,38 +101,38 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
             "MetarReport" => {
                 match property_name.as_ref() {
                     // TODO: implement __typename
-                    "stationId" => non_float_field!(contexts, Token::MetarReport, station_id),
-                    "rawReport" => non_float_field!(contexts, Token::MetarReport, raw_report),
+                    "stationId" => non_float_field!(contexts, Vertex::MetarReport, station_id),
+                    "rawReport" => non_float_field!(contexts, Vertex::MetarReport, raw_report),
                     "observationTime" => {
-                        non_float_field!(contexts, Token::MetarReport, observation_time)
+                        non_float_field!(contexts, Vertex::MetarReport, observation_time)
                     }
-                    "latitude" => float_field!(contexts, Token::MetarReport, latitude),
-                    "longitude" => float_field!(contexts, Token::MetarReport, longitude),
+                    "latitude" => float_field!(contexts, Vertex::MetarReport, latitude),
+                    "longitude" => float_field!(contexts, Vertex::MetarReport, longitude),
                     "windSpeedKts" => {
-                        non_float_field!(contexts, Token::MetarReport, wind_speed_kts)
+                        non_float_field!(contexts, Vertex::MetarReport, wind_speed_kts)
                     }
                     "windDirection" => {
-                        non_float_field!(contexts, Token::MetarReport, wind_direction)
+                        non_float_field!(contexts, Vertex::MetarReport, wind_direction)
                     }
                     "windGustsKts" => {
-                        non_float_field!(contexts, Token::MetarReport, wind_gusts_kts)
+                        non_float_field!(contexts, Vertex::MetarReport, wind_gusts_kts)
                     }
-                    "temperature" => float_field!(contexts, Token::MetarReport, temperature),
-                    "dewpoint" => float_field!(contexts, Token::MetarReport, dewpoint),
+                    "temperature" => float_field!(contexts, Vertex::MetarReport, temperature),
+                    "dewpoint" => float_field!(contexts, Vertex::MetarReport, dewpoint),
                     "visibilityUnlimited" => {
-                        non_float_field!(contexts, Token::MetarReport, visibility_unlimited)
+                        non_float_field!(contexts, Vertex::MetarReport, visibility_unlimited)
                     }
                     "visibilityMinimal" => {
-                        non_float_field!(contexts, Token::MetarReport, visibility_minimal)
+                        non_float_field!(contexts, Vertex::MetarReport, visibility_minimal)
                     }
                     "visibilityStatuteMi" => {
-                        float_field!(contexts, Token::MetarReport, visibility_statute_mi)
+                        float_field!(contexts, Vertex::MetarReport, visibility_statute_mi)
                     }
                     "altimeterInHg" => {
-                        float_field!(contexts, Token::MetarReport, altimeter_in_hg)
+                        float_field!(contexts, Vertex::MetarReport, altimeter_in_hg)
                     }
                     "seaLevelPressureMb" => {
-                        float_field!(contexts, Token::MetarReport, sea_level_pressure_mb)
+                        float_field!(contexts, Vertex::MetarReport, sea_level_pressure_mb)
                     }
                     unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
@@ -140,9 +140,9 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
             "MetarCloudCover" => {
                 match property_name.as_ref() {
                     // TODO: implement __typename
-                    "skyCover" => non_float_field!(contexts, Token::CloudCover, sky_cover),
+                    "skyCover" => non_float_field!(contexts, Vertex::CloudCover, sky_cover),
                     "baseAltitude" => {
-                        non_float_field!(contexts, Token::CloudCover, base_altitude)
+                        non_float_field!(contexts, Vertex::CloudCover, base_altitude)
                     }
                     unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
@@ -165,8 +165,8 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
 
                 Box::new(contexts.map(|ctx| {
                     let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
-                        Some(token) => match token {
-                            &Token::MetarReport(metar) => {
+                        Some(vertex) => match vertex {
+                            &Vertex::MetarReport(metar) => {
                                 Box::new(metar.cloud_cover.iter().map(|c| c.into()))
                             }
                             _ => unreachable!(),

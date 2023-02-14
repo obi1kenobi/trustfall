@@ -5,17 +5,17 @@ TestInterpreterOutputTrace(
       Opid(1): TraceOp(
         opid: Opid(1),
         parent_opid: None,
-        content: Call(GetStartingTokens(Vid(1))),
+        content: Call(ResolveStartingVertices(Vid(1))),
       ),
       Opid(2): TraceOp(
         opid: Opid(2),
         parent_opid: None,
-        content: Call(ProjectNeighbors(Vid(1), "Number", Eid(1))),
+        content: Call(ResolveNeighbors(Vid(1), "Number", Eid(1))),
       ),
       Opid(3): TraceOp(
         opid: Opid(3),
         parent_opid: None,
-        content: Call(ProjectProperty(Vid(1), "Number", "value")),
+        content: Call(ResolveProperty(Vid(1), "Number", "value")),
       ),
       Opid(4): TraceOp(
         opid: Opid(4),
@@ -30,14 +30,14 @@ TestInterpreterOutputTrace(
       Opid(6): TraceOp(
         opid: Opid(6),
         parent_opid: Some(Opid(1)),
-        content: YieldFrom(GetStartingTokens(Neither(NeitherNumber(0)))),
+        content: YieldFrom(ResolveStartingVertices(Neither(NeitherNumber(0)))),
       ),
       Opid(7): TraceOp(
         opid: Opid(7),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          active_vertex: Some(Neither(NeitherNumber(0))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         )),
@@ -45,9 +45,9 @@ TestInterpreterOutputTrace(
       Opid(8): TraceOp(
         opid: Opid(8),
         parent_opid: Some(Opid(2)),
-        content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
-          tokens: {
+        content: YieldFrom(ResolveNeighborsOuter(SerializableContext(
+          active_vertex: Some(Neither(NeitherNumber(0))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
         ))),
@@ -61,8 +61,8 @@ TestInterpreterOutputTrace(
         opid: Opid(10),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
-          tokens: {
+          active_vertex: Some(Neither(NeitherNumber(0))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           folded_contexts: {
@@ -76,9 +76,9 @@ TestInterpreterOutputTrace(
       Opid(11): TraceOp(
         opid: Opid(11),
         parent_opid: Some(Opid(3)),
-        content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
-          tokens: {
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Neither(NeitherNumber(0))),
+          vertices: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           folded_contexts: {

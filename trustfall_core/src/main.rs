@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use trustfall_core::{interpreter::error::QueryArgumentsError, schema::error::InvalidSchemaError};
 
 use crate::{
-    filesystem_interpreter::{FilesystemInterpreter, FilesystemToken},
+    filesystem_interpreter::{FilesystemInterpreter, FilesystemVertex},
     graphql_query::error::ParseError,
     graphql_query::query::parse_document,
     interpreter::{
@@ -37,7 +37,7 @@ use crate::{
         Adapter,
     },
     nullables_interpreter::NullablesAdapter,
-    numbers_interpreter::{NumbersAdapter, NumbersToken},
+    numbers_interpreter::{NumbersAdapter, NumbersVertex},
     schema::Schema,
     util::{
         TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace,
@@ -201,11 +201,11 @@ fn reserialize(path: &str) {
         }
         Some((_, "trace")) => {
             if let Ok(test_trace) =
-                ron::from_str::<TestInterpreterOutputTrace<NumbersToken>>(&input_data)
+                ron::from_str::<TestInterpreterOutputTrace<NumbersVertex>>(&input_data)
             {
                 serialize_to_ron(&test_trace)
             } else if let Ok(test_trace) =
-                ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(&input_data)
+                ron::from_str::<TestInterpreterOutputTrace<FilesystemVertex>>(&input_data)
             {
                 serialize_to_ron(&test_trace)
             } else {

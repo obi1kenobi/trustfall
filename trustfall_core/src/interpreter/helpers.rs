@@ -17,7 +17,7 @@ pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'static,
 ) -> ContextOutcomeIterator<'vertex, Vertex, FieldValue> {
-    Box::new(contexts.map(move |ctx| match ctx.current_token.as_ref() {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
         None => (ctx, FieldValue::Null),
         Some(vertex) => {
             let value = resolver(vertex);
@@ -37,7 +37,7 @@ pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'static,
 ) -> ContextOutcomeIterator<'vertex, Vertex, VertexIterator<'vertex, Vertex>> {
     Box::new(contexts.map(move |ctx| {
-        match ctx.current_token.as_ref() {
+        match ctx.active_vertex.as_ref() {
             None => {
                 // rustc needs a bit of help with the type inference here,
                 // due to the Box<dyn Iterator> conversion.
@@ -62,7 +62,7 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'static,
 ) -> ContextOutcomeIterator<'vertex, Vertex, bool> {
-    Box::new(contexts.map(move |ctx| match ctx.current_token.as_ref() {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
         None => (ctx, false),
         Some(vertex) => {
             let can_coerce = resolver(vertex);
