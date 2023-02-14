@@ -173,24 +173,24 @@ fn make_iter_with_pre_action<T, I: Iterator<Item = T>, F: Fn()>(
 }
 
 #[derive(Debug, Clone)]
-pub struct AdapterTap<'vertex, Vertex, AdapterT>
+pub struct AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex, Vertex = Vertex>,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> Vertex: Deserialize<'de2>,
+    AdapterT: Adapter<'vertex>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
+    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
 {
-    tracer: Rc<RefCell<Trace<Vertex>>>,
+    tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>,
     inner: AdapterT,
     _phantom: PhantomData<&'vertex ()>,
 }
 
-impl<'vertex, Vertex, AdapterT> AdapterTap<'vertex, Vertex, AdapterT>
+impl<'vertex, AdapterT> AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex, Vertex = Vertex>,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> Vertex: Deserialize<'de2>,
+    AdapterT: Adapter<'vertex>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
+    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
 {
-    pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<Vertex>>>) -> Self {
+    pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>) -> Self {
         Self {
             tracer,
             inner: adapter,
@@ -198,7 +198,7 @@ where
         }
     }
 
-    pub fn finish(self) -> Trace<Vertex> {
+    pub fn finish(self) -> Trace<AdapterT::Vertex> {
         // Ensure nothing is reading the trace i.e. we can safely stop interpreting.
         let trace_ref = self.tracer.borrow_mut();
         let new_trace = Trace::new(trace_ref.ir_query.clone(), trace_ref.arguments.clone());
@@ -208,14 +208,14 @@ where
 }
 
 #[allow(dead_code)]
-pub(crate) fn tap_results<'vertex, Vertex, AdapterT>(
-    adapter_tap: Rc<RefCell<AdapterTap<'vertex, Vertex, AdapterT>>>,
+pub(crate) fn tap_results<'vertex, AdapterT>(
+    adapter_tap: Rc<RefCell<AdapterTap<'vertex, AdapterT>>>,
     result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex,
 ) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex
 where
-    AdapterT: Adapter<'vertex, Vertex = Vertex> + 'vertex,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> Vertex: Deserialize<'de2>,
+    AdapterT: Adapter<'vertex> + 'vertex,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
+    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
 {
     result_iter.map(move |result| {
         let adapter_ref = adapter_tap.borrow_mut();
@@ -228,13 +228,13 @@ where
     })
 }
 
-impl<'vertex, Vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, Vertex, AdapterT>
+impl<'vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex, Vertex = Vertex>,
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> Vertex: Deserialize<'de2>,
+    AdapterT: Adapter<'vertex>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
+    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
 {
-    type Vertex = Vertex;
+    type Vertex = AdapterT::Vertex;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -428,7 +428,7 @@ where
                 });
 
                 let tracer_ref_7 = tracer_ref_5.clone();
-                let final_neighbor_iter: VertexIterator<'vertex, Vertex> =
+                let final_neighbor_iter: VertexIterator<'vertex, Self::Vertex> =
                     Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
                         tracer_ref_7.borrow_mut().record(
                             TraceOpContent::OutputIteratorExhausted,
