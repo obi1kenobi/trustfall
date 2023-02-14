@@ -901,9 +901,9 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
         let moved_iterator = iterator.map(move |mut context| {
-            let current_token = context.current_token.clone();
+            let active_vertex = context.active_vertex.clone();
             let new_token = context.tokens[&vertex_id].clone();
-            context.suspended_tokens.push(current_token);
+            context.suspended_tokens.push(active_vertex);
             context.move_to_token(new_token)
         });
 
@@ -923,8 +923,8 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
 
             // Make sure that the context has the same "current" token
             // as before evaluating the context field.
-            let old_current_token = context.suspended_tokens.pop().unwrap();
-            context.move_to_token(old_current_token)
+            let old_active_vertex = context.suspended_tokens.pop().unwrap();
+            context.move_to_token(old_active_vertex)
         }))
     } else {
         // This context field represents an imported tag value from an outer component.
@@ -1024,7 +1024,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
         // If there's no current token, there couldn't possibly be neighbors.
         // If this assertion trips, the adapter's resolve_neighbors() implementation illegally
         // returned neighbors for a non-existent vertex.
-        if self.context.current_token.is_none() {
+        if self.context.active_vertex.is_none() {
             assert!(!self.has_neighbors);
         }
 
@@ -1034,7 +1034,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
         //
         // The other case where we have to return a context with no active token is when
         // we have a current token, but the edge we're traversing is optional and does not exist.
-        if self.context.current_token.is_none() || (!self.has_neighbors && self.is_optional_edge) {
+        if self.context.active_vertex.is_none() || (!self.has_neighbors && self.is_optional_edge) {
             Some(self.context.split_and_move_to_token(None))
         } else {
             None
@@ -1167,8 +1167,8 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     let expanding_from_vid = expanding_from.vid;
     let mut recursion_iterator: ContextIterator<'query, Vertex> =
         Box::new(iterator.map(move |mut context| {
-            if context.current_token.is_none() {
-                // Mark that this token starts off with a None current_token value,
+            if context.active_vertex.is_none() {
+                // Mark that this token starts off with a None active_vertex value,
                 // so the later unsuspend() call should restore it to such a state later.
                 context.suspended_tokens.push(None);
             }
@@ -1327,7 +1327,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
                 // If this assertion trips, the adapter's resolve_neighbors() implementation
                 // illegally returned neighbors for a non-existent vertex.
                 if let Some(context) = &self.context {
-                    if context.current_token.is_none() {
+                    if context.active_vertex.is_none() {
                         assert!(!self.has_neighbors);
                     }
                 }

@@ -53,7 +53,7 @@ pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
 /// A partial result of a Trustfall query within the interpreter defined in this module.
 #[derive(Debug, Clone)]
 pub struct DataContext<Vertex: Clone + Debug> {
-    current_token: Option<Vertex>,
+    active_vertex: Option<Vertex>,
     tokens: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<Vertex>>,
@@ -76,7 +76,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     ///   such as `Box::new(std::iter::empty())` for that context.
     /// - [`Adapter::resolve_coercion`] must produce a `false` coercion outcome for that context.
     pub fn active_vertex(&self) -> Option<&Vertex> {
-        self.current_token.as_ref()
+        self.active_vertex.as_ref()
     }
 }
 
@@ -111,7 +111,7 @@ where
     Vertex: Clone + Debug + Serialize,
     for<'d> Vertex: Deserialize<'d>,
 {
-    current_token: Option<Vertex>,
+    active_vertex: Option<Vertex>,
     tokens: BTreeMap<Vid, Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -141,7 +141,7 @@ where
 {
     fn from(context: SerializableContext<Vertex>) -> Self {
         Self {
-            current_token: context.current_token,
+            active_vertex: context.active_vertex,
             tokens: context.tokens,
             values: context.values,
             suspended_tokens: context.suspended_tokens,
@@ -160,7 +160,7 @@ where
 {
     fn from(context: DataContext<Vertex>) -> Self {
         Self {
-            current_token: context.current_token,
+            active_vertex: context.active_vertex,
             tokens: context.tokens,
             values: context.values,
             suspended_tokens: context.suspended_tokens,
@@ -175,7 +175,7 @@ where
 impl<Vertex: Clone + Debug> DataContext<Vertex> {
     pub fn new(token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
-            current_token: token,
+            active_vertex: token,
             piggyback: None,
             tokens: Default::default(),
             values: Default::default(),
@@ -188,13 +188,13 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
 
     fn record_token(&mut self, vid: Vid) {
         self.tokens
-            .insert_or_error(vid, self.current_token.clone())
+            .insert_or_error(vid, self.active_vertex.clone())
             .unwrap();
     }
 
     fn activate_token(self, vid: &Vid) -> DataContext<Vertex> {
         DataContext {
-            current_token: self.tokens[vid].clone(),
+            active_vertex: self.tokens[vid].clone(),
             tokens: self.tokens,
             values: self.values,
             suspended_tokens: self.suspended_tokens,
@@ -207,7 +207,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
 
     fn split_and_move_to_token(&self, new_token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
-            current_token: new_token,
+            active_vertex: new_token,
             tokens: self.tokens.clone(),
             values: self.values.clone(),
             suspended_tokens: self.suspended_tokens.clone(),
@@ -220,7 +220,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
 
     fn move_to_token(self, new_token: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
-            current_token: new_token,
+            active_vertex: new_token,
             tokens: self.tokens,
             values: self.values,
             suspended_tokens: self.suspended_tokens,
@@ -232,10 +232,10 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     }
 
     fn ensure_suspended(mut self) -> DataContext<Vertex> {
-        if let Some(token) = self.current_token {
+        if let Some(token) = self.active_vertex {
             self.suspended_tokens.push(Some(token));
             DataContext {
-                current_token: None,
+                active_vertex: None,
                 tokens: self.tokens,
                 values: self.values,
                 suspended_tokens: self.suspended_tokens,
@@ -250,11 +250,11 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     }
 
     fn ensure_unsuspended(mut self) -> DataContext<Vertex> {
-        match self.current_token {
+        match self.active_vertex {
             None => {
-                let current_token = self.suspended_tokens.pop().unwrap();
+                let active_vertex = self.suspended_tokens.pop().unwrap();
                 DataContext {
-                    current_token,
+                    active_vertex,
                     tokens: self.tokens,
                     values: self.values,
                     suspended_tokens: self.suspended_tokens,
@@ -271,7 +271,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
 
 impl<Vertex: Debug + Clone + PartialEq> PartialEq for DataContext<Vertex> {
     fn eq(&self, other: &Self) -> bool {
-        self.current_token == other.current_token
+        self.active_vertex == other.active_vertex
             && self.tokens == other.tokens
             && self.values == other.values
             && self.suspended_tokens == other.suspended_tokens

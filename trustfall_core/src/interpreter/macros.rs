@@ -2,7 +2,7 @@
 macro_rules! property_stub {
     ($ctxs:ident, $token_variant:path $(| $other_variant:path)*, $token:ident, $impl:block) => {
         Box::new($ctxs.map(move |ctx| {
-            let value = match &ctx.current_token {
+            let value = match &ctx.active_vertex {
                 Some($token_variant($token)) => $impl,
                 $( Some($other_variant($token)) => $impl, )*
                 None => FieldValue::Null,
@@ -122,7 +122,7 @@ macro_rules! neighbor_stub {
     ($ctxs:ident, $lt:lifetime, $token_variant:path $(| $other_variant:path)*, $token:ident, $impl:tt) => {
         Box::new($ctxs.map(move |ctx| {
             let neighbors: VertexIterator<$lt, <Self as Adapter>::Vertex>> =
-                match &ctx.current_token {
+                match &ctx.active_vertex {
                     Some($token_variant($token)) => $impl,
                     $( Some($other_variant($token)) => $impl, )*
                     None => Box::new(std::iter::empty()),

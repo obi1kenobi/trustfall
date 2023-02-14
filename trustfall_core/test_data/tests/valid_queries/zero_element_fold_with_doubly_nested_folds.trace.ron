@@ -36,7 +36,7 @@ TestInterpreterOutputTrace(
         opid: Opid(7),
         parent_opid: Some(Opid(2)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
+          active_vertex: Some(Neither(NeitherNumber(0))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
@@ -46,7 +46,7 @@ TestInterpreterOutputTrace(
         opid: Opid(8),
         parent_opid: Some(Opid(2)),
         content: YieldFrom(ProjectNeighborsOuter(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
+          active_vertex: Some(Neither(NeitherNumber(0))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
@@ -81,7 +81,7 @@ TestInterpreterOutputTrace(
         opid: Opid(14),
         parent_opid: Some(Opid(3)),
         content: YieldInto(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
+          active_vertex: Some(Neither(NeitherNumber(0))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
@@ -101,7 +101,7 @@ TestInterpreterOutputTrace(
         opid: Opid(15),
         parent_opid: Some(Opid(3)),
         content: YieldFrom(ProjectProperty(SerializableContext(
-          current_token: Some(Neither(NeitherNumber(0))),
+          active_vertex: Some(Neither(NeitherNumber(0))),
           tokens: {
             Vid(1): Some(Neither(NeitherNumber(0))),
           },

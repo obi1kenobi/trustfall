@@ -95,21 +95,21 @@ impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
 pub struct JsContext {
     #[wasm_bindgen(js_name = "localId")]
     pub local_id: u32,
-    current_token: Option<JsValue>,
+    active_vertex: Option<JsValue>,
 }
 
 #[wasm_bindgen]
 impl JsContext {
-    pub(super) fn new(local_id: u32, current_token: Option<JsValue>) -> Self {
+    pub(super) fn new(local_id: u32, active_vertex: Option<JsValue>) -> Self {
         Self {
             local_id,
-            current_token,
+            active_vertex,
         }
     }
 
     #[wasm_bindgen(getter, js_name = "currentToken")]
-    pub fn current_token(&self) -> JsValue {
-        match &self.current_token {
+    pub fn active_vertex(&self) -> JsValue {
+        match &self.active_vertex {
             Some(value) => value.clone(),
             None => JsValue::NULL,
         }
