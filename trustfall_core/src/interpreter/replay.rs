@@ -578,7 +578,7 @@ mod tests {
     use trustfall_filetests_macros::parameterize;
 
     use crate::{
-        filesystem_interpreter::FilesystemToken,
+        filesystem_interpreter::FilesystemVertex,
         interpreter::replay::assert_interpreted_results,
         numbers_interpreter::NumbersToken,
         util::{TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace},
@@ -597,7 +597,7 @@ mod tests {
     }
 
     fn check_filesystem_trace(expected_ir: TestIRQuery, input_data: &str) {
-        match ron::from_str::<TestInterpreterOutputTrace<FilesystemToken>>(input_data) {
+        match ron::from_str::<TestInterpreterOutputTrace<FilesystemVertex>>(input_data) {
             Ok(test_data) => {
                 assert_eq!(expected_ir.schema_name, "filesystem");
                 assert_eq!(test_data.schema_name, "filesystem");
