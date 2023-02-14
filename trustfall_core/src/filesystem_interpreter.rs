@@ -261,11 +261,11 @@ impl Adapter<'static> for FilesystemInterpreter {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
-        assert!(parameters.is_none());
+        assert!(parameters.is_empty());
         let token = DirectoryToken {
             name: "<origin>".to_owned(),
             path: "".to_owned(),
@@ -340,7 +340,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {

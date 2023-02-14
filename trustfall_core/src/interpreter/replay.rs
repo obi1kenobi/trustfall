@@ -392,7 +392,7 @@ where
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> VertexIterator<'trace, Self::Vertex> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
@@ -449,7 +449,7 @@ where
         contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())

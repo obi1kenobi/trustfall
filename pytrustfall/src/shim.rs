@@ -239,14 +239,13 @@ impl BasicAdapter<'static> for AdapterShim {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &str,
-        parameters: Option<&EdgeParameters>,
+        parameters: &EdgeParameters,
     ) -> VertexIterator<'static, Self::Vertex> {
         Python::with_gil(|py| {
-            let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
-                x.0.iter()
-                    .map(|(k, v)| (k.to_string(), make_python_value(py, v.to_owned())))
-                    .collect()
-            });
+            let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
+                .iter()
+                .map(|(k, v)| (k.to_string(), make_python_value(py, v.to_owned())))
+                .collect();
 
             let py_iterable = self
                 .adapter
@@ -290,15 +289,14 @@ impl BasicAdapter<'static> for AdapterShim {
         contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
-        parameters: Option<&EdgeParameters>,
+        parameters: &EdgeParameters,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
-            let parameter_data: Option<BTreeMap<String, Py<PyAny>>> = parameters.map(|x| {
-                x.0.iter()
-                    .map(|(k, v)| (k.to_string(), make_python_value(py, v.to_owned())))
-                    .collect()
-            });
+            let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
+                .iter()
+                .map(|(k, v)| (k.to_string(), make_python_value(py, v.to_owned())))
+                .collect();
 
             let py_iterable = self
                 .adapter

@@ -72,23 +72,13 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
             "LatestMetarReportForAirport" => {
-                let station_code = match parameters
-                    .as_ref()
-                    .unwrap()
-                    .0
-                    .get("airport_code")
-                    .unwrap()
-                    .clone()
-                {
-                    FieldValue::String(s) => s,
-                    _ => unreachable!(),
-                };
+                let station_code = parameters["airport_code"].as_str().unwrap().to_string();
                 let iter = self
                     .data
                     .iter()
@@ -166,12 +156,12 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("MetarReport", "cloudCover") => {
-                assert!(parameters.is_none());
+                assert!(parameters.is_empty());
 
                 Box::new(contexts.map(|ctx| {
                     let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {

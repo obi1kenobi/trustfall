@@ -73,21 +73,9 @@ impl JsEdgeParameters {
     }
 }
 
-impl From<Option<trustfall_core::ir::EdgeParameters>> for JsEdgeParameters {
-    fn from(p: Option<trustfall_core::ir::EdgeParameters>) -> Self {
-        match p.as_ref() {
-            None => Default::default(),
-            Some(parameters) => parameters.into(),
-        }
-    }
-}
-
-impl From<Option<Arc<trustfall_core::ir::EdgeParameters>>> for JsEdgeParameters {
-    fn from(p: Option<Arc<trustfall_core::ir::EdgeParameters>>) -> Self {
-        match p.as_ref() {
-            None => Default::default(),
-            Some(parameters) => (&(**parameters)).into(),
-        }
+impl From<trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
+    fn from(p: trustfall_core::ir::EdgeParameters) -> Self {
+        Self::from(&p)
     }
 }
 
@@ -95,7 +83,6 @@ impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
     fn from(p: &trustfall_core::ir::EdgeParameters) -> Self {
         Self {
             values: p
-                .0
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.clone().into()))
                 .collect(),

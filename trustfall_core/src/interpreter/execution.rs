@@ -1097,7 +1097,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     _expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
-    edge_parameters: &Option<Arc<EdgeParameters>>,
+    edge_parameters: &EdgeParameters,
     is_optional: bool,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
@@ -1160,7 +1160,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
-    edge_parameters: &Option<Arc<EdgeParameters>>,
+    edge_parameters: &EdgeParameters,
     recursive: &Recursive,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
@@ -1245,7 +1245,7 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     _expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
-    edge_parameters: &Option<Arc<EdgeParameters>>,
+    edge_parameters: &EdgeParameters,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
     let query_info = QueryInfo::new(query.clone(), expanding_from.vid, Some(edge_id));

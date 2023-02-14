@@ -194,34 +194,22 @@ impl Adapter<'static> for DemoAdapter {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         match edge_name.as_ref() {
             "HackerNewsFrontPage" => self.front_page(),
             "HackerNewsTop" => {
-                // TODO: This is unergonomic, build a more convenient API here.
-                let max = parameters
-                    .as_deref()
-                    .unwrap()
-                    .0
-                    .get("max")
-                    .map(|v| v.as_u64().unwrap() as usize);
+                let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.top(max)
             }
             "HackerNewsLatestStories" => {
-                // TODO: This is unergonomic, build a more convenient API here.
-                let max = parameters
-                    .as_deref()
-                    .unwrap()
-                    .0
-                    .get("max")
-                    .map(|v| v.as_u64().unwrap() as usize);
+                let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.latest_stories(max)
             }
             "HackerNewsUser" => {
-                let username_value = parameters.as_ref().unwrap().0.get("name").unwrap();
-                self.user(username_value.as_str().unwrap())
+                let username_value = parameters["name"].as_str().unwrap();
+                self.user(username_value)
             }
             "MostDownloadedCrates" => self.most_downloaded_crates(),
             _ => unreachable!(),
@@ -371,7 +359,7 @@ impl Adapter<'static> for DemoAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        _parameters: &Option<Arc<EdgeParameters>>,
+        _parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
