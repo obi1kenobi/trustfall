@@ -2105,10 +2105,12 @@ TestInterpreterOutputTrace(
     },
     ir_query: IRQuery(
       root_name: "Number",
-      root_parameters: Some(EdgeParameters({
-        "max": Int64(3),
-        "min": Int64(1),
-      })),
+      root_parameters: EdgeParameters(
+        contents: {
+          "max": Int64(3),
+          "min": Int64(1),
+        },
+      ),
       root_component: IRQueryComponent(
         root: Vid(1),
         vertices: {
@@ -2166,9 +2168,11 @@ TestInterpreterOutputTrace(
             from_vid: Vid(1),
             to_vid: Vid(2),
             edge_name: "multiple",
-            parameters: Some(EdgeParameters({
-              "max": Int64(3),
-            })),
+            parameters: EdgeParameters(
+              contents: {
+                "max": Int64(3),
+              },
+            ),
           ),
           Eid(2): IREdge(
             eid: Eid(2),

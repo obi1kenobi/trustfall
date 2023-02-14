@@ -38,9 +38,11 @@ Ok(TestIRQuery(
           from_vid: Vid(2),
           to_vid: Vid(3),
           edge_name: "multiple",
-          parameters: Some(EdgeParameters({
-            "max": Int64(3),
-          })),
+          parameters: EdgeParameters(
+            contents: {
+              "max": Int64(3),
+            },
+          ),
           component: IRQueryComponent(
             root: Vid(3),
             vertices: {
