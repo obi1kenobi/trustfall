@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::interpreter::{
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery, VertexIterator,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
 };
-use crate::ir::{EdgeParameters, Eid, FieldValue, Vid};
+use crate::ir::{EdgeParameters, FieldValue};
 use std::fs::{self, ReadDir};
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -262,8 +262,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_none());
@@ -279,8 +278,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "Directory" => match property_name.as_ref() {
@@ -343,9 +341,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {
@@ -373,8 +369,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         todo!()
     }

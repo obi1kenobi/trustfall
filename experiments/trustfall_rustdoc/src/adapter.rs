@@ -6,10 +6,9 @@ use rustdoc_types::{
 };
 use trustfall_core::{
     interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
-        VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
     },
-    ir::{EdgeParameters, Eid, FieldValue, Vid},
+    ir::{EdgeParameters, FieldValue},
     schema::Schema,
 };
 
@@ -476,8 +475,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         &mut self,
         edge_name: &Arc<str>,
         _parameters: &Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "Crate" => Box::new(std::iter::once(Token::new_crate(
@@ -500,8 +498,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         if property_name.as_ref() == "__typename" {
             Box::new(contexts.map(|ctx| match &ctx.current_token {
@@ -582,9 +579,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
-        _edge_hint: Eid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name.as_ref() {
             "CrateDiff" => match edge_name.as_ref() {
@@ -1083,8 +1078,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        _query_hint: InterpretedQuery,
-        _vertex_hint: Vid,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         let coerce_to_type = coerce_to_type.clone();
         match type_name.as_ref() {

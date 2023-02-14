@@ -10,13 +10,12 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{indexed::IndexedQuery, EdgeParameters, Eid, FieldValue, Vid};
+use crate::ir::{indexed::IndexedQuery, EdgeParameters, FieldValue};
 
 use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
-    VertexIterator,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
 };
 
 #[derive(Clone, Debug)]
@@ -394,15 +393,15 @@ where
         &mut self,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> VertexIterator<'trace, Self::Vertex> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
         if let TraceOpContent::Call(FunctionCall::GetStartingTokens(vid)) = trace_op.content {
-            assert_eq!(vid, vertex_hint);
+            assert_eq!(vid, query_info.origin_vid());
+            assert!(query_info.origin_crossing_eid().is_none());
 
             Box::new(TraceReaderStartingTokensIter {
                 exhausted: false,
@@ -419,8 +418,7 @@ where
         contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, FieldValue> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
@@ -429,9 +427,10 @@ where
         if let TraceOpContent::Call(FunctionCall::ProjectProperty(vid, op_type_name, property)) =
             &trace_op.content
         {
-            assert_eq!(*vid, vertex_hint);
+            assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(op_type_name, type_name);
             assert_eq!(property, property_name);
+            assert!(query_info.origin_crossing_eid().is_none());
 
             Box::new(TraceReaderProjectPropertiesIter {
                 exhausted: false,
@@ -451,9 +450,7 @@ where
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<EdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
@@ -462,9 +459,9 @@ where
         if let TraceOpContent::Call(FunctionCall::ProjectNeighbors(vid, op_type_name, eid)) =
             &trace_op.content
         {
-            assert_eq!(vid, &vertex_hint);
+            assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(op_type_name, type_name);
-            assert_eq!(eid, &edge_hint);
+            assert_eq!(Some(*eid), query_info.origin_crossing_eid());
 
             Box::new(TraceReaderProjectNeighborsIter {
                 exhausted: false,
@@ -483,8 +480,7 @@ where
         contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_coercion() call operation, but found none.");
@@ -493,9 +489,10 @@ where
         if let TraceOpContent::Call(FunctionCall::CanCoerceToType(vid, from_type, to_type)) =
             &trace_op.content
         {
-            assert_eq!(*vid, vertex_hint);
+            assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(from_type, type_name);
             assert_eq!(to_type, coerce_to_type);
+            assert!(query_info.origin_crossing_eid().is_none());
 
             Box::new(TraceReaderCanCoerceIter {
                 exhausted: false,

@@ -3,10 +3,9 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 use js_sys::try_iter;
 use trustfall_core::{
     interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
-        VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
     },
-    ir::{EdgeParameters as CoreEdgeParameters, Eid, FieldValue, Vid},
+    ir::{EdgeParameters as CoreEdgeParameters, FieldValue},
 };
 use wasm_bindgen::prelude::*;
 
@@ -262,8 +261,7 @@ impl Adapter<'static> for AdapterShim {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<CoreEdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.clone().into();
         let js_iter = self
@@ -277,8 +275,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
@@ -294,9 +291,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &Option<Arc<CoreEdgeParameters>>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
-        edge_hint: Eid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
@@ -320,8 +315,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_hint: InterpretedQuery,
-        vertex_hint: Vid,
+        query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();

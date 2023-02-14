@@ -26,8 +26,8 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, Adapter, ContextIterator, DataContext, InterpretedQuery,
-    VertexIterator,
+    error::QueryArgumentsError, hints::QueryInfo, Adapter, ContextIterator, DataContext,
+    InterpretedQuery, VertexIterator,
 };
 
 #[allow(clippy::type_complexity)]
@@ -45,15 +45,11 @@ where
     let root_edge = &ir_query.root_name;
     let root_edge_parameters = &ir_query.root_parameters;
 
+    let query_info = QueryInfo::new(query.clone(), ir_query.root_component.root, None);
     let mut adapter_ref = adapter.borrow_mut();
     let mut iterator: ContextIterator<'query, Vertex> = Box::new(
         adapter_ref
-            .resolve_starting_vertices(
-                root_edge,
-                root_edge_parameters,
-                query.clone(),
-                ir_query.root_component.root,
-            )
+            .resolve_starting_vertices(root_edge, root_edge_parameters, &query_info)
             .map(|x| DataContext::new(Some(x))),
     );
     drop(adapter_ref);
@@ -97,9 +93,10 @@ fn perform_coercion<'query, Vertex>(
 where
     Vertex: Clone + Debug + 'query,
 {
+    let query_info = QueryInfo::new(query.clone(), vertex.vid, None);
     let mut adapter_ref = adapter.borrow_mut();
     let coercion_iter =
-        adapter_ref.resolve_coercion(iterator, coerced_from, coerce_to, query.clone(), vertex.vid);
+        adapter_ref.resolve_coercion(iterator, coerced_from, coerce_to, &query_info);
 
     Box::new(coercion_iter.filter_map(
         |(ctx, can_coerce)| {
@@ -221,12 +218,12 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
 
         let type_name = &ir_query.root_component.vertices[&vertex_id].type_name;
         let mut adapter_ref = adapter.borrow_mut();
+        let query_info = QueryInfo::new(query.clone(), vertex_id, None);
         let field_data_iterator = adapter_ref.resolve_property(
             moved_iterator,
             type_name,
             &context_field.field_name,
-            query.clone(),
-            vertex_id,
+            &query_info,
         );
         drop(adapter_ref);
 
@@ -361,12 +358,12 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
 
                 let field_vertex = &parent_component.vertices[&field.vertex_id];
                 let type_name = &field_vertex.type_name;
+                let query_info = QueryInfo::new(query.clone(), field.vertex_id, None);
                 let context_and_value_iterator = adapter_ref.resolve_property(
                     activated_vertex_iterator,
                     type_name,
                     &field.field_name,
-                    query.clone(),
-                    field.vertex_id,
+                    &query_info,
                 );
 
                 let cloned_field = imported_field.clone();
@@ -402,14 +399,13 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let activated_vertex_iterator: ContextIterator<'query, Vertex> =
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
     let type_name = &expanding_from.type_name;
+    let query_info = QueryInfo::new(query.clone(), expanding_from_vid, Some(fold.eid));
     let edge_iterator = adapter_ref.resolve_neighbors(
         activated_vertex_iterator,
         type_name,
         &fold.edge_name,
         &fold.parameters,
-        query.clone(),
-        expanding_from.vid,
-        fold.eid,
+        &query_info,
     );
     drop(adapter_ref);
 
@@ -543,12 +539,12 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 }));
 
                 let mut adapter_ref = cloned_adapter.borrow_mut();
+                let query_info = QueryInfo::new(cloned_query.clone(), vertex_id, None);
                 let field_data_iterator = adapter_ref.resolve_property(
                     moved_iterator,
                     &fold.component.vertices[&vertex_id].type_name,
                     &context_field.field_name,
-                    cloned_query.clone(),
-                    vertex_id,
+                    &query_info,
                 );
                 drop(adapter_ref);
 
@@ -913,12 +909,12 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
 
         let type_name = &vertex.type_name;
         let mut adapter_ref = adapter.borrow_mut();
+        let query_info = QueryInfo::new(query.clone(), vertex_id, None);
         let context_and_value_iterator = adapter_ref.resolve_property(
             Box::new(moved_iterator),
             type_name,
             &context_field.field_name,
-            query.clone(),
-            vertex_id,
+            &query_info,
         );
         drop(adapter_ref);
 
@@ -967,13 +963,9 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
 ) -> ContextIterator<'query, Vertex> {
     let type_name = &component.vertices[&current_vid].type_name;
     let mut adapter_ref = adapter.borrow_mut();
-    let context_and_value_iterator = adapter_ref.resolve_property(
-        iterator,
-        type_name,
-        &local_field.field_name,
-        query.clone(),
-        current_vid,
-    );
+    let query_info = QueryInfo::new(query.clone(), current_vid, None);
+    let context_and_value_iterator =
+        adapter_ref.resolve_property(iterator, type_name, &local_field.field_name, &query_info);
     drop(adapter_ref);
 
     Box::new(context_and_value_iterator.map(|(mut context, value)| {
@@ -1114,15 +1106,14 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
         Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
 
     let type_name = &expanding_from.type_name;
+    let query_info = QueryInfo::new(query.clone(), expanding_from_vid, Some(edge_id));
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
         expanding_vertex_iterator,
         type_name,
         edge_name,
         edge_parameters,
-        query.clone(),
-        expanding_from.vid,
-        edge_id,
+        &query_info,
     );
     drop(adapter_ref);
 
@@ -1206,13 +1197,13 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 
     for _ in 2..=max_depth {
         if let Some(coerce_to) = recursive.coerce_to.as_ref() {
+            let query_info = QueryInfo::new(query.clone(), expanding_from_vid, None);
             let mut adapter_ref = adapter.borrow_mut();
             let coercion_iter = adapter_ref.resolve_coercion(
                 recursion_iterator,
                 edge_endpoint_type,
                 coerce_to,
-                query.clone(),
-                expanding_from_vid,
+                &query_info,
             );
 
             // This coercion is unusual since it doesn't discard elements that can't be coerced.
@@ -1257,15 +1248,14 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     edge_parameters: &Option<Arc<EdgeParameters>>,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
+    let query_info = QueryInfo::new(query.clone(), expanding_from.vid, Some(edge_id));
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
         iterator,
         expanding_from_type,
         edge_name,
         edge_parameters,
-        query.clone(),
-        expanding_from.vid,
-        edge_id,
+        &query_info,
     );
     drop(adapter_ref);
 
