@@ -23,6 +23,10 @@ pub mod macros;
 pub mod replay;
 pub mod trace;
 
+trait NamedType {
+    fn typename(&self) -> &'static str;
+}
+
 /// An iterator of vertices representing data points we are querying.
 pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
 

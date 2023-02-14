@@ -3198,6 +3198,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "trustfall_macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+ "trustfall_core",
+]
+
+[[package]]
 name = "trustfall_rustdoc"
 version = "0.1.0"
 dependencies = [
