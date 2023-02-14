@@ -34,7 +34,7 @@ fn advance_ref_iter<T, Iter: Iterator<Item = T>>(iter: &RefCell<Iter>) -> Option
 }
 
 #[derive(Debug)]
-struct TraceReaderStartingTokensIter<'trace, Vertex>
+struct TraceReaderStartingVerticesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -45,7 +45,7 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'trace, Vertex> Iterator for TraceReaderStartingTokensIter<'trace, Vertex>
+impl<'trace, Vertex> Iterator for TraceReaderStartingVerticesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -78,7 +78,7 @@ where
     }
 }
 
-struct TraceReaderProjectPropertiesIter<'trace, Vertex>
+struct TraceReaderResolvePropertiesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -91,7 +91,7 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'trace, Vertex> Iterator for TraceReaderProjectPropertiesIter<'trace, Vertex>
+impl<'trace, Vertex> Iterator for TraceReaderResolvePropertiesIter<'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -158,7 +158,7 @@ where
     }
 }
 
-struct TraceReaderCanCoerceIter<'query, 'trace, Vertex>
+struct TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -172,7 +172,7 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'query, 'trace, Vertex> Iterator for TraceReaderCanCoerceIter<'query, 'trace, Vertex>
+impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
     for<'de2> Vertex: Deserialize<'de2>,
@@ -403,7 +403,7 @@ where
             assert_eq!(vid, query_info.origin_vid());
             assert!(query_info.origin_crossing_eid().is_none());
 
-            Box::new(TraceReaderStartingTokensIter {
+            Box::new(TraceReaderStartingVerticesIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 inner: self.next_op.clone(),
@@ -432,7 +432,7 @@ where
             assert_eq!(property, property_name);
             assert!(query_info.origin_crossing_eid().is_none());
 
-            Box::new(TraceReaderProjectPropertiesIter {
+            Box::new(TraceReaderResolvePropertiesIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 contexts,
@@ -494,7 +494,7 @@ where
             assert_eq!(to_type, coerce_to_type);
             assert!(query_info.origin_crossing_eid().is_none());
 
-            Box::new(TraceReaderCanCoerceIter {
+            Box::new(TraceReaderResolveCoercionIter {
                 exhausted: false,
                 parent_opid: *root_opid,
                 contexts,
@@ -584,10 +584,10 @@ mod tests {
         util::{TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace},
     };
 
-    fn check_trace<Token>(expected_ir: TestIRQuery, test_data: TestInterpreterOutputTrace<Token>)
+    fn check_trace<Vertex>(expected_ir: TestIRQuery, test_data: TestInterpreterOutputTrace<Vertex>)
     where
-        Token: Debug + Clone + PartialEq + Eq + Serialize,
-        for<'de> Token: Deserialize<'de>,
+        Vertex: Debug + Clone + PartialEq + Eq + Serialize,
+        for<'de> Vertex: Deserialize<'de>,
     {
         // Ensure that the trace file's IR hasn't drifted away from the IR file of the same name.
         assert_eq!(expected_ir.ir_query, test_data.trace.ir_query);
