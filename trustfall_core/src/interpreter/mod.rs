@@ -52,7 +52,7 @@ pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
 
 #[derive(Debug, Clone)]
 pub struct DataContext<Vertex: Clone + Debug> {
-    pub current_token: Option<Vertex>,
+    current_token: Option<Vertex>,
     tokens: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
     suspended_tokens: Vec<Option<Vertex>>,
@@ -60,6 +60,12 @@ pub struct DataContext<Vertex: Clone + Debug> {
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<Vertex>>>,
     imported_tags: BTreeMap<FieldRef, FieldValue>,
+}
+
+impl<Vertex: Clone + Debug> DataContext<Vertex> {
+    pub fn active_vertex(&self) -> Option<&Vertex> {
+        self.current_token.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

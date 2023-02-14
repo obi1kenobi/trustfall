@@ -4,8 +4,8 @@ use consecrates::{api::Crate, Query, Sorting};
 use tokio::runtime::Runtime;
 
 use crate::{
-    token::{RepoWorkflow, Token},
     util::{get_owner_and_repo, Pager, PagerOutput},
+    vertex::{RepoWorkflow, Vertex},
 };
 
 pub(crate) struct CratesPager<'a> {
@@ -48,15 +48,15 @@ impl<'a> Pager for CratesPager<'a> {
 
 pub(crate) struct WorkflowsPager<'a> {
     actions: octorust::actions::Actions,
-    repo_token: Token,
+    repo_vertex: Vertex,
     runtime: &'a Runtime,
 }
 
 impl<'a> WorkflowsPager<'a> {
-    pub(crate) fn new(client: octorust::Client, repo_token: Token, runtime: &'a Runtime) -> Self {
+    pub(crate) fn new(client: octorust::Client, repo_vertex: Vertex, runtime: &'a Runtime) -> Self {
         Self {
             actions: octorust::actions::Actions::new(client),
-            repo_token,
+            repo_vertex,
             runtime,
         }
     }
@@ -67,8 +67,8 @@ impl<'a> Pager for WorkflowsPager<'a> {
 
     fn get_page(&mut self, page: usize) -> PagerOutput<Self::Item> {
         let per_page = 100;
-        let repo_clone = match &self.repo_token {
-            Token::GitHubRepository(r) => r.clone(),
+        let repo_clone = match &self.repo_vertex {
+            Vertex::GitHubRepository(r) => r.clone(),
             _ => unreachable!(),
         };
         let (owner, repo_name) = get_owner_and_repo(repo_clone.repo.as_ref());

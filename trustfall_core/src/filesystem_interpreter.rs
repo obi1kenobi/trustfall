@@ -200,7 +200,7 @@ impl Iterator for EdgeResolverIterator {
 
     fn next(&mut self) -> Option<ContextAndIterableOfEdges> {
         if let Some(context) = self.contexts.next() {
-            if let Some(ref token) = &context.current_token {
+            if let Some(token) = context.active_vertex() {
                 let edge_tokens = (self.edge_resolver)(self.origin.clone(), token);
                 Some((context, edge_tokens))
             } else {
@@ -282,7 +282,7 @@ impl Adapter<'static> for FilesystemInterpreter {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "Directory" => match property_name.as_ref() {
-                "name" => Box::new(contexts.map(|context| match context.current_token {
+                "name" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::Directory(ref x)) => {
                         let value = FieldValue::String(x.name.clone());
@@ -290,7 +290,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                     }
                     _ => unreachable!(),
                 })),
-                "path" => Box::new(contexts.map(|context| match context.current_token {
+                "path" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::Directory(ref x)) => {
                         let value = FieldValue::String(x.path.clone());
@@ -301,7 +301,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                 _ => todo!(),
             },
             "File" => match property_name.as_ref() {
-                "name" => Box::new(contexts.map(|context| match context.current_token {
+                "name" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
                         let value = FieldValue::String(x.name.clone());
@@ -309,7 +309,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                     }
                     _ => unreachable!(),
                 })),
-                "path" => Box::new(contexts.map(|context| match context.current_token {
+                "path" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
                         let value = FieldValue::String(x.path.clone());
@@ -317,7 +317,7 @@ impl Adapter<'static> for FilesystemInterpreter {
                     }
                     _ => unreachable!(),
                 })),
-                "extension" => Box::new(contexts.map(|context| match context.current_token {
+                "extension" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemToken::File(ref x)) => {
                         let value = x

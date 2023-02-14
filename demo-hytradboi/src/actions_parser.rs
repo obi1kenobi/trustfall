@@ -5,11 +5,11 @@ use octorust::types::ContentFile;
 use trustfall_core::interpreter::VertexIterator;
 use yaml_rust::{Yaml, YamlLoader};
 
-use crate::token::{ActionsImportedStep, ActionsJob, ActionsRunStep, Token};
+use crate::vertex::{ActionsImportedStep, ActionsJob, ActionsRunStep, Vertex};
 
 pub(crate) fn get_jobs_in_workflow_file(
     content: Rc<ContentFile>,
-) -> VertexIterator<'static, Token> {
+) -> VertexIterator<'static, Vertex> {
     let file_content =
         String::from_utf8(base64::decode(content.content.replace('\n', "")).unwrap()).unwrap();
     let docs = match YamlLoader::load_from_str(file_content.as_str()) {
@@ -26,7 +26,7 @@ pub(crate) fn get_jobs_in_workflow_file(
 
     Box::new(
         docs.into_iter()
-            .flat_map(move |workflow_yaml| -> VertexIterator<'static, Token> {
+            .flat_map(move |workflow_yaml| -> VertexIterator<'static, Vertex> {
                 let jobs_element = workflow_yaml["jobs"].clone();
                 if jobs_element.is_badvalue() {
                     eprintln!(
@@ -54,7 +54,7 @@ pub(crate) fn get_jobs_in_workflow_file(
 
                     let runs_on = job_content["runs-on"].as_str().map(|x| x.to_string());
 
-                    Some(Token::GitHubActionsJob(Rc::new(ActionsJob::new(
+                    Some(Vertex::GitHubActionsJob(Rc::new(ActionsJob::new(
                         job_content,
                         name,
                         runs_on,
@@ -64,7 +64,7 @@ pub(crate) fn get_jobs_in_workflow_file(
     )
 }
 
-pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> VertexIterator<'static, Token> {
+pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> VertexIterator<'static, Vertex> {
     let steps = job.yaml["steps"].clone();
     if steps.is_badvalue() || !steps.is_array() {
         eprintln!("invalid yaml, no 'steps' array in workflow job yaml: {job:?}",);
@@ -101,7 +101,7 @@ pub(crate) fn get_steps_in_job(job: Rc<ActionsJob>) -> VertexIterator<'static, T
     }))
 }
 
-pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> VertexIterator<'static, Token> {
+pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> VertexIterator<'static, Vertex> {
     let step_hash = match step.yaml.clone() {
         Yaml::Hash(h) => h,
         _ => unreachable!(),
@@ -137,7 +137,7 @@ pub(crate) fn get_env_for_run_step(step: Rc<ActionsRunStep>) -> VertexIterator<'
                     }
                 };
 
-                Some(Token::NameValuePair(Rc::from((key, value))))
+                Some(Vertex::NameValuePair(Rc::from((key, value))))
             }),
     )
 }

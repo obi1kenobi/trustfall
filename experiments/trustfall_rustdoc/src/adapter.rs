@@ -461,7 +461,7 @@ fn property_mapper<'a>(
     field_name: &str,
     property_getter: fn(&Token<'a>, &str) -> FieldValue,
 ) -> (DataContext<Token<'a>>, FieldValue) {
-    let value = match &ctx.current_token {
+    let value = match ctx.active_vertex() {
         Some(token) => property_getter(token, field_name),
         None => FieldValue::Null,
     };
@@ -501,7 +501,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         if property_name.as_ref() == "__typename" {
-            Box::new(contexts.map(|ctx| match &ctx.current_token {
+            Box::new(contexts.map(|ctx| match ctx.active_vertex() {
                 Some(token) => {
                     let value = token.typename().into();
                     (ctx, value)
@@ -584,7 +584,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         match type_name.as_ref() {
             "CrateDiff" => match edge_name.as_ref() {
                 "current" => Box::new(contexts.map(move |ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
                         None => Box::new(std::iter::empty()),
                         Some(token) => {
                             let crate_tuple =
@@ -597,7 +597,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     (ctx, neighbors)
                 })),
                 "baseline" => Box::new(contexts.map(move |ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
                         None => Box::new(std::iter::empty()),
                         Some(token) => {
                             let crate_tuple =
@@ -616,7 +616,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
             "Crate" => {
                 match edge_name.as_ref() {
                     "item" => Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -680,8 +681,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         let previous_crate = self.previous_crate;
 
                         Box::new(contexts.map(move |ctx| {
-                            let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx
-                                .current_token
+                            let neighbors: VertexIterator<'a, Self::Vertex> = match ctx
+                                .active_vertex()
                             {
                                 None => Box::new(std::iter::empty()),
                                 Some(token) => {
@@ -716,7 +717,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
 
                         Box::new(contexts.map(move |ctx| {
                             let neighbors: VertexIterator<'a, Self::Vertex> =
-                                match &ctx.current_token {
+                                match ctx.active_vertex() {
                                     None => Box::new(std::iter::empty()),
                                     Some(token) => {
                                         let origin = token.origin;
@@ -752,7 +753,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
             {
                 match edge_name.as_ref() {
                     "span" => Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -768,7 +770,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         (ctx, neighbors)
                     })),
                     "attribute" => Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -793,7 +796,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                 let previous_crate = self.previous_crate;
                 let inherent_impls_only = edge_name.as_ref() == "inherent_impl";
                 Box::new(contexts.map(move |ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
                         None => Box::new(std::iter::empty()),
                         Some(token) => {
                             let origin = token.origin;
@@ -840,7 +843,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     let current_crate = self.current_crate;
                     let previous_crate = self.previous_crate;
                     Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -878,7 +882,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     let current_crate = self.current_crate;
                     let previous_crate = self.previous_crate;
                     Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -910,7 +915,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
             },
             "StructField" => match edge_name.as_ref() {
                 "raw_type" => Box::new(contexts.map(move |ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
                         None => Box::new(std::iter::empty()),
                         Some(token) => {
                             let origin = token.origin;
@@ -932,7 +937,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     let current_crate = self.current_crate;
                     let previous_crate = self.previous_crate;
                     Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -1012,7 +1018,8 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                     let current_crate = self.current_crate;
                     let previous_crate = self.previous_crate;
                     Box::new(contexts.map(move |ctx| {
-                        let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                        let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex()
+                        {
                             None => Box::new(std::iter::empty()),
                             Some(token) => {
                                 let origin = token.origin;
@@ -1051,7 +1058,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
             },
             "ImplementedTrait" => match edge_name.as_ref() {
                 "trait" => Box::new(contexts.map(move |ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match &ctx.current_token {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
                         None => Box::new(std::iter::empty()),
                         Some(token) => {
                             let origin = token.origin;
@@ -1085,7 +1092,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
             "Item" | "Variant" | "FunctionLike" | "Importable" | "ImplOwner" | "RawType"
             | "ResolvedPathType" => {
                 Box::new(contexts.map(move |ctx| {
-                    let can_coerce = match &ctx.current_token {
+                    let can_coerce = match ctx.active_vertex() {
                         None => false,
                         Some(token) => {
                             let actual_type_name = token.typename();

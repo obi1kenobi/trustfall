@@ -15,8 +15,8 @@ use trustfall_core::{
 use crate::{
     actions_parser::{get_env_for_run_step, get_jobs_in_workflow_file, get_steps_in_job},
     pagers::{CratesPager, WorkflowsPager},
-    token::{Repository, Token},
     util::{get_owner_and_repo, Pager},
+    vertex::{Repository, Vertex},
 };
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
@@ -51,11 +51,11 @@ impl DemoAdapter {
         Self
     }
 
-    fn front_page(&self) -> VertexIterator<'static, Token> {
+    fn front_page(&self) -> VertexIterator<'static, Vertex> {
         self.top(Some(30))
     }
 
-    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
+    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
         let iterator = HN_CLIENT
             .get_top_stories()
             .unwrap()
@@ -72,7 +72,7 @@ impl DemoAdapter {
         Box::new(iterator)
     }
 
-    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Token> {
+    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
         // Unfortunately, the HN crate we're using doesn't support getting the new stories,
         // so we're doing it manually here.
         let story_ids: Vec<u32> =
@@ -96,11 +96,11 @@ impl DemoAdapter {
         Box::new(iterator)
     }
 
-    fn user(&self, username: &str) -> VertexIterator<'static, Token> {
+    fn user(&self, username: &str) -> VertexIterator<'static, Vertex> {
         match HN_CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
-                let token = Token::from(user);
+                let token = Vertex::from(user);
                 Box::new(std::iter::once(token))
             }
             Ok(None) => {
@@ -114,7 +114,7 @@ impl DemoAdapter {
         }
     }
 
-    fn most_downloaded_crates(&self) -> VertexIterator<'static, Token> {
+    fn most_downloaded_crates(&self) -> VertexIterator<'static, Vertex> {
         Box::new(
             CratesPager::new(CRATES_CLIENT.deref())
                 .into_iter()
@@ -126,7 +126,7 @@ impl DemoAdapter {
 macro_rules! impl_item_property {
     ($contexts:ident, $attr:ident) => {
         Box::new($contexts.map(|ctx| {
-            let token = ctx.current_token.as_ref();
+            let token = ctx.active_vertex();
             let value = match token {
                 None => FieldValue::Null,
                 Some(t) => {
@@ -154,8 +154,7 @@ macro_rules! impl_property {
     ($contexts:ident, $conversion:ident, $attr:ident) => {
         Box::new($contexts.map(|ctx| {
             let token = ctx
-                .current_token
-                .as_ref()
+                .active_vertex()
                 .map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
@@ -172,8 +171,7 @@ macro_rules! impl_property {
     ($contexts:ident, $conversion:ident, $var:ident, $b:block) => {
         Box::new($contexts.map(|ctx| {
             let token = ctx
-                .current_token
-                .as_ref()
+                .active_vertex()
                 .map(|token| token.$conversion().unwrap());
             let value = match token {
                 None => FieldValue::Null,
@@ -189,7 +187,7 @@ macro_rules! impl_property {
 }
 
 impl Adapter<'static> for DemoAdapter {
-    type Vertex = Token;
+    type Vertex = Vertex;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -225,7 +223,7 @@ impl Adapter<'static> for DemoAdapter {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
-                let value = match ctx.current_token.as_ref() {
+                let value = match ctx.active_vertex() {
                     Some(token) => token.typename().into(),
                     None => FieldValue::Null,
                 };
@@ -364,11 +362,11 @@ impl Adapter<'static> for DemoAdapter {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let story = token.as_story().unwrap();
+                    Some(vertex) => {
+                        let story = vertex.as_story().unwrap();
                         let author = story.by.as_str();
                         match HN_CLIENT.get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
@@ -387,11 +385,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsStory", "comment") => Box::new(contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let story = token.as_story().unwrap();
+                    Some(vertex) => {
+                        let story = vertex.as_story().unwrap();
                         let comment_ids = story.kids.clone().unwrap_or_default();
                         let story_id = story.id;
 
@@ -422,11 +420,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsStory", "link") => Box::new(contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let story = token.as_story().unwrap();
+                    Some(vertex) => {
+                        let story = vertex.as_story().unwrap();
                         Box::new(
                             story
                                 .url
@@ -440,11 +438,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsJob", "link") => Box::new(contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let job = token.as_job().unwrap();
+                    Some(vertex) => {
+                        let job = vertex.as_job().unwrap();
                         Box::new(
                             job.url
                                 .as_ref()
@@ -457,11 +455,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "byUser") => Box::new(contexts.map(|ctx| {
-                let token = &ctx.current_token;
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
+                    Some(vertex) => {
+                        let comment = vertex.as_comment().unwrap();
                         let author = comment.by.as_str();
                         match HN_CLIENT.get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
@@ -480,7 +478,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "parent") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
@@ -504,7 +502,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "topmostAncestor") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
@@ -541,7 +539,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "reply") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
@@ -573,7 +571,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsUser", "submitted") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
@@ -598,7 +596,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("Crate", "repository") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
@@ -616,7 +614,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubRepository", "workflows") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => Box::new(
@@ -629,7 +627,7 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubWorkflow", "jobs") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
                     Some(token) => {
@@ -650,20 +648,20 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubActionsJob", "step") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
-                    Some(Token::GitHubActionsJob(job)) => get_steps_in_job(job),
+                    Some(Vertex::GitHubActionsJob(job)) => get_steps_in_job(job),
                     _ => unreachable!(),
                 };
 
                 (ctx, neighbors)
             })),
             ("GitHubActionsRunStep", "env") => Box::new(contexts.map(|ctx| {
-                let token = ctx.current_token.clone();
+                let token = ctx.active_vertex().cloned();
                 let neighbors: VertexIterator<'static, Self::Vertex> = match token {
                     None => Box::new(std::iter::empty()),
-                    Some(Token::GitHubActionsRunStep(s)) => get_env_for_run_step(s),
+                    Some(Vertex::GitHubActionsRunStep(s)) => get_env_for_run_step(s),
                     _ => unreachable!(),
                 };
 
@@ -683,7 +681,7 @@ impl Adapter<'static> for DemoAdapter {
         let type_name = type_name.clone();
         let coerce_to_type = coerce_to_type.clone();
         let iterator = contexts.map(move |ctx| {
-            let token = match &ctx.current_token {
+            let token = match ctx.active_vertex() {
                 Some(t) => t,
                 None => return (ctx, false),
             };
@@ -715,10 +713,10 @@ impl Adapter<'static> for DemoAdapter {
     }
 }
 
-fn resolve_url(url: &str) -> Option<Token> {
+fn resolve_url(url: &str) -> Option<Vertex> {
     // HACK: Avoiding this bug https://github.com/tjtelan/git-url-parse-rs/issues/22
     if !url.contains("github.com") && !url.contains("gitlab.com") {
-        return Some(Token::Webpage(Rc::from(url)));
+        return Some(Vertex::Webpage(Rc::from(url)));
     }
 
     let maybe_git_url = GitUrl::parse(url);
@@ -727,7 +725,7 @@ fn resolve_url(url: &str) -> Option<Token> {
             if git_url.fullname != git_url.path.trim_matches('/') {
                 // The link points *within* the repo rather than *at* the repo.
                 // This is just a regular link to a webpage.
-                Some(Token::Webpage(Rc::from(url)))
+                Some(Vertex::Webpage(Rc::from(url)))
             } else if matches!(git_url.host, Some(x) if x == "github.com") {
                 let future = REPOS_CLIENT.get(
                     git_url
@@ -745,10 +743,10 @@ fn resolve_url(url: &str) -> Option<Token> {
                     }
                 }
             } else {
-                Some(Token::Repository(Rc::from(url)))
+                Some(Vertex::Repository(Rc::from(url)))
             }
         }
-        Err(..) => Some(Token::Webpage(Rc::from(url))),
+        Err(..) => Some(Vertex::Webpage(Rc::from(url))),
     }
 }
 

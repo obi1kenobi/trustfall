@@ -209,7 +209,7 @@ pub struct Context(DataContext<Arc<Py<PyAny>>>);
 impl Context {
     #[getter]
     fn active_vertex(&self) -> PyResult<Option<Py<PyAny>>> {
-        Ok(self.0.current_token.as_ref().map(|arc| (**arc).clone()))
+        Ok(self.0.active_vertex().map(|arc| (**arc).clone()))
     }
 }
 
