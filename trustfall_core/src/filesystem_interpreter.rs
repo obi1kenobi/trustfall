@@ -27,14 +27,14 @@ impl FilesystemInterpreter {
 
 #[derive(Debug)]
 struct OriginIterator {
-    origin_token: DirectoryToken,
+    origin_vertex: DirectoryToken,
     produced: bool,
 }
 
 impl OriginIterator {
-    pub fn new(token: DirectoryToken) -> OriginIterator {
+    pub fn new(vertex: DirectoryToken) -> OriginIterator {
         OriginIterator {
-            origin_token: token,
+            origin_vertex: vertex,
             produced: false,
         }
     }
@@ -48,7 +48,7 @@ impl Iterator for OriginIterator {
             None
         } else {
             self.produced = true;
-            Some(FilesystemToken::Directory(self.origin_token.clone()))
+            Some(FilesystemToken::Directory(self.origin_vertex.clone()))
         }
     }
 }
@@ -234,24 +234,24 @@ pub struct FileToken {
 
 fn directory_contains_file_handler(
     origin: Rc<String>,
-    token: &FilesystemToken,
+    vertex: &FilesystemToken,
 ) -> VertexIterator<'static, FilesystemToken> {
-    let directory_token = match token {
+    let directory_vertex = match vertex {
         FilesystemToken::Directory(dir) => dir,
         _ => unreachable!(),
     };
-    Box::from(DirectoryContainsFileIterator::new(origin, directory_token))
+    Box::from(DirectoryContainsFileIterator::new(origin, directory_vertex))
 }
 
 fn directory_subdirectory_handler(
     origin: Rc<String>,
-    token: &FilesystemToken,
+    vertex: &FilesystemToken,
 ) -> VertexIterator<'static, FilesystemToken> {
-    let directory_token = match token {
+    let directory_vertex = match vertex {
         FilesystemToken::Directory(dir) => dir,
         _ => unreachable!(),
     };
-    Box::from(SubdirectoryIterator::new(origin, directory_token))
+    Box::from(SubdirectoryIterator::new(origin, directory_vertex))
 }
 
 #[allow(unused_variables)]
@@ -266,11 +266,11 @@ impl Adapter<'static> for FilesystemInterpreter {
     ) -> VertexIterator<'static, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_empty());
-        let token = DirectoryToken {
+        let vertex = DirectoryToken {
             name: "<origin>".to_owned(),
             path: "".to_owned(),
         };
-        Box::new(OriginIterator::new(token))
+        Box::new(OriginIterator::new(vertex))
     }
 
     fn resolve_property(

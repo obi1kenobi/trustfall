@@ -72,7 +72,7 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(token)) => Some(token.clone()),
+            TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(vertex)) => Some(vertex.clone()),
             _ => unreachable!(),
         }
     }
@@ -371,10 +371,10 @@ where
                 self.exhausted = true;
                 None
             }
-            TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(index, token)) => {
+            TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(index, vertex)) => {
                 assert_eq!(self.next_index, *index);
                 self.next_index += 1;
-                Some(token.clone())
+                Some(vertex.clone())
             }
             _ => unreachable!(),
         }

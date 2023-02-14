@@ -135,7 +135,7 @@ where
     }
 
     iterator = Box::new(iterator.map(move |mut context| {
-        context.record_token(component_root_vid);
+        context.record_vertex(component_root_vid);
         context
     }));
 
@@ -212,8 +212,8 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
         let context_field = &ir_query.root_component.outputs[output_name];
         let vertex_id = context_field.vertex_id;
         let moved_iterator = Box::new(output_iterator.map(move |context| {
-            let new_token = context.vertices[&vertex_id].clone();
-            context.move_to_token(new_token)
+            let new_vertex = context.vertices[&vertex_id].clone();
+            context.move_to_vertex(new_vertex)
         }));
 
         let type_name = &ir_query.root_component.vertices[&vertex_id].type_name;
@@ -354,7 +354,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
             FieldRef::ContextField(field) => {
                 let vertex_id = field.vertex_id;
                 let activated_vertex_iterator: ContextIterator<'query, Vertex> =
-                    Box::new(iterator.map(move |x| x.activate_token(&vertex_id)));
+                    Box::new(iterator.map(move |x| x.activate_vertex(&vertex_id)));
 
                 let field_vertex = &parent_component.vertices[&field.vertex_id];
                 let type_name = &field_vertex.type_name;
@@ -397,7 +397,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     // Get the initial vertices inside the folded scope.
     let expanding_from_vid = expanding_from.vid;
     let activated_vertex_iterator: ContextIterator<'query, Vertex> =
-        Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
+        Box::new(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
     let type_name = &expanding_from.type_name;
     let query_info = QueryInfo::new(query.clone(), expanding_from_vid, Some(fold.eid));
     let edge_iterator = adapter_ref.resolve_neighbors(
@@ -534,8 +534,8 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 let context_field = &fold.component.outputs[output_name.as_ref()];
                 let vertex_id = context_field.vertex_id;
                 let moved_iterator = Box::new(output_iterator.map(move |context| {
-                    let new_token = context.vertices[&vertex_id].clone();
-                    context.move_to_token(new_token)
+                    let new_vertex = context.vertices[&vertex_id].clone();
+                    context.move_to_vertex(new_vertex)
                 }));
 
                 let mut adapter_ref = cloned_adapter.borrow_mut();
@@ -603,7 +603,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
 /// a scope that is optional and missing, and therefore the filter should pass.
 ///
 /// A small subtlety is important here: it's possible that the tagged value is *local* to
-/// the scope being filtered. In that case, the context *will not* yet have a token associated
+/// the scope being filtered. In that case, the context *will not* yet have a vertex associated
 /// with the [Vid] of the tag's ContextField. However, in such cases, the tagged value
 /// is *never* optional relative to the current scope, so we can safely return `false`.
 #[inline(always)]
@@ -619,7 +619,7 @@ fn is_tag_optional_and_missing<'query, Vertex: Clone + Debug + 'query>(
 
     // Some(None) means "there's a value associated with that Vid, and it's None".
     // None would mean that the tagged value is local, i.e. nothing is associated with that Vid yet.
-    // Some(Some(token)) would mean that a vertex was found and associated with that Vid.
+    // Some(Some(vertex)) would mean that a vertex was found and associated with that Vid.
     matches!(context.vertices.get(&vid), Some(None))
 }
 
@@ -902,9 +902,9 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
     if let Some(vertex) = component.vertices.get(&vertex_id) {
         let moved_iterator = iterator.map(move |mut context| {
             let active_vertex = context.active_vertex.clone();
-            let new_token = context.vertices[&vertex_id].clone();
+            let new_vertex = context.vertices[&vertex_id].clone();
             context.suspended_vertices.push(active_vertex);
-            context.move_to_token(new_token)
+            context.move_to_vertex(new_vertex)
         });
 
         let type_name = &vertex.type_name;
@@ -921,10 +921,10 @@ fn compute_context_field<'query, Vertex: Clone + Debug + 'query>(
         Box::new(context_and_value_iterator.map(|(mut context, value)| {
             context.values.push(value);
 
-            // Make sure that the context has the same "current" token
+            // Make sure that the context has the same "current" vertex
             // as before evaluating the context field.
             let old_active_vertex = context.suspended_vertices.pop().unwrap();
-            context.move_to_token(old_active_vertex)
+            context.move_to_vertex(old_active_vertex)
         }))
     } else {
         // This context field represents an imported tag value from an outer component.
@@ -1012,7 +1012,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
             let neighbor = self.neighbors.next();
             if neighbor.is_some() {
                 self.has_neighbors = true;
-                return Some(self.context.split_and_move_to_token(neighbor));
+                return Some(self.context.split_and_move_to_vertex(neighbor));
             } else {
                 self.neighbors_ended = true;
             }
@@ -1021,21 +1021,21 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
         assert!(self.neighbors_ended);
         self.ended = true;
 
-        // If there's no current token, there couldn't possibly be neighbors.
+        // If there's no current vertex, there couldn't possibly be neighbors.
         // If this assertion trips, the adapter's resolve_neighbors() implementation illegally
         // returned neighbors for a non-existent vertex.
         if self.context.active_vertex.is_none() {
             assert!(!self.has_neighbors);
         }
 
-        // If the current token is None, that means that a prior edge was optional and missing.
+        // If the current vertex is None, that means that a prior edge was optional and missing.
         // In that case, we couldn't possibly have found any neighbors here, but the optional-ness
-        // of that prior edge means we have to return a context with no active token.
+        // of that prior edge means we have to return a context with no active vertex.
         //
-        // The other case where we have to return a context with no active token is when
-        // we have a current token, but the edge we're traversing is optional and does not exist.
+        // The other case where we have to return a context with no active vertex is when
+        // we have a current vertex, but the edge we're traversing is optional and does not exist.
         if self.context.active_vertex.is_none() || (!self.has_neighbors && self.is_optional_edge) {
-            Some(self.context.split_and_move_to_token(None))
+            Some(self.context.split_and_move_to_vertex(None))
         } else {
             None
         }
@@ -1103,7 +1103,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 ) -> ContextIterator<'query, Vertex> {
     let expanding_from_vid = expanding_from.vid;
     let expanding_vertex_iterator: ContextIterator<'query, Vertex> =
-        Box::new(iterator.map(move |x| x.activate_token(&expanding_from_vid)));
+        Box::new(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
 
     let type_name = &expanding_from.type_name;
     let query_info = QueryInfo::new(query.clone(), expanding_from_vid, Some(edge_id));
@@ -1125,7 +1125,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 /// Apply all the operations needed at entry into a new vertex:
 /// - coerce the type, if needed
 /// - apply all local filters
-/// - record the token at this Vid in the context
+/// - record the vertex at this Vid in the context
 fn perform_entry_into_new_vertex<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
     query: &InterpretedQuery,
@@ -1146,7 +1146,7 @@ fn perform_entry_into_new_vertex<'query, Vertex: Clone + Debug + 'query>(
         );
     }
     Box::new(iterator.map(move |mut x| {
-        x.record_token(vertex_id);
+        x.record_vertex(vertex_id);
         x
     }))
 }
@@ -1168,11 +1168,11 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     let mut recursion_iterator: ContextIterator<'query, Vertex> =
         Box::new(iterator.map(move |mut context| {
             if context.active_vertex.is_none() {
-                // Mark that this token starts off with a None active_vertex value,
+                // Mark that this vertex starts off with a None active_vertex value,
                 // so the later unsuspend() call should restore it to such a state later.
                 context.suspended_vertices.push(None);
             }
-            context.activate_token(&expanding_from_vid)
+            context.activate_vertex(&expanding_from_vid)
         }));
 
     let max_depth = usize::from(recursive.depth);
@@ -1297,33 +1297,33 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
         if !self.neighbors_ended {
             let neighbor = self.neighbors.next();
 
-            if let Some(token) = neighbor {
+            if let Some(vertex) = neighbor {
                 if let Some(context) = self.context.take() {
                     // Prep a neighbor base context for future use, since we're moving
                     // the "self" context out.
-                    self.neighbor_base = Some(context.split_and_move_to_token(None));
+                    self.neighbor_base = Some(context.split_and_move_to_vertex(None));
 
                     // Attach the "self" context as a piggyback rider on the neighbor.
-                    let mut neighbor_context = context.split_and_move_to_token(Some(token));
+                    let mut neighbor_context = context.split_and_move_to_vertex(Some(vertex));
                     neighbor_context
                         .piggyback
                         .get_or_insert_with(Default::default)
                         .push(context.ensure_suspended());
                     return Some(neighbor_context);
                 } else {
-                    // The "self" token has already been moved out, so use the neighbor base context
+                    // The "self" vertex has already been moved out, so use the neighbor base context
                     // as the starting point for constructing a new context.
                     return Some(
                         self.neighbor_base
                             .as_ref()
                             .unwrap()
-                            .split_and_move_to_token(Some(token)),
+                            .split_and_move_to_vertex(Some(vertex)),
                     );
                 }
             } else {
                 self.neighbors_ended = true;
 
-                // If there's no current token, there couldn't possibly be neighbors.
+                // If there's no current vertex, there couldn't possibly be neighbors.
                 // If this assertion trips, the adapter's resolve_neighbors() implementation
                 // illegally returned neighbors for a non-existent vertex.
                 if let Some(context) = &self.context {

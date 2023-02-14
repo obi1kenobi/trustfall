@@ -100,8 +100,8 @@ impl DemoAdapter {
         match HN_CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
-                let token = Vertex::from(user);
-                Box::new(std::iter::once(token))
+                let vertex = Vertex::from(user);
+                Box::new(std::iter::once(vertex))
             }
             Ok(None) => {
                 // The request succeeded but did not find a user by that name.
@@ -126,8 +126,8 @@ impl DemoAdapter {
 macro_rules! impl_item_property {
     ($contexts:ident, $attr:ident) => {
         Box::new($contexts.map(|ctx| {
-            let token = ctx.active_vertex();
-            let value = match token {
+            let vertex = ctx.active_vertex();
+            let value = match vertex {
                 None => FieldValue::Null,
                 Some(t) => {
                     if let Some(s) = t.as_story() {
@@ -153,10 +153,10 @@ macro_rules! impl_item_property {
 macro_rules! impl_property {
     ($contexts:ident, $conversion:ident, $attr:ident) => {
         Box::new($contexts.map(|ctx| {
-            let token = ctx
+            let vertex = ctx
                 .active_vertex()
-                .map(|token| token.$conversion().unwrap());
-            let value = match token {
+                .map(|vertex| vertex.$conversion().unwrap());
+            let value = match vertex {
                 None => FieldValue::Null,
                 Some(t) => (&t.$attr).clone().into(),
 
@@ -170,10 +170,10 @@ macro_rules! impl_property {
 
     ($contexts:ident, $conversion:ident, $var:ident, $b:block) => {
         Box::new($contexts.map(|ctx| {
-            let token = ctx
+            let vertex = ctx
                 .active_vertex()
-                .map(|token| token.$conversion().unwrap());
-            let value = match token {
+                .map(|vertex| vertex.$conversion().unwrap());
+            let value = match vertex {
                 None => FieldValue::Null,
                 Some($var) => $b,
 
@@ -224,7 +224,7 @@ impl Adapter<'static> for DemoAdapter {
         match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
                 let value = match ctx.active_vertex() {
-                    Some(token) => token.typename().into(),
+                    Some(vertex) => vertex.typename().into(),
                     None => FieldValue::Null,
                 };
 
@@ -478,11 +478,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "parent") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
+                    Some(vertex) => {
+                        let comment = vertex.as_comment().unwrap();
                         let comment_id = comment.id;
                         let parent_id = comment.parent;
 
@@ -502,11 +502,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "topmostAncestor") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
+                    Some(vertex) => {
+                        let comment = vertex.as_comment().unwrap();
                         let mut comment_id = comment.id;
                         let mut parent_id = comment.parent;
                         loop {
@@ -539,11 +539,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsComment", "reply") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let comment = token.as_comment().unwrap();
+                    Some(vertex) => {
+                        let comment = vertex.as_comment().unwrap();
                         let comment_id = comment.id;
                         let reply_ids = comment.kids.clone().unwrap_or_default();
 
@@ -571,11 +571,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("HackerNewsUser", "submitted") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let user = token.as_user().unwrap();
+                    Some(vertex) => {
+                        let user = vertex.as_user().unwrap();
                         let submitted_ids = user.submitted.clone();
 
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
@@ -596,16 +596,16 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("Crate", "repository") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let cr = token.as_crate().unwrap();
+                    Some(vertex) => {
+                        let cr = vertex.as_crate().unwrap();
                         match cr.repository.as_ref() {
                             None => Box::new(std::iter::empty()),
                             Some(repo) => {
-                                let token = resolve_url(repo.as_str());
-                                Box::new(token.into_iter())
+                                let vertex = resolve_url(repo.as_str());
+                                Box::new(vertex.into_iter())
                             }
                         }
                     }
@@ -614,11 +614,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubRepository", "workflows") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => Box::new(
-                        WorkflowsPager::new(GITHUB_CLIENT.clone(), token, RUNTIME.deref())
+                    Some(vertex) => Box::new(
+                        WorkflowsPager::new(GITHUB_CLIENT.clone(), vertex, RUNTIME.deref())
                             .into_iter()
                             .map(|x| x.into()),
                     ),
@@ -627,11 +627,11 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubWorkflow", "jobs") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
-                    Some(token) => {
-                        let workflow = token.as_github_workflow().unwrap();
+                    Some(vertex) => {
+                        let workflow = vertex.as_github_workflow().unwrap();
                         let path = workflow.workflow.path.as_ref();
                         let repo = workflow.repo.as_ref();
                         let workflow_content = get_repo_file_content(repo, path);
@@ -648,8 +648,8 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubActionsJob", "step") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(Vertex::GitHubActionsJob(job)) => get_steps_in_job(job),
                     _ => unreachable!(),
@@ -658,8 +658,8 @@ impl Adapter<'static> for DemoAdapter {
                 (ctx, neighbors)
             })),
             ("GitHubActionsRunStep", "env") => Box::new(contexts.map(|ctx| {
-                let token = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match token {
+                let vertex = ctx.active_vertex().cloned();
+                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(Vertex::GitHubActionsRunStep(s)) => get_env_for_run_step(s),
                     _ => unreachable!(),
@@ -681,7 +681,7 @@ impl Adapter<'static> for DemoAdapter {
         let type_name = type_name.clone();
         let coerce_to_type = coerce_to_type.clone();
         let iterator = contexts.map(move |ctx| {
-            let token = match ctx.active_vertex() {
+            let vertex = match ctx.active_vertex() {
                 Some(t) => t,
                 None => return (ctx, false),
             };
@@ -691,17 +691,17 @@ impl Adapter<'static> for DemoAdapter {
             // at the cost of a bit of code repetition.
 
             let can_coerce = match (type_name.as_ref(), coerce_to_type.as_ref()) {
-                ("HackerNewsItem", "HackerNewsJob") => token.as_job().is_some(),
-                ("HackerNewsItem", "HackerNewsStory") => token.as_story().is_some(),
-                ("HackerNewsItem", "HackerNewsComment") => token.as_comment().is_some(),
-                ("Webpage", "Repository") => token.as_repository().is_some(),
-                ("Webpage", "GitHubRepository") => token.as_github_repository().is_some(),
-                ("Repository", "GitHubRepository") => token.as_github_repository().is_some(),
+                ("HackerNewsItem", "HackerNewsJob") => vertex.as_job().is_some(),
+                ("HackerNewsItem", "HackerNewsStory") => vertex.as_story().is_some(),
+                ("HackerNewsItem", "HackerNewsComment") => vertex.as_comment().is_some(),
+                ("Webpage", "Repository") => vertex.as_repository().is_some(),
+                ("Webpage", "GitHubRepository") => vertex.as_github_repository().is_some(),
+                ("Repository", "GitHubRepository") => vertex.as_github_repository().is_some(),
                 ("GitHubActionsStep", "GitHubActionsImportedStep") => {
-                    token.as_github_actions_imported_step().is_some()
+                    vertex.as_github_actions_imported_step().is_some()
                 }
                 ("GitHubActionsStep", "GitHubActionsRunStep") => {
-                    token.as_github_actions_run_step().is_some()
+                    vertex.as_github_actions_run_step().is_some()
                 }
                 unhandled => unreachable!("{:?}", unhandled),
             };

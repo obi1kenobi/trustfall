@@ -262,13 +262,13 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |token| {
+            .map(move |vertex| {
                 tracer_ref_2.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(token.clone())),
+                    TraceOpContent::YieldFrom(YieldValue::GetStartingTokens(vertex.clone())),
                     Some(call_opid),
                 );
 
-                token
+                vertex
             }),
         )
     }
@@ -411,16 +411,16 @@ where
                 drop(trace);
 
                 let tracer_ref_6 = tracer_ref_5.clone();
-                let tapped_neighbor_iter = neighbor_iter.enumerate().map(move |(pos, token)| {
+                let tapped_neighbor_iter = neighbor_iter.enumerate().map(move |(pos, vertex)| {
                     tracer_ref_6.borrow_mut().record(
                         TraceOpContent::YieldFrom(YieldValue::ProjectNeighborsInner(
                             pos,
-                            token.clone(),
+                            vertex.clone(),
                         )),
                         Some(outer_iterator_opid),
                     );
 
-                    token
+                    vertex
                 });
 
                 let tracer_ref_7 = tracer_ref_5.clone();

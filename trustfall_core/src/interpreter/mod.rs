@@ -173,9 +173,9 @@ where
 }
 
 impl<Vertex: Clone + Debug> DataContext<Vertex> {
-    pub fn new(token: Option<Vertex>) -> DataContext<Vertex> {
+    pub fn new(vertex: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
-            active_vertex: token,
+            active_vertex: vertex,
             piggyback: None,
             vertices: Default::default(),
             values: Default::default(),
@@ -186,13 +186,13 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
         }
     }
 
-    fn record_token(&mut self, vid: Vid) {
+    fn record_vertex(&mut self, vid: Vid) {
         self.vertices
             .insert_or_error(vid, self.active_vertex.clone())
             .unwrap();
     }
 
-    fn activate_token(self, vid: &Vid) -> DataContext<Vertex> {
+    fn activate_vertex(self, vid: &Vid) -> DataContext<Vertex> {
         DataContext {
             active_vertex: self.vertices[vid].clone(),
             vertices: self.vertices,
@@ -205,9 +205,9 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
         }
     }
 
-    fn split_and_move_to_token(&self, new_token: Option<Vertex>) -> DataContext<Vertex> {
+    fn split_and_move_to_vertex(&self, new_vertex: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
-            active_vertex: new_token,
+            active_vertex: new_vertex,
             vertices: self.vertices.clone(),
             values: self.values.clone(),
             suspended_vertices: self.suspended_vertices.clone(),
@@ -218,9 +218,9 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
         }
     }
 
-    fn move_to_token(self, new_token: Option<Vertex>) -> DataContext<Vertex> {
+    fn move_to_vertex(self, new_vertex: Option<Vertex>) -> DataContext<Vertex> {
         DataContext {
-            active_vertex: new_token,
+            active_vertex: new_vertex,
             vertices: self.vertices,
             values: self.values,
             suspended_vertices: self.suspended_vertices,
@@ -232,8 +232,8 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     }
 
     fn ensure_suspended(mut self) -> DataContext<Vertex> {
-        if let Some(token) = self.active_vertex {
-            self.suspended_vertices.push(Some(token));
+        if let Some(vertex) = self.active_vertex {
+            self.suspended_vertices.push(Some(vertex));
             DataContext {
                 active_vertex: None,
                 vertices: self.vertices,

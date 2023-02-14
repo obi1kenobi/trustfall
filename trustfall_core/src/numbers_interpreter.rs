@@ -156,7 +156,7 @@ fn get_factors(primes: &BTreeSet<i64>, num: i64) -> BTreeSet<i64> {
     }
 }
 
-fn make_number_token(primes: &mut BTreeSet<i64>, num: i64) -> NumbersToken {
+fn make_number_vertex(primes: &mut BTreeSet<i64>, num: i64) -> NumbersToken {
     if num >= 2 {
         generate_primes_up_to(primes, num);
     }
@@ -183,10 +183,10 @@ impl Adapter<'static> for NumbersAdapter {
     ) -> VertexIterator<'static, Self::Vertex> {
         let mut primes = btreeset![2, 3];
         match edge_name.as_ref() {
-            "Zero" => Box::new(std::iter::once(make_number_token(&mut primes, 0))),
-            "One" => Box::new(std::iter::once(make_number_token(&mut primes, 1))),
-            "Two" => Box::new(std::iter::once(make_number_token(&mut primes, 2))),
-            "Four" => Box::new(std::iter::once(make_number_token(&mut primes, 4))),
+            "Zero" => Box::new(std::iter::once(make_number_vertex(&mut primes, 0))),
+            "One" => Box::new(std::iter::once(make_number_vertex(&mut primes, 1))),
+            "Two" => Box::new(std::iter::once(make_number_vertex(&mut primes, 2))),
+            "Four" => Box::new(std::iter::once(make_number_vertex(&mut primes, 4))),
             "Number" | "NumberImplicitNullDefault" => {
                 let min_value = parameters["min"].as_i64().unwrap_or(0);
                 let max_value = parameters["max"].as_i64().unwrap();
@@ -196,7 +196,7 @@ impl Adapter<'static> for NumbersAdapter {
                 } else {
                     Box::new(
                         (min_value..=max_value)
-                            .map(move |n| make_number_token(&mut primes, n))
+                            .map(move |n| make_number_vertex(&mut primes, n))
                             .collect_vec()
                             .into_iter(),
                     )
@@ -251,7 +251,7 @@ impl Adapter<'static> for NumbersAdapter {
                         NumbersToken::Composite(inner) => inner.value(),
                     };
                     if value > 0 {
-                        Box::new(std::iter::once(make_number_token(&mut primes, value - 1)))
+                        Box::new(std::iter::once(make_number_vertex(&mut primes, value - 1)))
                     } else {
                         Box::new(std::iter::empty())
                     }
@@ -264,7 +264,7 @@ impl Adapter<'static> for NumbersAdapter {
                         NumbersToken::Prime(inner) => inner.value(),
                         NumbersToken::Composite(inner) => inner.value(),
                     };
-                    Box::new(std::iter::once(make_number_token(&mut primes, value + 1)))
+                    Box::new(std::iter::once(make_number_vertex(&mut primes, value + 1)))
                 })
             }
             ("Number" | "Prime" | "Composite", "multiple") => {
@@ -283,7 +283,7 @@ impl Adapter<'static> for NumbersAdapter {
 
                             Box::new((start_multiple..=max_multiple).map(move |mult| {
                                 let next_value = value * mult;
-                                make_number_token(&mut local_primes, next_value)
+                                make_number_vertex(&mut local_primes, next_value)
                             }))
                         }
                         NumbersToken::Composite(vertex) => {
@@ -293,7 +293,7 @@ impl Adapter<'static> for NumbersAdapter {
                             let max_multiple = parameters["max"].as_i64().unwrap();
                             Box::new((1..=max_multiple).map(move |mult| {
                                 let next_value = value * mult;
-                                make_number_token(&mut local_primes, next_value)
+                                make_number_vertex(&mut local_primes, next_value)
                             }))
                         }
                     }
@@ -306,7 +306,7 @@ impl Adapter<'static> for NumbersAdapter {
                         Box::new(
                             factors
                                 .iter()
-                                .map(|n| make_number_token(&mut primes, *n))
+                                .map(|n| make_number_vertex(&mut primes, *n))
                                 .collect_vec()
                                 .into_iter(),
                         )
@@ -325,7 +325,7 @@ impl Adapter<'static> for NumbersAdapter {
                                 (1..value)
                                     .filter_map(|maybe_divisor| {
                                         if value % maybe_divisor == 0 {
-                                            Some(make_number_token(&mut primes, maybe_divisor))
+                                            Some(make_number_vertex(&mut primes, maybe_divisor))
                                         } else {
                                             None
                                         }
