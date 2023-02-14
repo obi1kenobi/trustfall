@@ -178,7 +178,7 @@ impl Adapter<'static> for NumbersAdapter {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let mut primes = btreeset![2, 3];
@@ -188,12 +188,8 @@ impl Adapter<'static> for NumbersAdapter {
             "Two" => Box::new(std::iter::once(make_number_token(&mut primes, 2))),
             "Four" => Box::new(std::iter::once(make_number_token(&mut primes, 4))),
             "Number" | "NumberImplicitNullDefault" => {
-                let parameters = &parameters.as_deref().unwrap().0;
-                let min_value = parameters
-                    .get("min")
-                    .and_then(FieldValue::as_i64)
-                    .unwrap_or(0);
-                let max_value = parameters.get("max").and_then(FieldValue::as_i64).unwrap();
+                let min_value = parameters["min"].as_i64().unwrap_or(0);
+                let max_value = parameters["max"].as_i64().unwrap();
 
                 if min_value > max_value {
                     Box::new(std::iter::empty())
@@ -241,7 +237,7 @@ impl Adapter<'static> for NumbersAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
@@ -279,8 +275,7 @@ impl Adapter<'static> for NumbersAdapter {
                             let value = vertex.0;
                             let mut local_primes = primes.clone();
 
-                            let max_multiple =
-                                parameters.as_ref().unwrap().0["max"].as_i64().unwrap();
+                            let max_multiple = parameters["max"].as_i64().unwrap();
 
                             // We're only outputting composite numbers only,
                             // and the initial number is prime.
@@ -295,8 +290,7 @@ impl Adapter<'static> for NumbersAdapter {
                             let value = vertex.0;
                             let mut local_primes = primes.clone();
 
-                            let max_multiple =
-                                parameters.as_ref().unwrap().0["max"].as_i64().unwrap();
+                            let max_multiple = parameters["max"].as_i64().unwrap();
                             Box::new((1..=max_multiple).map(move |mult| {
                                 let next_value = value * mult;
                                 make_number_token(&mut local_primes, next_value)

@@ -6,7 +6,9 @@ pub mod serialization;
 pub mod types;
 pub mod value;
 
-use std::{cmp::Ordering, collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
+use std::{
+    cmp::Ordering, collections::BTreeMap, fmt::Debug, num::NonZeroUsize, ops::Index, sync::Arc,
+};
 
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
@@ -49,10 +51,53 @@ impl Eid {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct EdgeParameters(
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")] pub BTreeMap<Arc<str>, FieldValue>,
-);
+/// Parameter values for an edge expansion.
+///
+/// Passed as an argument to the [`Adapter::resolve_starting_vertices`] and
+/// [`Adapter::resolve_neighbors`] functions. In those cases, the caller guarantees that
+/// all edge parameters marked as required in the schema are included in
+/// the [`EdgeParameters`] value.
+///
+/// [`Adapter::resolve_starting_vertices`]: crate::interpreter::Adapter::resolve_neighbors
+/// [`Adapter::resolve_neighbors`]: crate::interpreter::Adapter::resolve_neighbors
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EdgeParameters {
+    contents: Arc<BTreeMap<Arc<str>, FieldValue>>,
+}
+
+impl EdgeParameters {
+    pub(crate) fn new(contents: Arc<BTreeMap<Arc<str>, FieldValue>>) -> Self {
+        Self { contents }
+    }
+
+    /// Gets the value of the edge parameter by this name.
+    ///
+    /// Returns `None` if the edge parameter was not present.
+    /// Returns the default value if the query did not set a value but the edge parameter
+    /// defined a default value.
+    pub fn get(&self, name: &str) -> Option<&FieldValue> {
+        self.contents.get(name)
+    }
+
+    /// Iterates through all the edge parameters and their values.
+    pub fn iter(&self) -> impl Iterator<Item = (&'_ Arc<str>, &'_ FieldValue)> + '_ {
+        self.contents.iter()
+    }
+
+    /// Returns `true` if the edge has any parameters, and `false` otherwise.
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
+    }
+}
+
+/// Enable indexing into [`EdgeParameters`] values: `parameters["param_name"]`
+impl<'a> Index<&'a str> for EdgeParameters {
+    type Output = FieldValue;
+
+    fn index(&self, index: &'a str) -> &Self::Output {
+        &self.contents[index]
+    }
+}
 
 /// A complete component of a query; may itself contain one or more components.
 ///
@@ -81,8 +126,8 @@ pub struct IRQueryComponent {
 pub struct IRQuery {
     pub root_name: Arc<str>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub root_parameters: Option<Arc<EdgeParameters>>,
+    #[serde(default, skip_serializing_if = "EdgeParameters::is_empty")]
+    pub root_parameters: EdgeParameters,
 
     pub root_component: Arc<IRQueryComponent>,
 
@@ -102,8 +147,8 @@ pub struct IREdge {
     pub to_vid: Vid,
     pub edge_name: Arc<str>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<Arc<EdgeParameters>>,
+    #[serde(default, skip_serializing_if = "EdgeParameters::is_empty")]
+    pub parameters: EdgeParameters,
 
     /// Indicating if this edge is optional.
     ///
@@ -160,8 +205,8 @@ pub struct IRFold {
     pub to_vid: Vid,
     pub edge_name: Arc<str>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<Arc<EdgeParameters>>,
+    #[serde(default, skip_serializing_if = "EdgeParameters::is_empty")]
+    pub parameters: EdgeParameters,
 
     pub component: Arc<IRQueryComponent>,
 

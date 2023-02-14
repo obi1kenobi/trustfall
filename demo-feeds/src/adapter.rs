@@ -66,7 +66,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &str,
-        _parameters: Option<&EdgeParameters>,
+        _parameters: &EdgeParameters,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name {
             "Feed" => Box::new(self.data.iter().map(Token::Feed)),
@@ -160,7 +160,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
-        _parameters: Option<&EdgeParameters>,
+        _parameters: &EdgeParameters,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name {
             "Feed" => match edge_name {

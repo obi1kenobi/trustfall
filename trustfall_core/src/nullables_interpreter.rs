@@ -20,7 +20,7 @@ impl Adapter<'static> for NullablesAdapter {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         unimplemented!()
@@ -41,7 +41,7 @@ impl Adapter<'static> for NullablesAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         unimplemented!()

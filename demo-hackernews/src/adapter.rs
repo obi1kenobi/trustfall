@@ -106,31 +106,21 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &str,
-        parameters: Option<&EdgeParameters>,
+        parameters: &EdgeParameters,
     ) -> VertexIterator<'static, Self::Vertex> {
         match edge_name {
             "FrontPage" => self.front_page(),
             "Top" => {
-                // TODO: This is unergonomic, build a more convenient API here.
-                let max = parameters
-                    .unwrap()
-                    .0
-                    .get("max")
-                    .map(|v| v.as_u64().unwrap() as usize);
+                let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.top(max)
             }
             "LatestStory" => {
-                // TODO: This is unergonomic, build a more convenient API here.
-                let max = parameters
-                    .unwrap()
-                    .0
-                    .get("max")
-                    .map(|v| v.as_u64().unwrap() as usize);
+                let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.latest_stories(max)
             }
             "User" => {
-                let username_value = parameters.as_ref().unwrap().0.get("name").unwrap();
-                self.user(username_value.as_str().unwrap())
+                let username_value = parameters["name"].as_str().unwrap();
+                self.user(username_value)
             }
             _ => unreachable!(),
         }
@@ -199,7 +189,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
-        _parameters: Option<&EdgeParameters>,
+        _parameters: &EdgeParameters,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name, edge_name) {
             ("Story", "byUser") => {

@@ -147,7 +147,7 @@ fn get_vertex_field_definitions<'a>(
 fn make_edge_parameters(
     edge_definition: &FieldDefinition,
     specified_arguments: &BTreeMap<Arc<str>, FieldValue>,
-) -> Result<Option<Arc<EdgeParameters>>, Vec<FrontendError>> {
+) -> Result<EdgeParameters, Vec<FrontendError>> {
     let mut errors: Vec<FrontendError> = vec![];
 
     let mut edge_arguments: BTreeMap<Arc<str>, FieldValue> = BTreeMap::new();
@@ -222,10 +222,8 @@ fn make_edge_parameters(
 
     if !errors.is_empty() {
         Err(errors)
-    } else if edge_arguments.is_empty() {
-        Ok(None)
     } else {
-        Ok(Some(Arc::new(EdgeParameters(edge_arguments))))
+        Ok(EdgeParameters::new(Arc::new(edge_arguments)))
     }
 }
 
@@ -1262,7 +1260,7 @@ fn make_fold<'schema, 'query, V, E>(
     fold_group: &'query FoldGroup,
     fold_eid: Eid,
     edge_name: Arc<str>,
-    edge_parameters: Option<Arc<EdgeParameters>>,
+    edge_parameters: EdgeParameters,
     parent_vid: Vid,
     starting_vid: Vid,
     starting_pre_coercion_type: Arc<str>,

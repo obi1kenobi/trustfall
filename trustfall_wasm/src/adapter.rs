@@ -260,7 +260,7 @@ impl Adapter<'static> for AdapterShim {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<CoreEdgeParameters>>,
+        parameters: &CoreEdgeParameters,
         query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.clone().into();
@@ -290,7 +290,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<CoreEdgeParameters>>,
+        parameters: &CoreEdgeParameters,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let ctx_iter = JsContextIterator::new(contexts);

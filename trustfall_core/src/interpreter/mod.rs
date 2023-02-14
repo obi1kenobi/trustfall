@@ -381,7 +381,7 @@ pub trait Adapter<'vertex> {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> VertexIterator<'vertex, Self::Vertex>;
 
@@ -399,7 +399,7 @@ pub trait Adapter<'vertex> {
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>>;
 

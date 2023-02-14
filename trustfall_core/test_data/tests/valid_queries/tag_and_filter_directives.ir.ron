@@ -2,10 +2,12 @@ Ok(TestIRQuery(
   schema_name: "numbers",
   ir_query: IRQuery(
     root_name: "Number",
-    root_parameters: Some(EdgeParameters({
-      "max": Int64(4),
-      "min": Int64(2),
-    })),
+    root_parameters: EdgeParameters(
+      contents: {
+        "max": Int64(4),
+        "min": Int64(2),
+      },
+    ),
     root_component: IRQueryComponent(
       root: Vid(1),
       vertices: {
@@ -48,9 +50,11 @@ Ok(TestIRQuery(
           from_vid: Vid(2),
           to_vid: Vid(3),
           edge_name: "multiple",
-          parameters: Some(EdgeParameters({
-            "max": Int64(3),
-          })),
+          parameters: EdgeParameters(
+            contents: {
+              "max": Int64(3),
+            },
+          ),
         ),
         Eid(3): IREdge(
           eid: Eid(3),

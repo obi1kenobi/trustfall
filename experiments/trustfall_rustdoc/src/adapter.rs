@@ -474,7 +474,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &Arc<str>,
-        _parameters: &Option<Arc<EdgeParameters>>,
+        _parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
@@ -578,7 +578,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
-        parameters: &Option<Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name.as_ref() {

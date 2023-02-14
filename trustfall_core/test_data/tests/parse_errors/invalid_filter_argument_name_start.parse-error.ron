@@ -1,7 +1,4 @@
-Err(OtherError(
-  "Filter argument names must start with an ASCII letter or underscore character: 1forexample",
-  Pos(
-    line: 4,
-    column: 58,
-  )
-))
+Err(OtherError("Filter argument names must start with an ASCII letter or underscore character: 1forexample", Pos(
+  line: 4,
+  column: 58,
+)))

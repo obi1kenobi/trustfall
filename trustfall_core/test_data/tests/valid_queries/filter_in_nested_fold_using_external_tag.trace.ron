@@ -618,9 +618,11 @@ TestInterpreterOutputTrace(
             from_vid: Vid(1),
             to_vid: Vid(2),
             edge_name: "multiple",
-            parameters: Some(EdgeParameters({
-              "max": Int64(2),
-            })),
+            parameters: EdgeParameters(
+              contents: {
+                "max": Int64(2),
+              },
+            ),
             component: IRQueryComponent(
               root: Vid(2),
               vertices: {
@@ -635,9 +637,11 @@ TestInterpreterOutputTrace(
                   from_vid: Vid(2),
                   to_vid: Vid(3),
                   edge_name: "multiple",
-                  parameters: Some(EdgeParameters({
-                    "max": Int64(2),
-                  })),
+                  parameters: EdgeParameters(
+                    contents: {
+                      "max": Int64(2),
+                    },
+                  ),
                   component: IRQueryComponent(
                     root: Vid(3),
                     vertices: {

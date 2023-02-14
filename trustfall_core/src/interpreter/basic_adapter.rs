@@ -28,7 +28,7 @@ pub trait BasicAdapter<'vertex> {
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &str,
-        parameters: Option<&EdgeParameters>,
+        parameters: &EdgeParameters,
     ) -> VertexIterator<'vertex, Self::Vertex>;
 
     /// Resolve the value of a vertex property over an iterator of query contexts.
@@ -88,7 +88,7 @@ pub trait BasicAdapter<'vertex> {
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
-        parameters: Option<&EdgeParameters>,
+        parameters: &EdgeParameters,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>>;
 
     /// Attempt to coerce vertices to a subtype, over an iterator of query contexts.
@@ -142,14 +142,10 @@ where
     fn resolve_starting_vertices(
         &mut self,
         edge_name: &std::sync::Arc<str>,
-        parameters: &Option<std::sync::Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> VertexIterator<'vertex, Self::Vertex> {
-        <Self as BasicAdapter>::resolve_starting_vertices(
-            self,
-            edge_name.as_ref(),
-            parameters.as_deref(),
-        )
+        <Self as BasicAdapter>::resolve_starting_vertices(self, edge_name.as_ref(), parameters)
     }
 
     fn resolve_property(
@@ -172,7 +168,7 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         edge_name: &std::sync::Arc<str>,
-        parameters: &Option<std::sync::Arc<EdgeParameters>>,
+        parameters: &EdgeParameters,
         _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         <Self as BasicAdapter>::resolve_neighbors(
@@ -180,7 +176,7 @@ where
             contexts,
             type_name.as_ref(),
             edge_name.as_ref(),
-            parameters.as_deref(),
+            parameters,
         )
     }
 

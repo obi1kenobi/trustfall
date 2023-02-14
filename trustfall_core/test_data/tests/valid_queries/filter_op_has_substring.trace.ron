@@ -253,10 +253,12 @@ TestInterpreterOutputTrace(
     },
     ir_query: IRQuery(
       root_name: "Number",
-      root_parameters: Some(EdgeParameters({
-        "max": Int64(13),
-        "min": Int64(10),
-      })),
+      root_parameters: EdgeParameters(
+        contents: {
+          "max": Int64(13),
+          "min": Int64(10),
+        },
+      ),
       root_component: IRQueryComponent(
         root: Vid(1),
         vertices: {
