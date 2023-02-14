@@ -4,6 +4,13 @@ use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{hints::QueryInfo, Adapter, ContextIterator, ContextOutcomeIterator, VertexIterator};
 
+/// A simplified variant of the [`Adapter`] trait.
+///
+/// Implementing `BasicAdapter` provides a "free" [`Adapter`] implementation.
+/// `BasicAdapter` gives up [`Adapter`]'s flexibility in exchange for being
+/// as simple as possible to implement:
+/// - `&str` instead of `&Arc<str>` for all type, property, and edge names.
+/// - Simplified function signatures, with only the minimum necessary arguments.
 pub trait BasicAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
     /// It's frequently a good idea to use an Rc<...> type for cheaper cloning here.
@@ -13,11 +20,11 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// Starting edges are ones where queries are allowed to begin.
     /// They are defined directly on the root query type of the schema.
-    /// For example, `Foo` is the starting edge of the following query:
+    /// For example, `User` is the starting edge of the following query:
     /// ```graphql
     /// query {
-    ///     Foo {
-    ///         bar @output
+    ///     User {
+    ///         name @output
     ///     }
     /// }
     /// ```
@@ -33,8 +40,8 @@ pub trait BasicAdapter<'vertex> {
 
     /// Resolve the value of a vertex property over an iterator of query contexts.
     ///
-    /// Each context in the `contexts` argument has an active vertex, which is
-    /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
+    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
+    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
     /// This function resolves the property value on that active vertex.
@@ -52,6 +59,8 @@ pub trait BasicAdapter<'vertex> {
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
     /// - When a context's active vertex is `None`, its property value is `FieldValue::Null`.
+    ///
+    /// [`DataContext`](super::DataContext)
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
@@ -59,10 +68,10 @@ pub trait BasicAdapter<'vertex> {
         property_name: &str,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue>;
 
-    /// Resolve the neighboring vertices across an edge over an iterator of query contexts.
+    /// Resolve the neighboring vertices across an edge, for each query context in an iterator.
     ///
-    /// Each context in the `contexts` argument has an active vertex, which is
-    /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
+    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
+    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
     /// This function resolves the neighboring vertices for that active vertex.
@@ -93,19 +102,21 @@ pub trait BasicAdapter<'vertex> {
 
     /// Attempt to coerce vertices to a subtype, over an iterator of query contexts.
     ///
-    /// In this example query, the starting vertices of type `Foo` are coerced to `Bar`:
+    /// In this example query, the starting vertices of type `File` are coerced to `AudioFile`:
     /// ```graphql
     /// query {
-    ///     Foo {
-    ///         ... on Bar {
-    ///             abc @output
+    ///     File {
+    ///         ... on AudioFile {
+    ///             duration @output
     ///         }
     ///     }
     /// }
     /// ```
+    /// The `... on AudioFile` operator causes only `AudioFile` vertices to be retained,
+    /// filtering out all other kinds of `File` vertices.
     ///
-    /// Each context in the `contexts` argument has an active vertex, which is
-    /// either `None`, or a `Some(Self::Vertex)` value representing a vertex
+    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
+    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
     /// This function checks whether the active vertex is of the specified subtype.
