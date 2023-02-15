@@ -44,45 +44,45 @@ pub enum Origin {
 }
 
 impl Origin {
-    fn make_item_vertex<'a>(&self, item: &'a Item) -> Token<'a> {
-        Token {
+    fn make_item_vertex<'a>(&self, item: &'a Item) -> Vertex<'a> {
+        Vertex {
             origin: *self,
             kind: item.into(),
         }
     }
 
-    fn make_span_vertex<'a>(&self, span: &'a Span) -> Token<'a> {
-        Token {
+    fn make_span_vertex<'a>(&self, span: &'a Span) -> Vertex<'a> {
+        Vertex {
             origin: *self,
             kind: span.into(),
         }
     }
 
-    fn make_path_vertex<'a>(&self, path: &'a [String]) -> Token<'a> {
-        Token {
+    fn make_path_vertex<'a>(&self, path: &'a [String]) -> Vertex<'a> {
+        Vertex {
             origin: *self,
-            kind: TokenKind::Path(path),
+            kind: VertexKind::Path(path),
         }
     }
 
-    fn make_importable_path_vertex<'a>(&self, importable_path: Vec<&'a str>) -> Token<'a> {
-        Token {
+    fn make_importable_path_vertex<'a>(&self, importable_path: Vec<&'a str>) -> Vertex<'a> {
+        Vertex {
             origin: *self,
-            kind: TokenKind::ImportablePath(importable_path),
+            kind: VertexKind::ImportablePath(importable_path),
         }
     }
 
-    fn make_raw_type_vertex<'a>(&self, raw_type: &'a rustdoc_types::Type) -> Token<'a> {
-        Token {
+    fn make_raw_type_vertex<'a>(&self, raw_type: &'a rustdoc_types::Type) -> Vertex<'a> {
+        Vertex {
             origin: *self,
-            kind: TokenKind::RawType(raw_type),
+            kind: VertexKind::RawType(raw_type),
         }
     }
 
-    fn make_attribute_vertex<'a>(&self, attr: &'a str) -> Token<'a> {
-        Token {
+    fn make_attribute_vertex<'a>(&self, attr: &'a str) -> Vertex<'a> {
+        Vertex {
             origin: *self,
-            kind: TokenKind::Attribute(attr),
+            kind: VertexKind::Attribute(attr),
         }
     }
 
@@ -90,24 +90,24 @@ impl Origin {
         &self,
         path: &'a rustdoc_types::Path,
         trait_def: &'a Item,
-    ) -> Token<'a> {
-        Token {
+    ) -> Vertex<'a> {
+        Vertex {
             origin: *self,
-            kind: TokenKind::ImplementedTrait(path, trait_def),
+            kind: VertexKind::ImplementedTrait(path, trait_def),
         }
     }
 }
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub struct Token<'a> {
+pub struct Vertex<'a> {
     origin: Origin,
-    kind: TokenKind<'a>,
+    kind: VertexKind<'a>,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub enum TokenKind<'a> {
+pub enum VertexKind<'a> {
     CrateDiff((&'a IndexedCrate<'a>, &'a IndexedCrate<'a>)),
     Crate(&'a IndexedCrate<'a>),
     Item(&'a Item),
@@ -120,11 +120,11 @@ pub enum TokenKind<'a> {
 }
 
 #[allow(dead_code)]
-impl<'a> Token<'a> {
+impl<'a> Vertex<'a> {
     fn new_crate(origin: Origin, crate_: &'a IndexedCrate<'a>) -> Self {
         Self {
             origin,
-            kind: TokenKind::Crate(crate_),
+            kind: VertexKind::Crate(crate_),
         }
     }
 
@@ -133,7 +133,7 @@ impl<'a> Token<'a> {
     #[inline]
     fn typename(&self) -> &'static str {
         match self.kind {
-            TokenKind::Item(item) => match &item.inner {
+            VertexKind::Item(item) => match &item.inner {
                 rustdoc_types::ItemEnum::Struct(..) => "Struct",
                 rustdoc_types::ItemEnum::Enum(..) => "Enum",
                 rustdoc_types::ItemEnum::Function(..) => "Function",
@@ -146,14 +146,14 @@ impl<'a> Token<'a> {
                 rustdoc_types::ItemEnum::Trait(..) => "Trait",
                 _ => unreachable!("unexpected item.inner for item: {item:?}"),
             },
-            TokenKind::Span(..) => "Span",
-            TokenKind::Path(..) => "Path",
-            TokenKind::ImportablePath(..) => "ImportablePath",
-            TokenKind::Crate(..) => "Crate",
-            TokenKind::CrateDiff(..) => "CrateDiff",
-            TokenKind::Attribute(..) => "Attribute",
-            TokenKind::ImplementedTrait(..) => "ImplementedTrait",
-            TokenKind::RawType(ty) => match ty {
+            VertexKind::Span(..) => "Span",
+            VertexKind::Path(..) => "Path",
+            VertexKind::ImportablePath(..) => "ImportablePath",
+            VertexKind::Crate(..) => "Crate",
+            VertexKind::CrateDiff(..) => "CrateDiff",
+            VertexKind::Attribute(..) => "Attribute",
+            VertexKind::ImplementedTrait(..) => "ImplementedTrait",
+            VertexKind::RawType(ty) => match ty {
                 rustdoc_types::Type::ResolvedPath { .. } => "ResolvedPathType",
                 rustdoc_types::Type::Primitive(..) => "PrimitiveType",
                 _ => "OtherType",
@@ -163,14 +163,14 @@ impl<'a> Token<'a> {
 
     fn as_crate_diff(&self) -> Option<(&'a IndexedCrate<'a>, &'a IndexedCrate<'a>)> {
         match &self.kind {
-            TokenKind::CrateDiff(tuple) => Some(*tuple),
+            VertexKind::CrateDiff(tuple) => Some(*tuple),
             _ => None,
         }
     }
 
     fn as_indexed_crate(&self) -> Option<&'a IndexedCrate<'a>> {
         match self.kind {
-            TokenKind::Crate(c) => Some(c),
+            VertexKind::Crate(c) => Some(c),
             _ => None,
         }
     }
@@ -181,7 +181,7 @@ impl<'a> Token<'a> {
 
     fn as_item(&self) -> Option<&'a Item> {
         match self.kind {
-            TokenKind::Item(item) => Some(item),
+            VertexKind::Item(item) => Some(item),
             _ => None,
         }
     }
@@ -202,7 +202,7 @@ impl<'a> Token<'a> {
 
     fn as_span(&self) -> Option<&'a Span> {
         match self.kind {
-            TokenKind::Span(s) => Some(s),
+            VertexKind::Span(s) => Some(s),
             _ => None,
         }
     }
@@ -230,14 +230,14 @@ impl<'a> Token<'a> {
 
     fn as_path(&self) -> Option<&'a [String]> {
         match &self.kind {
-            TokenKind::Path(path) => Some(*path),
+            VertexKind::Path(path) => Some(*path),
             _ => None,
         }
     }
 
     fn as_importable_path(&self) -> Option<&'_ Vec<&'a str>> {
         match &self.kind {
-            TokenKind::ImportablePath(path) => Some(path),
+            VertexKind::ImportablePath(path) => Some(path),
             _ => None,
         }
     }
@@ -265,45 +265,45 @@ impl<'a> Token<'a> {
 
     fn as_attribute(&self) -> Option<&'a str> {
         match &self.kind {
-            TokenKind::Attribute(attr) => Some(*attr),
+            VertexKind::Attribute(attr) => Some(*attr),
             _ => None,
         }
     }
 
     fn as_raw_type(&self) -> Option<&'a rustdoc_types::Type> {
         match &self.kind {
-            TokenKind::RawType(ty) => Some(*ty),
+            VertexKind::RawType(ty) => Some(*ty),
             _ => None,
         }
     }
 
     fn as_implemented_trait(&self) -> Option<(&'a rustdoc_types::Path, &'a Item)> {
         match &self.kind {
-            TokenKind::ImplementedTrait(path, trait_item) => Some((*path, *trait_item)),
+            VertexKind::ImplementedTrait(path, trait_item) => Some((*path, *trait_item)),
             _ => None,
         }
     }
 }
 
-impl<'a> From<&'a Item> for TokenKind<'a> {
+impl<'a> From<&'a Item> for VertexKind<'a> {
     fn from(item: &'a Item) -> Self {
         Self::Item(item)
     }
 }
 
-impl<'a> From<&'a IndexedCrate<'a>> for TokenKind<'a> {
+impl<'a> From<&'a IndexedCrate<'a>> for VertexKind<'a> {
     fn from(c: &'a IndexedCrate<'a>) -> Self {
         Self::Crate(c)
     }
 }
 
-impl<'a> From<&'a Span> for TokenKind<'a> {
+impl<'a> From<&'a Span> for VertexKind<'a> {
     fn from(s: &'a Span) -> Self {
         Self::Span(s)
     }
 }
 
-fn get_crate_property(crate_vertex: &Token, field_name: &str) -> FieldValue {
+fn get_crate_property(crate_vertex: &Vertex, field_name: &str) -> FieldValue {
     let crate_item = crate_vertex.as_crate().expect("vertex was not a Crate");
     match field_name {
         "root" => (&crate_item.root.0).into(),
@@ -314,7 +314,7 @@ fn get_crate_property(crate_vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_item_property(item_vertex: &Token, field_name: &str) -> FieldValue {
+fn get_item_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
     let item = item_vertex.as_item().expect("vertex was not an Item");
     match field_name {
         "id" => (&item.id.0).into(),
@@ -334,7 +334,7 @@ fn get_item_property(item_vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_struct_property(item_vertex: &Token, field_name: &str) -> FieldValue {
+fn get_struct_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
     let (_, struct_item) = item_vertex
         .as_struct_item()
         .expect("vertex was not a Struct");
@@ -350,7 +350,7 @@ fn get_struct_property(item_vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_span_property(item_vertex: &Token, field_name: &str) -> FieldValue {
+fn get_span_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
     let span = item_vertex.as_span().expect("vertex was not a Span");
     match field_name {
         "filename" => span
@@ -366,7 +366,7 @@ fn get_span_property(item_vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_enum_property(item_vertex: &Token, field_name: &str) -> FieldValue {
+fn get_enum_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
     let enum_item = item_vertex.as_enum().expect("vertex was not an Enum");
     match field_name {
         "variants_stripped" => enum_item.variants_stripped.into(),
@@ -374,7 +374,7 @@ fn get_enum_property(item_vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_path_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_path_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let path_vertex = vertex.as_path().expect("vertex was not a Path");
     match field_name {
         "path" => path_vertex.into(),
@@ -382,7 +382,7 @@ fn get_path_property(vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_importable_path_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_importable_path_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let path_vertex = vertex
         .as_importable_path()
         .expect("vertex was not an ImportablePath");
@@ -397,7 +397,7 @@ fn get_importable_path_property(vertex: &Token, field_name: &str) -> FieldValue 
     }
 }
 
-fn get_function_like_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_function_like_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let maybe_function = vertex.as_function();
     let maybe_method = vertex.as_method();
 
@@ -418,7 +418,7 @@ fn get_function_like_property(vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_impl_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_impl_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let impl_vertex = vertex.as_impl().expect("vertex was not an Impl");
     match field_name {
         "unsafe" => impl_vertex.is_unsafe.into(),
@@ -428,7 +428,7 @@ fn get_impl_property(vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_attribute_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_attribute_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let attribute_vertex = vertex.as_attribute().expect("vertex was not an Attribute");
     match field_name {
         "value" => attribute_vertex.into(),
@@ -436,7 +436,7 @@ fn get_attribute_property(vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_raw_type_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_raw_type_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let type_vertex = vertex.as_raw_type().expect("vertex was not a RawType");
     match field_name {
         "name" => match type_vertex {
@@ -448,7 +448,7 @@ fn get_raw_type_property(vertex: &Token, field_name: &str) -> FieldValue {
     }
 }
 
-fn get_implemented_trait_property(vertex: &Token, field_name: &str) -> FieldValue {
+fn get_implemented_trait_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let (path, _) = vertex
         .as_implemented_trait()
         .expect("vertex was not a ImplementedTrait");
@@ -459,10 +459,10 @@ fn get_implemented_trait_property(vertex: &Token, field_name: &str) -> FieldValu
 }
 
 fn property_mapper<'a>(
-    ctx: DataContext<Token<'a>>,
+    ctx: DataContext<Vertex<'a>>,
     field_name: &str,
-    property_getter: fn(&Token<'a>, &str) -> FieldValue,
-) -> (DataContext<Token<'a>>, FieldValue) {
+    property_getter: fn(&Vertex<'a>, &str) -> FieldValue,
+) -> (DataContext<Vertex<'a>>, FieldValue) {
     let value = match ctx.active_vertex() {
         Some(vertex) => property_getter(vertex, field_name),
         None => FieldValue::Null,
@@ -471,7 +471,7 @@ fn property_mapper<'a>(
 }
 
 impl<'a> Adapter<'a> for RustdocAdapter<'a> {
-    type Vertex = Token<'a>;
+    type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
         &mut self,
@@ -480,15 +480,15 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         _query_info: &QueryInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
-            "Crate" => Box::new(std::iter::once(Token::new_crate(
+            "Crate" => Box::new(std::iter::once(Vertex::new_crate(
                 Origin::CurrentCrate,
                 self.current_crate,
             ))),
             "CrateDiff" => {
                 let previous_crate = self.previous_crate.expect("no previous crate provided");
-                Box::new(std::iter::once(Token {
+                Box::new(std::iter::once(Vertex {
                     origin: Origin::CurrentCrate,
-                    kind: TokenKind::CrateDiff((self.current_crate, previous_crate)),
+                    kind: VertexKind::CrateDiff((self.current_crate, previous_crate)),
                 }))
             }
             _ => unreachable!("{edge_name}"),
@@ -591,7 +591,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         Some(vertex) => {
                             let crate_tuple =
                                 vertex.as_crate_diff().expect("vertex was not a CrateDiff");
-                            let neighbor = Token::new_crate(Origin::CurrentCrate, crate_tuple.0);
+                            let neighbor = Vertex::new_crate(Origin::CurrentCrate, crate_tuple.0);
                             Box::new(std::iter::once(neighbor))
                         }
                     };
@@ -604,7 +604,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
                         Some(vertex) => {
                             let crate_tuple =
                                 vertex.as_crate_diff().expect("vertex was not a CrateDiff");
-                            let neighbor = Token::new_crate(Origin::PreviousCrate, crate_tuple.1);
+                            let neighbor = Vertex::new_crate(Origin::PreviousCrate, crate_tuple.1);
                             Box::new(std::iter::once(neighbor))
                         }
                     };
