@@ -18,14 +18,14 @@ use crate::shim::{
 extern "C" {
     pub type JsAdapter;
 
-    #[wasm_bindgen(structural, method, js_name = "getStartingTokens")]
+    #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
     pub fn resolve_starting_vertices(
         this: &JsAdapter,
         edge: &str,
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method, js_name = "projectProperty")]
+    #[wasm_bindgen(structural, method, js_name = "resolveProperty")]
     pub fn resolve_property(
         this: &JsAdapter,
         contexts: JsContextIterator,
@@ -33,7 +33,7 @@ extern "C" {
         field_name: &str,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method, js_name = "projectNeighbors")]
+    #[wasm_bindgen(structural, method, js_name = "resolveNeighbors")]
     pub fn resolve_neighbors(
         this: &JsAdapter,
         contexts: JsContextIterator,
@@ -42,7 +42,7 @@ extern "C" {
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method, js_name = "canCoerceToType")]
+    #[wasm_bindgen(structural, method, js_name = "resolveCoercion")]
     pub fn resolve_coercion(
         this: &JsAdapter,
         contexts: JsContextIterator,
@@ -51,17 +51,17 @@ extern "C" {
     ) -> js_sys::Iterator;
 }
 
-struct TokenIterator {
+struct JsVertexIterator {
     inner: js_sys::IntoIter,
 }
 
-impl TokenIterator {
+impl JsVertexIterator {
     fn new(inner: js_sys::IntoIter) -> Self {
         Self { inner }
     }
 }
 
-impl Iterator for TokenIterator {
+impl Iterator for JsVertexIterator {
     type Item = JsValue;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -182,7 +182,7 @@ impl Iterator for ContextAndNeighborsIterator {
                 .remove(&next_item)
                 .expect("id not found");
 
-            Some((ctx, Box::new(TokenIterator::new(neighbors_iter))))
+            Some((ctx, Box::new(JsVertexIterator::new(neighbors_iter))))
         }
     }
 }
@@ -253,7 +253,6 @@ impl AdapterShim {
     }
 }
 
-#[allow(unused_variables)]
 impl Adapter<'static> for AdapterShim {
     type Vertex = JsValue;
 
@@ -261,13 +260,13 @@ impl Adapter<'static> for AdapterShim {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
-        query_info: &QueryInfo,
+        _query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.clone().into();
         let js_iter = self
             .inner
             .resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
-        Box::new(TokenIterator::new(js_iter.into_iter()))
+        Box::new(JsVertexIterator::new(js_iter.into_iter()))
     }
 
     fn resolve_property(
@@ -275,7 +274,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_info: &QueryInfo,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
@@ -291,7 +290,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
-        query_info: &QueryInfo,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
@@ -315,7 +314,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_info: &QueryInfo,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
