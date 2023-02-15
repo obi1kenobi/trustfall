@@ -124,7 +124,7 @@ type Letter implements Named {
                     for (const ctx of contexts) {
                         const val = {
                             localId: ctx.localId,
-                            value: ctx.currentToken,
+                            value: ctx.activeVertex,
                         };
                         yield val;
                     }
@@ -152,7 +152,7 @@ type Letter implements Named {
                     for (const ctx of contexts) {
                         const val = {
                             localId: ctx.localId,
-                            neighbors: [ctx.currentToken + 1],
+                            neighbors: [ctx.activeVertex + 1],
                         };
                         yield val;
                     }
@@ -185,7 +185,7 @@ type Letter implements Named {
                 if (coerce_to_type === "Prime") {
                     for (const ctx of contexts) {
                         var can_coerce = false;
-                        if (ctx.currentToken in primes) {
+                        if (ctx.activeVertex in primes) {
                             can_coerce = true;
                         }
                         const val = {
@@ -197,7 +197,7 @@ type Letter implements Named {
                 } else if (coerce_to_type === "Composite") {
                     for (const ctx of contexts) {
                         var can_coerce = false;
-                        if (!(ctx.currentToken in primes || ctx.currentToken === 1)) {
+                        if (!(ctx.activeVertex in primes || ctx.activeVertex === 1)) {
                             can_coerce = true;
                         }
                         const val = {

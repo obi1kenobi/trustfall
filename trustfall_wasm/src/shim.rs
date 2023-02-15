@@ -107,7 +107,7 @@ impl JsContext {
         }
     }
 
-    #[wasm_bindgen(getter, js_name = "currentToken")]
+    #[wasm_bindgen(getter, js_name = "activeVertex")]
     pub fn active_vertex(&self) -> JsValue {
         match &self.active_vertex {
             Some(value) => value.clone(),

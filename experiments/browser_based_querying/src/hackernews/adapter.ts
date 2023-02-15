@@ -267,7 +267,7 @@ export class MyAdapter implements Adapter<Vertex> {
       for (const ctx of contexts) {
         yield {
           localId: ctx.localId,
-          value: ctx.currentToken?.__typename || null,
+          value: ctx.activeVertex?.__typename || null,
         };
       }
       return;
@@ -282,7 +282,7 @@ export class MyAdapter implements Adapter<Vertex> {
       switch (field_name) {
         case 'url': {
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
 
             let value = null;
             if (vertex) {
@@ -300,7 +300,7 @@ export class MyAdapter implements Adapter<Vertex> {
           const fieldKey = HNItemFieldMappings.textHtml;
 
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
 
             let value = null;
             if (vertex) {
@@ -321,7 +321,7 @@ export class MyAdapter implements Adapter<Vertex> {
           }
 
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
 
             yield {
               localId: ctx.localId,
@@ -334,7 +334,7 @@ export class MyAdapter implements Adapter<Vertex> {
       switch (field_name) {
         case 'url': {
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
 
             let value = null;
             if (vertex) {
@@ -352,7 +352,7 @@ export class MyAdapter implements Adapter<Vertex> {
           const fieldKey = HNUserFieldMappings.aboutHtml;
 
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
 
             let value = null;
             if (vertex) {
@@ -373,7 +373,7 @@ export class MyAdapter implements Adapter<Vertex> {
           }
 
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
             yield {
               localId: ctx.localId,
               value: vertex?.[fieldKey] || null,
@@ -384,7 +384,7 @@ export class MyAdapter implements Adapter<Vertex> {
     } else if (type_name === 'Webpage') {
       if (field_name === 'url') {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           yield {
             localId: ctx.localId,
             value: vertex?.url || null,
@@ -414,7 +414,7 @@ export class MyAdapter implements Adapter<Vertex> {
           // Link submission stories have the submitted URL as a link.
           // Text submission stories can have multiple links in the text.
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
             let neighbors: IterableIterator<Vertex>;
             if (vertex) {
               if (vertex.url) {
@@ -440,7 +440,7 @@ export class MyAdapter implements Adapter<Vertex> {
         } else if (type_name === 'Comment') {
           // Comments can only have links in their text content.
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
             let neighbors: IterableIterator<Vertex>;
             if (vertex) {
               neighbors = linksInHnMarkup(this.fetchPort, vertex.text);
@@ -455,7 +455,7 @@ export class MyAdapter implements Adapter<Vertex> {
         } else if (type_name === 'Job') {
           // Jobs only have the submitted URL as a link.
           for (const ctx of contexts) {
-            const vertex = ctx.currentToken;
+            const vertex = ctx.activeVertex;
             let neighbors: IterableIterator<Vertex> = [][Symbol.iterator]();
             if (vertex) {
               const neighbor = materializeWebsite(this.fetchPort, vertex.url);
@@ -473,7 +473,7 @@ export class MyAdapter implements Adapter<Vertex> {
         }
       } else if (edge_name === 'byUser') {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           if (vertex) {
             yield {
               localId: ctx.localId,
@@ -488,7 +488,7 @@ export class MyAdapter implements Adapter<Vertex> {
         }
       } else if (edge_name === 'comment' || edge_name === 'reply') {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           yield {
             localId: ctx.localId,
             neighbors: lazyFetchMap(this.fetchPort, vertex?.kids, materializeItem),
@@ -496,7 +496,7 @@ export class MyAdapter implements Adapter<Vertex> {
         }
       } else if (edge_name === 'parent') {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           const parent = vertex?.parent;
           if (parent) {
             yield {
@@ -516,7 +516,7 @@ export class MyAdapter implements Adapter<Vertex> {
     } else if (type_name === 'User') {
       if (edge_name === 'submitted') {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           const submitted = vertex?.submitted;
           yield {
             localId: ctx.localId,
@@ -525,7 +525,7 @@ export class MyAdapter implements Adapter<Vertex> {
         }
       } else if (edge_name === 'link') {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           let neighbors: IterableIterator<Vertex> = [][Symbol.iterator]();
           const aboutHtml = vertex?.about;
           if (aboutHtml) {
@@ -553,7 +553,7 @@ export class MyAdapter implements Adapter<Vertex> {
       if (coerce_to_type === 'Item') {
         // The Item type is abstract, we need to check if the vertex is any of the Item subtypes.
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           const type = vertex?.__typename;
           yield {
             localId: ctx.localId,
@@ -562,7 +562,7 @@ export class MyAdapter implements Adapter<Vertex> {
         }
       } else {
         for (const ctx of contexts) {
-          const vertex = ctx.currentToken;
+          const vertex = ctx.activeVertex;
           yield {
             localId: ctx.localId,
             value: vertex?.__typename === coerce_to_type,
