@@ -11,6 +11,12 @@ pub mod provider {
     pub mod basic_adapter {
         pub use trustfall_core::interpreter::basic_adapter::BasicAdapter;
     }
+
+    /// Helpers for common operations when building adapters.
+    pub use trustfall_core::interpreter::helpers::{
+        resolve_coercion_with, resolve_neighbors_with, resolve_property_with,
+    };
+    pub use trustfall_core::{accessor_property, field_property};
 }
 
 /// Property values and query variables.
