@@ -1,12 +1,12 @@
 use quote::quote;
 
-#[proc_macro_derive(VariantsAsVertexTypes)]
-pub fn variants_as_vertex_types_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(TrustfallEnumVertex)]
+pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).expect("failed to parse input");
-    impl_variants_as_vertex_types(&ast)
+    impl_trustfall_enum_vertex(&ast)
 }
 
-fn impl_variants_as_vertex_types(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
+fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
     let name = &ast.ident;
     let generics = &ast.generics;
     let where_clause = &generics.where_clause;

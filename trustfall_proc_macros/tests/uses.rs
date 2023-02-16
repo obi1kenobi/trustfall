@@ -1,4 +1,4 @@
-use trustfall_proc_macros::VariantsAsVertexTypes;
+use trustfall_proc_macros::TrustfallEnumVertex;
 
 // TODO: test for UI errors due to:
 // - not an enum
@@ -7,13 +7,13 @@ use trustfall_proc_macros::VariantsAsVertexTypes;
 
 #[test]
 fn empty_enum() {
-    #[derive(Debug, Clone, VariantsAsVertexTypes)]
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum NoVariants {}
 }
 
 #[test]
 fn single_unit_variant() {
-    #[derive(Debug, Clone, VariantsAsVertexTypes)]
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum SingleUnitVariant {
         Foo,
     }
@@ -25,7 +25,7 @@ fn single_unit_variant() {
 
 #[test]
 fn two_unit_variants() {
-    #[derive(Debug, Clone, VariantsAsVertexTypes)]
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum TwoVariants {
         First,
         Second,
@@ -44,7 +44,7 @@ fn two_unit_variants() {
 
 #[test]
 fn tuple_variants() {
-    #[derive(Debug, Clone, VariantsAsVertexTypes)]
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum TwoVariants {
         First(i64),
         Second(&'static str, Vec<usize>),
@@ -63,7 +63,7 @@ fn tuple_variants() {
 
 #[test]
 fn mixed_variants() {
-    #[derive(Debug, Clone, VariantsAsVertexTypes)]
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum TwoVariants {
         First,
         Second(&'static str, Vec<usize>),
