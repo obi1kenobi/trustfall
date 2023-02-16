@@ -1,0 +1,7 @@
+error: only enums can derive TrustfallEnumVertex
+ --> tests/ui/derive_struct.rs:4:1
+  |
+4 | / struct Vertex {
+5 | |     content: i64,
+6 | | }
+  | |_^
