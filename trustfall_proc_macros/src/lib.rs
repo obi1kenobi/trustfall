@@ -13,7 +13,7 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> proc_macro::TokenStream
 
     let variants = match &ast.data {
         syn::Data::Enum(d) => &d.variants,
-        _ => panic!("Only enums can become named types!"),
+        _ => panic!("only enums can derive TrustfallEnumVertex"),
     };
 
     let arms = variants
