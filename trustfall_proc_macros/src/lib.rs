@@ -32,7 +32,7 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
             let variant_ident = &variant.ident;
             let variant_name = variant_ident.to_string();
             let conversion_name = syn::Ident::new(
-                &format!("as_{}", to_snake_case(&variant_name)),
+                &format!("as_{}", to_lower_snake_case(&variant_name)),
                 proc_macro2::Span::call_site(),
             );
 
@@ -163,17 +163,19 @@ fn tuple_of_field_types(fields: &Punctuated<syn::Field, syn::Token![,]>) -> proc
     }
 }
 
-fn to_snake_case(value: &str) -> String {
+fn to_lower_snake_case(value: &str) -> String {
     let mut result = String::with_capacity(value.len());
-    for (i, c) in value.chars().enumerate() {
+    let mut last = '_';
+    for c in value.chars() {
         if c.is_uppercase() {
-            if i > 0 {
+            if last != '_' {
                 result.push('_');
             }
             result.extend(c.to_lowercase());
         } else {
             result.push(c);
         }
+        last = c;
     }
     result
 }
