@@ -64,6 +64,22 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 /// }
 /// ```
 ///
+/// A variant can opt out of having a generated conversion method using
+/// the `#[trustfall(skip_conversion)]` attribute
+///
+/// In this example, only the `User` variant gets a conversion method:
+/// ```rust
+/// # use trustfall_derive::TrustfallEnumVertex;
+/// #
+/// #[derive(Debug, Clone, TrustfallEnumVertex)]
+/// enum Vertex {
+///     User(String),
+///
+///     #[trustfall(skip_conversion)]
+///     Message { author: String, content: String },
+/// }
+/// ```
+///
 /// [`Typename`](trustfall_core::interpreter::Typename)
 #[proc_macro_derive(TrustfallEnumVertex, attributes(trustfall))]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
