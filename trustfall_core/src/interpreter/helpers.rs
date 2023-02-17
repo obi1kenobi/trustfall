@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{ir::FieldValue, schema::Schema};
 
-use super::{ContextIterator, ContextOutcomeIterator, VertexIterator};
+use super::{ContextIterator, ContextOutcomeIterator, Typename, VertexIterator};
 
 /// Helper for implementing [`BasicAdapter::resolve_property`] and equivalents.
 ///
@@ -284,14 +284,6 @@ macro_rules! accessor_property {
     };
 }
 
-/// Accessor method for the `__typename` special property of Trustfall vertices.
-pub trait Typename {
-    /// Returns the type name of this vertex in the Trustfall query graph.
-    ///
-    /// Corresponds to the `__typename` special property of Trustfall vertices.
-    fn typename(&self) -> &'static str;
-}
-
 /// Resolver for the `__typename` property that optimizes resolution based on the schema.
 ///
 /// Example:
@@ -301,7 +293,7 @@ pub trait Typename {
 /// # use trustfall_core::schema::Schema;
 /// # use trustfall_core::ir::FieldValue;
 /// # use trustfall_core::interpreter::{
-/// #     ContextIterator, ContextOutcomeIterator, helpers::{resolve_typename, Typename},
+/// #     ContextIterator, ContextOutcomeIterator, helpers::{resolve_typename}, Typename,
 /// # };
 /// #
 /// # #[derive(Debug, Clone)]
@@ -379,10 +371,7 @@ mod tests {
     use std::fmt::Debug;
 
     use crate::{
-        interpreter::{
-            helpers::{resolve_typename, Typename},
-            DataContext,
-        },
+        interpreter::{helpers::resolve_typename, DataContext, Typename},
         ir::FieldValue,
         schema::Schema,
     };

@@ -3,6 +3,8 @@ use syn::punctuated::Punctuated;
 
 /// Adds `typename()` and `as_<variant>()` methods on an enum being used as a Trustfall vertex.
 ///
+/// The `typename()` method is part of Trustfall's [`Typename`] trait.
+///
 /// For example:
 /// ```rust
 /// # use trustfall_derive::TrustfallEnumVertex;
@@ -14,8 +16,10 @@ use syn::punctuated::Punctuated;
 ///     EmptyVariant,
 /// }
 /// ```
-/// will get the following methods:
+/// will get the following implementations:
 /// ```rust
+/// # use trustfall_core::interpreter::Typename;
+/// #
 /// # #[derive(Debug, Clone)]
 /// # enum Vertex {
 /// #     User(String),
@@ -23,7 +27,7 @@ use syn::punctuated::Punctuated;
 /// #     EmptyVariant,
 /// # }
 /// #
-/// impl Vertex {
+/// impl Typename for Vertex {
 ///     fn typename(&self) -> &'static str {
 ///         match self {
 ///             Self::User { .. } => "User",
@@ -31,7 +35,9 @@ use syn::punctuated::Punctuated;
 ///             Self::EmptyVariant { .. } => "EmptyVariant",
 ///         }
 ///     }
+/// }
 ///
+/// impl Vertex {
 ///     fn as_user(&self) -> Option<&String> {
 ///         match self {
 ///             Self::User(x) => Some(x),
@@ -54,6 +60,8 @@ use syn::punctuated::Punctuated;
 ///     }
 /// }
 /// ```
+///
+/// [`Typename`](trustfall_core::interpreter::Typename)
 #[proc_macro_derive(TrustfallEnumVertex)]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
@@ -65,8 +73,7 @@ pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macr
 
 fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &ast.ident;
-    let generics = &ast.generics;
-    let where_clause = &generics.where_clause;
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     let variants = match &ast.data {
         syn::Data::Enum(d) => &d.variants,
@@ -192,8 +199,8 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
 
     let gen = quote! {
         #[automatically_derived]
-        impl #generics #name #generics #where_clause {
-            pub(crate) fn typename(&self) -> &'static str {
+        impl #impl_generics ::trustfall_core::interpreter::Typename for #name #ty_generics #where_clause {
+            fn typename(&self) -> &'static str {
                 match self {
                     #arms
 
@@ -201,7 +208,10 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
                     _ => unreachable!("this arm exists only for uninhabited enums"),
                 }
             }
+        }
 
+        #[automatically_derived]
+        impl #impl_generics #name #ty_generics #where_clause {
             #conversions
         }
     };

@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     interpreter::{
         self,
-        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with, Typename},
-        Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator,
+        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
+        Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, Typename, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
     schema::Schema,

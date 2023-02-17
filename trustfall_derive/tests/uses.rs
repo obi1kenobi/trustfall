@@ -1,3 +1,6 @@
+use std::fmt::Debug;
+
+use trustfall_core::interpreter::Typename;
 use trustfall_derive::TrustfallEnumVertex;
 
 #[test]
@@ -138,6 +141,72 @@ fn struct_variant() {
         Some((&42, &["fixed", "strings"], &vec![1, 2])),
         second.as_second_variant()
     );
+}
+
+#[test]
+fn generic_enum() {
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
+    enum Either<'a, 'b, A, B> {
+        First(&'a A),
+        Second(&'b B),
+    }
+
+    type Specific<'a, 'b> = Either<'a, 'b, Vec<i32>, i32>;
+
+    let first_vec = vec![1, 2];
+    let first: Specific<'_, 'static>  = Either::First(&first_vec);
+    assert_eq!("First", first.typename());
+    assert_eq!(Some(&&first_vec), first.as_first());
+    assert_eq!(None, first.as_second());
+
+    let second: Specific<'static, '_> = Either::Second(&123);
+    assert_eq!("Second", second.typename());
+    assert_eq!(None, second.as_first());
+    assert_eq!(Some(&&123), second.as_second());
+}
+
+#[test]
+fn generic_enum_with_where_clause() {
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
+    enum Either<'a, 'b, A, B> where A: ?Sized, B: ?Sized + Debug + Clone {
+        First(&'a A),
+        Second(&'b B),
+    }
+
+    type Specific<'a, 'b> = Either<'a, 'b, Vec<i32>, i32>;
+
+    let first_vec = vec![1, 2];
+    let first: Specific<'_, 'static>  = Either::First(&first_vec);
+    assert_eq!("First", first.typename());
+    assert_eq!(Some(&&first_vec), first.as_first());
+    assert_eq!(None, first.as_second());
+
+    let second: Specific<'static, '_> = Either::Second(&123);
+    assert_eq!("Second", second.typename());
+    assert_eq!(None, second.as_first());
+    assert_eq!(Some(&&123), second.as_second());
+}
+
+#[test]
+fn generic_enum_with_defaults() {
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
+    enum Either<'a, 'b, A, B = i32, const N: usize = 3> where A: ?Sized, B: ?Sized + Debug + Clone {
+        First(&'a A),
+        Second(&'b [B; N]),
+    }
+
+    type Specific<'a, 'b> = Either<'a, 'b, Vec<i32>, i32>;
+
+    let first_vec = vec![1, 2];
+    let first: Specific<'_, 'static>  = Either::First(&first_vec);
+    assert_eq!("First", first.typename());
+    assert_eq!(Some(&&first_vec), first.as_first());
+    assert_eq!(None, first.as_second());
+
+    let second: Specific<'static, '_> = Either::Second(&[123, 456, 789]);
+    assert_eq!("Second", second.typename());
+    assert_eq!(None, second.as_first());
+    assert_eq!(Some(&&[123, 456, 789]), second.as_second());
 }
 
 #[test]
