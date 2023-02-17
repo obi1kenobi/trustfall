@@ -6,7 +6,8 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 
 /// Adds `typename()` and `as_<variant>()` methods on an enum being used as a Trustfall vertex.
 ///
-/// The `typename()` method is part of Trustfall's [`Typename`] trait.
+/// The `typename()` method is part of Trustfall's
+/// [`Typename`](trustfall_core::interpreter::Typename) trait.
 ///
 /// For example:
 /// ```rust
@@ -79,8 +80,6 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 ///     Message { author: String, content: String },
 /// }
 /// ```
-///
-/// [`Typename`](trustfall_core::interpreter::Typename)
 #[proc_macro_derive(TrustfallEnumVertex, attributes(trustfall))]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
