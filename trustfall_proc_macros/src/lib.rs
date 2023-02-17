@@ -4,7 +4,9 @@ use syn::punctuated::Punctuated;
 #[proc_macro_derive(TrustfallEnumVertex)]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).expect("failed to parse input");
-    impl_trustfall_enum_vertex(&ast).unwrap_or_else(syn::Error::into_compile_error).into()
+    impl_trustfall_enum_vertex(&ast)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
@@ -14,7 +16,12 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
 
     let variants = match &ast.data {
         syn::Data::Enum(d) => &d.variants,
-        _ => return Err(syn::Error::new_spanned(ast, "only enums can derive TrustfallEnumVertex")),
+        _ => {
+            return Err(syn::Error::new_spanned(
+                ast,
+                "only enums can derive TrustfallEnumVertex",
+            ))
+        }
     };
 
     let arms = variants
@@ -41,7 +48,10 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
                     if named_fields.named.len() == 1 {
                         // Struct variants with only a single field return `Option<&ThatField>`.
                         let named_arg = &named_fields.named[0];
-                        let field_name = named_arg.ident.as_ref().expect("struct variant field had no name");
+                        let field_name = named_arg
+                            .ident
+                            .as_ref()
+                            .expect("struct variant field had no name");
                         let field_type = &named_arg.ty;
                         syn::parse_quote! {
                             pub(crate) fn #conversion_name(&self) -> Option<&#field_type> {
@@ -55,11 +65,15 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
                         // Struct variants with multiple fields return
                         // `Option<(&FirstField, &SecondField, ...)>`
                         // in the order the fields were defined.
-                        let final_type: proc_macro2::TokenStream = tuple_of_field_types(&named_fields.named);
+                        let final_type: proc_macro2::TokenStream =
+                            tuple_of_field_types(&named_fields.named);
 
                         let mut fields = syn::punctuated::Punctuated::<_, syn::Token![,]>::new();
                         for field in named_fields.named.iter() {
-                            let field_name = field.ident.as_ref().expect("struct variant field had no name");
+                            let field_name = field
+                                .ident
+                                .as_ref()
+                                .expect("struct variant field had no name");
                             fields.push(field_name);
                         }
                         syn::parse_quote! {
@@ -87,7 +101,8 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
                     } else {
                         // Tuple variants with multiple fields return
                         // `Option<(&FirstField, &SecondField, ...)>`.
-                        let final_type: proc_macro2::TokenStream = tuple_of_field_types(&tuple_fields.unnamed);
+                        let final_type: proc_macro2::TokenStream =
+                            tuple_of_field_types(&tuple_fields.unnamed);
                         let mut fields = syn::punctuated::Punctuated::<_, syn::Token![,]>::new();
                         for (i, _) in tuple_fields.unnamed.iter().enumerate() {
                             fields.push(quote::format_ident!("x{i}"));
@@ -150,7 +165,9 @@ fn generate_typename_arm(variant: &syn::Variant) -> proc_macro2::TokenStream {
 
 /// Returns a tuple of references to all field types.
 /// The input must contain more than one field.
-fn tuple_of_field_types(fields: &Punctuated<syn::Field, syn::Token![,]>) -> proc_macro2::TokenStream {
+fn tuple_of_field_types(
+    fields: &Punctuated<syn::Field, syn::Token![,]>,
+) -> proc_macro2::TokenStream {
     if fields.len() > 1 {
         let mut punct = syn::punctuated::Punctuated::<_, syn::Token![,]>::new();
         for field in fields.iter() {
@@ -159,7 +176,10 @@ fn tuple_of_field_types(fields: &Punctuated<syn::Field, syn::Token![,]>) -> proc
         }
         quote!((#punct))
     } else {
-        panic!("list of fields had {} field(s), which is not more than one field", fields.len());
+        panic!(
+            "list of fields had {} field(s), which is not more than one field",
+            fields.len()
+        );
     }
 }
 

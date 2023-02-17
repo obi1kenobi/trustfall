@@ -24,7 +24,8 @@ fn snake_case() {
     enum SingleUnitVariant {
         ShouldBecomeSnakeCase,
         Includes1Numbers2,
-        #[allow(non_camel_case_types)] AlreadyPartly_SnakeCase,
+        #[allow(non_camel_case_types)]
+        AlreadyPartly_SnakeCase,
         ConsecutiveCapsEGLikeID,
     }
 
