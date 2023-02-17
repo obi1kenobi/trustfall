@@ -57,9 +57,7 @@ use syn::punctuated::Punctuated;
 #[proc_macro_derive(TrustfallEnumVertex)]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
-        Ok(ast) => {
-            impl_trustfall_enum_vertex(&ast).unwrap_or_else(syn::Error::into_compile_error)
-        }
+        Ok(ast) => impl_trustfall_enum_vertex(&ast).unwrap_or_else(syn::Error::into_compile_error),
         Err(e) => e.into_compile_error(),
     }
     .into()
