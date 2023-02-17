@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // The `Two` starting vertex is of type `Prime`, which has no subtypes.
+    // It's possible to resolve this query without dynamically running `typename()` once per vertex.
+    query: r#"
+{
+    Two {
+        __typename @output
+    }
+}"#,
+    arguments: {},
+)

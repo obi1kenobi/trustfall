@@ -168,7 +168,7 @@ fn trace(path: &str) {
             trace_with_adapter(adapter, test_query);
         }
         "numbers" => {
-            let adapter = NumbersAdapter;
+            let adapter = NumbersAdapter::new();
             trace_with_adapter(adapter, test_query);
         }
         "nullables" => {
