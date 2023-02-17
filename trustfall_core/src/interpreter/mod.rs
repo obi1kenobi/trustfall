@@ -20,7 +20,6 @@ pub mod execution;
 mod filtering;
 pub mod helpers;
 mod hints;
-pub mod macros;
 pub mod replay;
 pub mod trace;
 
