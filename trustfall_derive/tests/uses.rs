@@ -166,6 +166,25 @@ fn generic_enum() {
 }
 
 #[test]
+fn attribute_use() {
+    #[derive(Debug, Clone, TrustfallEnumVertex)]
+    enum TwoVariants {
+        #[trustfall(skip_conversion)]
+        First,
+        Second,
+    }
+
+    // The `as_first()` conversion method does not exist, so we won't call it.
+    let first = TwoVariants::First;
+    assert_eq!("First", first.typename());
+    assert_eq!(None, first.as_second());
+
+    let second = TwoVariants::Second;
+    assert_eq!("Second", second.typename());
+    assert_eq!(Some(()), second.as_second());
+}
+
+#[test]
 fn generic_enum_with_where_clause() {
     #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum Either<'a, 'b, A, B> where A: ?Sized, B: ?Sized + Debug + Clone {
