@@ -1,0 +1,98 @@
+TestInterpreterOutputTrace(
+  schema_name: "numbers",
+  trace: Trace(
+    ops: {
+      Opid(1): TraceOp(
+        opid: Opid(1),
+        parent_opid: None,
+        content: Call(ResolveStartingVertices(Vid(1))),
+      ),
+      Opid(2): TraceOp(
+        opid: Opid(2),
+        parent_opid: None,
+        content: Call(ResolveProperty(Vid(1), "Prime", "__typename")),
+      ),
+      Opid(3): TraceOp(
+        opid: Opid(3),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(4): TraceOp(
+        opid: Opid(4),
+        parent_opid: Some(Opid(1)),
+        content: YieldFrom(ResolveStartingVertices(Prime(PrimeNumber(2)))),
+      ),
+      Opid(5): TraceOp(
+        opid: Opid(5),
+        parent_opid: Some(Opid(2)),
+        content: YieldInto(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+        )),
+      ),
+      Opid(6): TraceOp(
+        opid: Opid(6),
+        parent_opid: Some(Opid(2)),
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Prime(PrimeNumber(2))),
+          vertices: {
+            Vid(1): Some(Prime(PrimeNumber(2))),
+          },
+        ), String("Prime"))),
+      ),
+      Opid(7): TraceOp(
+        opid: Opid(7),
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "__typename": String("Prime"),
+        }),
+      ),
+      Opid(8): TraceOp(
+        opid: Opid(8),
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
+      ),
+      Opid(9): TraceOp(
+        opid: Opid(9),
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(10): TraceOp(
+        opid: Opid(10),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(11): TraceOp(
+        opid: Opid(11),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+    },
+    ir_query: IRQuery(
+      root_name: "Two",
+      root_component: IRQueryComponent(
+        root: Vid(1),
+        vertices: {
+          Vid(1): IRVertex(
+            vid: Vid(1),
+            type_name: "Prime",
+          ),
+        },
+        outputs: {
+          "__typename": ContextField(
+            vertex_id: Vid(1),
+            field_name: "__typename",
+            field_type: "String!",
+          ),
+        },
+      ),
+    ),
+  ),
+  results: [
+    {
+      "__typename": String("Prime"),
+    },
+  ],
+)

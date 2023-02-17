@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interpreter::{
-        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
+        self,
+        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with, Typename},
         Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
+    schema::Schema,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,6 +18,16 @@ pub(crate) enum NumbersVertex {
     Neither(NeitherNumber), // zero and one
     Prime(PrimeNumber),
     Composite(CompositeNumber),
+}
+
+impl Typename for NumbersVertex {
+    fn typename(&self) -> &'static str {
+        match self {
+            NumbersVertex::Neither(x) => x.typename(),
+            NumbersVertex::Prime(x) => x.typename(),
+            NumbersVertex::Composite(x) => x.typename(),
+        }
+    }
 }
 
 trait Number {
@@ -169,7 +181,19 @@ fn make_number_vertex(primes: &mut BTreeSet<i64>, num: i64) -> NumbersVertex {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct NumbersAdapter;
+pub(crate) struct NumbersAdapter {
+    schema: Schema,
+}
+
+impl NumbersAdapter {
+    #[allow(dead_code)]
+    pub(crate) fn new() -> Self {
+        Self {
+            schema: Schema::parse(include_str!("../test_data/schemas/numbers.graphql"))
+                .expect("schema is not valid"),
+        }
+    }
+}
 
 #[allow(unused_variables)]
 impl Adapter<'static> for NumbersAdapter {
@@ -213,6 +237,10 @@ impl Adapter<'static> for NumbersAdapter {
         property_name: &Arc<str>,
         query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+        if property_name.as_ref() == "__typename" {
+            return interpreter::helpers::resolve_typename(contexts, &self.schema, type_name);
+        }
+
         match (type_name.as_ref(), property_name.as_ref()) {
             ("Number" | "Prime" | "Composite" | "Neither", "value") => {
                 resolve_property_with(contexts, |vertex| vertex.value().into())
@@ -222,9 +250,6 @@ impl Adapter<'static> for NumbersAdapter {
             }
             ("Number" | "Prime" | "Composite" | "Neither", "vowelsInName") => {
                 resolve_property_with(contexts, |vertex| vertex.vowels_in_name().into())
-            }
-            ("Number" | "Prime" | "Composite" | "Neither", "__typename") => {
-                resolve_property_with(contexts, |vertex| vertex.typename().into())
             }
             (type_name, property_name) => {
                 unreachable!("failed to resolve type {type_name} property {property_name}")
