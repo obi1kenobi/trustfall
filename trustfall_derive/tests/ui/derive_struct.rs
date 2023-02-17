@@ -1,4 +1,4 @@
-use trustfall_proc_macros::TrustfallEnumVertex;
+use trustfall_derive::TrustfallEnumVertex;
 
 #[derive(Debug, Clone, TrustfallEnumVertex)]
 struct Vertex {

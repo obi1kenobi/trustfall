@@ -3202,6 +3202,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "trustfall_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "trustfall_core",
+ "trybuild",
+]
+
+[[package]]
 name = "trustfall_filetests_macros"
 version = "0.2.0"
 dependencies = [
@@ -3210,17 +3221,6 @@ dependencies = [
  "quote",
  "syn",
  "walkdir",
-]
-
-[[package]]
-name = "trustfall_proc_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "trustfall_core",
- "trybuild",
 ]
 
 [[package]]

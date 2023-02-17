@@ -5,7 +5,7 @@ use syn::punctuated::Punctuated;
 ///
 /// For example:
 /// ```rust
-/// # use trustfall_proc_macros::TrustfallEnumVertex;
+/// # use trustfall_derive::TrustfallEnumVertex;
 /// #
 /// #[derive(Debug, Clone, TrustfallEnumVertex)]
 /// enum Vertex {

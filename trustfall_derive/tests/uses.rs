@@ -1,4 +1,4 @@
-use trustfall_proc_macros::TrustfallEnumVertex;
+use trustfall_derive::TrustfallEnumVertex;
 
 #[test]
 fn empty_enum() {
@@ -144,5 +144,8 @@ fn struct_variant() {
 fn ui() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/ui/*.rs");
+
+    // These tests are syntactically invalid.
+    // Use the .rs.broken extension to "hide" them from IDEs and `cargo check`.
     t.compile_fail("tests/ui/*.rs.broken");
 }
