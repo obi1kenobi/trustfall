@@ -1,0 +1,11 @@
+use trustfall_proc_macros::TrustfallEnumVertex;
+
+// Note the missing comma after the second variant.
+#[derive(Debug, Clone, TrustfallEnumVertex)]
+enum Vertex {
+    User(String),
+    Message { sender: String, content: String }
+    EmptyVariant,
+}
+
+fn main() {}

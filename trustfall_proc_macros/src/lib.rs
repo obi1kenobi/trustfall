@@ -1,12 +1,68 @@
 use quote::quote;
 use syn::punctuated::Punctuated;
 
+/// Adds `typename()` and `as_<variant>()` methods on an enum being used as a Trustfall vertex.
+///
+/// For example:
+/// ```rust
+/// # use trustfall_proc_macros::TrustfallEnumVertex;
+/// #
+/// #[derive(Debug, Clone, TrustfallEnumVertex)]
+/// enum Vertex {
+///     User(String),
+///     Message { author: String, content: String },
+///     EmptyVariant,
+/// }
+/// ```
+/// will get the following methods:
+/// ```rust
+/// # #[derive(Debug, Clone)]
+/// # enum Vertex {
+/// #     User(String),
+/// #     Message { author: String, content: String },
+/// #     EmptyVariant,
+/// # }
+/// #
+/// impl Vertex {
+///     fn typename(&self) -> &'static str {
+///         match self {
+///             Self::User { .. } => "User",
+///             Self::Message { .. } => "Message",
+///             Self::EmptyVariant { .. } => "EmptyVariant",
+///         }
+///     }
+///
+///     fn as_user(&self) -> Option<&String> {
+///         match self {
+///             Self::User(x) => Some(x),
+///             _ => None,
+///         }
+///     }
+///
+///     fn as_message(&self) -> Option<(&String, &String)> {
+///         match self {
+///             Self::Message { author, content } => Some((author, content)),
+///             _ => None,
+///         }
+///     }
+///
+///     fn as_empty_variant(&self) -> Option<()> {
+///         match self {
+///             Self::EmptyVariant => Some(()),
+///             _ => None,
+///         }
+///     }
+/// }
+/// ```
 #[proc_macro_derive(TrustfallEnumVertex)]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse(input).expect("failed to parse input");
-    impl_trustfall_enum_vertex(&ast)
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
+    match syn::parse(input) {
+        Ok(ast) => {
+            impl_trustfall_enum_vertex(&ast).unwrap_or_else(syn::Error::into_compile_error)
+        }
+        Err(e) => e.into_compile_error(),
+    }
+    .into()
 }
 
 fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
