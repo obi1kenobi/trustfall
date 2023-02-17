@@ -354,25 +354,80 @@ pub fn resolve_typename<'a, Vertex: Typename + Debug + Clone + 'a>(
     // `type_name` is the statically-known type. The vertices are definitely *at least* that type,
     // but could also be one of its subtypes. If there are no subtypes, they *must* be that type.
     let mut subtypes_iter = match schema.subtypes(type_name) {
-        Some(iter) => iter,
+        Some(iter) => iter.map(|x| dbg!(x)),
         None => panic!("type {type_name} is not part of this schema"),
     };
-    if subtypes_iter.next().is_none() {
-        let type_name: FieldValue = type_name.into();
-        Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
-            None => (ctx, FieldValue::Null),
-            Some(vertex) => {
-                debug_assert_eq!(
-                    Some(vertex.typename()),
-                    type_name.as_str(),
-                    "type {type_name:?} has no subtypes but {vertex:?} is some other type: {}",
-                    vertex.typename(),
-                );
-                (ctx, type_name.clone())
-            }
-        }))
-    } else {
+
+    // Types are their own subtypes in the Schema::subtypes() method.
+    // Is there a subtype that isn't the starting type itself?
+    if subtypes_iter.any(|name| name != type_name) {
         // Subtypes exist, we have to check each vertex separately.
         resolve_property_with(contexts, |vertex| vertex.typename().into())
+    } else {
+        // No other subtypes exist.
+        // All vertices here must be of exactly `type_name` type.
+        let type_name: FieldValue = type_name.into();
+        Box::new(contexts.map(move |ctx| match ctx.active_vertex() {
+            None => (ctx, FieldValue::Null),
+            Some(..) => (ctx, type_name.clone()),
+        }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt::Debug;
+
+    use crate::{
+        interpreter::{
+            helpers::{resolve_typename, Typename},
+            DataContext,
+        },
+        ir::FieldValue,
+        schema::Schema,
+    };
+
+    #[test]
+    fn typename_resolved_statically() {
+        #[derive(Debug, Clone)]
+        enum Vertex {
+            Variant,
+        }
+
+        impl Typename for Vertex {
+            fn typename(&self) -> &'static str {
+                unreachable!("typename() was called, so __typename was not resolved statically")
+            }
+        }
+
+        let schema = Schema::parse(
+            "\
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+directive @transform(op: String!) on FIELD
+
+type RootSchemaQuery {
+    Vertex: Vertex!
+}
+
+type Vertex {
+    field: Int
+}",
+        )
+        .expect("failed to parse schema");
+        let contexts = Box::new(std::iter::once(DataContext::new(Some(Vertex::Variant))));
+
+        let outputs: Vec<_> = resolve_typename(contexts, &schema, "Vertex")
+            .map(|(_ctx, value)| value)
+            .collect();
+
+        assert_eq!(vec![FieldValue::from("Vertex")], outputs);
     }
 }
