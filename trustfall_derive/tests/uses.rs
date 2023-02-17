@@ -154,7 +154,7 @@ fn generic_enum() {
     type Specific<'a, 'b> = Either<'a, 'b, Vec<i32>, i32>;
 
     let first_vec = vec![1, 2];
-    let first: Specific<'_, 'static>  = Either::First(&first_vec);
+    let first: Specific<'_, 'static> = Either::First(&first_vec);
     assert_eq!("First", first.typename());
     assert_eq!(Some(&&first_vec), first.as_first());
     assert_eq!(None, first.as_second());
@@ -187,7 +187,11 @@ fn attribute_use() {
 #[test]
 fn generic_enum_with_where_clause() {
     #[derive(Debug, Clone, TrustfallEnumVertex)]
-    enum Either<'a, 'b, A, B> where A: ?Sized, B: ?Sized + Debug + Clone {
+    enum Either<'a, 'b, A, B>
+    where
+        A: ?Sized,
+        B: ?Sized + Debug + Clone,
+    {
         First(&'a A),
         Second(&'b B),
     }
@@ -195,7 +199,7 @@ fn generic_enum_with_where_clause() {
     type Specific<'a, 'b> = Either<'a, 'b, Vec<i32>, i32>;
 
     let first_vec = vec![1, 2];
-    let first: Specific<'_, 'static>  = Either::First(&first_vec);
+    let first: Specific<'_, 'static> = Either::First(&first_vec);
     assert_eq!("First", first.typename());
     assert_eq!(Some(&&first_vec), first.as_first());
     assert_eq!(None, first.as_second());
@@ -209,7 +213,11 @@ fn generic_enum_with_where_clause() {
 #[test]
 fn generic_enum_with_defaults() {
     #[derive(Debug, Clone, TrustfallEnumVertex)]
-    enum Either<'a, 'b, A, B = i32, const N: usize = 3> where A: ?Sized, B: ?Sized + Debug + Clone {
+    enum Either<'a, 'b, A, B = i32, const N: usize = 3>
+    where
+        A: ?Sized,
+        B: ?Sized + Debug + Clone,
+    {
         First(&'a A),
         Second(&'b [B; N]),
     }
@@ -217,7 +225,7 @@ fn generic_enum_with_defaults() {
     type Specific<'a, 'b> = Either<'a, 'b, Vec<i32>, i32>;
 
     let first_vec = vec![1, 2];
-    let first: Specific<'_, 'static>  = Either::First(&first_vec);
+    let first: Specific<'_, 'static> = Either::First(&first_vec);
     assert_eq!("First", first.typename());
     assert_eq!(Some(&&first_vec), first.as_first());
     assert_eq!(None, first.as_second());
