@@ -7,7 +7,8 @@ pub mod provider {
     };
     pub use trustfall_core::ir::{EdgeParameters, Eid, Vid};
 
-    /// Contains the [`BasicAdapter`] trait, a simpler variant of [`Adapter`].
+    /// Contains the [`BasicAdapter`](trustfall_core::interpreter::basic_adapter::BasicAdapter)
+    /// trait, a simpler variant of [`Adapter`].
     pub mod basic_adapter {
         pub use trustfall_core::interpreter::basic_adapter::BasicAdapter;
     }

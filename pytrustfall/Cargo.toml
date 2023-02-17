@@ -3,10 +3,6 @@ name = "pytrustfall"
 version = "0.1.6"
 edition = "2021"
 
-# Avoid the name conflict with the Rust lib with the same name.
-# This library is only going to be used from Python, so rustdoc for it is of limited use.
-doc = false
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
@@ -14,6 +10,10 @@ doc = false
 # library (i.e. `import trustfall`). If you change this, you must also change the name of the
 # `#[pymodule]` in `src/lib.rs`.
 name = "trustfall"
+
+# Avoid the name conflict with the Rust lib with the same name.
+# This library is only going to be used from Python, so rustdoc for it is of limited use.
+doc = false
 
 # "cdylib" is necessary to produce a shared library for Python to import from.
 #
