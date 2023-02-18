@@ -49,6 +49,14 @@ pub type ContextIterator<'vertex, VertexT> = VertexIterator<'vertex, DataContext
 pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
     Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
 
+/// Accessor method for the `__typename` special property of Trustfall vertices.
+pub trait Typename {
+    /// Returns the type name of this vertex in the Trustfall query graph.
+    ///
+    /// Corresponds to the `__typename` special property of Trustfall vertices.
+    fn typename(&self) -> &'static str;
+}
+
 /// A partial result of a Trustfall query within the interpreter defined in this module.
 #[derive(Debug, Clone)]
 pub struct DataContext<Vertex: Clone + Debug> {

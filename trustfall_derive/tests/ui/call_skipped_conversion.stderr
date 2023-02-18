@@ -1,0 +1,17 @@
+error[E0599]: no method named `as_first` found for enum `TwoVariants` in the current scope
+  --> tests/ui/call_skipped_conversion.rs:17:11
+   |
+5  | enum TwoVariants {
+   | ---------------- method `as_first` not found for this enum
+...
+17 |     first.as_first();
+   |           ^^^^^^^^ method not found in `TwoVariants`
+
+error[E0599]: no method named `as_first` found for enum `TwoVariants` in the current scope
+  --> tests/ui/call_skipped_conversion.rs:24:12
+   |
+5  | enum TwoVariants {
+   | ---------------- method `as_first` not found for this enum
+...
+24 |     second.as_first();
+   |            ^^^^^^^^ method not found in `TwoVariants`

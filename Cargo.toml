@@ -2,6 +2,7 @@
 members = [
     "trustfall_core",
     "trustfall_filetests_macros",
+    "trustfall_derive",
     "trustfall_wasm",
     "pytrustfall",
     "demo-hackernews",

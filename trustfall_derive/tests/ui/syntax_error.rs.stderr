@@ -1,0 +1,16 @@
+error: expected one of `,`, `=`, or `}`, found `EmptyVariant`
+ --> tests/ui/syntax_error.rs.broken:8:5
+  |
+7 |     Message { sender: String, content: String }
+  |                                                -
+  |                                                |
+  |                                                expected one of `,`, `=`, or `}`
+  |                                                help: missing `,`
+8 |     EmptyVariant,
+  |     ^^^^^^^^^^^^ unexpected token
+
+error: expected `,`
+ --> tests/ui/syntax_error.rs.broken:8:5
+  |
+8 |     EmptyVariant,
+  |     ^^^^^^^^^^^^
