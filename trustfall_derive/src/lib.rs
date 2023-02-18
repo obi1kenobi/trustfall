@@ -347,3 +347,31 @@ fn to_lower_snake_case(value: &str) -> String {
     }
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::to_lower_snake_case;
+
+    #[test]
+    fn snake_case() {
+        let values = [
+            // input -> output, where both must be legal Rust identifiers
+            ("word", "word"),
+            ("Word", "word"),
+            ("TwoWords", "two_words"),
+            ("ID", "i_d"),
+            ("UserID", "user_i_d"),
+            ("_LeadingUnderscore", "_leading_underscore"),
+            ("__DoubleUnderscore", "__double_underscore"),
+            ("TrailingUnderscore_", "trailing_underscore_"),
+            ("DoubleUnderscore__", "double_underscore__"),
+            ("Inner_Underscore", "inner_underscore"),
+            ("Double__Underscore", "double__underscore"),
+            ("Number123Middle", "number123_middle"),
+        ];
+        for (input, expected_output) in values {
+            let actual_output = to_lower_snake_case(input);
+            assert_eq!(expected_output, &actual_output);
+        }
+    }
+}
