@@ -172,7 +172,7 @@ fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::Toke
         _ => {
             return Err(syn::Error::new_spanned(
                 ast,
-                "only enums can derive TrustfallEnumVertex",
+                "only enums can derive Typename",
             ))
         }
     };

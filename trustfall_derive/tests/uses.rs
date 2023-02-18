@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use trustfall_core::interpreter::Typename;
-use trustfall_derive::TrustfallEnumVertex;
+use trustfall_derive::{TrustfallEnumVertex, Typename};
 
 #[test]
 fn empty_enum() {
@@ -234,6 +234,21 @@ fn generic_enum_with_defaults() {
     assert_eq!("Second", second.typename());
     assert_eq!(None, second.as_first());
     assert_eq!(Some(&&[123, 456, 789]), second.as_second());
+}
+
+#[test]
+fn typename() {
+    #[derive(Debug, Clone, Typename)]
+    enum TwoVariants {
+        First,
+        Second,
+    }
+
+    let first = TwoVariants::First;
+    assert_eq!("First", first.typename());
+
+    let second = TwoVariants::Second;
+    assert_eq!("Second", second.typename());
 }
 
 #[test]

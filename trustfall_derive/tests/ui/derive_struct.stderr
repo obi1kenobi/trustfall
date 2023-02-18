@@ -5,3 +5,11 @@ error: only enums can derive TrustfallEnumVertex
 5 | |     content: i64,
 6 | | }
   | |_^
+
+error: only enums can derive Typename
+  --> tests/ui/derive_struct.rs:9:1
+   |
+9  | / struct OtherVertex {
+10 | |     content: i64,
+11 | | }
+   | |_^
