@@ -1,13 +1,33 @@
+//! Commonly-implemented functionality for Trustfall vertex types.
+//!
+//! Trustfall vertex types are nearly always enums.
+//! Here's the easiest way to make a Trustfall vertex:
+//! ```rust
+//! # use std::rc::Rc;
+//! # use trustfall_derive::TrustfallEnumVertex;
+//! #
+//! # #[derive(Debug, Clone)]
+//! # struct User;
+//! #
+//! # #[derive(Debug, Clone)]
+//! # struct Message;
+//! #
+//! #[derive(Debug, Clone, TrustfallEnumVertex)]
+//! enum Vertex {
+//!     // variants that match the type in your schema;
+//!     // for example:
+//!     User(Rc<User>),
+//!     Message(Rc<Message>),
+//! }
+//! ```
+
 use quote::quote;
 use syn::punctuated::Punctuated;
 
 const TRUSTFALL_ATTRIBUTE: &str = "trustfall";
 const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 
-/// Adds `typename()` and `as_<variant>()` methods on an enum being used as a Trustfall vertex.
-///
-/// The `typename()` method is part of Trustfall's
-/// [`Typename`](trustfall_core::interpreter::Typename) trait.
+/// Adds the [`Typename`] trait and `as_<variant>()` methods on an enum used as a Trustfall vertex.
 ///
 /// For example:
 /// ```rust
@@ -66,7 +86,7 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 /// ```
 ///
 /// A variant can opt out of having a generated conversion method using
-/// the `#[trustfall(skip_conversion)]` attribute
+/// the `#[trustfall(skip_conversion)]` attribute.
 ///
 /// In this example, only the `User` variant gets a conversion method:
 /// ```rust
@@ -80,6 +100,11 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 ///     Message { author: String, content: String },
 /// }
 /// ```
+///
+/// To add only the [`Typename`] implementation without the `as_<variant>()` conversions,
+/// use the [`Typename`](self::Typename) derive macro instead.
+///
+/// [`Typename`]: trustfall_core::interpreter::Typename
 #[proc_macro_derive(TrustfallEnumVertex, attributes(trustfall))]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
@@ -89,7 +114,56 @@ pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macr
     .into()
 }
 
-fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+/// Derives the [`Typename`] trait on the enum being used as a Trustfall vertex.
+///
+/// Each variant is considered a Trustfall type with the corresponding name.
+/// The trait's [`typename()`] method resolves the `__typename` special property
+/// that implicitly exists on all vertices in a Trustfall schema.
+///
+/// For example:
+/// ```rust
+/// # use trustfall_derive::Typename;
+/// #
+/// #[derive(Debug, Clone, Typename)]
+/// enum Vertex {
+///     User(String),
+///     Message { author: String, content: String },
+///     EmptyVariant,
+/// }
+/// ```
+/// will get the following implementation:
+/// ```rust
+/// # use trustfall_core::interpreter::Typename;
+/// #
+/// # #[derive(Debug, Clone)]
+/// # enum Vertex {
+/// #     User(String),
+/// #     Message { author: String, content: String },
+/// #     EmptyVariant,
+/// # }
+/// #
+/// impl Typename for Vertex {
+///     fn typename(&self) -> &'static str {
+///         match self {
+///             Self::User { .. } => "User",
+///             Self::Message { .. } => "Message",
+///             Self::EmptyVariant { .. } => "EmptyVariant",
+///         }
+///     }
+/// }
+/// ```
+/// [`Typename`]: trustfall_core::interpreter::Typename
+/// [`typename()`]: trustfall_core::interpreter::Typename::typename
+#[proc_macro_derive(Typename)]
+pub fn typename_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    match syn::parse(input) {
+        Ok(ast) => impl_typename_derive(&ast).unwrap_or_else(syn::Error::into_compile_error),
+        Err(e) => e.into_compile_error(),
+    }
+    .into()
+}
+
+fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &ast.ident;
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
@@ -112,6 +186,36 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
         })
         .unwrap_or_default();
 
+    let gen = quote! {
+        #[automatically_derived]
+        impl #impl_generics ::trustfall_core::interpreter::Typename for #name #ty_generics #where_clause {
+            fn typename(&self) -> &'static str {
+                match self {
+                    #arms
+
+                    #[allow(unreachable_code)]
+                    _ => unreachable!("this arm exists only for uninhabited enums"),
+                }
+            }
+        }
+    };
+    Ok(gen)
+}
+
+fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let name = &ast.ident;
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+
+    let variants = match &ast.data {
+        syn::Data::Enum(d) => &d.variants,
+        _ => {
+            return Err(syn::Error::new_spanned(
+                ast,
+                "only enums can derive TrustfallEnumVertex",
+            ))
+        }
+    };
+
     let conversions = variants
         .iter()
         .map(generate_conversion_method)
@@ -133,18 +237,10 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
         Default::default()
     };
 
-    let gen = quote! {
-        #[automatically_derived]
-        impl #impl_generics ::trustfall_core::interpreter::Typename for #name #ty_generics #where_clause {
-            fn typename(&self) -> &'static str {
-                match self {
-                    #arms
+    let typename_impl = impl_typename_derive(ast)?;
 
-                    #[allow(unreachable_code)]
-                    _ => unreachable!("this arm exists only for uninhabited enums"),
-                }
-            }
-        }
+    let gen = quote! {
+        #typename_impl
         #conversions_impl
     };
     Ok(gen)
