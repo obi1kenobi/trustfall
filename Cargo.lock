@@ -3187,6 +3187,7 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "trustfall_core",
+ "trustfall_derive",
 ]
 
 [[package]]

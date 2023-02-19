@@ -2,22 +2,20 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 /// Components needed to implement data providers.
 pub mod provider {
+    pub use trustfall_core::interpreter::basic_adapter::BasicAdapter;
     pub use trustfall_core::interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, Typename, VertexIterator,
     };
     pub use trustfall_core::ir::{EdgeParameters, Eid, Vid};
-
-    /// Contains the [`BasicAdapter`](trustfall_core::interpreter::basic_adapter::BasicAdapter)
-    /// trait, a simpler variant of [`Adapter`].
-    pub mod basic_adapter {
-        pub use trustfall_core::interpreter::basic_adapter::BasicAdapter;
-    }
 
     /// Helpers for common operations when building adapters.
     pub use trustfall_core::interpreter::helpers::{
         resolve_coercion_with, resolve_neighbors_with, resolve_property_with,
     };
     pub use trustfall_core::{accessor_property, field_property};
+
+    /// Derive macros for common vertex implementation details.
+    pub use trustfall_derive::{TrustfallEnumVertex, Typename};
 }
 
 /// Property values and query variables.

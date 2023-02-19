@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
-trustfall_core = { path = "../trustfall_core", version = "0.1.1" }
+trustfall_core = { version = "0.1.1", path = "../trustfall_core" }
+trustfall_derive = { version = "0.1.0", path = "../trustfall_derive" }
