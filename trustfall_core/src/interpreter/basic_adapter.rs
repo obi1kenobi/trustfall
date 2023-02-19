@@ -10,10 +10,14 @@ use super::{
 /// A simplified variant of the [`Adapter`] trait.
 ///
 /// Implementing `BasicAdapter` provides a "free" [`Adapter`] implementation.
-/// `BasicAdapter` gives up [`Adapter`]'s flexibility in exchange for being
+/// `BasicAdapter` gives up a bit of [`Adapter`]'s flexibility in exchange for being
 /// as simple as possible to implement:
-/// - `&str` instead of `&Arc<str>` for all type, property, and edge names.
+/// - `&str` instead of `&Arc<str>` for all names of types, properties, and edges.
 /// - Simplified function signatures, with only the minimum necessary arguments.
+/// - Automatic handling of the `__typename` special property.
+///
+/// The easiest way to implement this trait is with the `Vertex` associated type set
+/// to an enum that is [`#[derive(Debug, Clone, TrustfallEnumVertex)]`].
 pub trait BasicAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
     /// It's frequently a good idea to use an Rc<...> type for cheaper cloning here.
@@ -156,7 +160,20 @@ pub trait BasicAdapter<'vertex> {
     /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
-    /// This method resolves the name of the type of that active vertex.
+    /// This method resolves the name of the type of that active vertex. That type may not always
+    /// be the same as the value of the `type_name` parameter, due to inheritance in the schema.
+    /// For example, consider a schema with types `interface Message` and
+    /// `type Email implements Message`, and a query like the following:
+    /// ```graphql
+    /// query {
+    ///     Message {
+    ///         __typename @output
+    ///     }
+    /// }
+    /// ```
+    /// The resulting `resolve_typename()` call here would have `type_name = "Message"`.
+    /// However, some of the messages read by this query may be emails!
+    /// For those messages, outputting `__typename` would produce the value `"Email"`.
     ///
     /// The default implementation uses the [`Typename`] trait implemented by `Self::Vertex`
     /// to get each vertex's type name.
