@@ -4,7 +4,7 @@ use trustfall_core::{
     interpreter::{
         basic_adapter::BasicAdapter,
         helpers::{resolve_neighbors_with as neighbors, resolve_property_with as property},
-        ContextIterator, ContextOutcomeIterator, VertexIterator,
+        ContextIterator, ContextOutcomeIterator, Typename, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -48,6 +48,19 @@ impl<'a> Vertex<'a> {
     impl_downcast!(as_feed_link, Link, Self::FeedLink);
     impl_downcast!(as_feed_entry, Entry, Self::FeedEntry);
     impl_downcast!(as_feed_content, Content, Self::FeedContent);
+}
+
+impl<'a> Typename for Vertex<'a> {
+    fn typename(&self) -> &'static str {
+        match self {
+            Vertex::Feed(..) => "Feed",
+            Vertex::FeedText(..) => "FeedText",
+            Vertex::ChannelImage(..) => "ChannelImage",
+            Vertex::FeedLink(..) => "FeedLink",
+            Vertex::FeedEntry(..) => "FeedEntry",
+            Vertex::FeedContent(..) => "FeedContent",
+        }
+    }
 }
 
 macro_rules! iterable {
