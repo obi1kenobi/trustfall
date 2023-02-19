@@ -5,9 +5,8 @@ use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
-        basic_adapter::BasicAdapter, execution::interpret_ir,
-        ContextIterator as BaseContextIterator, ContextOutcomeIterator, DataContext,
-        VertexIterator,
+        execution::interpret_ir, Adapter, ContextIterator as BaseContextIterator,
+        ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -233,13 +232,14 @@ impl ContextIterator {
     }
 }
 
-impl BasicAdapter<'static> for AdapterShim {
+impl Adapter<'static> for AdapterShim {
     type Vertex = Arc<Py<PyAny>>;
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: &str,
+        edge_name: &Arc<str>,
         parameters: &EdgeParameters,
+        _query_info: &QueryInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
@@ -252,7 +252,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 .call_method(
                     py,
                     "resolve_starting_vertices",
-                    (edge_name, parameter_data),
+                    (edge_name.as_ref(), parameter_data),
                     None,
                 )
                 .unwrap();
@@ -264,8 +264,9 @@ impl BasicAdapter<'static> for AdapterShim {
     fn resolve_property(
         &mut self,
         contexts: BaseContextIterator<'static, Self::Vertex>,
-        type_name: &str,
-        property_name: &str,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
@@ -274,7 +275,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 .call_method(
                     py,
                     "resolve_property",
-                    (contexts, type_name, property_name),
+                    (contexts, type_name.as_ref(), property_name.as_ref()),
                     None,
                 )
                 .unwrap();
@@ -287,9 +288,10 @@ impl BasicAdapter<'static> for AdapterShim {
     fn resolve_neighbors(
         &mut self,
         contexts: BaseContextIterator<'static, Self::Vertex>,
-        type_name: &str,
-        edge_name: &str,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
         parameters: &EdgeParameters,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
@@ -303,7 +305,12 @@ impl BasicAdapter<'static> for AdapterShim {
                 .call_method(
                     py,
                     "resolve_neighbors",
-                    (contexts, type_name, edge_name, parameter_data),
+                    (
+                        contexts,
+                        type_name.as_ref(),
+                        edge_name.as_ref(),
+                        parameter_data,
+                    ),
                     None,
                 )
                 .unwrap();
@@ -316,8 +323,9 @@ impl BasicAdapter<'static> for AdapterShim {
     fn resolve_coercion(
         &mut self,
         contexts: BaseContextIterator<'static, Self::Vertex>,
-        type_name: &str,
-        coerce_to_type: &str,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
@@ -326,7 +334,7 @@ impl BasicAdapter<'static> for AdapterShim {
                 .call_method(
                     py,
                     "resolve_coercion",
-                    (contexts, type_name, coerce_to_type),
+                    (contexts, type_name.as_ref(), coerce_to_type.as_ref()),
                     None,
                 )
                 .unwrap();
