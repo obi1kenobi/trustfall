@@ -2,6 +2,11 @@
 name = "trustfall"
 version = "0.2.0"
 edition = "2021"
+authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
+license = "Apache-2.0"
+description = "The trustfall query engine, empowering you to query everything."
+repository = "https://github.com/obi1kenobi/trustfall"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
