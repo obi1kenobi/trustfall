@@ -231,12 +231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "camino"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88ad0e1e3e88dd237a156ab9f571021b8a158caa0ae44b1968a241efb5144c1e"
-
-[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3196,7 +3190,6 @@ version = "0.2.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "camino",
  "chrono",
  "itertools",
  "lazy_static",

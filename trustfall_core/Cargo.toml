@@ -19,16 +19,17 @@ crate-type = ["lib"]
 
 [dependencies]
 serde = { version = "^1.0", features = ["derive", "rc"] }
-serde_json = "^1.0.0"
-ron = "^0.6.4"
 async-graphql-parser = "^2.11.3"
 async-graphql-value = "^2.11.3"
 maplit = "^1.0.2"
-camino = "1.0.2"
 lazy_static = "^1.4.0"
 smallvec = { version = "^1.6.1", features = ["serde"] }
-trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version = "0.2.0" }
 chrono = { version = "0.4.19", features = ["serde"] }
 regex = "1.5.4"
 thiserror = "1.0.30"
 itertools = "0.10.1"
+
+[dev-dependencies]
+serde_json = "^1.0.0"
+ron = "^0.6.4"
+trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version = "0.2.0" }
