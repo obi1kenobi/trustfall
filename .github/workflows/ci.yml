@@ -290,6 +290,31 @@ jobs:
     secrets:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+  attempt-publish-trustfall-derive:
+    name: publish trustfall
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - ci-everything
+      - attempt-publish-trustfall-core
+    uses: ./.github/workflows/publish-rust.yml
+    with:
+      crate-name: trustfall_derive
+    secrets:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  attempt-publish-trustfall:
+    name: publish trustfall
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - ci-everything
+      - attempt-publish-trustfall-core
+      - attempt-publish-trustfall-derive
+    uses: ./.github/workflows/publish-rust.yml
+    with:
+      crate-name: trustfall
+    secrets:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
   attempt-publish-pytrustfall:
     name: publish python trusfall
     if: github.ref == 'refs/heads/main'

@@ -1,12 +1,24 @@
 [package]
-name = "trustfall"
+name = "pytrustfall"
 version = "0.1.6"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
+# The name of the native library. This is the name which will be used in Python to import the
+# library (i.e. `import trustfall`). If you change this, you must also change the name of the
+# `#[pymodule]` in `src/lib.rs`.
 name = "trustfall"
+
+# Avoid the name conflict with the Rust lib with the same name.
+# This library is only going to be used from Python, so rustdoc for it is of limited use.
+doc = false
+
+# "cdylib" is necessary to produce a shared library for Python to import from.
+#
+# Downstream Rust code (including any code in `bin/`, `examples/`, and `tests/`) will not be able
+# to `use pytrustfall;` unless the "rlib" or "lib" crate type is also included, e.g.:
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
@@ -14,4 +26,4 @@ async-graphql-parser = "2.11.3"
 async-graphql-value = "2.11.3"
 lazy_static = "1.4.0"
 pyo3 = { version = "0.17.2", features = ["extension-module"] }
-trustfall_core = { version = "0.1.1", path = "../trustfall_core" }
+trustfall_core = { version = "0.2.0", path = "../trustfall_core" }
