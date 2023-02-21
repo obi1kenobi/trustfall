@@ -316,7 +316,7 @@ jobs:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   attempt-publish-pytrustfall:
-    name: publish python trusfall
+    name: publish python trustfall
     if: github.ref == 'refs/heads/main'
     needs:
       - ci-everything
