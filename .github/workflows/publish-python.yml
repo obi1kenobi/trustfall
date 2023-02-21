@@ -227,7 +227,7 @@ jobs:
       - id: check
         run: |
           set +e
-          .github/workflows/is_py_package_version_already_uploaded.sh trustfall
+          .github/workflows/is_py_package_version_already_uploaded.sh pytrustfall trustfall
           export EXIT_CODE="$?"
           set -e
           if [[ "$EXIT_CODE" == "7" ]]; then
