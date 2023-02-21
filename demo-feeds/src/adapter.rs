@@ -1,12 +1,11 @@
 use feed_rs::model::{Content, Entry, Feed, FeedType, Image, Link, Text};
-use trustfall_core::{
-    field_property,
-    interpreter::{
-        basic_adapter::BasicAdapter,
-        helpers::{resolve_neighbors_with as neighbors, resolve_property_with as property},
-        ContextIterator, ContextOutcomeIterator, Typename, VertexIterator,
+use trustfall::{
+    provider::{
+        field_property, resolve_neighbors_with as neighbors, resolve_property_with as property,
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters,
+        VertexIterator, TrustfallEnumVertex,
     },
-    ir::{EdgeParameters, FieldValue},
+    FieldValue,
 };
 
 #[derive(Debug)]
@@ -20,7 +19,7 @@ impl<'a> FeedAdapter<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TrustfallEnumVertex)]
 pub(crate) enum Vertex<'a> {
     Feed(&'a Feed),
     FeedText(&'a Text),
@@ -28,39 +27,6 @@ pub(crate) enum Vertex<'a> {
     FeedLink(&'a Link),
     FeedEntry(&'a Entry),
     FeedContent(&'a Content),
-}
-
-macro_rules! impl_downcast {
-    ($name:ident, $output:ident, $arm:path) => {
-        fn $name(&self) -> Option<&'a $output> {
-            match self {
-                $arm(x) => Some(*x),
-                _ => None,
-            }
-        }
-    };
-}
-
-impl<'a> Vertex<'a> {
-    impl_downcast!(as_feed, Feed, Self::Feed);
-    impl_downcast!(as_feed_text, Text, Self::FeedText);
-    impl_downcast!(as_channel_image, Image, Self::ChannelImage);
-    impl_downcast!(as_feed_link, Link, Self::FeedLink);
-    impl_downcast!(as_feed_entry, Entry, Self::FeedEntry);
-    impl_downcast!(as_feed_content, Content, Self::FeedContent);
-}
-
-impl<'a> Typename for Vertex<'a> {
-    fn typename(&self) -> &'static str {
-        match self {
-            Vertex::Feed(..) => "Feed",
-            Vertex::FeedText(..) => "FeedText",
-            Vertex::ChannelImage(..) => "ChannelImage",
-            Vertex::FeedLink(..) => "FeedLink",
-            Vertex::FeedEntry(..) => "FeedEntry",
-            Vertex::FeedContent(..) => "FeedContent",
-        }
-    }
 }
 
 macro_rules! iterable {

@@ -536,7 +536,7 @@ dependencies = [
  "ron 0.7.1",
  "serde",
  "serde_json",
- "trustfall_core",
+ "trustfall",
 ]
 
 [[package]]
