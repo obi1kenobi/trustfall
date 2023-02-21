@@ -42,7 +42,7 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 /// ```
 /// will get the following implementations:
 /// ```rust
-/// # use trustfall_core::interpreter::Typename;
+/// # use trustfall::provider::Typename;
 /// #
 /// # #[derive(Debug, Clone)]
 /// # enum Vertex {
@@ -104,7 +104,7 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 /// To add only the [`Typename`] implementation without the `as_<variant>()` conversions,
 /// use the [`Typename`](self::Typename) derive macro instead.
 ///
-/// [`Typename`]: trustfall_core::interpreter::Typename
+/// [`Typename`]: trustfall::provider::Typename
 #[proc_macro_derive(TrustfallEnumVertex, attributes(trustfall))]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
@@ -133,7 +133,7 @@ pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macr
 /// ```
 /// will get the following implementation:
 /// ```rust
-/// # use trustfall_core::interpreter::Typename;
+/// # use trustfall::provider::Typename;
 /// #
 /// # #[derive(Debug, Clone)]
 /// # enum Vertex {
@@ -152,8 +152,8 @@ pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macr
 ///     }
 /// }
 /// ```
-/// [`Typename`]: trustfall_core::interpreter::Typename
-/// [`typename()`]: trustfall_core::interpreter::Typename::typename
+/// [`Typename`]: trustfall::provider::Typename
+/// [`typename()`]: trustfall::provider::Typename::typename
 #[proc_macro_derive(Typename)]
 pub fn typename_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
