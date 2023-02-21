@@ -12,8 +12,11 @@ set -euo pipefail
 # Go to the repo root directory.
 cd "$(git rev-parse --show-toplevel)"
 
-# The first argument should be the name of a crate.
+# The first argument should be the name of a Rust crate.
 CRATE_NAME="$1"
+
+# The second argument should be the name of that crate's corresponding Python package.
+PY_PKG_NAME="$2"
 
 CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh "$CRATE_NAME")" || \
     (echo >&2 "No crate named $CRATE_NAME found in workspace."; exit 1)
@@ -24,7 +27,7 @@ echo >&2 "Crate $CRATE_NAME current version: $CURRENT_VERSION"
 # on substrings of versions.
 EXISTING_VERSIONS="
 $( \
-    curl 2>/dev/null "https://pypi.org/pypi/$CRATE_NAME/json" | \
+    curl 2>/dev/null "https://pypi.org/pypi/$PY_PKG_NAME/json" | \
     jq --exit-status -r '.releases | keys[]' \
 )"
 echo >&2 -e "Versions on pypi.org:$EXISTING_VERSIONS\n"
