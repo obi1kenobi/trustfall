@@ -8,18 +8,18 @@ pub mod provider {
     };
     pub use trustfall_core::ir::{EdgeParameters, Eid, Vid};
 
-    /// Helpers for common operations when building adapters.
+    // Helpers for common operations when building adapters.
     pub use trustfall_core::interpreter::helpers::{
         resolve_coercion_with, resolve_neighbors_with, resolve_property_with,
     };
     pub use trustfall_core::{accessor_property, field_property};
 
-    /// Derive macros for common vertex implementation details.
+    // Derive macros for common vertex implementation details.
     pub use trustfall_derive::{TrustfallEnumVertex, Typename};
 }
 
-/// Property values and query variables.
-/// Useful both for querying and for implementing data providers.
+// Property values and query variables.
+// Useful both for querying and for implementing data providers.
 pub use trustfall_core::ir::{FieldValue, TransparentValue};
 
 /// Trustfall query schema.
