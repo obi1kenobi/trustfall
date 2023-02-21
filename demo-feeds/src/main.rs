@@ -10,9 +10,7 @@ use std::{
 
 use feed_rs::{model::Feed, parser};
 use serde::Deserialize;
-use trustfall_core::{
-    frontend::parse, interpreter::execution::interpret_ir, ir::FieldValue, schema::Schema,
-};
+use trustfall::{execute_query, FieldValue, Schema};
 
 #[macro_use]
 extern crate lazy_static;
@@ -36,7 +34,7 @@ lazy_static! {
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
+    args: BTreeMap<Arc<str>, FieldValue>,
 }
 
 fn refresh_data() {
@@ -61,17 +59,17 @@ fn refresh_data() {
     }
 }
 
-fn execute_query(path: &str) {
+fn run_query(path: &str) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let data = read_feed_data();
     let adapter = Rc::new(RefCell::new(FeedAdapter::new(&data)));
 
-    let query = parse(&SCHEMA, input_query.query).unwrap();
+    let query = input_query.query;
     let arguments = input_query.args;
 
-    for data_item in interpret_ir(adapter, query, arguments).unwrap() {
+    for data_item in execute_query(&SCHEMA, adapter, query, arguments).unwrap() {
         println!("\n{}", serde_json::to_string_pretty(&data_item).unwrap());
     }
 }
@@ -105,7 +103,7 @@ fn main() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                execute_query(path)
+                run_query(path)
             }
         },
         Some(cmd) => panic!("Unrecognized command given: {cmd}"),

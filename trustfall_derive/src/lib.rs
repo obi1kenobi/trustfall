@@ -42,7 +42,7 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 /// ```
 /// will get the following implementations:
 /// ```rust
-/// # use trustfall_core::interpreter::Typename;
+/// # use trustfall::provider::Typename;
 /// #
 /// # #[derive(Debug, Clone)]
 /// # enum Vertex {
@@ -104,7 +104,7 @@ const SKIP_CONVERSION_ATTRIBUTE: &str = "skip_conversion";
 /// To add only the [`Typename`] implementation without the `as_<variant>()` conversions,
 /// use the [`Typename`](self::Typename) derive macro instead.
 ///
-/// [`Typename`]: trustfall_core::interpreter::Typename
+/// [`Typename`]: https://docs.rs/trustfall/0.2.0/trustfall/provider/trait.Typename.html
 #[proc_macro_derive(TrustfallEnumVertex, attributes(trustfall))]
 pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
@@ -133,7 +133,7 @@ pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macr
 /// ```
 /// will get the following implementation:
 /// ```rust
-/// # use trustfall_core::interpreter::Typename;
+/// # use trustfall::provider::Typename;
 /// #
 /// # #[derive(Debug, Clone)]
 /// # enum Vertex {
@@ -152,8 +152,8 @@ pub fn trustfall_enum_vertex_derive(input: proc_macro::TokenStream) -> proc_macr
 ///     }
 /// }
 /// ```
-/// [`Typename`]: trustfall_core::interpreter::Typename
-/// [`typename()`]: trustfall_core::interpreter::Typename::typename
+/// [`Typename`]: https://docs.rs/trustfall/0.2.0/trustfall/provider/trait.Typename.html
+/// [`typename()`]: https://docs.rs/trustfall/0.2.0/trustfall/provider/trait.Typename.html#tymethod.typename
 #[proc_macro_derive(Typename)]
 pub fn typename_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match syn::parse(input) {
@@ -188,7 +188,7 @@ fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::Toke
 
     let gen = quote! {
         #[automatically_derived]
-        impl #impl_generics ::trustfall_core::interpreter::Typename for #name #ty_generics #where_clause {
+        impl #impl_generics ::trustfall::provider::Typename for #name #ty_generics #where_clause {
             fn typename(&self) -> &'static str {
                 match self {
                     #arms
