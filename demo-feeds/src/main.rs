@@ -36,7 +36,7 @@ lazy_static! {
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
+    args: BTreeMap<Arc<str>, FieldValue>,
 }
 
 fn refresh_data() {

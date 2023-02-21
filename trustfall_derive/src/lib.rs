@@ -188,7 +188,7 @@ fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::Toke
 
     let gen = quote! {
         #[automatically_derived]
-        impl #impl_generics ::trustfall_core::interpreter::Typename for #name #ty_generics #where_clause {
+        impl #impl_generics ::trustfall::provider::Typename for #name #ty_generics #where_clause {
             fn typename(&self) -> &'static str {
                 match self {
                     #arms
