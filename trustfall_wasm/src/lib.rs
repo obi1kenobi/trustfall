@@ -51,8 +51,7 @@ impl Schema {
 
 pub fn from_js_args(args: JsValue) -> Result<Arc<BTreeMap<Arc<str>, FieldValue>>, String> {
     // TODO: add a proper error type
-    let args = args
-        .into_serde::<BTreeMap<String, JsFieldValue>>()
+    let args = serde_wasm_bindgen::from_value::<BTreeMap<String, JsFieldValue>>(args)
         .map_err(|e| e.to_string())?
         .into_iter()
         .map(|(k, v)| (Arc::from(k), v.into()))

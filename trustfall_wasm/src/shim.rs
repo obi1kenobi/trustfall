@@ -65,11 +65,11 @@ impl JsEdgeParameters {
             .get(name)
             .expect("no edge parameter by that name");
 
-        JsValue::from_serde(&value).expect("serde conversion failed")
+        serde_wasm_bindgen::to_value(&value).expect("serde conversion failed")
     }
 
     pub fn into_js_dict(&self) -> JsValue {
-        JsValue::from_serde(&self.values).expect("serde conversion failed")
+        serde_wasm_bindgen::to_value(&self.values).expect("serde conversion failed")
     }
 }
 
@@ -239,7 +239,7 @@ impl QueryResultItem {
 
     #[wasm_bindgen(getter)]
     pub fn value(&self) -> JsValue {
-        JsValue::from_serde(&self.item).expect("serde conversion failed")
+        serde_wasm_bindgen::to_value(&self.item).expect("serde conversion failed")
     }
 }
 

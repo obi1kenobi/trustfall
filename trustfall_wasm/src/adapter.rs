@@ -110,7 +110,7 @@ impl Iterator for ContextAndValueIterator {
             let value = iter_next.value();
 
             let next_element: ReturnedContextIdAndValue =
-                value.into_serde().expect("not a legal iterator element");
+                serde_wasm_bindgen::from_value(value).expect("not a legal iterator element");
             assert_eq!(next_element.local_id, next_item);
 
             self.next_item = self.next_item.wrapping_add(1);
@@ -223,7 +223,7 @@ impl Iterator for ContextAndBoolIterator {
             let value = iter_next.value();
 
             let next_element: ReturnedContextIdAndBool =
-                value.into_serde().expect("not a legal iterator element");
+                serde_wasm_bindgen::from_value(value).expect("not a legal iterator element");
             assert_eq!(next_element.local_id, next_item);
 
             self.next_item = self.next_item.wrapping_add(1);
