@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
-use trustfall_core::interpreter::Typename;
-use trustfall_derive::{TrustfallEnumVertex, Typename};
+use trustfall::provider::Typename;
+use trustfall_derive::TrustfallEnumVertex;
 
 #[test]
 fn empty_enum() {

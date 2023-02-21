@@ -592,7 +592,7 @@ dependencies = [
  "ron 0.7.1",
  "serde",
  "serde_json",
- "trustfall_core",
+ "trustfall",
 ]
 
 [[package]]
@@ -3301,12 +3301,12 @@ dependencies = [
 
 [[package]]
 name = "trustfall_derive"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn",
- "trustfall_core",
+ "trustfall",
  "trybuild",
 ]
 
