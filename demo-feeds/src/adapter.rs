@@ -2,8 +2,8 @@ use feed_rs::model::{Content, Entry, Feed, FeedType, Image, Link, Text};
 use trustfall::{
     provider::{
         field_property, resolve_neighbors_with as neighbors, resolve_property_with as property,
-        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters,
-        VertexIterator, TrustfallEnumVertex,
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
+        VertexIterator,
     },
     FieldValue,
 };

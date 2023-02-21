@@ -10,9 +10,7 @@ use std::{
 
 use feed_rs::{model::Feed, parser};
 use serde::Deserialize;
-use trustfall::{
-    FieldValue, Schema, execute_query,
-};
+use trustfall::{execute_query, FieldValue, Schema};
 
 #[macro_use]
 extern crate lazy_static;

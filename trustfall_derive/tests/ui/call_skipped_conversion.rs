@@ -1,4 +1,4 @@
-use trustfall_core::interpreter::Typename;
+use trustfall::provider::Typename;
 use trustfall_derive::TrustfallEnumVertex;
 
 #[derive(Debug, Clone, TrustfallEnumVertex)]
