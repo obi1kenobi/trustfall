@@ -4,7 +4,10 @@ use gloo_utils::format::JsValueSerdeExt;
 use trustfall_core::ir::FieldValue;
 use wasm_bindgen::prelude::*;
 
-use crate::{adapter::{AdapterShim, JsAdapter}, shim::{JsFieldValue, QueryResultIterator}};
+use crate::{
+    adapter::{AdapterShim, JsAdapter},
+    shim::{JsFieldValue, QueryResultIterator},
+};
 
 #[macro_use]
 pub mod util;
