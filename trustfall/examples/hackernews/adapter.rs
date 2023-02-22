@@ -1,14 +1,12 @@
 #![allow(dead_code)]
 
 use hn_api::{types::Item, HnClient};
-use trustfall_core::{
-    field_property,
-    interpreter::{
-        basic_adapter::BasicAdapter,
-        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        ContextIterator, ContextOutcomeIterator, VertexIterator,
+use trustfall::{
+    provider::{
+        field_property, resolve_coercion_with, resolve_neighbors_with, resolve_property_with,
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, VertexIterator,
     },
-    ir::{EdgeParameters, FieldValue},
+    FieldValue,
 };
 
 use crate::vertex::Vertex;

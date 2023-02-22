@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use hn_api::types::{Comment, Item, Job, Story, User};
-use trustfall_core::interpreter::Typename;
+use trustfall::provider::Typename;
 
 #[derive(Debug, Clone)]
 pub enum Vertex {

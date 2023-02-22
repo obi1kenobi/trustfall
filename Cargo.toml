@@ -6,7 +6,6 @@ members = [
     "trustfall_derive",
     "trustfall_wasm",
     "pytrustfall",
-    "demo-hackernews",
     "demo-metar",
     "demo-hytradboi",
     "experiments/schemaless",

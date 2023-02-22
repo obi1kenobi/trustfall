@@ -47,7 +47,7 @@ The project consists of the following components:
 - `vertex.rs` defines the `Vertex` enum which `trustfall` uses to
   represent vertices in the query graph.
 - `adapter.rs` defines the `HackerNewsAdapter` struct, which implements
-  the `trustfall_core::interpreter::Adapter` trait and connects the query engine
+  the `trustfall::provider::BasicAdapter` trait and connects the query engine
   to the HackerNews API.
     - The `resolve_starting_vertices` method is what produces the initial iterator of `Vertex` vertices
       corresponding to the root edge at which querying starts (e.g. `FrontPage`).
@@ -76,7 +76,7 @@ This demo contains several example query files in the `example_queries` director
 Each file represents a single query (conforming to the schema in `hackernews.graphql`)
 together with any arguments necessary to run the query.
 
-To execute a query, run `cargo run query path/to/query/file.ron`. The execution is
+To execute a query, run `cargo run --example hackernews query path/to/query/file.ron`. The execution is
 lazy and incremental (iterator-style), so you'll see results stream onto the screen
 continuously as they are received.
 
@@ -111,7 +111,7 @@ Let's describe and explain the queries in the `example_queries` directory.
 
 ### Example: Front page stories with links
 
-`cargo run query example_queries/front_page_stories_with_links.ron` gets the HackerNews
+`cargo run --example hackernews query example_queries/front_page_stories_with_links.ron` gets the HackerNews
 items on the front page that are stories with links (as opposed to job links, or submissions
 like "Show HN" that contain a message instead of a link). For each match, the query outputs
 its title, link, current score, the name of its submitter and their current karma.
@@ -136,9 +136,9 @@ This is what the query looks like:
 
 Here's what running it looks like:
 ```
-trustfall/demo-hackernews$ cargo run query example_queries/front_page_stories_with_links.ron
+$ cargo run --example hackernews query example_queries/front_page_stories_with_links.ron
     Finished dev [unoptimized + debuginfo] target(s) in 0.15s
-     Running `trustfall/demo-hackernews/target/debug/demo-hackernews query example_queries/front_page_stories_with_links.ron`
+     Running `/.../hackernews query example_queries/front_page_stories_with_links.ron`
 
 {
   "submitter_karma": 13731,
@@ -179,9 +179,9 @@ This is the query:
 
 Here's its output:
 ```
-trustfall/demo-hackernews$ cargo run query example_queries/jobs_in_top_50.ron
+$ cargo run --example hackernews query example_queries/jobs_in_top_50.ron
     Finished dev [unoptimized + debuginfo] target(s) in 0.14s
-     Running `trustfall/demo-hackernews/target/debug/demo-hackernews query example_queries/jobs_in_top_50.ron`
+     Running `/.../hackernews query example_queries/jobs_in_top_50.ron`
 
 {
   "title": "Flow Club (YC S21) is hiring our first marketer",
@@ -192,7 +192,7 @@ trustfall/demo-hackernews$ cargo run query example_queries/jobs_in_top_50.ron
 
 ### Example: Latest links submitted by high-karma users
 
-`cargo run query example_queries/latest_links_by_high_karma_users.ron` gets the latest links
+`cargo run --example hackernews query example_queries/latest_links_by_high_karma_users.ron` gets the latest links
 (i.e. links on the "new" tab) that were submitted by users with karma of 10,000 or more.
 For each match, it returns the submission's title, URL, current score, and the submitter's username
 and current karma.
@@ -221,9 +221,9 @@ It is executed with the following arguments, shown here in RON serialization for
 
 Here's what running it looks like:
 ```
-trustfall/demo-hackernews$ cargo run query example_queries/latest_links_by_high_karma_users.ron
+$ cargo run --example hackernews query example_queries/latest_links_by_high_karma_users.ron
     Finished dev [unoptimized + debuginfo] target(s) in 0.15s
-     Running `trustfall/demo-hackernews/target/debug/demo-hackernews query example_queries/latest_links_by_high_karma_users.ron`
+     Running `/.../hackernews query example_queries/latest_links_by_high_karma_users.ron`
 
 {
   "submitter_karma": 23927,
@@ -246,7 +246,7 @@ trustfall/demo-hackernews$ cargo run query example_queries/latest_links_by_high_
 
 ### Example: Latest links with high-karma commenters
 
-`cargo run query example_queries/links_with_high_karma_commenters.ron` looks at the latest
+`cargo run --example hackernews query example_queries/links_with_high_karma_commenters.ron` looks at the latest
 100 story submissions (i.e. HN's "new" tab items), and selects those that have links
 and also have comments (looking up to 5 reply levels deep) made by users with at least 10,000 karma.
 For each match, it outputs the submission's title, current score, URL, as well as
@@ -282,9 +282,9 @@ It is executed with the following arguments, shown here in RON serialization for
 
 Here's what running it looks like:
 ```
-trustfall/demo-hackernews$ cargo run query example_queries/links_with_high_karma_commenters.ron
+$ cargo run --example hackernews example_queries/links_with_high_karma_commenters.ron
     Finished dev [unoptimized + debuginfo] target(s) in 0.17s
-     Running `trustfall/demo-hackernews/target/debug/demo-hackernews query example_queries/links_with_high_karma_commenters.ron`
+     Running `/.../hackernews query example_queries/links_with_high_karma_commenters.ron`
 
 {
   "commenter_karma": 22774,
@@ -313,6 +313,6 @@ The easiest way to write and run your own query is to:
 - copy the content of one of the example queries,
 - edit the query string and/or arguments as necessary,
 - save it to a new file,
-- then run it with `cargo run query <your_query_file>`.
+- then run it with `cargo run --example hackernews query <your_query_file>`.
 
 The query must use properties, types, and edges from the schema in the `hackernews.graphql` file.
