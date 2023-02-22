@@ -1,5 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
+use gloo_utils::format::JsValueSerdeExt;
 use js_sys::try_iter;
 use trustfall_core::{
     interpreter::{

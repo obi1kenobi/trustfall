@@ -1,5 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
+use gloo_utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 

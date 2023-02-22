@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use gloo_utils::format::JsValueSerdeExt;
 use trustfall_rustdoc::{make_crate_info, run_query};
 use trustfall_wasm::shim::JsFieldValue;
 use wasm_bindgen::prelude::*;
