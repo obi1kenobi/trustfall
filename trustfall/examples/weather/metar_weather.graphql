@@ -37,30 +37,30 @@ type RootSchemaQuery {
 }
 
 type MetarReport {
-    stationId: String!           # for airport stations, the 4-letter ICAO airport code: KBOS for Boston Logan
-    rawReport: String!
+    station_id: String!              # for airport stations, the 4-letter ICAO airport code: KBOS for Boston Logan
+    raw_report: String!
 
     latitude: Float
     longitude: Float
 
-    windSpeedKts: Int             # in knots
-    windDirection: Int            # in degrees
-    windGustsKts: Int             # in knots
+    wind_speed_kts: Int              # in knots
+    wind_direction: Int              # in degrees
+    wind_gusts_kts: Int              # in knots
 
-    temperature: Float            # in degrees C
-    dewpoint: Float               # in degrees C
+    temperature: Float               # in degrees C
+    dewpoint: Float                  # in degrees C
 
-    visibilityUnlimited: Boolean  # corresponds to visibility 9999
-    visibilityMinimal: Boolean    # corresponds to visibility 0000
-    visibilityStatuteMi: Int      # in statute miles (the "usual" miles, not nautical miles)
+    visibility_unlimited: Boolean    # corresponds to visibility 9999
+    visibility_minimal: Boolean      # corresponds to visibility 0000
+    visibility_statute_mi: Int       # in statute miles (the "usual" miles, not nautical miles)
 
-    altimeterInHg: Float          # in inches of mercury
-    seaLevelPressureMb: Float     # in milibars
+    altimeter_in_hg: Float           # in inches of mercury
+    sea_level_pressure_mb: Float     # in milibars
 
-    cloudCover: [MetarCloudCover!]
+    cloud_cover: [MetarCloudCover!]
 }
 
 type MetarCloudCover {
-    skyCover: String!             # standard codes: SKC, CLR, FEW, SCT, BKN, OVC
-    baseAltitude: Int             # in feet above ground level (ft AGL)
+    sky_cover: String!               # standard codes: SKC, CLR, FEW, SCT, BKN, OVC
+    base_altitude: Int               # in feet above ground level (ft AGL)
 }

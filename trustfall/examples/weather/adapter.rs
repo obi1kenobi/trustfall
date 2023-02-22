@@ -1,6 +1,7 @@
 use trustfall::{
     provider::{
-        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
+        field_property, resolve_neighbors_with, resolve_property_with, BasicAdapter,
+        ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
         VertexIterator,
     },
     FieldValue,
@@ -37,36 +38,6 @@ impl<'a> From<&'a MetarCloudCover> for Vertex<'a> {
     }
 }
 
-macro_rules! non_float_field {
-    ($iter: ident, $variant: path, $field: ident) => {
-        Box::new($iter.map(|ctx| {
-            let value = match ctx.active_vertex() {
-                None => FieldValue::Null,
-                Some(vertex) => match vertex {
-                    $variant(m) => m.$field.clone().into(),
-                    _ => unreachable!(),
-                },
-            };
-            (ctx, value)
-        }))
-    };
-}
-
-macro_rules! float_field {
-    ($iter: ident, $variant: path, $field: ident) => {
-        Box::new($iter.map(|ctx| {
-            let value = match ctx.active_vertex() {
-                None => FieldValue::Null,
-                Some(vertex) => match vertex {
-                    $variant(m) => m.$field.clone().try_into().unwrap(),
-                    _ => unreachable!(),
-                },
-            };
-            (ctx, value)
-        }))
-    };
-}
-
 impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
     type Vertex = Vertex<'a>;
 
@@ -97,51 +68,71 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
         property_name: &str,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name {
-            "MetarReport" => {
-                match property_name {
-                    // TODO: implement __typename
-                    "stationId" => non_float_field!(contexts, Vertex::MetarReport, station_id),
-                    "rawReport" => non_float_field!(contexts, Vertex::MetarReport, raw_report),
-                    "observationTime" => {
-                        non_float_field!(contexts, Vertex::MetarReport, observation_time)
-                    }
-                    "latitude" => float_field!(contexts, Vertex::MetarReport, latitude),
-                    "longitude" => float_field!(contexts, Vertex::MetarReport, longitude),
-                    "windSpeedKts" => {
-                        non_float_field!(contexts, Vertex::MetarReport, wind_speed_kts)
-                    }
-                    "windDirection" => {
-                        non_float_field!(contexts, Vertex::MetarReport, wind_direction)
-                    }
-                    "windGustsKts" => {
-                        non_float_field!(contexts, Vertex::MetarReport, wind_gusts_kts)
-                    }
-                    "temperature" => float_field!(contexts, Vertex::MetarReport, temperature),
-                    "dewpoint" => float_field!(contexts, Vertex::MetarReport, dewpoint),
-                    "visibilityUnlimited" => {
-                        non_float_field!(contexts, Vertex::MetarReport, visibility_unlimited)
-                    }
-                    "visibilityMinimal" => {
-                        non_float_field!(contexts, Vertex::MetarReport, visibility_minimal)
-                    }
-                    "visibilityStatuteMi" => {
-                        float_field!(contexts, Vertex::MetarReport, visibility_statute_mi)
-                    }
-                    "altimeterInHg" => {
-                        float_field!(contexts, Vertex::MetarReport, altimeter_in_hg)
-                    }
-                    "seaLevelPressureMb" => {
-                        float_field!(contexts, Vertex::MetarReport, sea_level_pressure_mb)
-                    }
-                    unknown_field_name => unreachable!("{}", unknown_field_name),
+            "MetarReport" => match property_name {
+                "station_id" => {
+                    resolve_property_with(contexts, field_property!(as_metar_report, station_id))
                 }
-            }
+                "raw_report" => {
+                    resolve_property_with(contexts, field_property!(as_metar_report, raw_report))
+                }
+                "observation_time" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, observation_time),
+                ),
+                "latitude" => {
+                    resolve_property_with(contexts, field_property!(as_metar_report, latitude))
+                }
+                "longitude" => {
+                    resolve_property_with(contexts, field_property!(as_metar_report, longitude))
+                }
+                "wind_speed_kts" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, wind_speed_kts),
+                ),
+                "wind_direction" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, wind_direction),
+                ),
+                "wind_gusts_kts" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, wind_gusts_kts),
+                ),
+                "temperature" => {
+                    resolve_property_with(contexts, field_property!(as_metar_report, temperature))
+                }
+                "dewpoint" => {
+                    resolve_property_with(contexts, field_property!(as_metar_report, dewpoint))
+                }
+                "visibility_unlimited" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, visibility_unlimited),
+                ),
+                "visibility_minimal" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, visibility_minimal),
+                ),
+                "visibility_statute_mi" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, visibility_statute_mi),
+                ),
+                "altimeter_in_hg" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, altimeter_in_hg),
+                ),
+                "sea_level_pressure_mb" => resolve_property_with(
+                    contexts,
+                    field_property!(as_metar_report, sea_level_pressure_mb),
+                ),
+                unknown_field_name => unreachable!("unknown field name: {unknown_field_name}"),
+            },
             "MetarCloudCover" => match property_name {
-                "skyCover" => non_float_field!(contexts, Vertex::CloudCover, sky_cover),
-                "baseAltitude" => {
-                    non_float_field!(contexts, Vertex::CloudCover, base_altitude)
+                "sky_cover" => {
+                    resolve_property_with(contexts, field_property!(as_cloud_cover, sky_cover))
                 }
-                unknown_field_name => unreachable!("{}", unknown_field_name),
+                "base_altitude" => {
+                    resolve_property_with(contexts, field_property!(as_cloud_cover, base_altitude))
+                }
+                unknown_field_name => unreachable!("unknown field name: {unknown_field_name}"),
             },
             _ => unreachable!(),
         }
@@ -155,21 +146,17 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
         parameters: &EdgeParameters,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
-            ("MetarReport", "cloudCover") => {
+            ("MetarReport", "cloud_cover") => {
                 assert!(parameters.is_empty());
-
-                Box::new(contexts.map(|ctx| {
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match ctx.active_vertex() {
-                        Some(vertex) => match vertex {
-                            &Vertex::MetarReport(metar) => {
-                                Box::new(metar.cloud_cover.iter().map(|c| c.into()))
-                            }
-                            _ => unreachable!(),
-                        },
-                        None => Box::new(std::iter::empty()),
-                    };
-                    (ctx, neighbors)
-                }))
+                resolve_neighbors_with(contexts, |vertex| {
+                    let neighbors = vertex
+                        .as_metar_report()
+                        .expect("not a MetarReport vertex")
+                        .cloud_cover
+                        .iter()
+                        .map(|c| c.into());
+                    Box::new(neighbors)
+                })
             }
             _ => unreachable!(),
         }

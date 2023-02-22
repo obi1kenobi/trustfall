@@ -2,21 +2,21 @@ InputQuery (
     query: r#"
 {
     MetarReport {
-        stationId @output
+        station_id @output
         latitude @output
         longitude @output
 
-        windSpeedKts @output
+        wind_speed_kts @output
                      @filter(op: ">", value:["$min_wind"])
-        windDirection @output
-        windGustsKts @output
+        wind_direction @output
+        wind_gusts_kts @output
                      @filter(op: "is_not_null")
         temperature @output
         dewpoint @output
 
-        cloudCover @fold {
-            skyCover @output
-            baseAltitude @output
+        cloud_cover @fold {
+            sky_cover @output
+            base_altitude @output
         }
     }
 }"#,

@@ -2,15 +2,15 @@ InputQuery (
     query: r#"
 {
     LatestMetarReportForAirport(airport_code: "KBOS") {
-        windSpeedKts @output
-        windDirection @output
-        windGustsKts @output
+        wind_speed_kts @output
+        wind_direction @output
+        wind_gusts_kts @output
         temperature @output
         dewpoint @output
 
-        cloudCover @fold {
-            skyCover @output
-            baseAltitude @output
+        cloud_cover @fold {
+            sky_cover @output
+            base_altitude @output
         }
     }
 }"#,
