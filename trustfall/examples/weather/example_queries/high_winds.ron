@@ -21,6 +21,6 @@ InputQuery (
     }
 }"#,
     args: {
-        "min_wind": 25
+        "min_wind": Int64(25)
     },
 )

@@ -1,8 +1,9 @@
-use std::{iter, sync::Arc};
-
-use trustfall_core::{
-    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator},
-    ir::{EdgeParameters, FieldValue},
+use trustfall::{
+    provider::{
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
+        VertexIterator,
+    },
+    FieldValue,
 };
 
 use crate::metar::{MetarCloudCover, MetarReport};
@@ -18,7 +19,7 @@ impl<'a> MetarAdapter<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, TrustfallEnumVertex)]
 pub(crate) enum Vertex<'a> {
     MetarReport(&'a MetarReport),
     CloudCover(&'a MetarCloudCover),
@@ -66,16 +67,15 @@ macro_rules! float_field {
     };
 }
 
-impl<'a> Adapter<'a> for MetarAdapter<'a> {
+impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
     type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
         &mut self,
-        edge_name: &Arc<str>,
+        edge_name: &str,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
-        match edge_name.as_ref() {
+        match edge_name {
             "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
             "LatestMetarReportForAirport" => {
                 let station_code = parameters["airport_code"].as_str().unwrap().to_string();
@@ -93,13 +93,12 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_property(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: &Arc<str>,
-        property_name: &Arc<str>,
-        _query_info: &QueryInfo,
+        type_name: &str,
+        property_name: &str,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-        match type_name.as_ref() {
+        match type_name {
             "MetarReport" => {
-                match property_name.as_ref() {
+                match property_name {
                     // TODO: implement __typename
                     "stationId" => non_float_field!(contexts, Vertex::MetarReport, station_id),
                     "rawReport" => non_float_field!(contexts, Vertex::MetarReport, raw_report),
@@ -137,16 +136,13 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                     unknown_field_name => unreachable!("{}", unknown_field_name),
                 }
             }
-            "MetarCloudCover" => {
-                match property_name.as_ref() {
-                    // TODO: implement __typename
-                    "skyCover" => non_float_field!(contexts, Vertex::CloudCover, sky_cover),
-                    "baseAltitude" => {
-                        non_float_field!(contexts, Vertex::CloudCover, base_altitude)
-                    }
-                    unknown_field_name => unreachable!("{}", unknown_field_name),
+            "MetarCloudCover" => match property_name {
+                "skyCover" => non_float_field!(contexts, Vertex::CloudCover, sky_cover),
+                "baseAltitude" => {
+                    non_float_field!(contexts, Vertex::CloudCover, base_altitude)
                 }
-            }
+                unknown_field_name => unreachable!("{}", unknown_field_name),
+            },
             _ => unreachable!(),
         }
     }
@@ -154,12 +150,11 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_neighbors(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: &Arc<str>,
-        edge_name: &Arc<str>,
+        type_name: &str,
+        edge_name: &str,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
-        match (type_name.as_ref(), edge_name.as_ref()) {
+        match (type_name, edge_name) {
             ("MetarReport", "cloudCover") => {
                 assert!(parameters.is_empty());
 
@@ -171,7 +166,7 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
                             }
                             _ => unreachable!(),
                         },
-                        None => Box::new(iter::empty()),
+                        None => Box::new(std::iter::empty()),
                     };
                     (ctx, neighbors)
                 }))
@@ -184,10 +179,9 @@ impl<'a> Adapter<'a> for MetarAdapter<'a> {
     fn resolve_coercion(
         &mut self,
         contexts: ContextIterator<'a, Self::Vertex>,
-        type_name: &Arc<str>,
-        coerce_to_type: &Arc<str>,
-        query_info: &QueryInfo,
+        type_name: &str,
+        coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-        todo!()
+        unimplemented!("no types in our schema have subtypes")
     }
 }

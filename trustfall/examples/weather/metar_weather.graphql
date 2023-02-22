@@ -39,7 +39,6 @@ type RootSchemaQuery {
 type MetarReport {
     stationId: String!           # for airport stations, the 4-letter ICAO airport code: KBOS for Boston Logan
     rawReport: String!
-    observationTime: DateTime!
 
     latitude: Float
     longitude: Float
