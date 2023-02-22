@@ -49,9 +49,16 @@ talk](https://www.hytradboi.com/2022/how-to-query-almost-everything) from the
 running the demo are available together with the source code in the
 `demo-hytradboi` directory: [link](./demo-hytradboi).
 
-For a brief overview of the query language and an example of using it to query
-APIs, check the `demo-hackernews` directory for a simpler demo only querying the
-HackerNews APIs: [link](./demo-hackernews).
+## Example Trustfall implementations
+
+- [HackerNews APIs](./trustfall/examples/hackernews/), including an overview of the query language
+  and an example of querying REST APIs.
+- [RSS/Atom feeds](./trustfall/examples/feeds/), showing how to query structured data
+  like RSS/Atom feeds.
+- [airport weather data (METAR)](./trustfall/examples/weather), showing how to query CSV data from
+  aviation weather reports.
+
+## Using Trustfall over a new data source
 
 The easiest way to plug in a new data source is by implementing
 [the `BasicAdapter` trait](https://docs.rs/trustfall_core/latest/trustfall_core/interpreter/basic_adapter/trait.BasicAdapter.html).
@@ -65,21 +72,17 @@ best resource is the Python bindings' [test suite](./pytrustfall/trustfall/tests
 
 ## Directory Registry
 
-- [`trustfall_core`](./trustfall_core/) contains the query engine itself
-- [`pytrustfall`](./pytrustfall/)
- contains `pyo3`-based Python bindings for the `trustfall` engine
-- [`trustfall_wasm`](./trustfall_wasm/) is a WASM build of the `trustfall` engine
-- [`demo-hackernews`](./demo-hackernews/) contains an example use case: querying the HackerNews APIs.
-- [`demo-hytradboi`](./demo-hytradboi/) contains the demo code from the "How to
-  Query (Almost) Everything" talk at the [HYTRADBOI 2022](https://www.hytradboi.com/) conference.
-- [`demo-feeds`](./demo-feeds/) is an example implementation querying RSS feeds
-  using Rust and `trustfall`.
-- [`demo-metar`](./demo-metar/) is an example implementation querying METAR
-  aviation weather reports using Rust and `trustfall`.
+- [`trustfall`](./trustfall/) is a façade crate. This is the preferred way to use Trustfall.
+- [`trustfall_core`](./trustfall_core/) contains the query engine internals
+- [`trustfall_derive`](./trustfall_derive/) defines macros that simplify plugging in data sources.
+- [`pytrustfall`](./pytrustfall/) contains Trustfall's Python bindings
+- [`trustfall_wasm`](./trustfall_wasm/) is a WASM build of Trustfall
 - [`trustfall_filetests_macros`](./trustfall_filetests_macros/) is a procedural
   macro used to generate test cases defined by files: they ensure that the
   function under test, when given an input specified by one file, produces an
   output equivalent to the contents of another file.
+- [`experiments`](./experiments/) contains various experimental projects
+  such as the [Trustfall web playground](https://play.predr.ag/).
 
 Copyright 2022-present Predrag Gruevski.
 
