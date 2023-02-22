@@ -296,9 +296,30 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Publishing?
+        id: version
+        run: |
+          set +e
+          .github/workflows/is_crate_version_already_uploaded.sh trustfall
+          export TRUSTFALL="$?"
+          .github/workflows/is_crate_version_already_uploaded.sh trustfall_core
+          export TRUSTFALL_CORE="$?"
+          .github/workflows/is_crate_version_already_uploaded.sh trustfall_derive
+          export TRUSTFALL_DERIVE="$?"
+          if [[ "$TRUSTFALL" == "7" && "$TRUSTFALL_CORE" == "7" && "$TRUSTFALL_DERIVE" == "7" ]]; then
+            echo 'is_new_version=no' >> $GITHUB_OUTPUT
+          elif [[ "$TRUSTFALL" == "0" || "$TRUSTFALL_CORE" == "0" || "$TRUSTFALL_DERIVE" == "0" ]]; then
+            echo 'is_new_version=yes' >> $GITHUB_OUTPUT
+          else
+            # Unexpected outcome, indicates a bug.
+            exit "$EXIT_CODE"
+          fi
+
       - uses: Swatinem/rust-cache@v2
+        if: steps.version.outputs.is_new_version == 'yes'
 
       - name: feeds example
+        if: steps.version.outputs.is_new_version == 'yes'
         run: |
           cd trustfall
           cargo run --example feeds refresh
