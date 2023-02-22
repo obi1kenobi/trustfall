@@ -581,19 +581,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "demo-hackernews"
-version = "0.1.0"
-dependencies = [
- "hn_api",
- "lazy_static",
- "reqwest 0.11.10",
- "ron 0.7.1",
- "serde",
- "serde_json",
- "trustfall_core",
-]
-
-[[package]]
 name = "demo-hytradboi"
 version = "0.1.0"
 dependencies = [
@@ -3264,6 +3251,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "feed-rs",
+ "hn_api",
  "lazy_static",
  "reqwest 0.11.10",
  "ron 0.7.1",
