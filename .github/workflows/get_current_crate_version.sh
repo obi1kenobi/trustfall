@@ -12,6 +12,6 @@ cd "$(git rev-parse --show-toplevel)"
 # The first argument should be the name of a crate.
 CRATE_NAME="$1"
 
-cargo metadata --format-version 1 | \
+cargo metadata --no-deps --format-version 1 | \
     jq --arg crate_name "$CRATE_NAME" --exit-status -r \
         '.packages[] | select(.name == $crate_name) | .version'
