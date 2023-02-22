@@ -989,6 +989,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gloo-utils"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8e8fc851e9c7b9852508bc6e3f690f452f474417e8545ec9857b7f7377036b5"
+dependencies = [
+ "js-sys",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "h2"
 version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3317,6 +3330,7 @@ dependencies = [
  "anyhow",
  "clap",
  "console_error_panic_hook",
+ "gloo-utils",
  "js-sys",
  "ouroboros",
  "rustdoc-types",
@@ -3333,6 +3347,7 @@ name = "trustfall_wasm"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
+ "gloo-utils",
  "js-sys",
  "maplit",
  "ron 0.7.1",
@@ -3556,8 +3571,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31f8dcbc21f30d9b8f2ea926ecb58f6b91192c17e9d33594b3df58b2007ca53b"
 dependencies = [
  "cfg-if 1.0.0",
- "serde",
- "serde_json",
  "wasm-bindgen-macro",
 ]
 

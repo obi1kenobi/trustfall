@@ -1,10 +1,10 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
-use shim::{JsFieldValue, QueryResultIterator};
+use gloo_utils::format::JsValueSerdeExt;
 use trustfall_core::ir::FieldValue;
 use wasm_bindgen::prelude::*;
 
-use adapter::{AdapterShim, JsAdapter};
+use crate::{adapter::{AdapterShim, JsAdapter}, shim::{JsFieldValue, QueryResultIterator}};
 
 #[macro_use]
 pub mod util;

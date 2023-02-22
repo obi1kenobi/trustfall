@@ -3,12 +3,13 @@ pub mod indexed_crate;
 
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
-use adapter::RustdocAdapter;
-use indexed_crate::IndexedCrate;
+use gloo_utils::format::JsValueSerdeExt;
 use ouroboros::self_referencing;
 use rustdoc_types::Crate;
 use trustfall_wasm::{from_js_args, shim::JsFieldValue};
 use wasm_bindgen::prelude::*;
+
+use crate::{adapter::RustdocAdapter, indexed_crate::IndexedCrate};
 
 #[self_referencing]
 struct InnerCrateInfo {
