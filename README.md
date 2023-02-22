@@ -52,9 +52,9 @@ running the demo are available together with the source code in the
 ## Example Trustfall implementations
 
 - [HackerNews APIs](./trustfall/examples/hackernews/), including an overview of the query language
-  and an example of querying REST APIs via Trustfall.
+  and an example of querying REST APIs.
 - [RSS/Atom feeds](./trustfall/examples/feeds/), showing how to query structured data
-  like RSS/Atom feeds using Trustfall.
+  like RSS/Atom feeds.
 - [airport weather data (METAR)](./trustfall/examples/weather), showing how to query CSV data from
   aviation weather reports.
 
