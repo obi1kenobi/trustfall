@@ -102,7 +102,7 @@ fn read_feed_data() -> Vec<Feed> {
 
 const USAGE: &str = "\
 Commands:
-    refresh             - download the feed data, overwriting any previously-downloaded data
+    refresh             - download feed data, overwriting any previously-downloaded data
     query <query-file>  - run the query in the given file over the downloaded feed data
 
 Examples: (paths relative to `trustfall` crate directory)

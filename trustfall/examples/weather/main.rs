@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{cell::RefCell, fs};
+use std::{env, process};
 
 use serde::Deserialize;
-use trustfall_core::{
-    frontend::parse, interpreter::execution::interpret_ir, ir::FieldValue, schema::Schema,
-};
+use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
 use crate::{
     adapter::MetarAdapter,
@@ -24,7 +22,8 @@ mod metar;
 
 lazy_static! {
     static ref SCHEMA: Schema =
-        Schema::parse(fs::read_to_string("./src/metar_weather.graphql").unwrap()).unwrap();
+        Schema::parse(fs::read_to_string("./examples/weather/metar_weather.graphql").unwrap())
+            .unwrap();
 }
 
 const METAR_DOC_URL: &str =
@@ -46,11 +45,14 @@ snow_in,vert_vis_ft,metar_type,elevation_m";
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
+    args: BTreeMap<Arc<str>, FieldValue>,
 }
 
 fn read_metar_data() -> Vec<MetarReport> {
-    let data_file = File::open(METAR_DOC_LOCATION).unwrap();
+    let data_file = File::open(METAR_DOC_LOCATION).unwrap_or_else(|_| {
+        refresh_data();
+        File::open(METAR_DOC_LOCATION).expect("failed to open weather file")
+    });
     let mut reader = BufReader::new(data_file);
 
     let mut buf = String::new();
@@ -85,18 +87,25 @@ fn read_metar_data() -> Vec<MetarReport> {
     metars
 }
 
-fn execute_query(path: &str) {
+fn run_query(path: &str) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let data = read_metar_data();
     let adapter = Rc::new(RefCell::new(MetarAdapter::new(&data)));
 
-    let query = parse(&SCHEMA, input_query.query).unwrap();
+    let query = input_query.query;
     let arguments = input_query.args;
 
-    for data_item in interpret_ir(adapter, query, arguments).unwrap() {
-        println!("\n{}", serde_json::to_string_pretty(&data_item).unwrap());
+    for data_item in execute_query(&SCHEMA, adapter, query, arguments).expect("not a legal query") {
+        // The default `FieldValue` JSON representation is explicit about its type, so we can get
+        // reliable round-trip serialization of types tricky in JSON like integers and floats.
+        //
+        // The `TransparentValue` type is like `FieldValue` minus the explicit type representation,
+        // so it's more like what we'd expect to normally find in JSON.
+        let transparent: BTreeMap<_, TransparentValue> =
+            data_item.into_iter().map(|(k, v)| (k, v.into())).collect();
+        println!("\n{}", serde_json::to_string_pretty(&transparent).unwrap());
     }
 }
 
@@ -123,6 +132,19 @@ fn refresh_data() {
     fs::rename(write_file_path, METAR_DOC_LOCATION).unwrap();
 }
 
+const USAGE: &str = "\
+Commands:
+    refresh             - download weather data, overwriting any previously-downloaded data
+    query <query-file>  - run the query in the given file over the downloaded data
+
+Examples: (paths relative to `trustfall` crate directory)
+    Boston Logan airport weather report:
+        cargo run --example weather query ./examples/weather/example_queries/boston_weather.ron
+
+    Find airport weather where the wind speed is 25+ knots:
+        cargo run --example weather query ./examples/weather/example_queries/high_winds.ron
+";
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut reversed_args: Vec<_> = args.iter().map(|x| x.as_str()).rev().collect();
@@ -132,15 +154,33 @@ fn main() {
         .expect("Expected the executable name to be the first argument, but was missing");
 
     match reversed_args.pop() {
-        None => panic!("No command given"),
-        Some("refresh") => refresh_data(),
+        None => {
+            println!("{USAGE}");
+            process::exit(1);
+        }
+        Some("refresh") => {
+            refresh_data();
+            println!("Data refreshed successfully!");
+        }
         Some("query") => match reversed_args.pop() {
-            None => panic!("No filename provided"),
+            None => {
+                println!("ERROR: no query file provided\n");
+                println!("{USAGE}");
+                process::exit(1);
+            }
             Some(path) => {
-                assert!(reversed_args.is_empty());
-                execute_query(path)
+                if !reversed_args.is_empty() {
+                    println!("ERROR: 'query' command takes only a single filename argument\n");
+                    println!("{USAGE}");
+                    process::exit(1);
+                }
+                run_query(path)
             }
         },
-        Some(cmd) => panic!("Unrecognized command given: {cmd}"),
+        Some(cmd) => {
+            println!("ERROR: unexpected command '{cmd}'\n");
+            println!("{USAGE}");
+            process::exit(1);
+        }
     }
 }

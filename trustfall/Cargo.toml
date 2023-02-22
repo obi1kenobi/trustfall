@@ -23,6 +23,9 @@ feed-rs = "1.0.0"
 lazy_static = "1.4.0"
 reqwest = { version = "0.11.6", features = ["blocking", "json"] }
 hn_api = "0.1.0"
+csv = "1.1.6"
+regex = "1.7.1"
+chrono = "0.4.23"
 
 [[example]]
 # Running queries over RSS/Atom feeds.
@@ -31,3 +34,7 @@ name = "feeds"
 [[example]]
 # Running queries over the HackerNews REST APIs hosted on Firebase
 name = "hackernews"
+
+[[example]]
+# Running queries over CSV data of weather at US airports (the METAR system).
+name = "weather"
