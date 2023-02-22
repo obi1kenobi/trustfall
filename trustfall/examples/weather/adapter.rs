@@ -38,6 +38,21 @@ impl<'a> From<&'a MetarCloudCover> for Vertex<'a> {
     }
 }
 
+// Coerce NaN float values to `null` property values.
+macro_rules! float {
+    ($conversion: ident, $field: ident) => {
+        |vertex: &Vertex| -> FieldValue {
+            vertex
+                .$conversion()
+                .expect("conversion failed")
+                .$field
+                .clone()
+                .try_into()
+                .unwrap_or(FieldValue::Null)
+        }
+    };
+}
+
 impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
     type Vertex = Vertex<'a>;
 
@@ -75,16 +90,8 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
                 "raw_report" => {
                     resolve_property_with(contexts, field_property!(as_metar_report, raw_report))
                 }
-                "observation_time" => resolve_property_with(
-                    contexts,
-                    field_property!(as_metar_report, observation_time),
-                ),
-                "latitude" => {
-                    resolve_property_with(contexts, field_property!(as_metar_report, latitude))
-                }
-                "longitude" => {
-                    resolve_property_with(contexts, field_property!(as_metar_report, longitude))
-                }
+                "latitude" => resolve_property_with(contexts, float!(as_metar_report, latitude)),
+                "longitude" => resolve_property_with(contexts, float!(as_metar_report, longitude)),
                 "wind_speed_kts" => resolve_property_with(
                     contexts,
                     field_property!(as_metar_report, wind_speed_kts),
@@ -98,31 +105,24 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
                     field_property!(as_metar_report, wind_gusts_kts),
                 ),
                 "temperature" => {
-                    resolve_property_with(contexts, field_property!(as_metar_report, temperature))
+                    resolve_property_with(contexts, float!(as_metar_report, temperature))
                 }
-                "dewpoint" => {
-                    resolve_property_with(contexts, field_property!(as_metar_report, dewpoint))
+                "dewpoint" => resolve_property_with(contexts, float!(as_metar_report, dewpoint)),
+                "visibility_unlimited" => {
+                    resolve_property_with(contexts, float!(as_metar_report, visibility_unlimited))
                 }
-                "visibility_unlimited" => resolve_property_with(
-                    contexts,
-                    field_property!(as_metar_report, visibility_unlimited),
-                ),
-                "visibility_minimal" => resolve_property_with(
-                    contexts,
-                    field_property!(as_metar_report, visibility_minimal),
-                ),
-                "visibility_statute_mi" => resolve_property_with(
-                    contexts,
-                    field_property!(as_metar_report, visibility_statute_mi),
-                ),
-                "altimeter_in_hg" => resolve_property_with(
-                    contexts,
-                    field_property!(as_metar_report, altimeter_in_hg),
-                ),
-                "sea_level_pressure_mb" => resolve_property_with(
-                    contexts,
-                    field_property!(as_metar_report, sea_level_pressure_mb),
-                ),
+                "visibility_minimal" => {
+                    resolve_property_with(contexts, float!(as_metar_report, visibility_minimal))
+                }
+                "visibility_statute_mi" => {
+                    resolve_property_with(contexts, float!(as_metar_report, visibility_statute_mi))
+                }
+                "altimeter_in_hg" => {
+                    resolve_property_with(contexts, float!(as_metar_report, altimeter_in_hg))
+                }
+                "sea_level_pressure_mb" => {
+                    resolve_property_with(contexts, float!(as_metar_report, sea_level_pressure_mb))
+                }
                 unknown_field_name => unreachable!("unknown field name: {unknown_field_name}"),
             },
             "MetarCloudCover" => match property_name {

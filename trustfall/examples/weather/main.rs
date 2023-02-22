@@ -139,7 +139,7 @@ Commands:
 
 Examples: (paths relative to `trustfall` crate directory)
     Boston Logan airport weather report:
-        cargo run --example weather query ./examples/weather/example_queries/get_boston_weather.ron
+        cargo run --example weather query ./examples/weather/example_queries/boston_weather.ron
 
     Find airport weather where the wind speed is 25+ knots:
         cargo run --example weather query ./examples/weather/example_queries/high_winds.ron
