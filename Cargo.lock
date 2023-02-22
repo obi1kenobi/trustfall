@@ -581,21 +581,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "demo-feeds"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "feed-rs",
- "lazy_static",
- "reqwest 0.11.10",
- "ron 0.7.1",
- "serde",
- "serde_json",
- "trustfall",
-]
-
-[[package]]
 name = "demo-hackernews"
 version = "0.1.0"
 dependencies = [
@@ -3278,6 +3263,12 @@ name = "trustfall"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "feed-rs",
+ "lazy_static",
+ "reqwest 0.11.10",
+ "ron 0.7.1",
+ "serde",
+ "serde_json",
  "trustfall_core",
  "trustfall_derive",
 ]
