@@ -49,13 +49,16 @@ talk](https://www.hytradboi.com/2022/how-to-query-almost-everything) from the
 running the demo are available together with the source code in the
 `demo-hytradboi` directory: [link](./demo-hytradboi).
 
-Example Trustfall implementations:
+## Example Trustfall implementations
+
 - [HackerNews APIs](./trustfall/examples/hackernews/), including an overview of the query language
   and an example of querying REST APIs via Trustfall.
 - [RSS/Atom feeds](./trustfall/examples/feeds/), showing how to query structured data
   like RSS/Atom feeds using Trustfall.
 - [airport weather data (METAR)](./trustfall/examples/weather), showing how to query CSV data from
   aviation weather reports.
+
+## Using Trustfall over a new data source
 
 The easiest way to plug in a new data source is by implementing
 [the `BasicAdapter` trait](https://docs.rs/trustfall_core/latest/trustfall_core/interpreter/basic_adapter/trait.BasicAdapter.html).
