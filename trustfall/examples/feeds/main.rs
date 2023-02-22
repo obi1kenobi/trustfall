@@ -70,7 +70,7 @@ fn run_query(path: &str) {
     let query = input_query.query;
     let arguments = input_query.args;
 
-    for data_item in execute_query(&SCHEMA, adapter, query, arguments).unwrap() {
+    for data_item in execute_query(&SCHEMA, adapter, query, arguments).expect("not a legal query") {
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.
         //
