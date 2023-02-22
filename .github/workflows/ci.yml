@@ -327,6 +327,14 @@ jobs:
           cargo run --example feeds query ./examples/feeds/example_queries/feed_links.ron
           cargo run --example feeds query ./examples/feeds/example_queries/game_reviews.ron
 
+      - name: feeds example
+        if: steps.version.outputs.is_new_version == 'yes'
+        run: |
+          cd trustfall
+          cargo run --example hackernews query ./examples/hackernews/example_queries/front_page_stories_with_links.ron 1
+          cargo run --example hackernews query ./examples/hackernews/example_queries/latest_links_by_high_karma_users.ron 1
+          cargo run --example hackernews query ./examples/hackernews/example_queries/patio11_comments_on_own_blog_posts.ron 1
+
   attempt-publish-trustfall-filetests-macros:
     name: publish trustfall_filetests_macros
     if: github.ref == 'refs/heads/main'

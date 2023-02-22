@@ -17,7 +17,8 @@ pub mod vertex;
 
 lazy_static! {
     static ref SCHEMA: Schema =
-        Schema::parse(fs::read_to_string("./examples/hackernews/hackernews.graphql").unwrap()).unwrap();
+        Schema::parse(fs::read_to_string("./examples/hackernews/hackernews.graphql").unwrap())
+            .unwrap();
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -36,7 +37,10 @@ fn run_query(path: &str, max_results: Option<usize>) {
     let query = input_query.query;
     let arguments = input_query.args;
 
-    for data_item in execute_query(&SCHEMA, adapter, query, arguments).expect("not a legal query").take(max_results.unwrap_or(usize::MAX)) {
+    for data_item in execute_query(&SCHEMA, adapter, query, arguments)
+        .expect("not a legal query")
+        .take(max_results.unwrap_or(usize::MAX))
+    {
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.
         //
@@ -85,14 +89,12 @@ fn main() {
                 process::exit(1);
             }
             Some(path) => {
-                let max_results = reversed_args.pop().map(|value| {
-                    match value.parse() {
-                        Ok(x) => x,
-                        Err(e) => {
-                            println!("ERROR: value for 'max_results' was not a number: {e}");
-                            println!("{USAGE}");
-                            process::exit(1);
-                        }
+                let max_results = reversed_args.pop().map(|value| match value.parse() {
+                    Ok(x) => x,
+                    Err(e) => {
+                        println!("ERROR: value for 'max_results' was not a number: {e}");
+                        println!("{USAGE}");
+                        process::exit(1);
                     }
                 });
                 if !reversed_args.is_empty() {
