@@ -8,7 +8,6 @@ members = [
     "pytrustfall",
     "demo-hackernews",
     "demo-metar",
-    "demo-feeds",
     "demo-hytradboi",
     "experiments/schemaless",
     "experiments/schemaless_wasm",

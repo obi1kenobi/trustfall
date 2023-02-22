@@ -4,13 +4,14 @@ use std::{
     env,
     fs::{self, File},
     io::{BufWriter, Write},
+    process,
     rc::Rc,
     sync::Arc,
 };
 
 use feed_rs::{model::Feed, parser};
 use serde::Deserialize;
-use trustfall::{execute_query, FieldValue, Schema};
+use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
 #[macro_use]
 extern crate lazy_static;
@@ -27,7 +28,7 @@ const WIRED_FEED_LOCATION: &str = "/tmp/feeds-wired.xml";
 
 lazy_static! {
     static ref SCHEMA: Schema =
-        Schema::parse(fs::read_to_string("./src/feeds.graphql").unwrap()).unwrap();
+        Schema::parse(fs::read_to_string("./examples/feeds/feeds.graphql").unwrap()).unwrap();
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -70,7 +71,14 @@ fn run_query(path: &str) {
     let arguments = input_query.args;
 
     for data_item in execute_query(&SCHEMA, adapter, query, arguments).unwrap() {
-        println!("\n{}", serde_json::to_string_pretty(&data_item).unwrap());
+        // The default `FieldValue` JSON representation is explicit about its type, so we can get
+        // reliable round-trip serialization of types tricky in JSON like integers and floats.
+        //
+        // The `TransparentValue` type is like `FieldValue` minus the explicit type representation,
+        // so it's more like what we'd expect to normally find in JSON.
+        let transparent: BTreeMap<_, TransparentValue> =
+            data_item.into_iter().map(|(k, v)| (k, v.into())).collect();
+        println!("\n{}", serde_json::to_string_pretty(&transparent).unwrap());
     }
 }
 
@@ -82,11 +90,28 @@ fn read_feed_data() -> Vec<Feed> {
 
     data.iter()
         .map(|(feed_uri, feed_file)| {
-            let data_bytes = fs::read(feed_file).unwrap();
+            let data_bytes = fs::read(feed_file).unwrap_or_else(|_| {
+                refresh_data();
+                fs::read(feed_file).expect("failed to read feed file")
+            });
+
             feed_rs::parser::parse_with_uri(data_bytes.as_slice(), Some(feed_uri)).unwrap()
         })
         .collect()
 }
+
+const USAGE: &str = "\
+Commands:
+    refresh             - download the feed data, overwriting any previously-downloaded data
+    query <query-file>  - run the query in the given file over the downloaded feed data
+
+Examples: (paths relative to `trustfall` crate directory)
+    Extract titles and all links in each feed entry:
+        cargo run --example feeds query ./examples/feeds/example_queries/feed_links.ron
+
+    Find PCGamer game reviews:
+        cargo run --example feeds query ./examples/feeds/example_queries/game_reviews.ron
+";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -97,15 +122,33 @@ fn main() {
         .expect("Expected the executable name to be the first argument, but was missing");
 
     match reversed_args.pop() {
-        None => panic!("No command given"),
-        Some("refresh") => refresh_data(),
+        None => {
+            println!("{USAGE}");
+            process::exit(1);
+        }
+        Some("refresh") => {
+            refresh_data();
+            println!("Data refreshed successfully!");
+        }
         Some("query") => match reversed_args.pop() {
-            None => panic!("No filename provided"),
+            None => {
+                println!("ERROR: no query file provided\n");
+                println!("{USAGE}");
+                process::exit(1);
+            }
             Some(path) => {
-                assert!(reversed_args.is_empty());
+                if !reversed_args.is_empty() {
+                    println!("ERROR: 'query' command takes only a single filename argument\n");
+                    println!("{USAGE}");
+                    process::exit(1);
+                }
                 run_query(path)
             }
         },
-        Some(cmd) => panic!("Unrecognized command given: {cmd}"),
+        Some(cmd) => {
+            println!("ERROR: unexpected command '{cmd}'\n");
+            println!("{USAGE}");
+            process::exit(1);
+        }
     }
 }

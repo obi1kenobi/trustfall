@@ -50,9 +50,7 @@ https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Feed.html
 type Feed {
     feed_type: String!
     id: String!
-    updated: DateTime
     language: String
-    published: DateTime
     ttl: Int # number of minutes that indicates how long a channel can be cached before refreshing from the source.
     title: FeedText
     description: FeedText
@@ -83,8 +81,6 @@ https://docs.rs/feed-rs/1.0.0/feed_rs/model/struct.Entry.html
 type FeedEntry {
     id: String!
     source: String
-    updated: DateTime
-    published: DateTime
 
     title: FeedText
     # authors: [Person]

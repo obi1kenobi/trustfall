@@ -8,7 +8,7 @@ InputQuery (
 
         entry_: entries {
             title_: title {
-                content @filter(op: "has_substring", value: ["$title_substr"])
+                content @filter(op: "regex", value: ["$title_pattern"])
                         @output
             }
 
@@ -23,7 +23,7 @@ InputQuery (
     }
 }"#,
     args: {
-        "feed": "PCGamer",
-        "title_substr": "eview",  // skipping the leading "r" since it might be capitalized or not
+        "feed": String("PCGamer"),
+        "title_pattern": String("[Rr]eview"),  // tolerate capitalization
     },
 )
