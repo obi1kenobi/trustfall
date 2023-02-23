@@ -198,6 +198,12 @@ impl From<bool> for FieldValue {
     }
 }
 
+impl From<&bool> for FieldValue {
+    fn from(v: &bool) -> Self {
+        Self::Boolean(*v)
+    }
+}
+
 /// Represents a finite (non-infinite, not-NaN) [f64] value
 pub struct FiniteF64(f64);
 impl From<FiniteF64> for FieldValue {
