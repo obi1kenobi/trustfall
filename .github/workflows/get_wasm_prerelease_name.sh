@@ -16,7 +16,7 @@ pip install toml 1>&2
 
 LONG_HASH="$(git rev-parse HEAD)"
 SHORT_HASH="$(git rev-parse --short HEAD)"
-PYTHON_PACKAGE_VERSION="$(python -c 'import toml; print(toml.load("Cargo.toml")["package"]["version"])')"
+WASM_VERSION="$(python -c 'import toml; print(toml.load("Cargo.toml")["package"]["version"])')"
 
-TAG_NAME="trustfall_wasm-v${PYTHON_PACKAGE_VERSION}-${SHORT_HASH}"
+TAG_NAME="trustfall_wasm-v${WASM_VERSION}-${SHORT_HASH}"
 echo -n "$TAG_NAME"
