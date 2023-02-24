@@ -20,4 +20,4 @@ proc-macro2 = "1.0.51"
 
 [dev-dependencies]
 trybuild = "1.0"
-trustfall = { version = "0.2.0", path = "../trustfall" }
+trustfall = { version = "0.2.1", path = "../trustfall" }
