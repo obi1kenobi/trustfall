@@ -20,8 +20,31 @@ jobs:
       - python-tests
       - wasm-tests
       - js-lint
+    if: ${{ success() || failure() }}  # Run this job even if a dependency has failed.
     steps:
-      - run: exit 0
+      - name: Job outcomes
+        run: |
+          echo "lint: ${{ needs.lint.result }}"
+          echo "rust-tests: ${{ needs.rust-tests.result }}"
+          echo "python-tests: ${{ needs.python-tests.result }}"
+          echo "wasm-tests: ${{ needs.wasm-tests.result }}"
+          echo "js-lint: ${{ needs.js-lint.result }}"
+
+      # Fail this required job if any of its dependent jobs have failed.
+      #
+      # Do not attempt to consolidate these steps into one step, it won't work.
+      # Multi-line `if` clauses are not evaluated properly: see the intermediate commits in
+      # https://github.com/obi1kenobi/cargo-semver-checks/pull/405
+      - if: ${{ needs.lint.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.rust-tests.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.python-tests.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.wasm-tests.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.js-lint.result != 'success' }}
+        run: exit 1
 
   python-tests:
     name: Python tests and maturin build
