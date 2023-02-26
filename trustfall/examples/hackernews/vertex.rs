@@ -1,27 +1,22 @@
 use std::rc::Rc;
 
 use hn_api::types::{Comment, Item, Job, Story, User};
-use trustfall::provider::Typename;
+use trustfall::provider::TrustfallEnumVertex;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TrustfallEnumVertex)]
 pub enum Vertex {
     Item(Rc<Item>),
-    Story(Rc<Story>),
-    Job(Rc<Job>),
-    Comment(Rc<Comment>),
-    User(Rc<User>),
-}
 
-impl Typename for Vertex {
-    fn typename(&self) -> &'static str {
-        match self {
-            Vertex::Item(..) => "Item",
-            Vertex::Story(..) => "Story",
-            Vertex::Job(..) => "Job",
-            Vertex::Comment(..) => "Comment",
-            Vertex::User(..) => "User",
-        }
-    }
+    #[trustfall(skip_conversion)]
+    Story(Rc<Story>),
+
+    #[trustfall(skip_conversion)]
+    Job(Rc<Job>),
+
+    #[trustfall(skip_conversion)]
+    Comment(Rc<Comment>),
+
+    User(Rc<User>),
 }
 
 impl Vertex {
@@ -54,13 +49,6 @@ impl Vertex {
                 Item::Comment(s) => Some(s),
                 _ => None,
             },
-            _ => None,
-        }
-    }
-
-    pub fn as_user(&self) -> Option<&User> {
-        match self {
-            Vertex::User(u) => Some(u.as_ref()),
             _ => None,
         }
     }
