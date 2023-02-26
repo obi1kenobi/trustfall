@@ -25,10 +25,10 @@ jobs:
       - name: Job outcomes
         run: |
           echo "lint: ${{ needs.lint.result }}"
-          echo "rust-tests: ${{ needs.rust-tests.needs.lint.result }}"
-          echo "python-tests: ${{ needs.python-tests.needs.lint.result }}"
-          echo "wasm-tests: ${{ needs.wasm-tests.needs.lint.result }}"
-          echo "js-lint: ${{ needs.js-lint.needs.lint.result }}"
+          echo "rust-tests: ${{ needs.rust-tests.result }}"
+          echo "python-tests: ${{ needs.python-tests.result }}"
+          echo "wasm-tests: ${{ needs.wasm-tests.result }}"
+          echo "js-lint: ${{ needs.js-lint.result }}"
 
       # Fail this required job if any of its dependent jobs have failed.
       #
