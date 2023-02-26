@@ -37,13 +37,13 @@ jobs:
       # https://github.com/obi1kenobi/cargo-semver-checks/pull/405
       - if: ${{ needs.lint.result != 'success' }}
         run: exit 1
-      - if: ${{ needs.rust-tests.result != 'success' }}"
+      - if: ${{ needs.rust-tests.result != 'success' }}
         run: exit 1
-      - if: ${{ needs.python-tests.result != 'success' }}"
+      - if: ${{ needs.python-tests.result != 'success' }}
         run: exit 1
-      - if: ${{ needs.wasm-tests.result != 'success' }}"
+      - if: ${{ needs.wasm-tests.result != 'success' }}
         run: exit 1
-      - if: ${{ needs.js-lint.result != 'success' }}"
+      - if: ${{ needs.js-lint.result != 'success' }}
         run: exit 1
 
   python-tests:
