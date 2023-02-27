@@ -1,10 +1,13 @@
-name: Publish Rust crate
+name: Publish Python bindings
 
 on:
   workflow_call:
     secrets:
       PYPI_TOKEN:
         required: true
+
+concurrency:
+  group: publish-python
 
 env:
   RUST_BACKTRACE: 1

@@ -10,6 +10,9 @@ on:
       CARGO_REGISTRY_TOKEN:
         required: true
 
+concurrency:
+  group: publish-rust
+
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
