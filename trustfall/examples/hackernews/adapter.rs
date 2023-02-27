@@ -1,23 +1,40 @@
 #![allow(dead_code)]
 
+use std::collections::HashSet;
+
 use hn_api::{types::Item, HnClient};
 use trustfall::{
     provider::{
         field_property, resolve_coercion_with, resolve_neighbors_with, resolve_property_with,
         BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, VertexIterator,
     },
-    FieldValue,
+    FieldValue, Schema,
 };
 
 use crate::vertex::Vertex;
 
 lazy_static! {
-    static ref CLIENT: HnClient = HnClient::init().unwrap();
+    static ref CLIENT: HnClient = HnClient::init().expect("HnClient instantiated");
+    static ref SCHEMA: Schema =
+        Schema::parse(include_str!("hackernews.graphql")).expect("valid schema");
 }
 
-pub struct HackerNewsAdapter;
+pub struct HackerNewsAdapter {
+    /// Set of types that implement the Item interface in the schema.
+    item_subtypes: HashSet<String>,
+}
 
 impl HackerNewsAdapter {
+    fn new() -> Self {
+        Self {
+            item_subtypes: SCHEMA
+                .subtypes("Item")
+                .expect("Item type exists")
+                .cloned()
+                .collect(),
+        }
+    }
+
     fn front_page(&self) -> VertexIterator<'static, Vertex> {
         self.top(Some(30))
     }
@@ -91,8 +108,12 @@ macro_rules! item_property_resolver {
                 (&j.$attr).into()
             } else if let Some(c) = vertex.as_comment() {
                 (&c.$attr).into()
+            } else if let Some(p) = vertex.as_poll() {
+                (&p.$attr).into()
+            } else if let Some(p) = vertex.as_poll_option() {
+                (&p.$attr).into()
             } else {
-                unreachable!()
+                unreachable!("{:?}", vertex)
             }
         }
     };
@@ -120,7 +141,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 let username_value = parameters["name"].as_str().unwrap();
                 self.user(username_value)
             }
-            _ => unreachable!(),
+            _ => unimplemented!("unexpected starting edge: {edge_name}"),
         }
     }
 
@@ -132,10 +153,10 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match (type_name, property_name) {
             // properties on Item and its implementers
-            ("Item" | "Story" | "Job" | "Comment", "id") => {
+            (type_name, "id") if self.item_subtypes.contains(type_name) => {
                 resolve_property_with(contexts, item_property_resolver!(id))
             }
-            ("Item" | "Story" | "Job" | "Comment", "unixTime") => {
+            (type_name, "unixTime") if self.item_subtypes.contains(type_name) => {
                 resolve_property_with(contexts, item_property_resolver!(time))
             }
 
@@ -342,12 +363,12 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         match (type_name, coerce_to_type) {
-            ("Item", "Job") => resolve_coercion_with(contexts, |vertex| vertex.as_job().is_some()),
-            ("Item", "Story") => {
-                resolve_coercion_with(contexts, |vertex| vertex.as_story().is_some())
-            }
-            ("Item", "Comment") => {
-                resolve_coercion_with(contexts, |vertex| vertex.as_comment().is_some())
+            ("Item", "Job") => resolve_coercion_with(contexts, |v| v.as_job().is_some()),
+            ("Item", "Story") => resolve_coercion_with(contexts, |v| v.as_story().is_some()),
+            ("Item", "Comment") => resolve_coercion_with(contexts, |v| v.as_comment().is_some()),
+            ("Item", "Poll") => resolve_coercion_with(contexts, |v| v.as_poll().is_some()),
+            ("Item", "PollOption") => {
+                resolve_coercion_with(contexts, |v| v.as_poll_option().is_some())
             }
             _ => unreachable!(),
         }

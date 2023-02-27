@@ -88,6 +88,18 @@ type Comment implements Item {
     parent: Item!  # either a parent comment or the story being commented on
 }
 
+type Poll implements Item {
+    # properties from Item
+    id: Int!
+    unixTime: Int!
+}
+
+type PollOption implements Item {
+    # properties from Item
+    id: Int!
+    unixTime: Int!
+}
+
 type User {
     id: String!
     karma: Int!
