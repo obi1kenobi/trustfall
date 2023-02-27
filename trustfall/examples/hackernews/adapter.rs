@@ -19,18 +19,19 @@ lazy_static! {
         Schema::parse(include_str!("hackernews.graphql")).expect("valid schema");
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct HackerNewsAdapter {
     /// Set of types that implement the Item interface in the schema.
     item_subtypes: HashSet<String>,
 }
 
 impl HackerNewsAdapter {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             item_subtypes: SCHEMA
                 .subtypes("Item")
                 .expect("Item type exists")
-                .cloned()
+                .map(|x| x.to_owned())
                 .collect(),
         }
     }
