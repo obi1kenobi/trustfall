@@ -25,18 +25,6 @@ impl From<Item> for Vertex {
     }
 }
 
-impl From<Story> for Vertex {
-    fn from(s: Story) -> Self {
-        Self::Story(Rc::from(s))
-    }
-}
-
-impl From<Job> for Vertex {
-    fn from(j: Job) -> Self {
-        Self::Job(Rc::from(j))
-    }
-}
-
 impl From<Comment> for Vertex {
     fn from(c: Comment) -> Self {
         Self::Comment(Rc::from(c))
