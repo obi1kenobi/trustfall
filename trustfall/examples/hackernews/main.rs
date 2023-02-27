@@ -32,7 +32,7 @@ fn run_query(path: &str, max_results: Option<usize>) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
-    let adapter = Rc::new(RefCell::new(HackerNewsAdapter));
+    let adapter = Rc::new(RefCell::new(HackerNewsAdapter::new()));
 
     let query = input_query.query;
     let arguments = input_query.args;
