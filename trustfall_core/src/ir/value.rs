@@ -192,6 +192,12 @@ impl From<&str> for FieldValue {
     }
 }
 
+impl From<&&str> for FieldValue {
+    fn from(v: &&str) -> Self {
+        Self::String(v.to_string())
+    }
+}
+
 impl From<bool> for FieldValue {
     fn from(v: bool) -> Self {
         Self::Boolean(v)
