@@ -335,15 +335,32 @@ impl<T: Into<FieldValue>> From<Vec<T>> for FieldValue {
     }
 }
 
-impl<T: Clone + Into<FieldValue>> From<&Vec<T>> for FieldValue {
-    fn from(v: &Vec<T>) -> FieldValue {
+impl<T: Clone + Into<FieldValue>> From<&[T]> for FieldValue {
+    fn from(v: &[T]) -> FieldValue {
         FieldValue::List(v.iter().map(|x| x.clone().into()).collect())
     }
 }
 
-impl<T: Clone + Into<FieldValue>> From<&[T]> for FieldValue {
-    fn from(v: &[T]) -> FieldValue {
-        FieldValue::List(v.iter().map(|x| x.clone().into()).collect())
+/// Sometimes type inference is too conservative and fails to realize that
+/// it can turn `&Vec<T>` into `&[T]` to make an `.into()` call work.
+///
+/// This is especially problematic in macro-generated code where the value being converted into
+/// [`FieldValue`] is an input to the macro and may be any of a variety of different types.
+/// Let's make its job easier by offering a "slam dunk" implementation for it to pick.
+impl<T: Clone + Into<FieldValue>> From<&Vec<T>> for FieldValue {
+    fn from(v: &Vec<T>) -> FieldValue {
+        v.as_slice().into()
+    }
+}
+
+/// A similar problem to the above makes this implementation necessary.
+/// In principle, one can always dereference to turn the `&&[T]` into `&[T]`,
+/// but type inference in macro-generated code won't always do this.
+///
+/// Let's make its job easier by offering a "slam dunk" implementation for it to pick.
+impl<T: Clone + Into<FieldValue>> From<&&[T]> for FieldValue {
+    fn from(v: &&[T]) -> FieldValue {
+        (*v).into()
     }
 }
 
