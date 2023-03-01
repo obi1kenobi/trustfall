@@ -163,7 +163,7 @@ fn make_edge_parameters(
                     .default_value
                     .as_ref()
                     .map(|v| {
-                        let value = FieldValue::try_from(&v.node).unwrap();
+                        let value = FieldValue::try_from(v.node.clone()).unwrap();
 
                         // The default value must be a valid type for the parameter,
                         // otherwise the schema itself is invalid.

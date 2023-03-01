@@ -306,8 +306,8 @@ impl<'a> From<&'a Span> for VertexKind<'a> {
 fn get_crate_property(crate_vertex: &Vertex, field_name: &str) -> FieldValue {
     let crate_item = crate_vertex.as_crate().expect("vertex was not a Crate");
     match field_name {
-        "root" => (&crate_item.root.0).into(),
-        "crate_version" => (&crate_item.crate_version).into(),
+        "root" => crate_item.root.0.clone().into(),
+        "crate_version" => crate_item.crate_version.clone().into(),
         "includes_private" => crate_item.includes_private.into(),
         "format_version" => crate_item.format_version.into(),
         _ => unreachable!("Crate property {field_name}"),
@@ -317,11 +317,11 @@ fn get_crate_property(crate_vertex: &Vertex, field_name: &str) -> FieldValue {
 fn get_item_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
     let item = item_vertex.as_item().expect("vertex was not an Item");
     match field_name {
-        "id" => (&item.id.0).into(),
-        "crate_id" => (&item.crate_id).into(),
-        "name" => (&item.name).into(),
-        "docs" => (&item.docs).into(),
-        "attrs" => item.attrs.clone().into(),
+        "id" => item.id.0.clone().into(),
+        "crate_id" => item.crate_id.into(),
+        "name" => item.name.clone().into(),
+        "docs" => item.docs.clone().into(),
+        "attrs" => item.attrs.iter().cloned().collect(),
         "visibility_limit" => match &item.visibility {
             rustdoc_types::Visibility::Public => "public".into(),
             rustdoc_types::Visibility::Default => "default".into(),
@@ -377,7 +377,7 @@ fn get_enum_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
 fn get_path_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let path_vertex = vertex.as_path().expect("vertex was not a Path");
     match field_name {
-        "path" => path_vertex.into(),
+        "path" => path_vertex.iter().cloned().collect(),
         _ => unreachable!("Path property {field_name}"),
     }
 }
@@ -387,11 +387,7 @@ fn get_importable_path_property(vertex: &Vertex, field_name: &str) -> FieldValue
         .as_importable_path()
         .expect("vertex was not an ImportablePath");
     match field_name {
-        "path" => path_vertex
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<_>>()
-            .into(),
+        "path" => path_vertex.iter().map(|s| s.to_owned()).collect(),
         "visibility_limit" => "public".into(),
         _ => unreachable!("ImportablePath property {field_name}"),
     }
@@ -440,8 +436,8 @@ fn get_raw_type_property(vertex: &Vertex, field_name: &str) -> FieldValue {
     let type_vertex = vertex.as_raw_type().expect("vertex was not a RawType");
     match field_name {
         "name" => match type_vertex {
-            rustdoc_types::Type::ResolvedPath(path) => (&path.name).into(),
-            rustdoc_types::Type::Primitive(name) => name.into(),
+            rustdoc_types::Type::ResolvedPath(path) => path.name.clone().into(),
+            rustdoc_types::Type::Primitive(name) => name.clone().into(),
             _ => unreachable!("unexpected RawType vertex content: {type_vertex:?}"),
         },
         _ => unreachable!("RawType property {field_name}"),
@@ -453,7 +449,7 @@ fn get_implemented_trait_property(vertex: &Vertex, field_name: &str) -> FieldVal
         .as_implemented_trait()
         .expect("vertex was not a ImplementedTrait");
     match field_name {
-        "name" => (&path.name).into(),
+        "name" => path.name.clone().into(),
         _ => unreachable!("ImplementedTrait property {field_name}"),
     }
 }

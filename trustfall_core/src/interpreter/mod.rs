@@ -106,7 +106,7 @@ impl From<ValueOrVec> for FieldValue {
     fn from(v: ValueOrVec) -> Self {
         match v {
             ValueOrVec::Value(value) => value,
-            ValueOrVec::Vec(v) => v.into(),
+            ValueOrVec::Vec(v) => v.into_iter().collect(),
         }
     }
 }

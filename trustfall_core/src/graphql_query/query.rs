@@ -348,7 +348,7 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
         |mut acc, (name, value)| -> Result<BTreeMap<Arc<str>, FieldValue>, ParseError> {
             acc.insert_or_error(
                 name.node.as_ref().to_owned().into(),
-                FieldValue::try_from(&value.node).map_err(|_| {
+                FieldValue::try_from(value.node.clone()).map_err(|_| {
                     ParseError::InvalidFieldArgument(
                         field.node.name.node.to_string(),
                         name.node.to_string(),

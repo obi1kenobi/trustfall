@@ -249,7 +249,12 @@ impl Adapter<'static> for NumbersAdapter {
                 resolve_property_with(contexts, |vertex| vertex.name().into())
             }
             ("Number" | "Prime" | "Composite" | "Neither", "vowelsInName") => {
-                resolve_property_with(contexts, |vertex| vertex.vowels_in_name().into())
+                resolve_property_with(contexts, |vertex| {
+                    vertex
+                        .vowels_in_name()
+                        .map(|vec| vec.into_iter().collect::<FieldValue>())
+                        .into()
+                })
             }
             (type_name, property_name) => {
                 unreachable!("failed to resolve type {type_name} property {property_name}")
