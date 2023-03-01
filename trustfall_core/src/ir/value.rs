@@ -335,6 +335,12 @@ impl<T: Into<FieldValue>> From<Vec<T>> for FieldValue {
     }
 }
 
+impl<T: Clone + Into<FieldValue>> From<&Vec<T>> for FieldValue {
+    fn from(v: &Vec<T>) -> FieldValue {
+        FieldValue::List(v.iter().map(|x| x.clone().into()).collect())
+    }
+}
+
 impl<T: Clone + Into<FieldValue>> From<&[T]> for FieldValue {
     fn from(v: &[T]) -> FieldValue {
         FieldValue::List(v.iter().map(|x| x.clone().into()).collect())
