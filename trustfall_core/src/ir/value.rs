@@ -327,10 +327,10 @@ impl TryFrom<Value> for FieldValue {
             Value::Number(n) => convert_number_to_field_value(&n),
             Value::String(s) => Ok(Self::String(s)),
             Value::Boolean(b) => Ok(Self::Boolean(b)),
-            Value::List(l) => Ok(l
+            Value::List(l) => l
                 .into_iter()
                 .map(Self::try_from)
-                .collect::<Result<Self, _>>()?),
+                .collect::<Result<Self, _>>(),
             Value::Enum(n) => {
                 // We have an enum value, so we know the variant name but the variant on its own
                 // doesn't tell us the name of the enum type it belongs in. We'll have to determine

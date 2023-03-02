@@ -321,7 +321,7 @@ fn get_item_property(item_vertex: &Vertex, field_name: &str) -> FieldValue {
         "crate_id" => item.crate_id.into(),
         "name" => item.name.clone().into(),
         "docs" => item.docs.clone().into(),
-        "attrs" => item.attrs.iter().cloned().collect(),
+        "attrs" => item.attrs.clone().into(),
         "visibility_limit" => match &item.visibility {
             rustdoc_types::Visibility::Public => "public".into(),
             rustdoc_types::Visibility::Default => "default".into(),
@@ -387,7 +387,7 @@ fn get_importable_path_property(vertex: &Vertex, field_name: &str) -> FieldValue
         .as_importable_path()
         .expect("vertex was not an ImportablePath");
     match field_name {
-        "path" => path_vertex.iter().map(|s| s.to_owned()).collect(),
+        "path" => path_vertex.clone().into(),
         "visibility_limit" => "public".into(),
         _ => unreachable!("ImportablePath property {field_name}"),
     }
