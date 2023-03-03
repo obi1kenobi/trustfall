@@ -76,7 +76,7 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// Generally used with [`resolve_property_with`].
 ///
 /// Retrieves a [`FieldValue`] from a vertex by converting it to the proper type,
-/// and then retrieving the field of a struct.
+/// and then retrieving the field of a struct or the index of something indexable.
 ///
 /// If the property is computed by a function, use
 /// [`accessor_property!`](crate::accessor_property) instead.
@@ -199,6 +199,26 @@ macro_rules! field_property {
     ($conversion:ident, $field:ident, $b:block) => {
         |vertex| -> FieldValue {
             let $field = &(vertex.$conversion().expect("conversion failed").$field);
+            $b
+        }
+    };
+    // If the data is an index directly on the vertex type.
+    ($field:literal) => {
+        |vertex| -> FieldValue { (&vertex[$field]).into() }
+    };
+    // If we need to call a fallible conversion method
+    // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
+    ($conversion:ident, $field:literal) => {
+        |vertex| -> FieldValue {
+            let vertex = vertex.$conversion().expect("conversion failed");
+            (&vertex[$field]).into()
+        }
+    };
+    // Supply a block to post-process the field's value.
+    // Use the field's name inside the block.
+    ($conversion:ident, $field:literal, $b:block) => {
+        |vertex| -> FieldValue {
+            let $field = &(vertex.$conversion().expect("conversion failed")[$field]);
             $b
         }
     };
