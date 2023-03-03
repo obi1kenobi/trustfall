@@ -135,6 +135,13 @@ impl FieldValue {
         }
     }
 
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            FieldValue::Boolean(b) => Some(*b),
+            _ => None,
+        }
+    }
+
     pub fn as_vec<'a, T>(&'a self, inner: impl Fn(&'a FieldValue) -> Option<T>) -> Option<Vec<T>> {
         match self {
             FieldValue::List(l) => {
