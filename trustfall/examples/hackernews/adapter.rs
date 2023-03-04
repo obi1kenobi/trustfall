@@ -104,15 +104,15 @@ macro_rules! item_property_resolver {
     ($attr:ident) => {
         |vertex| -> FieldValue {
             if let Some(s) = vertex.as_story() {
-                (&s.$attr).into()
+                s.$attr.clone().into()
             } else if let Some(j) = vertex.as_job() {
-                (&j.$attr).into()
+                j.$attr.clone().into()
             } else if let Some(c) = vertex.as_comment() {
-                (&c.$attr).into()
+                c.$attr.clone().into()
             } else if let Some(p) = vertex.as_poll() {
-                (&p.$attr).into()
+                p.$attr.clone().into()
             } else if let Some(p) = vertex.as_poll_option() {
-                (&p.$attr).into()
+                p.$attr.clone().into()
             } else {
                 unreachable!("{:?}", vertex)
             }

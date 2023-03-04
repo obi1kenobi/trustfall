@@ -184,21 +184,21 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 macro_rules! field_property {
     // If the data is a field directly on the vertex type.
     ($field:ident) => {
-        |vertex| -> FieldValue { (&vertex.$field).into() }
+        |vertex| -> FieldValue { vertex.$field.clone().into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
     ($conversion:ident, $field:ident) => {
         |vertex| -> FieldValue {
             let vertex = vertex.$conversion().expect("conversion failed");
-            (&vertex.$field).into()
+            vertex.$field.clone().into()
         }
     };
     // Supply a block to post-process the field's value.
     // Use the field's name inside the block.
     ($conversion:ident, $field:ident, $b:block) => {
         |vertex| -> FieldValue {
-            let $field = &(vertex.$conversion().expect("conversion failed").$field);
+            let $field = &vertex.$conversion().expect("conversion failed").$field;
             $b
         }
     };
@@ -263,14 +263,14 @@ macro_rules! field_property {
 macro_rules! accessor_property {
     // If the data is available as an accessor method on the vertex type.
     ($accessor:ident) => {
-        |vertex| -> FieldValue { (&vertex.$accessor()).into() }
+        |vertex| -> FieldValue { vertex.$accessor().clone().into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before using the accessor.
     ($conversion:ident, $accessor:ident) => {
         |vertex| -> FieldValue {
             let vertex = vertex.$conversion().expect("conversion failed");
-            (&vertex.$accessor()).into()
+            vertex.$accessor().clone().into()
         }
     };
     // Supply a block to post-process the field's value.
