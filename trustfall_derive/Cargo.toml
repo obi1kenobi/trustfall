@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_derive"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 license = "Apache-2.0"
@@ -20,4 +20,4 @@ proc-macro2 = "1.0.51"
 
 [dev-dependencies]
 trybuild = "1.0"
-trustfall = { version = "0.2.1", path = "../trustfall" }
+trustfall = { version = "0.3.0", path = "../trustfall" }

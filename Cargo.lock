@@ -3229,7 +3229,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3248,7 +3248,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
@@ -3267,7 +3267,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_derive"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "proc-macro2",
  "quote",
