@@ -264,7 +264,7 @@ impl Adapter<'static> for DemoAdapter {
 
             // properties on Webpage
             ("Webpage" | "Repository" | "GitHubRepository", "url") => {
-                impl_property!(contexts, as_webpage, url, { url })
+                impl_property!(contexts, as_webpage, url)
             }
 
             // properties on GitHubRepository
