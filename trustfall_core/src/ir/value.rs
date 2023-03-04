@@ -187,33 +187,15 @@ impl From<String> for FieldValue {
     }
 }
 
-impl From<&String> for FieldValue {
-    fn from(v: &String) -> Self {
-        Self::String(v.clone())
-    }
-}
-
 impl From<&str> for FieldValue {
     fn from(v: &str) -> Self {
-        Self::String(v.to_string())
-    }
-}
-
-impl From<&&str> for FieldValue {
-    fn from(v: &&str) -> Self {
-        Self::String(v.to_string())
+        Self::from(v.to_owned())
     }
 }
 
 impl From<bool> for FieldValue {
     fn from(v: bool) -> Self {
         Self::Boolean(v)
-    }
-}
-
-impl From<&bool> for FieldValue {
-    fn from(v: &bool) -> Self {
-        Self::Boolean(*v)
     }
 }
 
@@ -253,12 +235,6 @@ macro_rules! impl_field_value_from_int {
                     Self::Int64(v.into())
                 }
             }
-
-            impl From<&$Int> for FieldValue {
-                fn from(v: &$Int) -> Self {
-                    Self::Int64((*v).into())
-                }
-            }
         )+
     }
 }
@@ -269,12 +245,6 @@ macro_rules! impl_field_value_from_uint {
             impl From<$Uint> for FieldValue {
                 fn from(v: $Uint) -> Self {
                     Self::Uint64(v.into())
-                }
-            }
-
-            impl From<&$Uint> for FieldValue {
-                fn from(v: &$Uint) -> Self {
-                    Self::Uint64((*v).into())
                 }
             }
         )+
@@ -310,19 +280,7 @@ impl TryFrom<Option<f64>> for FieldValue {
     fn try_from(value: Option<f64>) -> Result<Self, Self::Error> {
         match value {
             None => Ok(FieldValue::Null),
-            Some(v) => {
-                let finite_f64 = FiniteF64::try_from(v);
-                finite_f64.map(|x| x.into())
-            }
-        }
-    }
-}
-
-impl<T: Clone + Into<FieldValue>> From<&Option<T>> for FieldValue {
-    fn from(opt: &Option<T>) -> FieldValue {
-        match opt {
-            Some(inner) => inner.clone().into(),
-            None => FieldValue::Null,
+            Some(v) => Ok(FiniteF64::try_from(v)?.into()),
         }
     }
 }
@@ -336,15 +294,18 @@ impl<T: Into<FieldValue>> From<Option<T>> for FieldValue {
     }
 }
 
-impl<T: Into<FieldValue>> From<Vec<T>> for FieldValue {
-    fn from(v: Vec<T>) -> FieldValue {
-        FieldValue::List(v.into_iter().map(|x| x.into()).collect())
+impl<T: Into<FieldValue>> FromIterator<T> for FieldValue {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        FieldValue::List(iter.into_iter().map(Into::into).collect())
     }
 }
 
-impl<T: Clone + Into<FieldValue>> From<&[T]> for FieldValue {
-    fn from(v: &[T]) -> FieldValue {
-        FieldValue::List(v.iter().map(|x| x.clone().into()).collect())
+impl<T: Into<FieldValue>> From<Vec<T>> for FieldValue {
+    fn from(vec: Vec<T>) -> FieldValue {
+        vec.into_iter().collect()
     }
 }
 
@@ -364,22 +325,19 @@ fn convert_number_to_field_value(n: &Number) -> Result<FieldValue, String> {
     }
 }
 
-impl TryFrom<&Value> for FieldValue {
+impl TryFrom<Value> for FieldValue {
     type Error = String;
 
-    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
         match value {
             Value::Null => Ok(Self::Null),
-            Value::Number(n) => convert_number_to_field_value(n),
-            Value::String(s) => Ok(Self::String(s.to_owned())),
-            Value::Boolean(b) => Ok(Self::Boolean(*b)),
-            Value::List(l) => Ok(Self::List(l.iter().try_fold(
-                vec![],
-                |mut acc, v| -> Result<Vec<FieldValue>, Self::Error> {
-                    acc.push(Self::try_from(v)?);
-                    Ok(acc)
-                },
-            )?)),
+            Value::Number(n) => convert_number_to_field_value(&n),
+            Value::String(s) => Ok(Self::String(s)),
+            Value::Boolean(b) => Ok(Self::Boolean(b)),
+            Value::List(l) => l
+                .into_iter()
+                .map(Self::try_from)
+                .collect::<Result<Self, _>>(),
             Value::Enum(n) => {
                 // We have an enum value, so we know the variant name but the variant on its own
                 // doesn't tell us the name of the enum type it belongs in. We'll have to determine
@@ -393,30 +351,10 @@ impl TryFrom<&Value> for FieldValue {
     }
 }
 
-impl TryFrom<Value> for FieldValue {
-    type Error = String;
-
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Number(n) => convert_number_to_field_value(&n),
-            Value::String(s) => Ok(Self::String(s)),
-            _ => Self::try_from(&value),
-        }
-    }
-}
-
-impl TryFrom<&ConstValue> for FieldValue {
-    type Error = String;
-
-    fn try_from(value: &ConstValue) -> Result<Self, Self::Error> {
-        FieldValue::try_from(value.clone().into_value())
-    }
-}
-
 impl TryFrom<ConstValue> for FieldValue {
     type Error = String;
 
     fn try_from(value: ConstValue) -> Result<Self, Self::Error> {
-        FieldValue::try_from(value.into_value())
+        value.into_value().try_into()
     }
 }

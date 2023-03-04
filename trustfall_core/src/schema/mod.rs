@@ -350,8 +350,7 @@ fn check_type_and_property_and_edge_invariants(
                     for param_defn in &field_defn.arguments {
                         if let Some(value) = &param_defn.node.default_value {
                             let param_type = &param_defn.node.ty.node;
-                            #[allow(clippy::needless_borrow)]
-                            match (&value.node).try_into() {
+                            match value.node.clone().try_into() {
                                 Ok(value) => {
                                     if !is_argument_type_valid(param_type, &value) {
                                         errors.push(InvalidSchemaError::InvalidDefaultValueForFieldParameter(

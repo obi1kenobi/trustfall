@@ -126,24 +126,20 @@ impl DemoAdapter {
 macro_rules! impl_item_property {
     ($contexts:ident, $attr:ident) => {
         Box::new($contexts.map(|ctx| {
-            let vertex = ctx.active_vertex();
-            let value = match vertex {
-                None => FieldValue::Null,
-                Some(t) => {
+            let value = ctx
+                .active_vertex()
+                .map(|t| {
                     if let Some(s) = t.as_story() {
-                        (&s.$attr).into()
+                        s.$attr.clone()
                     } else if let Some(j) = t.as_job() {
-                        (&j.$attr).into()
+                        j.$attr.clone()
                     } else if let Some(c) = t.as_comment() {
-                        (&c.$attr).into()
+                        c.$attr.clone()
                     } else {
                         unreachable!()
                     }
-                }
-
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
-            };
+                })
+                .into();
 
             (ctx, value)
         }))
@@ -156,13 +152,7 @@ macro_rules! impl_property {
             let vertex = ctx
                 .active_vertex()
                 .map(|vertex| vertex.$conversion().unwrap());
-            let value = match vertex {
-                None => FieldValue::Null,
-                Some(t) => (&t.$attr).clone().into(),
-
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
-            };
+            let value = vertex.map(|t| t.$attr.clone()).into();
 
             (ctx, value)
         }))
@@ -173,13 +163,7 @@ macro_rules! impl_property {
             let vertex = ctx
                 .active_vertex()
                 .map(|vertex| vertex.$conversion().unwrap());
-            let value = match vertex {
-                None => FieldValue::Null,
-                Some($var) => $b,
-
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
-            };
+            let value = vertex.map(|$var| $b).into();
 
             (ctx, value)
         }))
@@ -263,12 +247,7 @@ impl Adapter<'static> for DemoAdapter {
             ("HackerNewsComment", "text") => impl_property!(contexts, as_comment, text),
             ("HackerNewsComment", "childCount") => {
                 impl_property!(contexts, as_comment, comment, {
-                    comment
-                        .kids
-                        .as_ref()
-                        .map(|v| v.len() as u64)
-                        .unwrap_or(0)
-                        .into()
+                    comment.kids.as_ref().map(|v| v.len() as u64).unwrap_or(0)
                 })
             }
 
@@ -285,14 +264,14 @@ impl Adapter<'static> for DemoAdapter {
 
             // properties on Webpage
             ("Webpage" | "Repository" | "GitHubRepository", "url") => {
-                impl_property!(contexts, as_webpage, url, { url.into() })
+                impl_property!(contexts, as_webpage, url, { url })
             }
 
             // properties on GitHubRepository
             ("GitHubRepository", "owner") => {
                 impl_property!(contexts, as_github_repository, repo, {
                     let (owner, _) = get_owner_and_repo(repo);
-                    owner.into()
+                    owner
                 })
             }
             ("GitHubRepository", "name") => {
@@ -307,10 +286,10 @@ impl Adapter<'static> for DemoAdapter {
 
             // properties on GitHubWorkflow
             ("GitHubWorkflow", "name") => impl_property!(contexts, as_github_workflow, wf, {
-                wf.workflow.name.as_str().into()
+                wf.workflow.name.as_str()
             }),
             ("GitHubWorkflow", "path") => impl_property!(contexts, as_github_workflow, wf, {
-                wf.workflow.path.as_str().into()
+                wf.workflow.path.as_str()
             }),
 
             // properties on GitHubActionsJob
@@ -325,9 +304,7 @@ impl Adapter<'static> for DemoAdapter {
             (
                 "GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep",
                 "name",
-            ) => impl_property!(contexts, as_github_actions_step, step_name, {
-                step_name.map(|x| x.to_string()).into()
-            }),
+            ) => impl_property!(contexts, as_github_actions_step, step_name, { step_name }),
 
             // properties on GitHubActionsImportedStep
             ("GitHubActionsImportedStep", "uses") => {
@@ -340,13 +317,11 @@ impl Adapter<'static> for DemoAdapter {
             }
 
             // properties on NameValuePair
-            ("NameValuePair", "name") => impl_property!(contexts, as_name_value_pair, pair, {
-                pair.0.clone().into()
-            }),
+            ("NameValuePair", "name") => {
+                impl_property!(contexts, as_name_value_pair, pair, { pair.0.clone() })
+            }
             ("NameValuePair", "value") => {
-                impl_property!(contexts, as_name_value_pair, pair, {
-                    pair.1.clone().into()
-                })
+                impl_property!(contexts, as_name_value_pair, pair, { pair.1.clone() })
             }
             _ => unreachable!(),
         }
