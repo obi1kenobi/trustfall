@@ -187,6 +187,12 @@ impl From<String> for FieldValue {
     }
 }
 
+impl From<&String> for FieldValue {
+    fn from(v: &String) -> Self {
+        Self::String(v.clone())
+    }
+}
+
 impl From<&str> for FieldValue {
     fn from(v: &str) -> Self {
         Self::from(v.to_owned())
@@ -356,5 +362,43 @@ impl TryFrom<ConstValue> for FieldValue {
 
     fn try_from(value: ConstValue) -> Result<Self, Self::Error> {
         value.into_value().try_into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FieldValue, FiniteF64};
+
+    #[test]
+    fn test_field_value_into() {
+        let test_data: Vec<(FieldValue, FieldValue)> = vec![
+            (123i64.into(), FieldValue::Int64(123)),
+            (123u64.into(), FieldValue::Uint64(123)),
+            (Option::<i64>::Some(123i64).into(), FieldValue::Int64(123)),
+            (Option::<u64>::Some(123u64).into(), FieldValue::Uint64(123)),
+            (
+                FiniteF64::try_from(3.15).unwrap().into(),
+                FieldValue::Float64(3.15),
+            ),
+            (false.into(), FieldValue::Boolean(false)),
+            ("a &str".into(), FieldValue::String("a &str".to_string())),
+            (
+                "a String".to_string().into(),
+                FieldValue::String("a String".to_string()),
+            ),
+            (
+                (&"a &String".to_string()).into(),
+                FieldValue::String("a &String".to_string()),
+            ),
+            (Option::<i64>::None.into(), FieldValue::Null),
+            (
+                vec![1, 2].into(),
+                FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
+            ),
+        ];
+
+        for (actual_value, expected_value) in test_data {
+            assert_eq!(actual_value, expected_value);
+        }
     }
 }
