@@ -315,6 +315,12 @@ impl<T: Into<FieldValue>> From<Vec<T>> for FieldValue {
     }
 }
 
+impl<T: Into<FieldValue> + Clone> From<&[T]> for FieldValue {
+    fn from(slice: &[T]) -> FieldValue {
+        slice.iter().cloned().collect()
+    }
+}
+
 /// Converts a JSON number to a [FieldValue]
 fn convert_number_to_field_value(n: &Number) -> Result<FieldValue, String> {
     // The order here matters!
@@ -394,6 +400,10 @@ mod tests {
             (
                 vec![1, 2].into(),
                 FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
+            ),
+            (
+                vec!["a String".to_string()].as_slice().into(),
+                FieldValue::List(vec![FieldValue::String("a String".to_string())]),
             ),
         ];
 
