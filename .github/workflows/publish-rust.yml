@@ -31,6 +31,9 @@ jobs:
         with:
           persist-credentials: true
 
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Tag the version
