@@ -153,10 +153,7 @@ impl FieldValue {
         }
     }
 
-    pub fn as_vec<'a, T>(
-        &'a self,
-        inner: impl Fn(&'a FieldValue) -> Option<T>,
-    ) -> Option<Vec<T>> {
+    pub fn as_vec<'a, T>(&'a self, inner: impl Fn(&'a FieldValue) -> Option<T>) -> Option<Vec<T>> {
         match self {
             FieldValue::List(l) => {
                 let maybe_vec: Option<Vec<T>> = l.iter().map(inner).collect();
