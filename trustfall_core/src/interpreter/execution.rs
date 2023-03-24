@@ -208,6 +208,7 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
     query: &mut QueryInfo,
     iterator: ContextIterator<'query, Vertex>,
 ) -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
+    let root_component = query.ir_query().root_component.clone();
     let mut output_names: Vec<Arc<str>> = query
         .ir_query()
         .root_component
@@ -220,8 +221,7 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
     let mut output_iterator = iterator;
 
     for output_name in output_names.iter() {
-        let component = query.ir_query().root_component.clone();
-        let context_field = &component.outputs[output_name];
+        let context_field = &root_component.outputs[output_name];
         let vertex_id = context_field.vertex_id;
 
         let moved_iterator = Box::new(output_iterator.map(move |context| {
@@ -233,7 +233,7 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
         query.current_vertex = vertex_id;
         query.crossing_eid = None;
 
-        let type_name = &query.ir_query().root_component.vertices[&vertex_id].type_name;
+        let type_name = &root_component.vertices[&vertex_id].type_name;
         let field_data_iterator = adapter_ref.resolve_property(
             moved_iterator,
             type_name,
