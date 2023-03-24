@@ -15,7 +15,7 @@ use super::{ContextIterator, ContextOutcomeIterator, Typename, VertexIterator};
 /// [`BasicAdapter::resolve_property`]: super::basic_adapter::BasicAdapter::resolve_property
 pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
-    mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
+    mut resolver: impl FnMut(&Vertex) -> FieldValue + 'static,
 ) -> ContextOutcomeIterator<'vertex, Vertex, FieldValue> {
     Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
         None => (ctx, FieldValue::Null),
@@ -34,7 +34,7 @@ pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// [`BasicAdapter::resolve_neighbors`]: super::basic_adapter::BasicAdapter::resolve_neighbors
 pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
-    mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'vertex,
+    mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'static,
 ) -> ContextOutcomeIterator<'vertex, Vertex, VertexIterator<'vertex, Vertex>> {
     Box::new(contexts.map(move |ctx| {
         match ctx.active_vertex.as_ref() {
@@ -60,7 +60,7 @@ pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
 pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
     contexts: ContextIterator<'vertex, Vertex>,
-    mut resolver: impl FnMut(&Vertex) -> bool + 'vertex,
+    mut resolver: impl FnMut(&Vertex) -> bool + 'static,
 ) -> ContextOutcomeIterator<'vertex, Vertex, bool> {
     Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
         None => (ctx, false),

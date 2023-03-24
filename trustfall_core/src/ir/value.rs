@@ -26,6 +26,10 @@ pub enum FieldValue {
     List(Vec<FieldValue>),
 }
 
+impl FieldValue {
+    pub const NULL: Self = FieldValue::Null;
+}
+
 /// Values of fields in GraphQL types.
 ///
 /// Same as [FieldValue], but serialized as an untagged enum,
@@ -138,6 +142,13 @@ impl FieldValue {
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             FieldValue::Boolean(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_slice(&self) -> Option<&[FieldValue]> {
+        match self {
+            FieldValue::List(l) => Some(l.as_slice()),
             _ => None,
         }
     }
