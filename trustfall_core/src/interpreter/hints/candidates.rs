@@ -76,6 +76,31 @@ pub struct Range {
     end: Bound<FieldValue>,
 }
 
+impl Range {
+    pub const FULL: Self = Self {
+        start: Bound::Unbounded,
+        end: Bound::Unbounded,
+    };
+
+    pub(super) fn new(start: Bound<FieldValue>, end: Bound<FieldValue>) -> Self {
+        Self { start, end }
+    }
+
+    pub(super) fn with_start(start: Bound<FieldValue>) -> Self {
+        Self {
+            start,
+            end: Bound::Unbounded,
+        }
+    }
+
+    pub(super) fn with_end(end: Bound<FieldValue>) -> Self {
+        Self {
+            start: Bound::Unbounded,
+            end,
+        }
+    }
+}
+
 impl RangeBounds<FieldValue> for Range {
     fn start_bound(&self) -> Bound<&FieldValue> {
         self.start.as_ref()

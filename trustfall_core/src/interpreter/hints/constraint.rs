@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, ops::Bound, sync::Arc};
 
 use crate::{
     interpreter::{
@@ -8,7 +8,7 @@ use crate::{
     ir::{ContextField, FieldValue, IRQueryComponent},
 };
 
-use super::CandidateValue;
+use super::{CandidateValue, Range};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,6 +38,17 @@ pub(super) enum BoundKind {
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
+}
+
+impl BoundKind {
+    fn make_range(&self, value: FieldValue) -> Range {
+        match self {
+            BoundKind::LessThan => Range::with_end(Bound::Excluded(value)),
+            BoundKind::LessThanOrEqual => Range::with_end(Bound::Included(value)),
+            BoundKind::GreaterThan => Range::with_start(Bound::Excluded(value)),
+            BoundKind::GreaterThanOrEqual => Range::with_start(Bound::Included(value)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,5 +162,48 @@ pub struct DynamicallyResolvedRange {
 impl DynamicallyResolvedRange {
     pub(super) fn new(info: QueryInfo, constraint: DynamicConstraint<BoundKind>) -> Self {
         Self { info, constraint }
+    }
+
+    pub fn resolve<
+        'vertex,
+        VertexT: Debug + Clone + 'vertex,
+        AdapterT: Adapter<'vertex, Vertex = VertexT>,
+    >(
+        mut self,
+        adapter: &mut AdapterT,
+        contexts: ContextIterator<'vertex, VertexT>,
+    ) -> ContextOutcomeIterator<'vertex, VertexT, Range> {
+        let iterator = compute_context_field_with_separate_value(
+            adapter,
+            &mut self.info,
+            &self.constraint.resolve_on_component,
+            &self.constraint.field,
+            contexts,
+        );
+        let context_field_vid = self.constraint.field.vertex_id;
+        let nullable_context_field = self.constraint.field.field_type.nullable;
+        let bound = self.constraint.content;
+
+        Box::new(iterator.map(move |(ctx, value)| match value {
+            FieldValue::Null => {
+                // Either a nullable field was tagged, or
+                // the @tag is inside an @optional scope that doesn't exist.
+                let range = if ctx.vertices[&context_field_vid].is_none() {
+                    // @optional scope that didn't exist. Our query rules say that
+                    // any filters using this tag *must* pass.
+                    Range::FULL
+                } else {
+                    // The field must have been nullable.
+                    debug_assert!(
+                        nullable_context_field,
+                        "tagged field {:?} was not nullable but received a null value for it",
+                        self.constraint.field,
+                    );
+                    bound.make_range(FieldValue::Null)
+                };
+                (ctx, range)
+            }
+            other_value => (ctx, bound.make_range(other_value)),
+        }))
     }
 }
