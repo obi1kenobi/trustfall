@@ -5,19 +5,19 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use crate::ir::indexed::Output;
-use crate::ir::{
-    Argument, ContextField, FieldRef, IREdge, IRFold, IRQuery, IRVertex, Operation, Recursive,
-};
-use crate::{
-    interpreter::{ContextIterator, ContextOutcomeIterator},
-    ir::{Eid, FieldValue, IRQueryComponent, Vid},
-};
+use crate::ir::{Argument, FieldRef, IREdge, IRFold, IRQuery, IRVertex, Operation, Recursive};
+use crate::ir::{Eid, FieldValue, IRQueryComponent, Vid};
 
-use super::execution::compute_context_field_with_separate_value;
-use super::{Adapter, InterpretedQuery};
+use self::constraint::{
+    CandidateInfo, DynamicConstraint, DynamicallyResolvedRange, DynamicallyResolvedValue,
+};
 
 mod candidates;
+mod constraint;
+
 pub use candidates::{CandidateValue, Range};
+
+use super::InterpretedQuery;
 
 pub trait VertexInfo {
     fn current_component(&self) -> &IRQueryComponent;
@@ -112,7 +112,7 @@ pub trait VertexInfo {
 
 /// Information about the query being processed.
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QueryInfo {
     query: InterpretedQuery,
     pub(crate) current_vertex: Vid,
@@ -157,7 +157,7 @@ impl QueryInfo {
     #[inline]
     pub fn here(&self) -> LocalQueryInfo {
         LocalQueryInfo {
-            query: self.clone(),
+            query_info: self.clone(),
             current_vertex: self.current_vertex,
         }
     }
@@ -170,7 +170,7 @@ impl QueryInfo {
                 crate::ir::indexed::EdgeKind::Fold(fold) => fold.to_vid,
             };
             LocalQueryInfo {
-                query: self.clone(),
+                query_info: self.clone(),
                 current_vertex,
             }
         })
@@ -180,14 +180,14 @@ impl QueryInfo {
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct LocalQueryInfo {
-    query: QueryInfo,
+    query_info: QueryInfo,
     current_vertex: Vid,
 }
 
 impl LocalQueryInfo {
     fn make_non_folded_edge_info(&self, edge: &IREdge) -> EdgeInfo {
         let neighboring_info = NeighboringQueryInfo {
-            query: self.query.clone(),
+            query_info: self.query_info.clone(),
             starting_vertex: self.current_vertex,
             neighbor_vertex: edge.to_vid,
             neighbor_path: vec![edge.eid],
@@ -203,7 +203,7 @@ impl LocalQueryInfo {
 
     fn make_folded_edge_info(&self, fold: &IRFold) -> EdgeInfo {
         let neighboring_info = NeighboringQueryInfo {
-            query: self.query.clone(),
+            query_info: self.query_info.clone(),
             starting_vertex: self.current_vertex,
             neighbor_vertex: fold.to_vid,
             neighbor_path: vec![fold.eid],
@@ -226,12 +226,12 @@ impl VertexInfo for LocalQueryInfo {
 
     #[inline]
     fn current_component(&self) -> &IRQueryComponent {
-        &self.query.query.indexed_query.vids[&self.current_vertex]
+        &self.query_info.query.indexed_query.vids[&self.current_vertex]
     }
 
     #[inline]
     fn query_arguments(&self) -> &BTreeMap<Arc<str>, FieldValue> {
-        self.query.arguments()
+        self.query_info.arguments()
     }
 
     fn dynamic_field_value(&self, field_name: &str) -> Option<DynamicallyResolvedValue> {
@@ -240,22 +240,24 @@ impl VertexInfo for LocalQueryInfo {
             match filter_operation {
                 // TODO: handle tags of fold-specific fields
                 Operation::Equals(_, Argument::Tag(FieldRef::ContextField(context_field))) => {
-                    return Some(DynamicallyResolvedValue {
-                        query: self.query.clone(),
-                        resolve_on_component: self.query.query.indexed_query.vids[&vertex.vid]
-                            .clone(),
-                        context_field: context_field.clone(),
-                        is_multiple: false,
-                    });
+                    return Some(DynamicallyResolvedValue::new(
+                        self.query_info.clone(),
+                        DynamicConstraint::new(
+                            self.query_info.query.indexed_query.vids[&vertex.vid].clone(),
+                            context_field.clone(),
+                            CandidateInfo::new(false),
+                        ),
+                    ));
                 }
                 Operation::OneOf(_, Argument::Tag(FieldRef::ContextField(context_field))) => {
-                    return Some(DynamicallyResolvedValue {
-                        query: self.query.clone(),
-                        resolve_on_component: self.query.query.indexed_query.vids[&vertex.vid]
-                            .clone(),
-                        context_field: context_field.clone(),
-                        is_multiple: true,
-                    });
+                    return Some(DynamicallyResolvedValue::new(
+                        self.query_info.clone(),
+                        DynamicConstraint::new(
+                            self.query_info.query.indexed_query.vids[&vertex.vid].clone(),
+                            context_field.clone(),
+                            CandidateInfo::new(true),
+                        ),
+                    ));
                 }
                 _ => {}
             }
@@ -322,7 +324,7 @@ impl EdgeInfo {
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct NeighboringQueryInfo {
-    query: QueryInfo,
+    query_info: QueryInfo,
     starting_vertex: Vid,
     neighbor_vertex: Vid,
     neighbor_path: Vec<Eid>,
@@ -333,7 +335,7 @@ impl NeighboringQueryInfo {
         let mut neighbor_path = self.neighbor_path.clone();
         neighbor_path.push(edge.eid);
         let neighboring_info = NeighboringQueryInfo {
-            query: self.query.clone(),
+            query_info: self.query_info.clone(),
             starting_vertex: self.starting_vertex,
             neighbor_vertex: edge.to_vid,
             neighbor_path,
@@ -351,7 +353,7 @@ impl NeighboringQueryInfo {
         let mut neighbor_path = self.neighbor_path.clone();
         neighbor_path.push(fold.eid);
         let neighboring_info = NeighboringQueryInfo {
-            query: self.query.clone(),
+            query_info: self.query_info.clone(),
             starting_vertex: self.starting_vertex,
             neighbor_vertex: fold.to_vid,
             neighbor_path,
@@ -374,12 +376,12 @@ impl VertexInfo for NeighboringQueryInfo {
 
     #[inline]
     fn current_component(&self) -> &IRQueryComponent {
-        &self.query.query.indexed_query.vids[&self.neighbor_vertex]
+        &self.query_info.query.indexed_query.vids[&self.neighbor_vertex]
     }
 
     #[inline]
     fn query_arguments(&self) -> &BTreeMap<Arc<str>, FieldValue> {
-        self.query.arguments()
+        self.query_info.arguments()
     }
 
     fn dynamic_field_value(&self, field_name: &str) -> Option<DynamicallyResolvedValue> {
@@ -411,26 +413,28 @@ impl VertexInfo for NeighboringQueryInfo {
                 // TODO: handle tags of fold-specific fields
                 Operation::Equals(_, Argument::Tag(FieldRef::ContextField(context_field))) => {
                     if context_field.vertex_id <= self.starting_vertex {
-                        return Some(DynamicallyResolvedValue {
-                            query: self.query.clone(),
-                            context_field: context_field.clone(),
-                            resolve_on_component: self.query.query.indexed_query.vids
-                                [&self.starting_vertex]
-                                .clone(),
-                            is_multiple: false,
-                        });
+                        return Some(DynamicallyResolvedValue::new(
+                            self.query_info.clone(),
+                            DynamicConstraint::new(
+                                self.query_info.query.indexed_query.vids[&self.starting_vertex]
+                                    .clone(),
+                                context_field.clone(),
+                                CandidateInfo::new(false),
+                            ),
+                        ));
                     }
                 }
                 Operation::OneOf(_, Argument::Tag(FieldRef::ContextField(context_field))) => {
                     if context_field.vertex_id <= self.starting_vertex {
-                        return Some(DynamicallyResolvedValue {
-                            query: self.query.clone(),
-                            context_field: context_field.clone(),
-                            resolve_on_component: self.query.query.indexed_query.vids
-                                [&self.starting_vertex]
-                                .clone(),
-                            is_multiple: true,
-                        });
+                        return Some(DynamicallyResolvedValue::new(
+                            self.query_info.clone(),
+                            DynamicConstraint::new(
+                                self.query_info.query.indexed_query.vids[&self.starting_vertex]
+                                    .clone(),
+                                context_field.clone(),
+                                CandidateInfo::new(true),
+                            ),
+                        ));
                     }
                 }
                 _ => {}
@@ -476,109 +480,4 @@ impl VertexInfo for NeighboringQueryInfo {
                     .map(|fold| self.make_folded_edge_info(fold.as_ref()))
             })
     }
-}
-
-#[non_exhaustive]
-pub struct DynamicallyResolvedValue {
-    query: QueryInfo,
-    resolve_on_component: Arc<IRQueryComponent>,
-    context_field: ContextField,
-    is_multiple: bool,
-}
-
-impl DynamicallyResolvedValue {
-    pub fn resolve<
-        'vertex,
-        VertexT: Debug + Clone + 'vertex,
-        AdapterT: Adapter<'vertex, Vertex = VertexT>,
-    >(
-        mut self,
-        adapter: &mut AdapterT,
-        contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
-        let iterator = compute_context_field_with_separate_value(
-            adapter,
-            &mut self.query,
-            &self.resolve_on_component,
-            &self.context_field,
-            contexts,
-        );
-        let context_field_vid = self.context_field.vertex_id;
-        let nullable_context_field = self.context_field.field_type.nullable;
-        if self.is_multiple {
-            Box::new(iterator.map(move |(ctx, value)| {
-                match value {
-                    FieldValue::List(v) => (ctx, CandidateValue::Multiple(v)),
-                    FieldValue::Null => {
-                        // Either a nullable field was tagged, or
-                        // the @tag is inside an @optional scope that doesn't exist.
-                        let candidate = if ctx.vertices[&context_field_vid].is_none() {
-                            // @optional scope that didn't exist. Our query rules say that
-                            // any filters using this tag *must* pass.
-                            CandidateValue::All
-                        } else {
-                            // The field must have been nullable.
-                            debug_assert!(
-                                nullable_context_field,
-                                "tagged field {:?} was not nullable but received a null value for it",
-                                self.context_field,
-                            );
-                            CandidateValue::Impossible
-                        };
-                        (ctx, candidate)
-                    }
-                    bad_value => {
-                        panic!(
-                            "\
-field {} of type {:?} produced an invalid value when resolving @tag: {bad_value:?}",
-                            self.context_field.field_name, self.context_field.field_type,
-                        )
-                    }
-                }
-            }))
-        } else {
-            Box::new(iterator.map(move |(ctx, value)| match value {
-                null_value @ FieldValue::Null => {
-                    // Either a nullable field was tagged, or
-                    // the @tag is inside an @optional scope that doesn't exist.
-                    let candidate = if ctx.vertices[&context_field_vid].is_none() {
-                        // @optional scope that didn't exist. Our query rules say that
-                        // any filters using this tag *must* pass.
-                        CandidateValue::All
-                    } else {
-                        // The field must have been nullable.
-                        debug_assert!(
-                            nullable_context_field,
-                            "tagged field {:?} was not nullable but received a null value for it",
-                            self.context_field,
-                        );
-                        CandidateValue::Single(null_value)
-                    };
-                    (ctx, candidate)
-                }
-                other_value => (ctx, CandidateValue::Single(other_value)),
-            }))
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BoundKind {
-    LessThan,
-    LessThanOrEqual,
-    GreaterThan,
-    GreaterThanOrEqual,
-}
-
-#[non_exhaustive]
-pub struct DynamicallyResolvedRange {
-    query: QueryInfo,
-    constraint: DynamicConstraint<BoundKind>,
-}
-
-#[non_exhaustive]
-struct DynamicConstraint<C> {
-    resolve_on_component: Arc<IRQueryComponent>,
-    field: ContextField,
-    constraint: C,
 }
