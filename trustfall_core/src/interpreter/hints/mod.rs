@@ -17,7 +17,7 @@ use super::execution::compute_context_field_with_separate_value;
 use super::{Adapter, InterpretedQuery};
 
 mod candidates;
-pub use candidates::{CandidateValue, RangeBoundKind, RangeEndpoint};
+pub use candidates::{CandidateValue, Range};
 
 pub trait VertexInfo {
     fn current_component(&self) -> &IRQueryComponent;
@@ -89,14 +89,16 @@ pub trait VertexInfo {
         candidate
     }
 
-    fn static_field_range(&self, field_name: &str) -> Option<&RangeBoundKind> {
+    fn static_field_range(&self, field_name: &str) -> Option<&Range> {
         todo!()
     }
 
     /// Only the first matching `@tag` value is returned.
     fn dynamic_field_value(&self, field_name: &str) -> Option<DynamicallyResolvedValue>;
 
-    // fn dynamic_field_range(&self, field_name: &str) -> Option<DynamicallyResolvedGeneric<RangeBoundKind>>;
+    fn dynamic_field_range(&self, field_name: &str) -> Option<DynamicallyResolvedRange> {
+        todo!()
+    }
 
     // non-optional, non-recursed, non-folded edge
     // TODO: What happens if the same edge exists more than once in a given scope?
@@ -240,7 +242,6 @@ impl VertexInfo for LocalQueryInfo {
                 Operation::Equals(_, Argument::Tag(FieldRef::ContextField(context_field))) => {
                     return Some(DynamicallyResolvedValue {
                         query: self.query.clone(),
-                        vid: vertex.vid,
                         resolve_on_component: self.query.query.indexed_query.vids[&vertex.vid]
                             .clone(),
                         context_field: context_field.clone(),
@@ -250,7 +251,6 @@ impl VertexInfo for LocalQueryInfo {
                 Operation::OneOf(_, Argument::Tag(FieldRef::ContextField(context_field))) => {
                     return Some(DynamicallyResolvedValue {
                         query: self.query.clone(),
-                        vid: vertex.vid,
                         resolve_on_component: self.query.query.indexed_query.vids[&vertex.vid]
                             .clone(),
                         context_field: context_field.clone(),
@@ -413,7 +413,6 @@ impl VertexInfo for NeighboringQueryInfo {
                     if context_field.vertex_id <= self.starting_vertex {
                         return Some(DynamicallyResolvedValue {
                             query: self.query.clone(),
-                            vid: vertex.vid,
                             context_field: context_field.clone(),
                             resolve_on_component: self.query.query.indexed_query.vids
                                 [&self.starting_vertex]
@@ -426,7 +425,6 @@ impl VertexInfo for NeighboringQueryInfo {
                     if context_field.vertex_id <= self.starting_vertex {
                         return Some(DynamicallyResolvedValue {
                             query: self.query.clone(),
-                            vid: vertex.vid,
                             context_field: context_field.clone(),
                             resolve_on_component: self.query.query.indexed_query.vids
                                 [&self.starting_vertex]
@@ -483,7 +481,6 @@ impl VertexInfo for NeighboringQueryInfo {
 #[non_exhaustive]
 pub struct DynamicallyResolvedValue {
     query: QueryInfo,
-    vid: Vid,
     resolve_on_component: Arc<IRQueryComponent>,
     context_field: ContextField,
     is_multiple: bool,
@@ -499,7 +496,6 @@ impl DynamicallyResolvedValue {
         adapter: &mut AdapterT,
         contexts: ContextIterator<'vertex, VertexT>,
     ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
-        // let component = &self.query.query.indexed_query.vids[&self.vid].clone();
         let iterator = compute_context_field_with_separate_value(
             adapter,
             &mut self.query,
@@ -534,7 +530,7 @@ impl DynamicallyResolvedValue {
                     bad_value => {
                         panic!(
                             "\
-tagged field named {} of type {:?} produced an invalid value: {bad_value:?}",
+field {} of type {:?} produced an invalid value when resolving @tag: {bad_value:?}",
                             self.context_field.field_name, self.context_field.field_type,
                         )
                     }
@@ -564,4 +560,25 @@ tagged field named {} of type {:?} produced an invalid value: {bad_value:?}",
             }))
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BoundKind {
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+}
+
+#[non_exhaustive]
+pub struct DynamicallyResolvedRange {
+    query: QueryInfo,
+    constraint: DynamicConstraint<BoundKind>,
+}
+
+#[non_exhaustive]
+struct DynamicConstraint<C> {
+    resolve_on_component: Arc<IRQueryComponent>,
+    field: ContextField,
+    constraint: C,
 }

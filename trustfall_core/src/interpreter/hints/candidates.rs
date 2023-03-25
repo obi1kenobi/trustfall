@@ -1,4 +1,7 @@
-use std::fmt::Debug;
+use std::{
+    fmt::Debug,
+    ops::{Bound, RangeBounds},
+};
 
 use crate::ir::FieldValue;
 
@@ -67,39 +70,20 @@ impl<T: Debug + Clone + PartialEq + Eq> CandidateValue<T> {
     }
 }
 
-// TODO: should we just use Rust's built in range types?
-//       is there an advantage one way or the other?
-#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RangeBoundKind {
-    Lower(RangeEndpoint),
-    Upper(RangeEndpoint),
-    LowerAndUpper(RangeEndpoint, RangeEndpoint),
+pub struct Range {
+    start: Bound<FieldValue>,
+    end: Bound<FieldValue>,
 }
 
-impl RangeBoundKind {
-    pub fn start(&self) -> Option<&RangeEndpoint> {
-        match self {
-            RangeBoundKind::Lower(l) => Some(l),
-            RangeBoundKind::Upper(_) => None,
-            RangeBoundKind::LowerAndUpper(l, _) => Some(l),
-        }
+impl RangeBounds<FieldValue> for Range {
+    fn start_bound(&self) -> Bound<&FieldValue> {
+        self.start.as_ref()
     }
 
-    pub fn end(&self) -> Option<&RangeEndpoint> {
-        match self {
-            RangeBoundKind::Lower(_) => None,
-            RangeBoundKind::Upper(r) => Some(r),
-            RangeBoundKind::LowerAndUpper(_, r) => Some(r),
-        }
+    fn end_bound(&self) -> Bound<&FieldValue> {
+        self.end.as_ref()
     }
-}
-
-#[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RangeEndpoint {
-    Exclusive(FieldValue),
-    Inclusive(FieldValue),
 }
 
 #[cfg(test)]
