@@ -19,6 +19,7 @@ pub use candidates::{CandidateValue, Range};
 
 use super::InterpretedQuery;
 
+#[cfg_attr(docsrs, doc(notable_trait))]
 pub trait VertexInfo {
     fn current_component(&self) -> &IRQueryComponent;
 
