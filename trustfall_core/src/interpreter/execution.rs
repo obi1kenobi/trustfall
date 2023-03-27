@@ -19,9 +19,9 @@ use crate::{
         ValueOrVec,
     },
     ir::{
-        indexed::IndexedQuery, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
-        FoldSpecificFieldKind, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation,
-        Recursive, Vid,
+        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
+        IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation, Recursive,
+        Vid,
     },
     util::BTreeMapTryInsertExt,
 };
@@ -1438,7 +1438,7 @@ mod tests {
 
     use crate::{
         interpreter::{error::QueryArgumentsError, InterpretedQuery},
-        ir::{indexed::IndexedQuery, FieldValue},
+        ir::{FieldValue, IndexedQuery},
         util::TestIRQueryResult,
     };
 

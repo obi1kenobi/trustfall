@@ -10,7 +10,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{indexed::IndexedQuery, EdgeParameters, FieldValue};
+use crate::ir::{EdgeParameters, FieldValue, IndexedQuery};
 
 use super::{
     execution::interpret_ir,

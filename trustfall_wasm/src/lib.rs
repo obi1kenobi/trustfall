@@ -36,7 +36,7 @@ make_wasm_bindgen_struct_with_debug_clone!(
 );
 make_wasm_bindgen_struct_with_debug_clone!(
     InvalidIRQueryError,
-    trustfall_core::ir::indexed::InvalidIRQueryError
+    trustfall_core::ir::InvalidIRQueryError
 );
 make_wasm_bindgen_struct_with_debug_clone!(
     QueryArgumentsError,
