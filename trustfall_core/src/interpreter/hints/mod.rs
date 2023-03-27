@@ -19,14 +19,20 @@ pub use candidates::{CandidateValue, Range};
 
 use super::InterpretedQuery;
 
+/// Information about what some query is looking for at a specific vertex in the query structure.
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait VertexInfo {
+    /// Queries may consist of multiple components.
+    /// This is the component in which the vertex represented by this value is located.
     fn current_component(&self) -> &IRQueryComponent;
 
+    /// The query IR of the vertex represented by this value.
     fn current_vertex(&self) -> &IRVertex;
 
+    /// The arguments with which the query was executed.
     fn query_arguments(&self) -> &BTreeMap<Arc<str>, FieldValue>;
 
+    /// The type coercion the query applied at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>> {
         let vertex = self.current_vertex();
         if vertex.coerced_from_type.is_some() {
@@ -480,5 +486,35 @@ impl VertexInfo for NeighboringQueryInfo {
                     })
                     .map(|fold| self.make_folded_edge_info(fold.as_ref()))
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use serde::{Deserialize, Serialize};
+
+    use crate::ir::{FieldValue, Vid};
+
+    use super::Range;
+
+    #[derive(Debug)]
+    struct TestAdapter {
+        test_data: HintTestData,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct HintTestData {
+        expected_field_info: BTreeMap<Vid, Vec<ExpectedFieldInfo>>,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct ExpectedFieldInfo {
+        field_name: String,
+        static_value: Option<FieldValue>,
+        dynamic_value: Option<Vec<FieldValue>>,
+        static_range: Option<Range>,
+        dynamic_range: Option<Vec<Range>>,
     }
 }

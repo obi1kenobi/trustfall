@@ -3,6 +3,8 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::ir::FieldValue;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +72,7 @@ impl<T: Debug + Clone + PartialEq + Eq> CandidateValue<T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Range {
     start: Bound<FieldValue>,
     end: Bound<FieldValue>,
