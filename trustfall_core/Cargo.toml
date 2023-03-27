@@ -8,6 +8,9 @@ description = "The trustfall query engine, empowering you to query everything."
 repository = "https://github.com/obi1kenobi/trustfall"
 readme = "../README.md"
 
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
