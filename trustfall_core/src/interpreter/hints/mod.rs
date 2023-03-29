@@ -110,6 +110,7 @@ impl QueryInfo {
         &self.query.indexed_query.ir_query
     }
 
+    /// All the names and type information of the output data of this query.
     pub fn outputs(&self) -> &BTreeMap<Arc<str>, Output> {
         &self.query.indexed_query.outputs
     }
@@ -129,6 +130,7 @@ impl QueryInfo {
         self.crossing_eid
     }
 
+    /// Info about the specific place in the query where this [`QueryInfo`] was provided.
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn here(&self) -> LocalInfo {
@@ -138,6 +140,14 @@ impl QueryInfo {
         }
     }
 
+    /// Info about the edge being expanded at the place in the query where this [`QueryInfo`]
+    /// was provided. `None` if that method is not expanding an edge.
+    ///
+    /// For [`QueryInfo`] inside [`Adapter::resolve_neighbors()`], this will always be `Some()`.
+    /// Inside other [`Adapter`] methods, this will always be `None`.
+    ///
+    /// [`Adapter`]: super::Adapter
+    /// [`Adapter::resolve_neighbors()`]: super::Adapter::resolve_neighbors
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn edge(&self) -> Option<EdgeInfo> {
@@ -172,6 +182,14 @@ impl QueryInfo {
             })
     }
 
+    /// Info about the destination vertex of the edge being expanded by the method
+    /// where [`QueryInfo`] was provided. `None` if that method is not expanding an edge.
+    ///
+    /// For [`QueryInfo`] inside [`Adapter::resolve_neighbors()`], this will always be `Some()`.
+    /// Inside other [`Adapter`] methods, this will always be `None`.
+    ///
+    /// [`Adapter`]: super::Adapter
+    /// [`Adapter::resolve_neighbors()`]: super::Adapter::resolve_neighbors
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn destination(&self) -> Option<NeighborInfo> {
@@ -244,18 +262,21 @@ pub struct EdgeInfo {
 }
 
 impl EdgeInfo {
+    /// The ID that uniquely identifies this edge in its query.
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn eid(&self) -> Eid {
         self.eid
     }
 
+    /// The values with which this edge was parameterized.
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn parameters(&self) -> &EdgeParameters {
         &self.parameters
     }
 
+    /// Info about the vertex to which this edge points.
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn destination(&self) -> &NeighborInfo {
