@@ -10,12 +10,15 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{EdgeParameters, FieldValue, IndexedQuery};
+use crate::{
+    interpreter::VertexInfo,
+    ir::{EdgeParameters, FieldValue, IndexedQuery},
+};
 
 use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, QueryInfoAlongEdge,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo,
     VertexIterator,
 };
 
@@ -396,14 +399,14 @@ where
         &mut self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'trace, Self::Vertex> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
 
         if let TraceOpContent::Call(FunctionCall::ResolveStartingVertices(vid)) = trace_op.content {
-            assert_eq!(vid, query_info.origin_vid());
+            assert_eq!(vid, resolve_info.vid());
 
             Box::new(TraceReaderStartingVerticesIter {
                 exhausted: false,
@@ -420,7 +423,7 @@ where
         contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, FieldValue> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
@@ -429,7 +432,7 @@ where
         if let TraceOpContent::Call(FunctionCall::ResolveProperty(vid, op_type_name, property)) =
             &trace_op.content
         {
-            assert_eq!(*vid, query_info.origin_vid());
+            assert_eq!(*vid, resolve_info.vid());
             assert_eq!(op_type_name, type_name);
             assert_eq!(property, property_name);
 
@@ -451,7 +454,7 @@ where
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfoAlongEdge,
+        resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
@@ -460,9 +463,9 @@ where
         if let TraceOpContent::Call(FunctionCall::ResolveNeighbors(vid, op_type_name, eid)) =
             &trace_op.content
         {
-            assert_eq!(*vid, query_info.origin_vid());
+            assert_eq!(*vid, resolve_info.origin_vid());
             assert_eq!(op_type_name, type_name);
-            assert_eq!(*eid, query_info.eid());
+            assert_eq!(*eid, resolve_info.eid());
 
             Box::new(TraceReaderResolveNeighborsIter {
                 exhausted: false,
@@ -481,7 +484,7 @@ where
         contexts: ContextIterator<'trace, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_coercion() call operation, but found none.");
@@ -490,7 +493,7 @@ where
         if let TraceOpContent::Call(FunctionCall::ResolveCoercion(vid, from_type, to_type)) =
             &trace_op.content
         {
-            assert_eq!(*vid, query_info.origin_vid());
+            assert_eq!(*vid, resolve_info.vid());
             assert_eq!(from_type, type_name);
             assert_eq!(to_type, coerce_to_type);
 
