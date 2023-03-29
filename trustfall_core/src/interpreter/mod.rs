@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ir::{
-        indexed::IndexedQuery, types::is_argument_type_valid, EdgeParameters, Eid, FieldRef,
-        FieldValue, Vid,
+        types::is_argument_type_valid, EdgeParameters, Eid, FieldRef, FieldValue, IndexedQuery, Vid,
     },
     util::BTreeMapTryInsertExt,
 };
@@ -23,7 +22,7 @@ mod hints;
 pub mod replay;
 pub mod trace;
 
-pub use hints::QueryInfo;
+pub use hints::{EdgeInfo, LocalInfo, NeighborInfo, QueryInfo, VertexInfo};
 
 /// An iterator of vertices representing data points we are querying.
 pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
