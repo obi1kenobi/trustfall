@@ -22,7 +22,7 @@ mod hints;
 pub mod replay;
 pub mod trace;
 
-pub use hints::{EdgeInfo, LocalInfo, NeighborInfo, QueryInfo, VertexInfo};
+pub use hints::{EdgeInfo, LocalInfo, NeighborInfo, QueryInfo, QueryInfoAlongEdge, VertexInfo};
 
 /// An iterator of vertices representing data points we are querying.
 pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
@@ -490,7 +490,7 @@ pub trait Adapter<'vertex> {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>>;
 
     /// Attempt to coerce vertices to a subtype, over an iterator of query contexts.

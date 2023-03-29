@@ -7,7 +7,8 @@ use crate::{
     interpreter::{
         self,
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, Typename, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, QueryInfoAlongEdge, Typename,
+        VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
     schema::Schema,
@@ -263,7 +264,7 @@ impl Adapter<'static> for NumbersAdapter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();

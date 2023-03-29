@@ -15,7 +15,8 @@ use crate::ir::{EdgeParameters, FieldValue, IndexedQuery};
 use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, QueryInfoAlongEdge,
+    VertexIterator,
 };
 
 #[derive(Clone, Debug)]
@@ -403,7 +404,6 @@ where
 
         if let TraceOpContent::Call(FunctionCall::ResolveStartingVertices(vid)) = trace_op.content {
             assert_eq!(vid, query_info.origin_vid());
-            assert!(query_info.origin_crossing_eid().is_none());
 
             Box::new(TraceReaderStartingVerticesIter {
                 exhausted: false,
@@ -432,7 +432,6 @@ where
             assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(op_type_name, type_name);
             assert_eq!(property, property_name);
-            assert!(query_info.origin_crossing_eid().is_none());
 
             Box::new(TraceReaderResolvePropertiesIter {
                 exhausted: false,
@@ -452,7 +451,7 @@ where
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
@@ -463,7 +462,7 @@ where
         {
             assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(op_type_name, type_name);
-            assert_eq!(Some(*eid), query_info.origin_crossing_eid());
+            assert_eq!(*eid, query_info.eid());
 
             Box::new(TraceReaderResolveNeighborsIter {
                 exhausted: false,
@@ -494,7 +493,6 @@ where
             assert_eq!(*vid, query_info.origin_vid());
             assert_eq!(from_type, type_name);
             assert_eq!(to_type, coerce_to_type);
-            assert!(query_info.origin_crossing_eid().is_none());
 
             Box::new(TraceReaderResolveCoercionIter {
                 exhausted: false,

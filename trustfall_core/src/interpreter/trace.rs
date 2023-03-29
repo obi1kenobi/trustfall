@@ -11,7 +11,9 @@ use crate::{
     util::BTreeMapTryInsertExt,
 };
 
-use super::{ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator};
+use super::{
+    ContextIterator, ContextOutcomeIterator, QueryInfo, QueryInfoAlongEdge, VertexIterator,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Opid(pub NonZeroUsize); // operation ID
@@ -253,8 +255,6 @@ where
         );
         drop(trace);
 
-        assert!(query_info.origin_crossing_eid().is_none());
-
         let inner_iter = self
             .inner
             .resolve_starting_vertices(edge_name, parameters, query_info);
@@ -294,8 +294,6 @@ where
             None,
         );
         drop(trace);
-
-        assert!(query_info.origin_crossing_eid().is_none());
 
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
@@ -352,16 +350,14 @@ where
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveNeighbors(
                 query_info.origin_vid(),
                 type_name.clone(),
-                query_info
-                    .origin_crossing_eid()
-                    .expect("no Eid when projecting neighbors"),
+                query_info.eid(),
             )),
             None,
         );
@@ -458,8 +454,6 @@ where
             None,
         );
         drop(trace);
-
-        assert!(query_info.origin_crossing_eid().is_none());
 
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();

@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::interpreter::{
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, QueryInfoAlongEdge,
+    VertexIterator,
 };
 use crate::ir::{EdgeParameters, FieldValue};
 use std::fs::{self, ReadDir};
@@ -349,7 +350,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {

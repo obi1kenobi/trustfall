@@ -3,7 +3,10 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, QueryInfoAlongEdge,
+        VertexIterator,
+    },
     ir::{EdgeParameters, FieldValue},
 };
 
@@ -42,7 +45,7 @@ impl Adapter<'static> for NullablesAdapter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         unimplemented!()
     }

@@ -111,23 +111,21 @@ impl QueryInfo {
     }
 
     /// All the names and type information of the output data of this query.
+    #[inline]
     pub fn outputs(&self) -> &BTreeMap<Arc<str>, Output> {
         &self.query.indexed_query.outputs
     }
 
     /// The arguments with which the query was executed.
-    pub fn arguments(&self) -> &Arc<BTreeMap<Arc<str>, FieldValue>> {
+    #[inline]
+    pub fn query_arguments(&self) -> &Arc<BTreeMap<Arc<str>, FieldValue>> {
         &self.query.arguments
     }
 
     /// The unique ID of the vertex at the query location where this [`QueryInfo`] was provided.
+    #[inline]
     pub fn origin_vid(&self) -> Vid {
         self.current_vertex
-    }
-
-    /// If the query location of this [`QueryInfo`] was at an edge, this is the edge's unique ID.
-    pub fn origin_crossing_eid(&self) -> Option<Eid> {
-        self.crossing_eid
     }
 
     /// Info about the specific place in the query where this [`QueryInfo`] was provided.
@@ -139,61 +137,94 @@ impl QueryInfo {
             current_vertex: self.current_vertex,
         }
     }
+}
 
-    /// Info about the edge being expanded at the place in the query where this [`QueryInfo`]
-    /// was provided. `None` if that method is not expanding an edge.
-    ///
-    /// For [`QueryInfo`] inside [`Adapter::resolve_neighbors()`], this will always be `Some()`.
-    /// Inside other [`Adapter`] methods, this will always be `None`.
-    ///
-    /// [`Adapter`]: super::Adapter
-    /// [`Adapter::resolve_neighbors()`]: super::Adapter::resolve_neighbors
-    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
-    #[inline]
-    pub fn edge(&self) -> Option<EdgeInfo> {
-        self.crossing_eid
-            .map(|eid| match &self.query.indexed_query.eids[&eid] {
-                EdgeKind::Regular(regular) => EdgeInfo {
-                    eid,
-                    parameters: regular.parameters.clone(),
-                    optional: regular.optional,
-                    recursive: regular.recursive.clone(),
-                    folded: false,
-                    destination: NeighborInfo {
-                        query_info: self.clone(),
-                        starting_vertex: self.current_vertex,
-                        neighbor_vertex: regular.to_vid,
-                        neighbor_path: vec![eid],
-                    },
-                },
-                EdgeKind::Fold(fold) => EdgeInfo {
-                    eid,
-                    parameters: fold.parameters.clone(),
-                    optional: false,
-                    recursive: None,
-                    folded: true,
-                    destination: NeighborInfo {
-                        query_info: self.clone(),
-                        starting_vertex: self.current_vertex,
-                        neighbor_vertex: fold.to_vid,
-                        neighbor_path: vec![eid],
-                    },
-                },
-            })
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueryInfoAlongEdge {
+    query_info: QueryInfo,
+}
+
+impl QueryInfoAlongEdge {
+    pub(crate) fn new(query_info: QueryInfo) -> Self {
+        Self { query_info }
     }
 
-    /// Info about the destination vertex of the edge being expanded by the method
-    /// where [`QueryInfo`] was provided. `None` if that method is not expanding an edge.
-    ///
-    /// For [`QueryInfo`] inside [`Adapter::resolve_neighbors()`], this will always be `Some()`.
-    /// Inside other [`Adapter`] methods, this will always be `None`.
-    ///
-    /// [`Adapter`]: super::Adapter
-    /// [`Adapter::resolve_neighbors()`]: super::Adapter::resolve_neighbors
+    /// All the names and type information of the output data of this query.
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
-    pub fn destination(&self) -> Option<NeighborInfo> {
-        self.edge().map(|edge| edge.destination)
+    pub fn outputs(&self) -> &BTreeMap<Arc<str>, Output> {
+        &self.query_info.query.indexed_query.outputs
+    }
+
+    /// The arguments with which the query was executed.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
+    pub fn query_arguments(&self) -> &Arc<BTreeMap<Arc<str>, FieldValue>> {
+        &self.query_info.query.arguments
+    }
+
+    /// The unique ID of this edge within its query.
+    #[inline]
+    pub fn eid(&self) -> Eid {
+        self.query_info
+            .crossing_eid
+            .expect("QueryInfoAlongEdge constructed from QueryInfo that is not at an edge")
+    }
+
+    /// The unique ID of the vertex where the edge in this operation begins.
+    #[inline]
+    pub fn origin_vid(&self) -> Vid {
+        self.query_info.current_vertex
+    }
+
+    /// The unique ID of the vertex to which this edge points.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
+    pub fn destination_vid(&self) -> Vid {
+        self.destination().neighbor_vertex
+    }
+
+    /// Info about the destination vertex of the edge being expanded where this value was provided.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
+    pub fn destination(&self) -> NeighborInfo {
+        self.edge().destination
+    }
+
+    /// Info about the edge being expanded where this value was provided.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
+    pub fn edge(&self) -> EdgeInfo {
+        let eid = self.eid();
+        match &self.query_info.query.indexed_query.eids[&eid] {
+            EdgeKind::Regular(regular) => EdgeInfo {
+                eid,
+                parameters: regular.parameters.clone(),
+                optional: regular.optional,
+                recursive: regular.recursive.clone(),
+                folded: false,
+                destination: NeighborInfo {
+                    query_info: self.query_info.clone(),
+                    starting_vertex: self.query_info.current_vertex,
+                    neighbor_vertex: regular.to_vid,
+                    neighbor_path: vec![eid],
+                },
+            },
+            EdgeKind::Fold(fold) => EdgeInfo {
+                eid,
+                parameters: fold.parameters.clone(),
+                optional: false,
+                recursive: None,
+                folded: true,
+                destination: NeighborInfo {
+                    query_info: self.query_info.clone(),
+                    starting_vertex: self.query_info.current_vertex,
+                    neighbor_vertex: fold.to_vid,
+                    neighbor_path: vec![eid],
+                },
+            },
+        }
     }
 }
 
@@ -349,7 +380,7 @@ mod tests {
         cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc,
     };
 
-    use super::QueryInfo;
+    use super::{QueryInfo, QueryInfoAlongEdge};
     use crate::{
         interpreter::{
             execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator, DataContext,
@@ -360,22 +391,34 @@ mod tests {
     };
 
     type QueryInfoFn = Box<dyn FnMut(&QueryInfo)>;
+    type QueryInfoAlongEdgeFn = Box<dyn FnMut(&QueryInfoAlongEdge)>;
 
     #[derive(Default)]
-    struct TrackCalls {
-        underlying: Option<QueryInfoFn>,
+    struct TrackCalls<F> {
+        underlying: Option<F>,
         calls: usize,
     }
 
-    impl TrackCalls {
-        fn new_underlying(underlying: QueryInfoFn) -> Self {
+    impl<F> TrackCalls<F> {
+        fn new_underlying(underlying: F) -> Self {
             Self {
                 underlying: Some(underlying),
                 calls: 0,
             }
         }
+    }
 
+    impl TrackCalls<QueryInfoFn> {
         fn call(&mut self, info: &QueryInfo) {
+            self.calls += 1;
+            if let Some(underlying) = self.underlying.as_mut() {
+                underlying(info);
+            }
+        }
+    }
+
+    impl TrackCalls<QueryInfoAlongEdgeFn> {
+        fn call(&mut self, info: &QueryInfoAlongEdge) {
             self.calls += 1;
             if let Some(underlying) = self.underlying.as_mut() {
                 underlying(info);
@@ -385,10 +428,10 @@ mod tests {
 
     #[derive(Default)]
     struct TestAdapter {
-        on_starting_vertices: BTreeMap<Vid, TrackCalls>,
-        on_property_resolver: BTreeMap<Vid, TrackCalls>,
-        on_edge_resolver: BTreeMap<Eid, TrackCalls>,
-        on_type_coercion: BTreeMap<Vid, TrackCalls>,
+        on_starting_vertices: BTreeMap<Vid, TrackCalls<QueryInfoFn>>,
+        on_property_resolver: BTreeMap<Vid, TrackCalls<QueryInfoFn>>,
+        on_edge_resolver: BTreeMap<Eid, TrackCalls<QueryInfoAlongEdgeFn>>,
+        on_type_coercion: BTreeMap<Vid, TrackCalls<QueryInfoFn>>,
     }
 
     impl Adapter<'static> for TestAdapter {
@@ -431,13 +474,10 @@ mod tests {
             _type_name: &Arc<str>,
             _edge_name: &Arc<str>,
             _parameters: &crate::ir::EdgeParameters,
-            query_info: &super::QueryInfo,
+            query_info: &super::QueryInfoAlongEdge,
         ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
         {
-            if let Some(x) = self
-                .on_edge_resolver
-                .get_mut(query_info.crossing_eid.as_ref().unwrap())
-            {
+            if let Some(x) = self.on_edge_resolver.get_mut(&query_info.eid()) {
                 x.call(query_info)
             }
             Box::new(
@@ -503,9 +543,7 @@ mod tests {
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::new_underlying(Box::new(|info| {
-                    assert!(info.destination().is_none());
-
+                vid(1) => TrackCalls::<QueryInfoFn>::new_underlying(Box::new(|info| {
                     let local_info = info.here();
                     assert_eq!(local_info.coerced_to_type().map(|x| x.as_ref()), Some("Prime"));
                     assert_eq!(local_info.vid(), vid(1));
@@ -524,9 +562,7 @@ mod tests {
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::new_underlying(Box::new(|info| {
-                    assert!(info.destination().is_none());
-
+                vid(1) => TrackCalls::<QueryInfoFn>::new_underlying(Box::new(|info| {
                     let local_info = info.here();
                     assert_eq!(local_info.coerced_to_type().map(|x| x.as_ref()), Some("Prime"));
                     assert_eq!(local_info.vid(), vid(1));
@@ -545,11 +581,10 @@ mod tests {
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::new_underlying(Box::new(|info| {
+                vid(1) => TrackCalls::<QueryInfoFn>::new_underlying(Box::new(|info| {
                     let local_info = info.here();
                     assert!(local_info.coerced_to_type().is_none());
                     assert_eq!(local_info.vid(), vid(1));
-                    assert!(info.destination().is_none());
 
                     let edges: Vec<_> = local_info.edges_with_name("successor").collect();
                     assert_eq!(edges.len(), 2);
@@ -573,20 +608,16 @@ mod tests {
                 })),
             },
             on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::new_underlying(Box::new(|info| {
-                    let local_info = info.here();
-                    assert!(local_info.coerced_to_type().is_none());
-                    assert_eq!(local_info.vid(), vid(1));
+                eid(1) => TrackCalls::<QueryInfoAlongEdgeFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(info.origin_vid(), vid(1));
 
-                    let destination = info.destination().expect("no destination present");
+                    let destination = info.destination();
                     assert_eq!(destination.vid(), vid(2));
                 })),
-                eid(2) => TrackCalls::new_underlying(Box::new(|info| {
-                    let local_info = info.here();
-                    assert!(local_info.coerced_to_type().is_none());
-                    assert_eq!(local_info.vid(), vid(1));
+                eid(2) => TrackCalls::<QueryInfoAlongEdgeFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(info.origin_vid(), vid(1));
 
-                    let destination = info.destination().expect("no destination present");
+                    let destination = info.destination();
                     assert_eq!(destination.vid(), vid(3));
                 })),
             },
@@ -606,11 +637,10 @@ mod tests {
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::new_underlying(Box::new(|info| {
+                vid(1) => TrackCalls::<QueryInfoFn>::new_underlying(Box::new(|info| {
                     let local_info = info.here();
                     assert!(local_info.coerced_to_type().is_none());
                     assert_eq!(local_info.vid(), vid(1));
-                    assert!(info.destination().is_none());
 
                     let edges: Vec<_> = local_info.edges_with_name("multiple").collect();
                     assert_eq!(edges.len(), 1);
@@ -632,12 +662,10 @@ mod tests {
                 })),
             },
             on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::new_underlying(Box::new(|info| {
-                    let local_info = info.here();
-                    assert!(local_info.coerced_to_type().is_none());
-                    assert_eq!(local_info.vid(), vid(1));
+                eid(1) => TrackCalls::<QueryInfoAlongEdgeFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(info.origin_vid(), vid(1));
 
-                    let destination = info.destination().expect("no destination present");
+                    let destination = info.destination();
                     assert_eq!(destination.vid(), vid(2));
                 })),
             },
@@ -656,11 +684,10 @@ mod tests {
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::new_underlying(Box::new(|info| {
+                vid(1) => TrackCalls::<QueryInfoFn>::new_underlying(Box::new(|info| {
                     let local_info = info.here();
                     assert!(local_info.coerced_to_type().is_none());
                     assert_eq!(local_info.vid(), vid(1));
-                    assert!(info.destination().is_none());
 
                     let edges: Vec<_> = local_info.edges_with_name("successor").collect();
                     assert_eq!(edges.len(), 1);
@@ -682,12 +709,10 @@ mod tests {
                 })),
             },
             on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::new_underlying(Box::new(|info| {
-                    let local_info = info.here();
-                    assert!(local_info.coerced_to_type().is_none());
-                    assert_eq!(local_info.vid(), vid(1));
+                eid(1) => TrackCalls::<QueryInfoAlongEdgeFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(info.origin_vid(), vid(1));
 
-                    let destination = info.destination().expect("no destination present");
+                    let destination = info.destination();
                     assert_eq!(destination.vid(), vid(2));
                 })),
             },
@@ -706,11 +731,10 @@ mod tests {
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::new_underlying(Box::new(|info| {
+                vid(1) => TrackCalls::<QueryInfoFn>::new_underlying(Box::new(|info| {
                     let local_info = info.here();
                     assert!(local_info.coerced_to_type().is_none());
                     assert_eq!(local_info.vid(), vid(1));
-                    assert!(info.destination().is_none());
 
                     let edges: Vec<_> = local_info.edges_with_name("multiple").collect();
                     assert_eq!(edges.len(), 1);
@@ -732,12 +756,10 @@ mod tests {
                 })),
             },
             on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::new_underlying(Box::new(|info| {
-                    let local_info = info.here();
-                    assert!(local_info.coerced_to_type().is_none());
-                    assert_eq!(local_info.vid(), vid(1));
+                eid(1) => TrackCalls::<QueryInfoAlongEdgeFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(info.origin_vid(), vid(1));
 
-                    let destination = info.destination().expect("no destination present");
+                    let destination = info.destination();
                     assert_eq!(destination.vid(), vid(2));
                 })),
             },

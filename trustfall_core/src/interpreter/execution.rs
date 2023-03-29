@@ -28,7 +28,7 @@ use crate::{
 
 use super::{
     error::QueryArgumentsError, hints::QueryInfo, Adapter, ContextIterator, DataContext,
-    InterpretedQuery, VertexIterator,
+    InterpretedQuery, QueryInfoAlongEdge, VertexIterator,
 };
 
 #[allow(clippy::type_complexity)]
@@ -283,13 +283,13 @@ fn get_max_fold_count_limit(query: &mut QueryInfo, fold: &IRFold) -> Option<usiz
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
             ) => {
-                let variable_value = query.arguments()[&var_ref.variable_name]
+                let variable_value = query.query_arguments()[&var_ref.variable_name]
                     .as_usize()
                     .unwrap();
                 Some(variable_value)
             }
             Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                let variable_value = query.arguments()[&var_ref.variable_name]
+                let variable_value = query.query_arguments()[&var_ref.variable_name]
                     .as_usize()
                     .unwrap();
                 // saturating_sub() here is a safeguard against underflow: in principle,
@@ -300,7 +300,7 @@ fn get_max_fold_count_limit(query: &mut QueryInfo, fold: &IRFold) -> Option<usiz
                 Some(variable_value.saturating_sub(1))
             }
             Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                match &query.arguments()[&var_ref.variable_name] {
+                match &query.query_arguments()[&var_ref.variable_name] {
                     FieldValue::List(v) => v.iter().map(|x| x.as_usize().unwrap()).max(),
                     _ => unreachable!(),
                 }
@@ -428,7 +428,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
         type_name,
         &fold.edge_name,
         &fold.parameters,
-        query,
+        &QueryInfoAlongEdge::new(query.clone()),
     );
     drop(adapter_ref);
 
@@ -784,7 +784,7 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
             }
         }
         Some(Argument::Variable(var)) => {
-            let right_value = query.arguments()[var.variable_name.as_ref()].to_owned();
+            let right_value = query.query_arguments()[var.variable_name.as_ref()].to_owned();
             Box::new(iterator.map(move |mut ctx| {
                 // TODO: implement more efficient filtering with:
                 //       - no clone of runtime parameter values
@@ -876,7 +876,7 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
                 implement_filter!(expression_iterator, right, regex_matches_slow_path)
             }
             Argument::Variable(var) => {
-                let variable_value = &query.arguments()[var.variable_name.as_ref()];
+                let variable_value = &query.query_arguments()[var.variable_name.as_ref()];
                 let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
 
                 Box::new(expression_iterator.filter_map(move |mut context| {
@@ -896,7 +896,7 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
                 implement_negated_filter!(expression_iterator, right, regex_matches_slow_path)
             }
             Argument::Variable(var) => {
-                let variable_value = &query.arguments()[var.variable_name.as_ref()];
+                let variable_value = &query.query_arguments()[var.variable_name.as_ref()];
                 let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
 
                 Box::new(expression_iterator.filter_map(move |mut context| {
@@ -1162,7 +1162,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
         type_name,
         edge_name,
         edge_parameters,
-        query,
+        &QueryInfoAlongEdge::new(query.clone()),
     );
     drop(adapter_ref);
 
@@ -1306,7 +1306,7 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
         expanding_from_type,
         edge_name,
         edge_parameters,
-        query,
+        &QueryInfoAlongEdge::new(query.clone()),
     );
     drop(adapter_ref);
 

@@ -8,7 +8,7 @@ use lazy_static::__Deref;
 use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
 use trustfall_core::{
-    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator},
+    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator, QueryInfoAlongEdge},
     ir::{EdgeParameters, FieldValue},
 };
 
@@ -333,7 +333,7 @@ impl Adapter<'static> for DemoAdapter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {

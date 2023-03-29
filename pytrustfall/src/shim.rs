@@ -6,7 +6,7 @@ use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
         execution::interpret_ir, Adapter, ContextIterator as BaseContextIterator,
-        ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+        ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator, QueryInfoAlongEdge,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -291,7 +291,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {

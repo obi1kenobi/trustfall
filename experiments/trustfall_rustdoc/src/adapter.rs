@@ -6,7 +6,7 @@ use rustdoc_types::{
 };
 use trustfall_core::{
     interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator, QueryInfoAlongEdge,
     },
     ir::{EdgeParameters, FieldValue},
     schema::Schema,
@@ -577,7 +577,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name.as_ref() {
             "CrateDiff" => match edge_name.as_ref() {

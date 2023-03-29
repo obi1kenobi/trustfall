@@ -4,7 +4,7 @@ use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
     helpers::resolve_property_with, hints::QueryInfo, Adapter, ContextIterator,
-    ContextOutcomeIterator, Typename, VertexIterator,
+    ContextOutcomeIterator, QueryInfoAlongEdge, Typename, VertexIterator,
 };
 
 /// A simplified variant of the [`Adapter`] trait.
@@ -250,7 +250,7 @@ where
         type_name: &std::sync::Arc<str>,
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         <Self as BasicAdapter>::resolve_neighbors(
             self,

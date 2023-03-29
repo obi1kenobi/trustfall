@@ -4,7 +4,7 @@ use gloo_utils::format::JsValueSerdeExt;
 use js_sys::try_iter;
 use trustfall_core::{
     interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator, QueryInfoAlongEdge,
     },
     ir::{EdgeParameters as CoreEdgeParameters, FieldValue},
 };
@@ -291,7 +291,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
-        _query_info: &QueryInfo,
+        _query_info: &QueryInfoAlongEdge,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
