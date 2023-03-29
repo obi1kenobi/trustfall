@@ -129,6 +129,7 @@ impl QueryInfo {
         self.crossing_eid
     }
 
+    #[allow(dead_code)]  // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn here(&self) -> LocalInfo {
         LocalInfo {
@@ -137,6 +138,7 @@ impl QueryInfo {
         }
     }
 
+    #[allow(dead_code)]  // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn edge(&self) -> Option<EdgeInfo> {
         self.crossing_eid
@@ -170,6 +172,7 @@ impl QueryInfo {
             })
     }
 
+    #[allow(dead_code)]  // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn destination(&self) -> Option<NeighborInfo> {
         self.edge().map(|edge| edge.destination)
@@ -241,14 +244,20 @@ pub struct EdgeInfo {
 }
 
 impl EdgeInfo {
+    #[allow(dead_code)]  // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
     pub fn eid(&self) -> Eid {
         self.eid
     }
 
+    #[allow(dead_code)]  // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
     pub fn parameters(&self) -> &EdgeParameters {
         &self.parameters
     }
 
+    #[allow(dead_code)]  // false-positive: dead in the bin target, not dead in the lib
+    #[inline]
     pub fn destination(&self) -> &NeighborInfo {
         &self.destination
     }
