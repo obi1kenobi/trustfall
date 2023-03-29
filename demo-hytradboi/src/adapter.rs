@@ -8,7 +8,10 @@ use lazy_static::__Deref;
 use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
 use trustfall_core::{
-    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator, QueryInfoAlongEdge},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        VertexIterator,
+    },
     ir::{EdgeParameters, FieldValue},
 };
 
@@ -177,7 +180,7 @@ impl Adapter<'static> for DemoAdapter {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         match edge_name.as_ref() {
             "HackerNewsFrontPage" => self.front_page(),
@@ -203,7 +206,7 @@ impl Adapter<'static> for DemoAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
@@ -333,7 +336,7 @@ impl Adapter<'static> for DemoAdapter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
-        _query_info: &QueryInfoAlongEdge,
+        _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {
@@ -651,7 +654,7 @@ impl Adapter<'static> for DemoAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let type_name = type_name.clone();
         let coerce_to_type = coerce_to_type.clone();

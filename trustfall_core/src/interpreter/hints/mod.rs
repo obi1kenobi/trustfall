@@ -25,12 +25,14 @@ impl<'a> QueryInfo<'a> {
     }
 
     /// All the names and type information of the output data of this query.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn outputs(&self) -> &BTreeMap<Arc<str>, Output> {
         &self.query.indexed_query.outputs
     }
 
     /// The arguments with which the query was executed.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn arguments(&self) -> &Arc<BTreeMap<Arc<str>, FieldValue>> {
         &self.query.arguments
@@ -64,6 +66,7 @@ impl ResolveInfo {
     }
 
     /// Get information about the overall query being executed.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn query(&self) -> QueryInfo<'_> {
         QueryInfo::new(&self.query)
@@ -130,6 +133,7 @@ impl ResolveEdgeInfo {
     }
 
     /// Get information about the overall query being executed.
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn query(&self) -> QueryInfo<'_> {
         QueryInfo::new(&self.query)
