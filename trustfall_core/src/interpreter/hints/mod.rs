@@ -55,6 +55,14 @@ pub struct ResolveEdgeInfo {
 }
 
 impl ResolveInfo {
+    pub(crate) fn new(query: InterpretedQuery, current_vid: Vid) -> Self {
+        Self { query, current_vid }
+    }
+
+    pub(crate) fn into_inner(self) -> InterpretedQuery {
+        self.query
+    }
+
     /// Get information about the overall query being executed.
     #[inline]
     pub fn query(&self) -> QueryInfo<'_> {
@@ -109,6 +117,18 @@ impl InternalVertexInfo for ResolveInfo {
 }
 
 impl ResolveEdgeInfo {
+    pub(crate) fn new(query: InterpretedQuery, current_vid: Vid, crossing_eid: Eid) -> Self {
+        Self {
+            query,
+            current_vid,
+            crossing_eid,
+        }
+    }
+
+    pub(crate) fn into_inner(self) -> InterpretedQuery {
+        self.query
+    }
+
     /// Get information about the overall query being executed.
     #[inline]
     pub fn query(&self) -> QueryInfo<'_> {

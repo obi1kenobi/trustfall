@@ -27,9 +27,14 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, hints::QueryInfo, Adapter, ContextIterator, DataContext,
-    InterpretedQuery, QueryInfoAlongEdge, VertexIterator,
+    error::QueryArgumentsError, Adapter, ContextIterator, DataContext, InterpretedQuery,
+    ResolveEdgeInfo, ResolveInfo, VertexIterator,
 };
+
+#[derive(Debug, Clone)]
+pub(super) struct QueryCarrier {
+    query: Option<InterpretedQuery>,
+}
 
 #[allow(clippy::type_complexity)]
 pub fn interpret_ir<'query, Vertex>(
@@ -46,29 +51,29 @@ where
     let ir_query = &query.indexed_query.ir_query;
     let root_edge = &ir_query.root_name;
     let root_edge_parameters = &ir_query.root_parameters;
-    let mut query_info = QueryInfo::new(query.clone(), root_vid, None);
+
+    let mut carrier = QueryCarrier { query: None };
+
+    let resolve_info = ResolveInfo::new(query.clone(), root_vid);
 
     let mut adapter_ref = adapter.borrow_mut();
     let mut iterator: ContextIterator<'query, Vertex> = Box::new(
         adapter_ref
-            .resolve_starting_vertices(root_edge, root_edge_parameters, &query_info)
+            .resolve_starting_vertices(root_edge, root_edge_parameters, &resolve_info)
             .map(|x| DataContext::new(Some(x))),
     );
     drop(adapter_ref);
+    carrier.query = Some(resolve_info.into_inner());
 
     let component = &ir_query.root_component;
-    iterator = compute_component(adapter.clone(), &mut query_info, component, iterator);
+    iterator = compute_component(adapter.clone(), &mut carrier, component, iterator);
 
-    Ok(construct_outputs(
-        adapter.as_ref(),
-        &mut query_info,
-        iterator,
-    ))
+    Ok(construct_outputs(adapter.as_ref(), &mut carrier, iterator))
 }
 
 fn coerce_if_needed<'query, Vertex>(
     adapter: &RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     vertex: &IRVertex,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex>
@@ -79,7 +84,7 @@ where
         None => iterator,
         Some(coerced_from) => perform_coercion(
             adapter,
-            query,
+            carrier,
             vertex,
             coerced_from,
             &vertex.type_name,
@@ -90,7 +95,7 @@ where
 
 fn perform_coercion<'query, Vertex>(
     adapter: &RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     vertex: &IRVertex,
     coerced_from: &Arc<str>,
     coerce_to: &Arc<str>,
@@ -100,9 +105,12 @@ where
     Vertex: Clone + Debug + 'query,
 {
     let mut adapter_ref = adapter.borrow_mut();
-    query.current_vertex = vertex.vid;
-    query.crossing_eid = None;
-    let coercion_iter = adapter_ref.resolve_coercion(iterator, coerced_from, coerce_to, query);
+
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveInfo::new(query, vertex.vid);
+    let coercion_iter =
+        adapter_ref.resolve_coercion(iterator, coerced_from, coerce_to, &resolve_info);
+    carrier.query = Some(resolve_info.into_inner());
 
     Box::new(coercion_iter.filter_map(
         |(ctx, can_coerce)| {
@@ -117,7 +125,7 @@ where
 
 fn compute_component<'query, Vertex>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     mut iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex>
@@ -127,12 +135,12 @@ where
     let component_root_vid = component.root;
     let root_vertex = &component.vertices[&component_root_vid];
 
-    iterator = coerce_if_needed(adapter.as_ref(), query, root_vertex, iterator);
+    iterator = coerce_if_needed(adapter.as_ref(), carrier, root_vertex, iterator);
 
     for filter_expr in &root_vertex.filters {
         iterator = apply_local_field_filter(
             adapter.as_ref(),
-            query,
+            carrier,
             component,
             component.root,
             filter_expr,
@@ -172,7 +180,7 @@ where
 
             iterator = compute_fold(
                 adapter.clone(),
-                query,
+                carrier,
                 &component.vertices[&fold.from_vid],
                 component,
                 fold.clone(),
@@ -188,7 +196,7 @@ where
 
             iterator = expand_edge(
                 adapter.clone(),
-                query,
+                carrier,
                 component,
                 edge.from_vid,
                 edge.to_vid,
@@ -205,12 +213,15 @@ where
 
 fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
     adapter: &RefCell<impl Adapter<'query, Vertex = Vertex>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     iterator: ContextIterator<'query, Vertex>,
 ) -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
-    let root_component = query.ir_query().root_component.clone();
+    let mut query = carrier.query.take().expect("query was not returned");
+
+    let root_component = query.indexed_query.ir_query.root_component.clone();
     let mut output_names: Vec<Arc<str>> = query
-        .ir_query()
+        .indexed_query
+        .ir_query
         .root_component
         .outputs
         .keys()
@@ -230,25 +241,25 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
         }));
 
         let mut adapter_ref = adapter.borrow_mut();
-        query.current_vertex = vertex_id;
-        query.crossing_eid = None;
+        let resolve_info = ResolveInfo::new(query, vertex_id);
 
         let type_name = &root_component.vertices[&vertex_id].type_name;
         let field_data_iterator = adapter_ref.resolve_property(
             moved_iterator,
             type_name,
             &context_field.field_name,
-            query,
+            &resolve_info,
         );
         drop(adapter_ref);
+        query = resolve_info.into_inner();
 
         output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
             context.values.push(value);
             context
         }));
     }
-
-    let expected_output_names: BTreeSet<_> = query.outputs().keys().cloned().collect();
+    let expected_output_names: BTreeSet<_> = query.indexed_query.outputs.keys().cloned().collect();
+    carrier.query = Some(query);
 
     Box::new(output_iterator.map(move |mut context| {
         assert!(context.values.len() == output_names.len());
@@ -273,9 +284,14 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
 /// If this IRFold has a filter on the folded element count, and that filter imposes
 /// a max size that can be statically determined, return that max size so it can
 /// be used for further optimizations. Otherwise, return None.
-fn get_max_fold_count_limit(query: &mut QueryInfo, fold: &IRFold) -> Option<usize> {
+fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
+    let query_arguments = &carrier
+        .query
+        .as_ref()
+        .expect("query was not returned")
+        .arguments;
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
             Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
@@ -283,15 +299,11 @@ fn get_max_fold_count_limit(query: &mut QueryInfo, fold: &IRFold) -> Option<usiz
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
             ) => {
-                let variable_value = query.query_arguments()[&var_ref.variable_name]
-                    .as_usize()
-                    .unwrap();
+                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
                 Some(variable_value)
             }
             Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                let variable_value = query.query_arguments()[&var_ref.variable_name]
-                    .as_usize()
-                    .unwrap();
+                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
                 // saturating_sub() here is a safeguard against underflow: in principle,
                 // we shouldn't see a comparison for "< 0", but if we do regardless, we'd prefer to
                 // saturate to 0 rather than wrapping around. This check is an optimization and
@@ -300,7 +312,7 @@ fn get_max_fold_count_limit(query: &mut QueryInfo, fold: &IRFold) -> Option<usiz
                 Some(variable_value.saturating_sub(1))
             }
             Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                match &query.query_arguments()[&var_ref.variable_name] {
+                match &query_arguments[&var_ref.variable_name] {
                     FieldValue::List(v) => v.iter().map(|x| x.as_usize().unwrap()).max(),
                     _ => unreachable!(),
                 }
@@ -359,7 +371,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
 #[allow(unused_variables)]
 fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     expanding_from: &IRVertex,
     parent_component: &IRQueryComponent,
     fold: Arc<IRFold>,
@@ -377,15 +389,17 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
 
                 let field_vertex = &parent_component.vertices[&field.vertex_id];
                 let type_name = &field_vertex.type_name;
-                query.current_vertex = vertex_id;
-                query.crossing_eid = None;
+
+                let query = carrier.query.take().expect("query was not returned");
+                let resolve_info = ResolveInfo::new(query, vertex_id);
 
                 let context_and_value_iterator = adapter_ref.resolve_property(
                     activated_vertex_iterator,
                     type_name,
                     &field.field_name,
-                    query,
+                    &resolve_info,
                 );
+                carrier.query = Some(resolve_info.into_inner());
 
                 let cloned_field = imported_field.clone();
                 iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
@@ -420,25 +434,27 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let activated_vertex_iterator: ContextIterator<'query, Vertex> =
         Box::new(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
     let type_name = &expanding_from.type_name;
-    query.current_vertex = expanding_from_vid;
-    query.crossing_eid = Some(fold.eid);
+
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.eid);
 
     let edge_iterator = adapter_ref.resolve_neighbors(
         activated_vertex_iterator,
         type_name,
         &fold.edge_name,
         &fold.parameters,
-        &QueryInfoAlongEdge::new(query.clone()),
+        &resolve_info,
     );
     drop(adapter_ref);
+    carrier.query = Some(resolve_info.into_inner());
 
     // Materialize the full fold data.
     // These values are moved into the closure.
     let cloned_adapter = adapter.clone();
-    let mut cloned_query = query.clone();
+    let mut cloned_carrier = carrier.clone();
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
-    let max_fold_size = get_max_fold_count_limit(query, fold.as_ref());
+    let max_fold_size = get_max_fold_count_limit(carrier, fold.as_ref());
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
@@ -451,7 +467,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
 
         let computed_iterator = compute_component(
             cloned_adapter.clone(),
-            &mut cloned_query,
+            &mut cloned_carrier,
             &fold_component,
             neighbor_contexts,
         );
@@ -483,7 +499,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     for post_fold_filter in fold.post_filters.iter() {
         post_filtered_iterator = apply_fold_specific_filter(
             adapter_ref,
-            query,
+            carrier,
             parent_component,
             fold.as_ref(),
             expanding_from.vid,
@@ -497,7 +513,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     output_names.sort_unstable(); // to ensure deterministic resolve_property() ordering
 
     let cloned_adapter = adapter.clone();
-    let mut cloned_query = query.clone();
+    let mut cloned_carrier = carrier.clone();
     let fold_component = fold.component.clone();
     let final_iterator = post_filtered_iterator.map(move |mut ctx| {
         // If the @fold is inside an @optional that doesn't exist,
@@ -562,15 +578,16 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 }));
 
                 let mut adapter_ref = cloned_adapter.borrow_mut();
-                cloned_query.current_vertex = vertex_id;
-                cloned_query.crossing_eid = None;
+                let query = cloned_carrier.query.take().expect("query was not returned");
+                let resolve_info = ResolveInfo::new(query, vertex_id);
                 let field_data_iterator = adapter_ref.resolve_property(
                     moved_iterator,
                     &fold.component.vertices[&vertex_id].type_name,
                     &context_field.field_name,
-                    &cloned_query,
+                    &resolve_info,
                 );
                 drop(adapter_ref);
+                cloned_carrier.query = Some(resolve_info.into_inner());
 
                 output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
                     context.values.push(value);
@@ -689,7 +706,7 @@ macro_rules! implement_negated_filter {
 
 fn apply_local_field_filter<'query, Vertex: Clone + Debug + 'query>(
     adapter_ref: &RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     filter: &Operation<LocalField, Argument>,
@@ -698,7 +715,7 @@ fn apply_local_field_filter<'query, Vertex: Clone + Debug + 'query>(
     let local_field = filter.left();
     let field_iterator = compute_local_field(
         adapter_ref,
-        query,
+        carrier,
         component,
         current_vid,
         local_field,
@@ -707,7 +724,7 @@ fn apply_local_field_filter<'query, Vertex: Clone + Debug + 'query>(
 
     apply_filter(
         adapter_ref,
-        query,
+        carrier,
         component,
         current_vid,
         filter,
@@ -717,7 +734,7 @@ fn apply_local_field_filter<'query, Vertex: Clone + Debug + 'query>(
 
 fn apply_fold_specific_filter<'query, Vertex: Clone + Debug + 'query>(
     adapter_ref: &RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     fold: &IRFold,
     current_vid: Vid,
@@ -729,7 +746,7 @@ fn apply_fold_specific_filter<'query, Vertex: Clone + Debug + 'query>(
 
     apply_filter(
         adapter_ref,
-        query,
+        carrier,
         component,
         current_vid,
         filter,
@@ -739,7 +756,7 @@ fn apply_fold_specific_filter<'query, Vertex: Clone + Debug + 'query>(
 
 fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + PartialEq + Eq>(
     adapter_ref: &RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     filter: &Operation<LeftT, Argument>,
@@ -757,14 +774,14 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
                 };
                 compute_local_field(
                     adapter_ref,
-                    query,
+                    carrier,
                     component,
                     current_vid,
                     &local_equivalent_field,
                     iterator,
                 )
             } else {
-                compute_context_field(adapter_ref, query, component, context_field, iterator)
+                compute_context_field(adapter_ref, carrier, component, context_field, iterator)
             }
         }
         Some(Argument::Tag(field_ref @ FieldRef::FoldSpecificField(fold_field))) => {
@@ -784,7 +801,12 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
             }
         }
         Some(Argument::Variable(var)) => {
-            let right_value = query.query_arguments()[var.variable_name.as_ref()].to_owned();
+            let query_arguments = &carrier
+                .query
+                .as_ref()
+                .expect("query was not returned")
+                .arguments;
+            let right_value = query_arguments[var.variable_name.as_ref()].to_owned();
             Box::new(iterator.map(move |mut ctx| {
                 // TODO: implement more efficient filtering with:
                 //       - no clone of runtime parameter values
@@ -876,7 +898,12 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
                 implement_filter!(expression_iterator, right, regex_matches_slow_path)
             }
             Argument::Variable(var) => {
-                let variable_value = &query.query_arguments()[var.variable_name.as_ref()];
+                let query_arguments = &carrier
+                    .query
+                    .as_ref()
+                    .expect("query was not returned")
+                    .arguments;
+                let variable_value = &query_arguments[var.variable_name.as_ref()];
                 let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
 
                 Box::new(expression_iterator.filter_map(move |mut context| {
@@ -896,7 +923,12 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
                 implement_negated_filter!(expression_iterator, right, regex_matches_slow_path)
             }
             Argument::Variable(var) => {
-                let variable_value = &query.query_arguments()[var.variable_name.as_ref()];
+                let query_arguments = &carrier
+                    .query
+                    .as_ref()
+                    .expect("query was not returned")
+                    .arguments;
+                let variable_value = &query_arguments[var.variable_name.as_ref()];
                 let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
 
                 Box::new(expression_iterator.filter_map(move |mut context| {
@@ -916,7 +948,7 @@ fn apply_filter<'query, Vertex: Clone + Debug + 'query, LeftT: Debug + Clone + P
 
 fn compute_context_field<'query, AdapterT: Adapter<'query>>(
     adapter: &RefCell<AdapterT>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     context_field: &ContextField,
     iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
@@ -925,7 +957,7 @@ fn compute_context_field<'query, AdapterT: Adapter<'query>>(
 
     let output_iterator = compute_context_field_with_separate_value(
         adapter_ref.deref_mut(),
-        query,
+        carrier,
         component,
         context_field,
         iterator,
@@ -942,7 +974,7 @@ fn compute_context_field<'query, AdapterT: Adapter<'query>>(
 
 pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
     adapter: &mut AdapterT,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     context_field: &ContextField,
     iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
@@ -958,14 +990,15 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
         });
 
         let type_name = &vertex.type_name;
-        query.current_vertex = vertex_id;
-        query.crossing_eid = None;
+        let query = carrier.query.take().expect("query was not returned");
+        let resolve_info = ResolveInfo::new(query, vertex_id);
+
         let context_and_value_iterator = adapter
             .resolve_property(
                 Box::new(moved_iterator),
                 type_name,
                 &context_field.field_name,
-                query,
+                &resolve_info,
             )
             .map(|(mut context, value)| {
                 // Make sure that the context has the same "current" token
@@ -973,6 +1006,7 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
                 let old_current_token = context.suspended_vertices.pop().unwrap();
                 (context.move_to_vertex(old_current_token), value)
             });
+        carrier.query = Some(resolve_info.into_inner());
 
         Box::new(context_and_value_iterator)
     } else {
@@ -1002,7 +1036,7 @@ fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
 
 fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
     adapter: &RefCell<impl Adapter<'query, Vertex = Vertex>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     local_field: &LocalField,
@@ -1010,11 +1044,13 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
 ) -> ContextIterator<'query, Vertex> {
     let type_name = &component.vertices[&current_vid].type_name;
     let mut adapter_ref = adapter.borrow_mut();
-    query.current_vertex = current_vid;
-    query.crossing_eid = None;
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveInfo::new(query, current_vid);
+
     let context_and_value_iterator =
-        adapter_ref.resolve_property(iterator, type_name, &local_field.field_name, query);
+        adapter_ref.resolve_property(iterator, type_name, &local_field.field_name, &resolve_info);
     drop(adapter_ref);
+    carrier.query = Some(resolve_info.into_inner());
 
     Box::new(context_and_value_iterator.map(|(mut context, value)| {
         context.values.push(value);
@@ -1092,7 +1128,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
 
 fn expand_edge<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     expanding_from_vid: Vid,
     expanding_to_vid: Vid,
@@ -1102,7 +1138,7 @@ fn expand_edge<'query, Vertex: Clone + Debug + 'query>(
     let expanded_iterator = if let Some(recursive) = &edge.recursive {
         expand_recursive_edge(
             adapter.clone(),
-            query,
+            carrier,
             component,
             &component.vertices[&expanding_from_vid],
             &component.vertices[&expanding_to_vid],
@@ -1115,7 +1151,7 @@ fn expand_edge<'query, Vertex: Clone + Debug + 'query>(
     } else {
         expand_non_recursive_edge(
             adapter.clone(),
-            query,
+            carrier,
             component,
             &component.vertices[&expanding_from_vid],
             &component.vertices[&expanding_to_vid],
@@ -1129,7 +1165,7 @@ fn expand_edge<'query, Vertex: Clone + Debug + 'query>(
 
     perform_entry_into_new_vertex(
         adapter,
-        query,
+        carrier,
         component,
         &component.vertices[&expanding_to_vid],
         expanded_iterator,
@@ -1139,7 +1175,7 @@ fn expand_edge<'query, Vertex: Clone + Debug + 'query>(
 #[allow(clippy::too_many_arguments)]
 fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     _component: &IRQueryComponent,
     expanding_from: &IRVertex,
     _expanding_to: &IRVertex,
@@ -1154,17 +1190,19 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
         Box::new(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
 
     let type_name = &expanding_from.type_name;
-    query.current_vertex = expanding_from_vid;
-    query.crossing_eid = Some(edge_id);
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, edge_id);
+
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
         expanding_vertex_iterator,
         type_name,
         edge_name,
         edge_parameters,
-        &QueryInfoAlongEdge::new(query.clone()),
+        &resolve_info,
     );
     drop(adapter_ref);
+    carrier.query = Some(resolve_info.into_inner());
 
     Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
         EdgeExpander::new(context, neighbor_iterator, is_optional)
@@ -1177,17 +1215,17 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 /// - record the vertex at this Vid in the context
 fn perform_entry_into_new_vertex<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     vertex: &IRVertex,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
     let vertex_id = vertex.vid;
-    let mut iterator = coerce_if_needed(adapter.as_ref(), query, vertex, iterator);
+    let mut iterator = coerce_if_needed(adapter.as_ref(), carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
         iterator = apply_local_field_filter(
             adapter.as_ref(),
-            query,
+            carrier,
             component,
             vertex_id,
             filter_expr,
@@ -1203,7 +1241,7 @@ fn perform_entry_into_new_vertex<'query, Vertex: Clone + Debug + 'query>(
 #[allow(clippy::too_many_arguments)]
 fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     expanding_from: &IRVertex,
     expanding_to: &IRVertex,
@@ -1227,7 +1265,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     let max_depth = usize::from(recursive.depth);
     recursion_iterator = perform_one_recursive_edge_expansion(
         adapter.clone(),
-        query,
+        carrier,
         component,
         &expanding_from.type_name,
         expanding_from,
@@ -1246,15 +1284,18 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 
     for _ in 2..=max_depth {
         if let Some(coerce_to) = recursive.coerce_to.as_ref() {
-            query.current_vertex = expanding_from_vid;
-            query.crossing_eid = None;
+            let query = carrier.query.take().expect("query was not returned");
+            let resolve_info = ResolveInfo::new(query, expanding_from_vid);
+
             let mut adapter_ref = adapter.borrow_mut();
             let coercion_iter = adapter_ref.resolve_coercion(
                 recursion_iterator,
                 edge_endpoint_type,
                 coerce_to,
-                query,
+                &resolve_info,
             );
+            drop(adapter_ref);
+            carrier.query = Some(resolve_info.into_inner());
 
             // This coercion is unusual since it doesn't discard elements that can't be coerced.
             // This is because we still want to produce those elements, and we simply want to
@@ -1270,7 +1311,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 
         recursion_iterator = perform_one_recursive_edge_expansion(
             adapter.clone(),
-            query,
+            carrier,
             component,
             recursing_from,
             expanding_from,
@@ -1288,7 +1329,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 #[allow(clippy::too_many_arguments)]
 fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     adapter: Rc<RefCell<impl Adapter<'query, Vertex = Vertex> + 'query>>,
-    query: &mut QueryInfo,
+    carrier: &mut QueryCarrier,
     _component: &IRQueryComponent,
     expanding_from_type: &Arc<str>,
     expanding_from: &IRVertex,
@@ -1298,17 +1339,19 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     edge_parameters: &EdgeParameters,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
-    query.current_vertex = expanding_from.vid;
-    query.crossing_eid = Some(edge_id);
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, edge_id);
+
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
         iterator,
         expanding_from_type,
         edge_name,
         edge_parameters,
-        &QueryInfoAlongEdge::new(query.clone()),
+        &resolve_info,
     );
     drop(adapter_ref);
+    carrier.query = Some(resolve_info.into_inner());
 
     let result_iterator: ContextIterator<'query, Vertex> =
         Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
