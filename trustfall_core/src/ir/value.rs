@@ -6,13 +6,14 @@ use serde::{Deserialize, Serialize};
 /// Values of fields in Trustfall.
 ///
 /// For version that is serialized as an untagged enum, see [TransparentValue].
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialOrd, Serialize, Deserialize)]
 pub enum FieldValue {
     // Order may matter here! Deserialization, if ever configured for untagged serialization,
     // will attempt each variant in order until the first one that matches. Int64 must be
     // above Uint64, which must be above Float64.
     // This is because we want to prioritize the standard Integer GraphQL type over our custom u64,
     // and prioritize exact integers over lossy floats.
+    #[default]
     Null,
     /// AKA integer
     Int64(i64),
@@ -30,11 +31,17 @@ impl FieldValue {
     pub const NULL: Self = FieldValue::Null;
 }
 
+impl Default for &FieldValue {
+    fn default() -> Self {
+        &FieldValue::NULL
+    }
+}
+
 /// Values of fields in GraphQL types.
 ///
 /// Same as [FieldValue], but serialized as an untagged enum,
 /// which may be more suitable e.g. when serializing to JSON.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TransparentValue {
     // Order may matter here! Deserialization, if ever configured for untagged serialization,
@@ -42,6 +49,7 @@ pub enum TransparentValue {
     // above Uint64, which must be above Float64.
     // This is because we want to prioritize the standard Integer GraphQL type over our custom u64,
     // and prioritize exact integers over lossy floats.
+    #[default]
     Null,
     Int64(i64), // AKA Integer
     Uint64(u64),
