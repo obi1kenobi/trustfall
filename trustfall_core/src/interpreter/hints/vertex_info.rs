@@ -13,9 +13,6 @@ pub trait VertexInfo {
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
 
-    /// Returns an iterator of all the edges by that name being resolved from this vertex.
-    fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a>;
-
     /// Returns info for the first edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
     ///
@@ -32,6 +29,13 @@ pub trait VertexInfo {
     ///
     /// Just a convenience wrapper over [`VertexInfo::edges_with_name()`].
     fn first_edge(&self, name: &str) -> Option<EdgeInfo>;
+
+    /// Returns an iterator of all the edges by that name being resolved from this vertex.
+    ///
+    /// This is the building block of [`VertexInfo::first_edge()`] and
+    /// [`VertexInfo::first_mandatory_edge()`].
+    /// When possible, prefer using those methods as they are much simpler to understand.
+    fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a>;
 }
 
 pub(super) trait InternalVertexInfo {
