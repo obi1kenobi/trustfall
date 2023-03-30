@@ -6,7 +6,7 @@ use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
         execution::interpret_ir, Adapter, ContextIterator as BaseContextIterator,
-        ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+        ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -239,7 +239,7 @@ impl Adapter<'static> for AdapterShim {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
@@ -266,7 +266,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
@@ -291,7 +291,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
@@ -325,7 +325,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {

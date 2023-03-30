@@ -4,7 +4,8 @@ use gloo_utils::format::JsValueSerdeExt;
 use js_sys::try_iter;
 use trustfall_core::{
     interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo,
+        ResolveInfo, VertexIterator,
     },
     ir::{EdgeParameters as CoreEdgeParameters, FieldValue},
 };
@@ -261,7 +262,7 @@ impl Adapter<'static> for AdapterShim {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.clone().into();
         let js_iter = self
@@ -275,7 +276,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
@@ -291,7 +292,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
@@ -315,7 +316,7 @@ impl Adapter<'static> for AdapterShim {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();

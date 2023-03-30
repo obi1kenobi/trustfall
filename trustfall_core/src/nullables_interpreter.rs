@@ -3,7 +3,10 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interpreter::{Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator},
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        VertexIterator,
+    },
     ir::{EdgeParameters, FieldValue},
 };
 
@@ -21,7 +24,7 @@ impl Adapter<'static> for NullablesAdapter {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         unimplemented!()
     }
@@ -31,7 +34,7 @@ impl Adapter<'static> for NullablesAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         unimplemented!()
     }
@@ -42,7 +45,7 @@ impl Adapter<'static> for NullablesAdapter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         unimplemented!()
     }
@@ -52,7 +55,7 @@ impl Adapter<'static> for NullablesAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         unimplemented!()
     }

@@ -7,7 +7,8 @@ use crate::{
     interpreter::{
         self,
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        Adapter, ContextIterator, ContextOutcomeIterator, QueryInfo, Typename, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, Typename,
+        VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
     schema::Schema,
@@ -203,7 +204,7 @@ impl Adapter<'static> for NumbersAdapter {
         &mut self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let mut primes = btreeset![2, 3];
         match edge_name.as_ref() {
@@ -235,7 +236,7 @@ impl Adapter<'static> for NumbersAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
         if property_name.as_ref() == "__typename" {
             return interpreter::helpers::resolve_typename(contexts, &self.schema, type_name);
@@ -263,7 +264,7 @@ impl Adapter<'static> for NumbersAdapter {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
@@ -377,7 +378,7 @@ impl Adapter<'static> for NumbersAdapter {
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => resolve_coercion_with(contexts, |vertex| {

@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    helpers::resolve_property_with, hints::QueryInfo, Adapter, ContextIterator,
-    ContextOutcomeIterator, Typename, VertexIterator,
+    helpers::resolve_property_with, Adapter, ContextIterator, ContextOutcomeIterator,
+    ResolveEdgeInfo, ResolveInfo, Typename, VertexIterator,
 };
 
 /// A simplified variant of the [`Adapter`] trait.
@@ -220,7 +220,7 @@ where
         &mut self,
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'vertex, Self::Vertex> {
         <Self as BasicAdapter>::resolve_starting_vertices(self, edge_name.as_ref(), parameters)
     }
@@ -230,7 +230,7 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         property_name: &std::sync::Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         if property_name.as_ref() == "__typename" {
             return self.resolve_typename(contexts, type_name);
@@ -250,7 +250,7 @@ where
         type_name: &std::sync::Arc<str>,
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         <Self as BasicAdapter>::resolve_neighbors(
             self,
@@ -266,7 +266,7 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         coerce_to_type: &std::sync::Arc<str>,
-        _query_info: &QueryInfo,
+        _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         <Self as BasicAdapter>::resolve_coercion(
             self,

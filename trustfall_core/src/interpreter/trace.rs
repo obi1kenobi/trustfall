@@ -11,7 +11,10 @@ use crate::{
     util::BTreeMapTryInsertExt,
 };
 
-use super::{ContextIterator, ContextOutcomeIterator, QueryInfo, VertexIterator};
+use super::{
+    ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
+    VertexIterator,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Opid(pub NonZeroUsize); // operation ID
@@ -242,22 +245,18 @@ where
         &mut self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'vertex, Self::Vertex> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
-            TraceOpContent::Call(FunctionCall::ResolveStartingVertices(
-                query_info.origin_vid(),
-            )),
+            TraceOpContent::Call(FunctionCall::ResolveStartingVertices(resolve_info.vid())),
             None,
         );
         drop(trace);
 
-        assert!(query_info.origin_crossing_eid().is_none());
-
         let inner_iter = self
             .inner
-            .resolve_starting_vertices(edge_name, parameters, query_info);
+            .resolve_starting_vertices(edge_name, parameters, resolve_info);
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
         Box::new(
@@ -282,20 +281,18 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveProperty(
-                query_info.origin_vid(),
+                resolve_info.vid(),
                 type_name.clone(),
                 property_name.clone(),
             )),
             None,
         );
         drop(trace);
-
-        assert!(query_info.origin_crossing_eid().is_none());
 
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
@@ -322,7 +319,7 @@ where
         );
         let inner_iter =
             self.inner
-                .resolve_property(wrapped_contexts, type_name, property_name, query_info);
+                .resolve_property(wrapped_contexts, type_name, property_name, resolve_info);
 
         let tracer_ref_4 = self.tracer.clone();
         let tracer_ref_5 = self.tracer.clone();
@@ -352,16 +349,14 @@ where
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveNeighbors(
-                query_info.origin_vid(),
+                resolve_info.origin_vid(),
                 type_name.clone(),
-                query_info
-                    .origin_crossing_eid()
-                    .expect("no Eid when projecting neighbors"),
+                resolve_info.eid(),
             )),
             None,
         );
@@ -395,7 +390,7 @@ where
             type_name,
             edge_name,
             parameters,
-            query_info,
+            resolve_info,
         );
 
         let tracer_ref_4 = self.tracer.clone();
@@ -446,20 +441,18 @@ where
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
-        query_info: &QueryInfo,
+        resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveCoercion(
-                query_info.origin_vid(),
+                resolve_info.vid(),
                 type_name.clone(),
                 coerce_to_type.clone(),
             )),
             None,
         );
         drop(trace);
-
-        assert!(query_info.origin_crossing_eid().is_none());
 
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
@@ -486,7 +479,7 @@ where
         );
         let inner_iter =
             self.inner
-                .resolve_coercion(wrapped_contexts, type_name, coerce_to_type, query_info);
+                .resolve_coercion(wrapped_contexts, type_name, coerce_to_type, resolve_info);
 
         let tracer_ref_4 = self.tracer.clone();
         let tracer_ref_5 = self.tracer.clone();
