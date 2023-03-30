@@ -8,8 +8,10 @@ use crate::ir::{
     Recursive, Vid,
 };
 
+mod candidates;
 mod vertex_info;
 
+pub use candidates::CandidateValue;
 pub use vertex_info::VertexInfo;
 
 /// Information about the query being processed.
