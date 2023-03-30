@@ -4,29 +4,33 @@ use crate::ir::{IREdge, IRFold, IRQueryComponent, IRVertex, Vid};
 
 use super::EdgeInfo;
 
-/// Information about what some query is looking for at a specific vertex in the query structure.
+/// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait VertexInfo {
-    /// The unique ID of the vertex this `VertexInfo` describes.
+    /// The unique ID of the vertex this [`VertexInfo`] describes.
     fn vid(&self) -> Vid;
 
-    /// The type coercion the query applied at this vertex, if any.
+    /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
 
-    /// Returns an iterator of all the edges by that name originating from this vertex.
+    /// Returns an iterator of all the edges by that name being resolved from this vertex.
     fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a>;
 
     /// Returns info for the first edge by the given name that is *mandatory*:
-    /// this vertex must contain the edge, or it will be discarded during query processing.
+    /// this vertex must contain the edge, or its result set will be discarded.
     ///
     /// Edges marked `@optional`, `@fold`, or `@recurse` are not mandatory:
     /// - `@optional` edges that don't exist produce `null` outputs.
-    /// - `@fold` edges that don't exist produce empty lists.
+    /// - `@fold` edges that don't exist produce empty aggregations.
     /// - `@recurse` always starts at depth 0 (i.e. returning the *current* vertex),
-    ///   so the edge does not have to exist.
+    ///   so the edge is not required to exist.
+    ///
+    /// Just a convenience wrapper over [`VertexInfo::edges_with_name()`].
     fn first_mandatory_edge(&self, name: &str) -> Option<EdgeInfo>;
 
     /// Returns info for the first edge by the given name.
+    ///
+    /// Just a convenience wrapper over [`VertexInfo::edges_with_name()`].
     fn first_edge(&self, name: &str) -> Option<EdgeInfo>;
 }
 
