@@ -26,6 +26,19 @@ pub enum CandidateValue<T> {
     All,
 }
 
+impl<T> CandidateValue<T> {
+    /// Converts from `&CandidateValue<T>` to `CandidateValue<&T>`.
+    pub fn as_ref(&self) -> CandidateValue<&T> {
+        match self {
+            CandidateValue::Impossible => CandidateValue::Impossible,
+            CandidateValue::Single(s) => CandidateValue::Single(s),
+            CandidateValue::Multiple(mult) => CandidateValue::Multiple(mult.iter().collect()),
+            CandidateValue::Range(r) => CandidateValue::Range(r.as_ref()),
+            CandidateValue::All => CandidateValue::All,
+        }
+    }
+}
+
 impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> CandidateValue<T> {
     pub(super) fn intersect(&mut self, mut other: CandidateValue<T>) {
         match self {
@@ -209,7 +222,7 @@ pub struct Range<T> {
     null_included: bool,
 }
 
-impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
+impl<T> Range<T> {
     /// The full, unbounded range of values.
     pub const fn full() -> Range<T> {
         Self {
@@ -228,6 +241,17 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
         }
     }
 
+    /// Converts from `&Range<T>` to `Range<&T>`.
+    pub fn as_ref(&self) -> Range<&T> {
+        Range {
+            start: self.start.as_ref(),
+            end: self.end.as_ref(),
+            null_included: self.null_included,
+        }
+    }
+}
+
+impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
     pub(super) fn new(start: Bound<T>, end: Bound<T>, null_included: bool) -> Self {
         match &start {
             Bound::Included(v) | Bound::Excluded(v) => {

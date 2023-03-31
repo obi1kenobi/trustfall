@@ -9,10 +9,12 @@ use crate::ir::{
 };
 
 mod candidates;
+mod dynamic;
 mod sealed;
 mod vertex_info;
 
 pub use candidates::{CandidateValue, Range};
+pub use dynamic::DynamicallyResolvedValue;
 pub use vertex_info::VertexInfo;
 
 /// Information about the query being processed.

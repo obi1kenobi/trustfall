@@ -6,7 +6,7 @@ use crate::ir::{
     Argument, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
 };
 
-use super::{candidates::NullableValue, CandidateValue, EdgeInfo, Range};
+use super::{candidates::NullableValue, CandidateValue, EdgeInfo, Range, dynamic::DynamicallyResolvedValue};
 
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
@@ -24,6 +24,24 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// `@filter(op: "=", value: ["$expected"])` means the filtered property will
     /// need to match the value of the `expected` query variable.
     fn statically_known_property(&self, name: &str) -> Option<CandidateValue<&FieldValue>>;
+
+    /// Check whether the query demands this vertex property to be in a known set of values,
+    /// where this set is known *dynamically* i.e. requires some of the query
+    /// to have already been executed at the point when this method is called.
+    ///
+    /// For example, filtering a property with `@filter(op: "=", value: ["%expected"])`
+    /// means the property must have a value equal to the value of an earlier property
+    /// whose value is tagged like `@tag(name: "expected")`. If the vertex containing
+    /// the tagged property has already been computed in this query, this method will offer
+    /// to dynamically resolve the tagged value.
+    ///
+    /// Candidate values produced via this method already reflect all statically-known information
+    /// about the property. Calling [`VertexInfo::statically_known_property()`] in addition
+    /// to this method is not necessary.
+    ///
+    /// TODO: this returns `None` even if there's a valid tag with a supported filter,
+    ///       if the tag's vertex *has not been resolved yet* -- make sure to test this!!
+    fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
 
     /// Returns info for the first edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
@@ -102,6 +120,10 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         );
 
         candidate
+    }
+
+    fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue> {
+        todo!()
     }
 
     fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a> {

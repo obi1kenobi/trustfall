@@ -33,7 +33,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub(super) struct QueryCarrier {
-    query: Option<InterpretedQuery>,
+    pub(in crate::interpreter) query: Option<InterpretedQuery>,
 }
 
 #[allow(clippy::type_complexity)]
