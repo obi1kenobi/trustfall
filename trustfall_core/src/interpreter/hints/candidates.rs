@@ -67,20 +67,15 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                         }
                     }
                     Self::Multiple(_) | Self::Range(_) => {
+                        // We normalize at the end, for now let's just
+                        // eliminate the disallowed values.
                         if let Self::Multiple(others) = &other {
                             multiple.retain(|value| others.contains(value));
                         } else if let Self::Range(others) = &other {
                             multiple.retain(|value| others.contains(value));
                         } else {
-                            unreachable!();
+                            unreachable!("expected only Multiple or Range in this branch, but got: {other:?}");
                         }
-                        let possibilities = multiple.len();
-                        if possibilities == 0 {
-                            *self = Self::Impossible;
-                        } else if possibilities == 1 {
-                            let first = multiple.swap_remove(0);
-                            *self = Self::Single(first);
-                        } // otherwise it stays Multiple and we already mutated the Vec it holds
                     }
                     Self::All => {} // self is unchanged.
                 }
@@ -105,15 +100,61 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
         self.normalize();
     }
 
-    fn normalize(&mut self) {
+    pub(super) fn exclude_single_value(&mut self, value: &T) {
+        match self {
+            CandidateValue::Impossible => {} // nothing further to exclude
+            CandidateValue::Single(s) => {
+                if &*s == value {
+                    *self = CandidateValue::Impossible;
+                }
+            }
+            CandidateValue::Multiple(multiple) => {
+                multiple.retain(|v| v != value);
+                self.normalize();
+            }
+            CandidateValue::Range(range) => {
+                if value.is_null() {
+                    range.null_included = false;
+                } else {
+                    // TODO: When the values are integers, we can do better here:
+                    //       we can move from one included bound to another, tighter included bound.
+                    //       This can allow subsequent value exclusions through other heuristics.
+                    if let Bound::Included(incl) = range.start_bound() {
+                        if incl == value {
+                            range.start = Bound::Excluded(incl.clone());
+                        }
+                    }
+                    if let Bound::Included(incl) = range.end_bound() {
+                        if incl == value {
+                            range.end = Bound::Excluded(incl.clone());
+                        }
+                    }
+                }
+                self.normalize();
+            }
+            CandidateValue::All => {
+                // We can only meaningfully exclude null values from the full range.
+                //
+                // TODO: In principle, we can also exclude the extreme values of integers,
+                //       if we want to special-case this to the type of values.
+                if value.is_null() {
+                    *self = CandidateValue::Range(Range::full_non_null())
+                }
+            }
+        }
+    }
+
+    pub(super) fn normalize(&mut self) {
         let next_self = if let Self::Range(range) = self {
             if range.null_only() {
                 Some(Self::Single(T::default()))
             } else if range.degenerate() {
                 Some(CandidateValue::Impossible)
             } else if range.start_bound() == range.end_bound() {
-                // If the range is point-like (possibly +null), convert it to discrete values.
-                if let Bound::Included(b) = range.start_bound() {
+                if *range == Range::full() {
+                    Some(CandidateValue::All)
+                } else if let Bound::Included(b) = range.start_bound() {
+                    // If the range is point-like (possibly +null), convert it to discrete values.
                     if range.null_included() {
                         Some(Self::Multiple(vec![T::default(), b.clone()]))
                     } else {
@@ -122,6 +163,14 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                 } else {
                     None
                 }
+            } else {
+                None
+            }
+        } else if let Self::Multiple(values) = self {
+            if values.is_empty() {
+                Some(Self::Impossible)
+            } else if values.len() == 1 {
+                Some(Self::Single(values.pop().expect("no value present")))
             } else {
                 None
             }
@@ -167,6 +216,15 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
             start: Bound::Unbounded,
             end: Bound::Unbounded,
             null_included: true,
+        }
+    }
+
+    /// The full range of values, except null.
+    pub const fn full_non_null() -> Range<T> {
+        Self {
+            start: Bound::Unbounded,
+            end: Bound::Unbounded,
+            null_included: false,
         }
     }
 
@@ -352,7 +410,7 @@ mod tests {
     use super::CandidateValue;
 
     #[test]
-    fn test_candidate_intersecting() {
+    fn candidate_intersecting() {
         use super::Range as R;
         use CandidateValue::*;
         let one = FieldValue::Int64(1);
@@ -487,6 +545,13 @@ mod tests {
                 Single(&FieldValue::NULL),
             ),
             //
+            // Intersecting ranges that only overlap on a single non-null value produces Single.
+            (
+                Range(R::new(Bound::Included(&one), Bound::Included(&two), false)),
+                Range(R::new(Bound::Included(&two), Bound::Included(&three), true)),
+                Single(&two),
+            ),
+            //
             // Intersecting ranges that don't overlap at all produces Impossible.
             (
                 Range(R::new(Bound::Included(&one), Bound::Included(&one), true)),
@@ -599,11 +664,11 @@ mod tests {
                 "{original:?} + {intersected:?} = {base:?} != {expected:?}"
             );
 
-            let mut base2 = intersected.clone();
-            base2.intersect(original.clone());
+            let mut base = intersected.clone();
+            base.intersect(original.clone());
             assert_eq!(
-                expected, base2,
-                "{original:?} + {intersected:?} = {base2:?} != {expected:?}"
+                expected, base,
+                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
             );
         }
     }
@@ -611,7 +676,7 @@ mod tests {
     /// Intersecting ranges where one is completely contained in the other
     /// produces the smaller range, with appropriate "null_included".
     #[test]
-    fn test_candidate_intersecting_preserves_overlap() {
+    fn candidate_intersecting_preserves_overlap() {
         use CandidateValue::*;
         let one = FieldValue::Int64(1);
         let two = FieldValue::Int64(2);
@@ -668,11 +733,18 @@ mod tests {
                 expected, base,
                 "{original:?} + {intersected:?} = {base:?} != {expected:?}"
             );
+
+            let mut base = intersected.clone();
+            base.intersect(original.clone());
+            assert_eq!(
+                expected, base,
+                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
+            );
         }
     }
 
     #[test]
-    fn test_candidate_intersecting_preserves_order_in_overlap() {
+    fn candidate_intersecting_preserves_order_in_overlap() {
         use CandidateValue::*;
         let one = FieldValue::Int64(1);
         let two = FieldValue::Int64(2);
@@ -700,6 +772,407 @@ mod tests {
                 expected, base,
                 "{original:?} + {intersected:?} = {base:?} != {expected:?}"
             );
+        }
+    }
+
+    #[test]
+    fn candidate_excluding_value() {
+        use super::super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let three = FieldValue::Int64(3);
+        let test_data = [
+            (Single(&one), &one, CandidateValue::Impossible),
+            (
+                // element order is preserved
+                Multiple(vec![&one, &two, &three]),
+                &one,
+                Multiple(vec![&two, &three]),
+            ),
+            (
+                // element order is preserved
+                Multiple(vec![&one, &two, &three]),
+                &two,
+                Multiple(vec![&one, &three]),
+            ),
+            (Multiple(vec![&one, &two]), &two, Single(&one)),
+            (
+                Multiple(vec![&one, &FieldValue::NULL]),
+                &one,
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Multiple(vec![&one, &FieldValue::NULL]),
+                &FieldValue::NULL,
+                Single(&one),
+            ),
+            (Single(&one), &one, Impossible),
+            (Single(&FieldValue::NULL), &FieldValue::NULL, Impossible),
+            (All, &FieldValue::NULL, Range(R::full_non_null())),
+            (
+                Range(R::with_start(Bound::Included(&two), false)),
+                &two,
+                Range(R::with_start(Bound::Excluded(&two), false)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&two), true)),
+                &two,
+                Range(R::with_end(Bound::Excluded(&two), true)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&two), true)),
+                &FieldValue::NULL,
+                Range(R::with_end(Bound::Included(&two), false)),
+            ),
+        ];
+
+        for (candidate, excluded, expected) in test_data {
+            let mut base = candidate.clone();
+            base.exclude_single_value(&excluded);
+            assert_eq!(
+                expected, base,
+                "{candidate:?} - {excluded:?} produced {base:?} instead of {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_excluding_value_no_ops() {
+        use super::super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let three = FieldValue::Int64(3);
+        let test_data = [
+            (Impossible, &one),
+            (Single(&one), &two),
+            (Multiple(vec![&one, &two]), &three),
+            (Range(R::full_non_null()), &FieldValue::NULL),
+            (Range(R::with_start(Bound::Included(&two), false)), &one),
+            (Range(R::with_start(Bound::Excluded(&two), false)), &two),
+            (Range(R::with_end(Bound::Included(&one), false)), &two),
+            (Range(R::with_end(Bound::Excluded(&one), false)), &one),
+            (
+                Range(R::new(
+                    Bound::Included(&one),
+                    Bound::Included(&three),
+                    false,
+                )),
+                &two,
+            ),
+        ];
+
+        for (candidate, excluded) in test_data {
+            let mut base = candidate.clone();
+            base.exclude_single_value(&excluded);
+            assert_eq!(
+                candidate, base,
+                "{candidate:?} - {excluded:?} should have been a no-op but it produced {base:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_excluding_value_of_different_integer_kind() {
+        use super::super::Range as R;
+        use CandidateValue::*;
+        let signed_one = FieldValue::Int64(1);
+        let signed_two = FieldValue::Int64(2);
+        let unsigned_one = FieldValue::Uint64(1);
+        let unsigned_two = FieldValue::Uint64(2);
+        let test_data = [
+            (Single(&signed_one), &unsigned_one, Impossible),
+            (
+                Multiple(vec![&signed_one, &signed_two]),
+                &unsigned_one,
+                Single(&signed_two),
+            ),
+            (
+                Range(R::with_start(Bound::Included(&signed_one), true)),
+                &unsigned_one,
+                Range(R::with_start(Bound::Excluded(&signed_one), true)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&signed_one), true)),
+                &unsigned_one,
+                Range(R::with_end(Bound::Excluded(&signed_one), true)),
+            ),
+            (Single(&unsigned_one), &signed_one, Impossible),
+            (
+                Multiple(vec![&unsigned_one, &unsigned_two]),
+                &signed_one,
+                Single(&unsigned_two),
+            ),
+            (
+                Range(R::with_start(Bound::Included(&unsigned_one), true)),
+                &signed_one,
+                Range(R::with_start(Bound::Excluded(&unsigned_one), true)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&unsigned_one), true)),
+                &signed_one,
+                Range(R::with_end(Bound::Excluded(&unsigned_one), true)),
+            ),
+        ];
+
+        for (candidate, excluded, expected) in test_data {
+            let mut base = candidate.clone();
+            base.exclude_single_value(&excluded);
+            assert_eq!(
+                expected, base,
+                "{candidate:?} - {excluded:?} produced {base:?} instead of {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_direct_normalization() {
+        use super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let test_cases = [
+            (Multiple(vec![]), Impossible),
+            (Multiple(vec![&FieldValue::NULL]), Single(&FieldValue::NULL)),
+            (Multiple(vec![&two]), Single(&two)),
+            (Range(R::full()), All),
+            (
+                Range(R::new(Bound::Included(&one), Bound::Included(&one), true)),
+                Multiple(vec![&FieldValue::NULL, &one]),
+            ),
+            (
+                Range(R::new(Bound::Included(&one), Bound::Included(&one), false)),
+                Single(&one),
+            ),
+            (
+                Range(R::new(Bound::Included(&one), Bound::Excluded(&one), true)),
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Range(R::new(Bound::Included(&one), Bound::Excluded(&one), false)),
+                Impossible,
+            ),
+            (
+                Range(R::new(Bound::Included(&two), Bound::Included(&one), true)),
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Range(R::new(Bound::Included(&two), Bound::Included(&one), false)),
+                Impossible,
+            ),
+            (
+                Range(R::new(Bound::Excluded(&two), Bound::Included(&one), true)),
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Range(R::new(Bound::Excluded(&two), Bound::Included(&one), false)),
+                Impossible,
+            ),
+            (
+                Range(R::new(Bound::Included(&two), Bound::Excluded(&one), true)),
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Range(R::new(Bound::Included(&two), Bound::Excluded(&one), false)),
+                Impossible,
+            ),
+            (
+                Range(R::new(Bound::Excluded(&two), Bound::Excluded(&one), true)),
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Range(R::new(Bound::Excluded(&two), Bound::Excluded(&one), false)),
+                Impossible,
+            ),
+        ];
+
+        for (unnormalized, expected) in test_cases {
+            let mut base = unnormalized.clone();
+            base.normalize();
+
+            assert_eq!(
+                expected, base,
+                "{unnormalized:?}.normalize() = {base:?} != {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_normalization() {
+        use super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let three = FieldValue::Int64(3);
+        let four = FieldValue::Int64(4);
+        let test_cases = [
+            //
+            // Causing a Multiple to lose all its elements turns it into Impossible
+            (
+                Multiple(vec![&one, &two, &three]),
+                Single(&four),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two]),
+                Multiple(vec![&three, &four]),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two]),
+                Range(R::with_start(Bound::Included(&three), true)),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two]),
+                Range(R::with_start(Bound::Excluded(&two), true)),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two, &FieldValue::NULL]),
+                Range(R::with_start(Bound::Excluded(&two), false)),
+                Impossible,
+            ),
+            //
+            // Causing a Multiple to lose all but one of its elements turns it into Single
+            (
+                Multiple(vec![&one, &two, &three]),
+                Single(&two),
+                Single(&two),
+            ),
+            (
+                Multiple(vec![&one, &two, &three]),
+                Multiple(vec![&two, &four]),
+                Single(&two),
+            ),
+            (
+                Multiple(vec![&two, &three, &FieldValue::NULL]),
+                Range(R::with_end(Bound::Included(&two), false)),
+                Single(&two),
+            ),
+            (
+                Multiple(vec![&two, &three, &FieldValue::NULL]),
+                Range(R::with_end(Bound::Excluded(&two), true)),
+                Single(&FieldValue::NULL),
+            ),
+        ];
+
+        for (original, intersected, expected) in test_cases {
+            let mut base = original.clone();
+            base.intersect(intersected.clone());
+            assert_eq!(
+                expected, base,
+                "{original:?} + {intersected:?} = {base:?} != {expected:?}"
+            );
+
+            let mut base = intersected.clone();
+            base.intersect(original.clone());
+            assert_eq!(
+                expected, base,
+                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
+            );
+        }
+    }
+
+    /// The test cases here codify the current behavior, which isn't that smart about integers.
+    /// If/when the code becomes smarter here, these test cases can be updated and moved out
+    /// from this module.
+    mod future_work {
+        use std::ops::Bound;
+
+        use crate::{interpreter::hints::CandidateValue, ir::FieldValue};
+
+        fn range_normalization_does_not_prefer_inclusive_bounds_for_integers() {
+            use super::super::Range as R;
+            use CandidateValue::*;
+            let signed_one = FieldValue::Int64(1);
+            let signed_three = FieldValue::Int64(3);
+            let unsigned_one = FieldValue::Uint64(1);
+            let unsigned_three = FieldValue::Uint64(3);
+            let test_data = [
+                Range(R::new(
+                    Bound::Excluded(&signed_one),
+                    Bound::Excluded(&signed_three),
+                    false,
+                )),
+                Range(R::new(
+                    Bound::Excluded(&unsigned_one),
+                    Bound::Excluded(&unsigned_three),
+                    false,
+                )),
+                Range(R::with_start(Bound::Excluded(&signed_one), false)),
+                Range(R::with_start(Bound::Excluded(&unsigned_one), false)),
+                Range(R::with_end(Bound::Excluded(&signed_three), false)),
+                Range(R::with_end(Bound::Excluded(&unsigned_three), false)),
+            ];
+
+            for candidate in test_data {
+                let mut base = candidate.clone();
+                base.normalize();
+                assert_eq!(
+                    candidate, base,
+                    "normalization changed this value: {candidate:?} != {base:?}"
+                );
+            }
+        }
+
+        fn candidate_value_exclusion_does_not_special_case_integers() {
+            use super::super::Range as R;
+            use CandidateValue::*;
+            let signed_one = FieldValue::Int64(1);
+            let signed_two = FieldValue::Int64(2);
+            let signed_three = FieldValue::Int64(3);
+            let unsigned_one = FieldValue::Uint64(1);
+            let unsigned_two = FieldValue::Uint64(2);
+            let unsigned_three = FieldValue::Uint64(3);
+            let test_data = [
+                (Range(R::full_non_null()), &FieldValue::Int64(i64::MIN)),
+                (Range(R::full_non_null()), &FieldValue::Int64(i64::MAX)),
+                (Range(R::full_non_null()), &FieldValue::Uint64(u64::MIN)),
+                (Range(R::full_non_null()), &FieldValue::Uint64(u64::MAX)),
+                (
+                    Range(R::with_start(Bound::Excluded(&signed_one), false)),
+                    &signed_two,
+                ),
+                (
+                    Range(R::with_start(Bound::Excluded(&unsigned_one), false)),
+                    &unsigned_two,
+                ),
+                (
+                    Range(R::with_end(Bound::Excluded(&signed_two), false)),
+                    &signed_one,
+                ),
+                (
+                    Range(R::with_end(Bound::Excluded(&unsigned_two), false)),
+                    &unsigned_one,
+                ),
+                (
+                    Range(R::new(
+                        Bound::Included(&unsigned_one),
+                        Bound::Included(&unsigned_three),
+                        false,
+                    )),
+                    &unsigned_two,
+                ),
+                (
+                    Range(R::new(
+                        Bound::Included(&signed_one),
+                        Bound::Included(&signed_three),
+                        false,
+                    )),
+                    &signed_two,
+                ),
+            ];
+
+            for (candidate, excluded) in test_data {
+                let mut base = candidate.clone();
+                base.exclude_single_value(&excluded);
+                assert_eq!(
+                    candidate, base,
+                    "exclusion changed this value: {candidate:?} - {excluded:?} produced {base:?}"
+                );
+            }
         }
     }
 }
