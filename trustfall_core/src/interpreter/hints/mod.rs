@@ -12,7 +12,7 @@ mod candidates;
 mod sealed;
 mod vertex_info;
 
-pub use candidates::CandidateValue;
+pub use candidates::{CandidateValue, Range};
 pub use vertex_info::VertexInfo;
 
 /// Information about the query being processed.
@@ -88,6 +88,11 @@ impl InternalVertexInfo for ResolveInfo {
     #[inline]
     fn current_component(&self) -> &IRQueryComponent {
         &self.query.indexed_query.vids[&self.current_vid]
+    }
+
+    #[inline]
+    fn query_variables(&self) -> &BTreeMap<Arc<str>, FieldValue> {
+        self.query.arguments.as_ref()
     }
 
     fn make_non_folded_edge_info(&self, edge: &IREdge) -> EdgeInfo {
@@ -259,6 +264,11 @@ impl InternalVertexInfo for NeighborInfo {
     #[inline]
     fn current_component(&self) -> &IRQueryComponent {
         &self.query.indexed_query.vids[&self.neighbor_vertex]
+    }
+
+    #[inline]
+    fn query_variables(&self) -> &BTreeMap<Arc<str>, FieldValue> {
+        self.query.arguments.as_ref()
     }
 
     fn make_non_folded_edge_info(&self, edge: &IREdge) -> EdgeInfo {

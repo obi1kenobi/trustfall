@@ -68,8 +68,10 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                     }
                     Self::Multiple(_) | Self::Range(_) => {
                         if let Self::Multiple(others) = &other {
+                            // TEST NEEDED: we might filter out all values and end up with Multiple(vec![]) here
                             multiple.retain(|value| others.contains(value));
                         } else if let Self::Range(others) = &other {
+                            // TEST NEEDED: we might filter out all values and end up with Multiple(vec![]) here
                             multiple.retain(|value| others.contains(value));
                         } else {
                             unreachable!();
@@ -105,7 +107,7 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
         self.normalize();
     }
 
-    fn normalize(&mut self) {
+    pub(super) fn normalize(&mut self) {
         let next_self = if let Self::Range(range) = self {
             if range.null_only() {
                 Some(Self::Single(T::default()))
@@ -122,6 +124,16 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                 } else {
                     None
                 }
+            } else {
+                None
+            }
+        } else if let Self::Multiple(values) = self {
+            if values.is_empty() {
+                // TEST NEEDED
+                Some(Self::Impossible)
+            } else if values.len() == 1 {
+                // TEST NEEDED
+                Some(Self::Single(values.pop().expect("no value present")))
             } else {
                 None
             }
@@ -167,6 +179,15 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
             start: Bound::Unbounded,
             end: Bound::Unbounded,
             null_included: true,
+        }
+    }
+
+    /// The full range of values, except null.
+    pub const fn full_non_null() -> Range<T> {
+        Self {
+            start: Bound::Unbounded,
+            end: Bound::Unbounded,
+            null_included: false,
         }
     }
 
