@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 /// IR of the values of Trustfall fields.
 use async_graphql_value::{ConstValue, Number, Value};
 use chrono::{DateTime, Utc};
@@ -6,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// Values of fields in Trustfall.
 ///
 /// For version that is serialized as an untagged enum, see [TransparentValue].
-#[derive(Debug, Clone, Default, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum FieldValue {
     // Order may matter here! Deserialization, if ever configured for untagged serialization,
     // will attempt each variant in order until the first one that matches. Int64 must be
@@ -98,6 +100,21 @@ impl From<TransparentValue> for FieldValue {
 }
 
 impl FieldValue {
+    fn discriminant(&self) -> isize {
+        // Ensure this is the same order as the variant order at definition-time.
+        match self {
+            Self::Null => 0,
+            Self::Int64(..) => 1,
+            Self::Uint64(..) => 2,
+            Self::Float64(..) => 3,
+            Self::String(..) => 4,
+            Self::Boolean(..) => 5,
+            Self::DateTimeUtc(..) => 6,
+            Self::Enum(..) => 7,
+            Self::List(..) => 8,
+        }
+    }
+
     pub fn as_i64(&self) -> Option<i64> {
         match self {
             FieldValue::Uint64(u) => (*u).try_into().ok(),
@@ -170,10 +187,8 @@ impl FieldValue {
             _ => None,
         }
     }
-}
 
-impl PartialEq for FieldValue {
-    fn eq(&self, other: &Self) -> bool {
+    pub(crate) fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Uint64(l0), Self::Uint64(r0)) => l0 == r0,
             (Self::Int64(l0), Self::Int64(r0)) => l0 == r0,
@@ -188,6 +203,61 @@ impl PartialEq for FieldValue {
             (Self::List(l0), Self::List(r0)) => l0 == r0,
             (Self::Enum(l0), Self::Enum(r0)) => l0 == r0,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+
+    fn compare_i64_to_u64(signed: i64, unsigned: u64) -> Ordering {
+        if let Ok(conv) = unsigned.try_into() {
+            // We succeeded in converting the unsigned value into signed.
+            // Compare them on equal terms.
+            signed.cmp(&conv)
+        } else if let Ok(conv) = u64::try_from(signed) {
+            // We succeeded in converting the signed value into unsigned.
+            // Compare them on equal terms.
+            conv.cmp(&unsigned)
+        } else {
+            // Both values are out of each other's valid range.
+            // Since both values are the same bit width,
+            // the signed value must be negative and the unsigned value must be very large.
+            Ordering::Less
+        }
+    }
+}
+
+impl PartialOrd for FieldValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if let (Self::Int64(l), Self::Uint64(r)) = (self, other) {
+            Some(FieldValue::compare_i64_to_u64(*l, *r))
+        } else if let (Self::Uint64(l), Self::Int64(r)) = (self, other) {
+            Some(FieldValue::compare_i64_to_u64(*r, *l).reverse())
+        } else {
+            match (self, other) {
+                (Self::Uint64(l0), Self::Uint64(r0)) => l0.partial_cmp(r0),
+                (Self::Int64(l0), Self::Int64(r0)) => l0.partial_cmp(r0),
+                (Self::Float64(l0), Self::Float64(r0)) => {
+                    assert!(l0.is_finite());
+                    assert!(r0.is_finite());
+                    l0.partial_cmp(r0)
+                }
+                (Self::String(l0), Self::String(r0)) => l0.partial_cmp(r0),
+                (Self::Boolean(l0), Self::Boolean(r0)) => l0.partial_cmp(r0),
+                (Self::DateTimeUtc(l0), Self::DateTimeUtc(r0)) => l0.partial_cmp(r0),
+                (Self::List(l0), Self::List(r0)) => l0.partial_cmp(r0),
+                (Self::Enum(l0), Self::Enum(r0)) => l0.partial_cmp(r0),
+                _ => self.discriminant().partial_cmp(&other.discriminant()),
+            }
+        }
+    }
+}
+
+impl PartialEq for FieldValue {
+    fn eq(&self, other: &Self) -> bool {
+        if let (Self::Int64(l), Self::Uint64(r)) = (self, other) {
+            FieldValue::compare_i64_to_u64(*l, *r).is_eq()
+        } else if let (Self::Uint64(..), Self::Int64(..)) = (self, other) {
+            Self::eq(other, self)
+        } else {
+            self.structural_eq(other)
         }
     }
 }
