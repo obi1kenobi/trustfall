@@ -67,22 +67,15 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                         }
                     }
                     Self::Multiple(_) | Self::Range(_) => {
+                        // We normalize at the end, for now let's just
+                        // eliminate the disallowed values.
                         if let Self::Multiple(others) = &other {
-                            // TEST NEEDED: we might filter out all values and end up with Multiple(vec![]) here
                             multiple.retain(|value| others.contains(value));
                         } else if let Self::Range(others) = &other {
-                            // TEST NEEDED: we might filter out all values and end up with Multiple(vec![]) here
                             multiple.retain(|value| others.contains(value));
                         } else {
-                            unreachable!();
+                            unreachable!("expected only Multiple or Range in this branch, but got: {other:?}");
                         }
-                        let possibilities = multiple.len();
-                        if possibilities == 0 {
-                            *self = Self::Impossible;
-                        } else if possibilities == 1 {
-                            let first = multiple.swap_remove(0);
-                            *self = Self::Single(first);
-                        } // otherwise it stays Multiple and we already mutated the Vec it holds
                     }
                     Self::All => {} // self is unchanged.
                 }
@@ -129,10 +122,8 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
             }
         } else if let Self::Multiple(values) = self {
             if values.is_empty() {
-                // TEST NEEDED
                 Some(Self::Impossible)
             } else if values.len() == 1 {
-                // TEST NEEDED
                 Some(Self::Single(values.pop().expect("no value present")))
             } else {
                 None
@@ -373,7 +364,7 @@ mod tests {
     use super::CandidateValue;
 
     #[test]
-    fn test_candidate_intersecting() {
+    fn candidate_intersecting() {
         use super::Range as R;
         use CandidateValue::*;
         let one = FieldValue::Int64(1);
@@ -620,11 +611,11 @@ mod tests {
                 "{original:?} + {intersected:?} = {base:?} != {expected:?}"
             );
 
-            let mut base2 = intersected.clone();
-            base2.intersect(original.clone());
+            let mut base = intersected.clone();
+            base.intersect(original.clone());
             assert_eq!(
-                expected, base2,
-                "{original:?} + {intersected:?} = {base2:?} != {expected:?}"
+                expected, base,
+                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
             );
         }
     }
@@ -632,7 +623,7 @@ mod tests {
     /// Intersecting ranges where one is completely contained in the other
     /// produces the smaller range, with appropriate "null_included".
     #[test]
-    fn test_candidate_intersecting_preserves_overlap() {
+    fn candidate_intersecting_preserves_overlap() {
         use CandidateValue::*;
         let one = FieldValue::Int64(1);
         let two = FieldValue::Int64(2);
@@ -689,11 +680,18 @@ mod tests {
                 expected, base,
                 "{original:?} + {intersected:?} = {base:?} != {expected:?}"
             );
+
+            let mut base = intersected.clone();
+            base.intersect(original.clone());
+            assert_eq!(
+                expected, base,
+                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
+            );
         }
     }
 
     #[test]
-    fn test_candidate_intersecting_preserves_order_in_overlap() {
+    fn candidate_intersecting_preserves_order_in_overlap() {
         use CandidateValue::*;
         let one = FieldValue::Int64(1);
         let two = FieldValue::Int64(2);
@@ -720,6 +718,83 @@ mod tests {
             assert_eq!(
                 expected, base,
                 "{original:?} + {intersected:?} = {base:?} != {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_normalization() {
+        use super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let three = FieldValue::Int64(3);
+        let four = FieldValue::Int64(4);
+        let test_cases = [
+            //
+            // Causing a Multiple to lose all its elements turns it into Impossible
+            (
+                Multiple(vec![&one, &two, &three]),
+                Single(&four),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two]),
+                Multiple(vec![&three, &four]),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two]),
+                Range(R::with_start(Bound::Included(&three), true)),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two]),
+                Range(R::with_start(Bound::Excluded(&two), true)),
+                Impossible,
+            ),
+            (
+                Multiple(vec![&one, &two, &FieldValue::NULL]),
+                Range(R::with_start(Bound::Excluded(&two), false)),
+                Impossible,
+            ),
+            //
+            // Causing a Multiple to lose all but one of its elements turns it into Single
+            (
+                Multiple(vec![&one, &two, &three]),
+                Single(&two),
+                Single(&two),
+            ),
+            (
+                Multiple(vec![&one, &two, &three]),
+                Multiple(vec![&two, &four]),
+                Single(&two),
+            ),
+            (
+                Multiple(vec![&two, &three, &FieldValue::NULL]),
+                Range(R::with_end(Bound::Included(&two), false)),
+                Single(&two),
+            ),
+            (
+                Multiple(vec![&two, &three, &FieldValue::NULL]),
+                Range(R::with_end(Bound::Excluded(&two), true)),
+                Single(&FieldValue::NULL),
+            ),
+        ];
+
+        for (original, intersected, expected) in test_cases {
+            let mut base = original.clone();
+            base.intersect(intersected.clone());
+            assert_eq!(
+                expected, base,
+                "{original:?} + {intersected:?} = {base:?} != {expected:?}"
+            );
+
+            let mut base = intersected.clone();
+            base.intersect(original.clone());
+            assert_eq!(
+                expected, base,
+                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
             );
         }
     }
