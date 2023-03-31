@@ -6,7 +6,7 @@ use super::EdgeInfo;
 
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
-pub trait VertexInfo {
+pub trait VertexInfo: super::sealed::__Sealed {
     /// The unique ID of the vertex this [`VertexInfo`] describes.
     fn vid(&self) -> Vid;
 
@@ -38,7 +38,7 @@ pub trait VertexInfo {
     fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a>;
 }
 
-pub(super) trait InternalVertexInfo {
+pub(super) trait InternalVertexInfo: super::sealed::__Sealed {
     fn current_vertex(&self) -> &IRVertex;
 
     fn current_component(&self) -> &IRQueryComponent;
@@ -48,7 +48,7 @@ pub(super) trait InternalVertexInfo {
     fn make_folded_edge_info(&self, fold: &IRFold) -> EdgeInfo;
 }
 
-impl<T: InternalVertexInfo> VertexInfo for T {
+impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     fn vid(&self) -> Vid {
         self.current_vertex().vid
     }
