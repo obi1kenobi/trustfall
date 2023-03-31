@@ -184,12 +184,12 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 macro_rules! field_property {
     // If the data is a field directly on the vertex type.
     ($field:ident) => {
-        |vertex| -> FieldValue { vertex.$field.clone().into() }
+        |vertex| -> $crate::ir::value::FieldValue { vertex.$field.clone().into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
     ($conversion:ident, $field:ident) => {
-        |vertex| -> FieldValue {
+        |vertex| -> $crate::ir::value::FieldValue {
             let vertex = vertex.$conversion().expect("conversion failed");
             vertex.$field.clone().into()
         }
@@ -197,7 +197,7 @@ macro_rules! field_property {
     // Supply a block to post-process the field's value.
     // Use the field's name inside the block.
     ($conversion:ident, $field:ident, $b:block) => {
-        |vertex| -> FieldValue {
+        |vertex| -> $crate::ir::value::FieldValue {
             let $field = &vertex.$conversion().expect("conversion failed").$field;
             $b
         }
@@ -263,12 +263,12 @@ macro_rules! field_property {
 macro_rules! accessor_property {
     // If the data is available as an accessor method on the vertex type.
     ($accessor:ident) => {
-        |vertex| -> FieldValue { vertex.$accessor().clone().into() }
+        |vertex| -> $crate::ir::value::FieldValue { vertex.$accessor().clone().into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before using the accessor.
     ($conversion:ident, $accessor:ident) => {
-        |vertex| -> FieldValue {
+        |vertex| -> $crate::ir::value::FieldValue {
             let vertex = vertex.$conversion().expect("conversion failed");
             vertex.$accessor().clone().into()
         }
@@ -277,7 +277,7 @@ macro_rules! accessor_property {
     // The accessor's value is assigned to a variable with the same name as the accessor,
     // and is available as such inside the block.
     ($conversion:ident, $accessor:ident, $b:block) => {
-        |vertex| -> FieldValue {
+        |vertex| -> $crate::ir::value::FieldValue {
             let $accessor = vertex.$conversion().expect("conversion failed").$accessor();
             $b
         }
