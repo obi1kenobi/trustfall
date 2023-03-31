@@ -2,7 +2,9 @@ use std::{collections::BTreeMap, ops::Bound, sync::Arc};
 
 use itertools::Itertools;
 
-use crate::ir::{Argument, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, Operation, Vid};
+use crate::ir::{
+    Argument, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
+};
 
 use super::{CandidateValue, EdgeInfo, Range};
 
@@ -75,146 +77,30 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     }
 
     fn statically_known_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
-        let current_vertex = self.current_vertex();
         let query_variables = self.query_variables();
 
-        let filters_on_this_property: Vec<_> = current_vertex
-            .filters
-            .iter()
-            .filter(|op| op.left().field_name.as_ref() == property)
-            .collect();
-        if filters_on_this_property.is_empty() {
-            return None;
-        }
-
-        let (candidate_filters, post_processing_filters): (Vec<_>, Vec<&Operation<_, _>>) =
-            filters_on_this_property
-                .iter()
-                .partition_map(|op| match op {
-                    Operation::IsNull(..) => {
-                        itertools::Either::Left(CandidateValue::Single(&FieldValue::NULL))
-                    }
-                    Operation::IsNotNull(..) => {
-                        itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
-                    }
-                    Operation::Equals(_, Argument::Variable(var)) => itertools::Either::Left(
-                        CandidateValue::Single(&query_variables[var.variable_name.as_ref()]),
-                    ),
-                    Operation::LessThan(_, Argument::Variable(var)) => {
-                        itertools::Either::Left(CandidateValue::Range(Range::with_end(
-                            Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
-                            true,
-                        )))
-                    }
-                    Operation::LessThanOrEqual(_, Argument::Variable(var)) => {
-                        itertools::Either::Left(CandidateValue::Range(Range::with_end(
-                            Bound::Included(&query_variables[var.variable_name.as_ref()]),
-                            true,
-                        )))
-                    }
-                    Operation::GreaterThan(_, Argument::Variable(var)) => {
-                        itertools::Either::Left(CandidateValue::Range(Range::with_start(
-                            Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
-                            true,
-                        )))
-                    }
-                    Operation::GreaterThanOrEqual(_, Argument::Variable(var)) => {
-                        itertools::Either::Left(CandidateValue::Range(Range::with_start(
-                            Bound::Included(&query_variables[var.variable_name.as_ref()]),
-                            true,
-                        )))
-                    }
-                    Operation::OneOf(_, Argument::Variable(var)) => {
-                        itertools::Either::Left(CandidateValue::Multiple(
-                            query_variables[var.variable_name.as_ref()]
-                                .as_vec(Option::Some)
-                                .expect("query variable was not list-typed"),
-                        ))
-                    }
-                    _ => itertools::Either::Right(op),
-                });
-
-        let mut candidate = if candidate_filters.is_empty() {
-            // No valid candidate-producing filters found.
-            return None;
-        } else {
-            candidate_filters
-                .into_iter()
-                .fold(CandidateValue::All, |mut acc, e| {
-                    acc.intersect(e);
-                    acc
-                })
-        };
-        candidate.normalize();
-
-        // If we have any filters that may affect the candidate value in post-processing,
-        // get their operand values now.
-        if post_processing_filters.is_empty() {
-            return Some(candidate);
-        }
-        let filters_and_values: Vec<_> = post_processing_filters
-            .into_iter()
-            .filter_map(|op| {
-                op.right().and_then(|arg| {
-                    if let Argument::Variable(var) = arg {
-                        Some((op, &query_variables[var.variable_name.as_ref()]))
-                    } else {
-                        None
-                    }
-                })
+        // We only care about filtering operations that are both:
+        // - on the requested property of this vertex, and
+        // - statically-resolvable, i.e. do not depend on tagged arguments
+        let mut relevant_filters = filters_on_local_property(self.current_vertex(), property)
+            .filter(|op| {
+                // Either there's no "right-hand side" in the operator (as in "is_not_null"),
+                // or the right-hand side is a variable.
+                matches!(op.right(), None | Some(Argument::Variable(..)))
             })
-            .collect();
+            .peekable();
 
-        // Ensure the candidate isn't any value that is directly disallowed by
-        // a `!=` or equivalent filter operation.
-        let disallowed_values: Vec<_> = filters_and_values
-            .iter()
-            .filter_map(
-                |(op, value)| -> Option<Box<dyn Iterator<Item = &FieldValue>>> {
-                    match op {
-                        Operation::NotEquals(..) => Some(Box::new(std::iter::once(*value))),
-                        Operation::NotOneOf(..) => Some(Box::new(
-                            value
-                                .as_slice()
-                                .expect("not_one_of operand was not a list")
-                                .iter(),
-                        )),
-                        _ => None,
-                    }
-                },
-            )
-            .flatten()
-            .collect();
-        match &mut candidate {
-            CandidateValue::Single(s) => {
-                if disallowed_values.contains(s) {
-                    candidate = CandidateValue::Impossible;
-                }
-            }
-            CandidateValue::Multiple(vals) => {
-                vals.retain(|v| !disallowed_values.contains(v));
-            }
-            CandidateValue::Range(range) => {
-                // TODO: take advantage of discrete inclusive/exclusive values
-                //       for types like integers
-                if let Bound::Included(value) = range.start_bound() {
-                    if disallowed_values.contains(value) {
-                        range.intersect(Range::with_start(Bound::Excluded(*value), true));
-                    }
-                }
-                if let Bound::Included(value) = range.end_bound() {
-                    if disallowed_values.contains(value) {
-                        range.intersect(Range::with_end(Bound::Excluded(*value), true));
-                    }
-                }
-            }
-            _ => {}
-        };
-        candidate.normalize();
+        // Early-return in case there are no filters that apply here.
+        relevant_filters.peek()?;
 
-        // TODO: use the other kinds of filters to exclude more candidate values
+        let candidate = compute_statically_known_candidate(relevant_filters, query_variables);
+        debug_assert!(
+            // Ensure we never return a range variant with a completely unrestricted range.
+            candidate.as_ref().unwrap_or(&CandidateValue::All) != &CandidateValue::Range(Range::full()),
+            "caught returning a range variant with a completely unrestricted range; it should have been CandidateValue::All instead"
+        );
 
-        Some(candidate)
+        candidate
     }
 
     fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a> {
@@ -243,4 +129,146 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     fn first_edge(&self, name: &str) -> Option<EdgeInfo> {
         self.edges_with_name(name).next()
     }
+}
+
+fn filters_on_local_property<'a>(
+    vertex: &'a IRVertex,
+    property_name: &'a str,
+) -> impl Iterator<Item = &'a Operation<LocalField, Argument>> {
+    vertex
+        .filters
+        .iter()
+        .filter(move |op| op.left().field_name.as_ref() == property_name)
+}
+
+fn compute_statically_known_candidate<'a, 'b>(
+    relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
+    query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
+) -> Option<CandidateValue<&'b FieldValue>> {
+    let (candidate_filters, post_processing_filters): (Vec<_>, Vec<&Operation<_, _>>) =
+        relevant_filters.partition_map(|op| match op {
+            Operation::IsNull(..) => {
+                itertools::Either::Left(CandidateValue::Single(&FieldValue::NULL))
+            }
+            Operation::IsNotNull(..) => {
+                itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
+            }
+            Operation::Equals(_, Argument::Variable(var)) => itertools::Either::Left(
+                CandidateValue::Single(&query_variables[var.variable_name.as_ref()]),
+            ),
+            Operation::LessThan(_, Argument::Variable(var)) => {
+                itertools::Either::Left(CandidateValue::Range(Range::with_end(
+                    Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
+                    true,
+                )))
+            }
+            Operation::LessThanOrEqual(_, Argument::Variable(var)) => {
+                itertools::Either::Left(CandidateValue::Range(Range::with_end(
+                    Bound::Included(&query_variables[var.variable_name.as_ref()]),
+                    true,
+                )))
+            }
+            Operation::GreaterThan(_, Argument::Variable(var)) => {
+                itertools::Either::Left(CandidateValue::Range(Range::with_start(
+                    Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
+                    true,
+                )))
+            }
+            Operation::GreaterThanOrEqual(_, Argument::Variable(var)) => {
+                itertools::Either::Left(CandidateValue::Range(Range::with_start(
+                    Bound::Included(&query_variables[var.variable_name.as_ref()]),
+                    true,
+                )))
+            }
+            Operation::OneOf(_, Argument::Variable(var)) => {
+                itertools::Either::Left(CandidateValue::Multiple(
+                    query_variables[var.variable_name.as_ref()]
+                        .as_vec(Option::Some)
+                        .expect("query variable was not list-typed"),
+                ))
+            }
+            _ => itertools::Either::Right(op),
+        });
+
+    let mut candidate = if candidate_filters.is_empty() {
+        // No valid candidate-producing filters found.
+        return None;
+    } else {
+        candidate_filters
+            .into_iter()
+            .fold(CandidateValue::All, |mut acc, e| {
+                acc.intersect(e);
+                acc
+            })
+    };
+    candidate.normalize();
+
+    // If we have any filters that may affect the candidate value in post-processing,
+    // get their operand values now.
+    if post_processing_filters.is_empty() {
+        return Some(candidate);
+    }
+    let filters_and_values: Vec<_> = post_processing_filters
+        .into_iter()
+        .filter_map(|op| {
+            op.right().and_then(|arg| {
+                if let Argument::Variable(var) = arg {
+                    Some((op, &query_variables[var.variable_name.as_ref()]))
+                } else {
+                    None
+                }
+            })
+        })
+        .collect();
+
+    // Ensure the candidate isn't any value that is directly disallowed by
+    // a `!=` or equivalent filter operation.
+    let disallowed_values: Vec<_> = filters_and_values
+        .iter()
+        .filter_map(
+            |(op, value)| -> Option<Box<dyn Iterator<Item = &FieldValue>>> {
+                match op {
+                    Operation::NotEquals(..) => Some(Box::new(std::iter::once(*value))),
+                    Operation::NotOneOf(..) => Some(Box::new(
+                        value
+                            .as_slice()
+                            .expect("not_one_of operand was not a list")
+                            .iter(),
+                    )),
+                    _ => None,
+                }
+            },
+        )
+        .flatten()
+        .collect();
+    match &mut candidate {
+        CandidateValue::Single(s) => {
+            if disallowed_values.contains(s) {
+                candidate = CandidateValue::Impossible;
+            }
+        }
+        CandidateValue::Multiple(vals) => {
+            vals.retain(|v| !disallowed_values.contains(v));
+        }
+        CandidateValue::Range(range) => {
+            // TODO: take advantage of discrete inclusive/exclusive values
+            //       for types like integers
+            if let Bound::Included(value) = range.start_bound() {
+                if disallowed_values.contains(value) {
+                    range.intersect(Range::with_start(Bound::Excluded(*value), true));
+                }
+            }
+            if let Bound::Included(value) = range.end_bound() {
+                if disallowed_values.contains(value) {
+                    range.intersect(Range::with_end(Bound::Excluded(*value), true));
+                }
+            }
+        }
+        _ => {}
+    };
+    candidate.normalize();
+
+    // TODO: use the other kinds of filters to exclude more candidate values
+
+    Some(candidate)
 }
