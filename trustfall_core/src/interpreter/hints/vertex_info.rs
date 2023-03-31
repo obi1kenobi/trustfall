@@ -6,7 +6,7 @@ use crate::ir::{
     Argument, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
 };
 
-use super::{CandidateValue, EdgeInfo, Range};
+use super::{candidates::NullableValue, CandidateValue, EdgeInfo, Range};
 
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
@@ -91,9 +91,10 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             .peekable();
 
         // Early-return in case there are no filters that apply here.
-        relevant_filters.peek()?;
+        let field = relevant_filters.peek()?.left();
 
-        let candidate = compute_statically_known_candidate(relevant_filters, query_variables);
+        let candidate =
+            compute_statically_known_candidate(field, relevant_filters, query_variables);
         debug_assert!(
             // Ensure we never return a range variant with a completely unrestricted range.
             candidate.as_ref().unwrap_or(&CandidateValue::All) != &CandidateValue::Range(Range::full()),
@@ -142,11 +143,12 @@ fn filters_on_local_property<'a>(
 }
 
 fn compute_statically_known_candidate<'a, 'b>(
+    field: &'a LocalField,
     relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
 ) -> Option<CandidateValue<&'b FieldValue>> {
-    let (candidate_filters, post_processing_filters): (Vec<_>, Vec<&Operation<_, _>>) =
-        relevant_filters.partition_map(|op| match op {
+    let (candidates, post_processing_filters): (Vec<_>, Vec<&Operation<_, _>>) = relevant_filters
+        .partition_map(|op| match op {
             Operation::IsNull(..) => {
                 itertools::Either::Left(CandidateValue::Single(&FieldValue::NULL))
             }
@@ -187,16 +189,28 @@ fn compute_statically_known_candidate<'a, 'b>(
                         .expect("query variable was not list-typed"),
                 ))
             }
+            Operation::NotEquals(_, Argument::Variable(var))
+                if query_variables[var.variable_name.as_ref()].is_null() =>
+            {
+                // Special case: `!= null` can generate candidates;
+                // it's the only `!=` operand for which this is true.
+                itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
+            }
             _ => itertools::Either::Right(op),
         });
 
-    let mut candidate = if candidate_filters.is_empty() {
+    let mut candidate = if candidates.is_empty() {
         // No valid candidate-producing filters found.
         return None;
     } else {
-        candidate_filters
+        let initial_candidate = if field.field_type.nullable {
+            CandidateValue::All
+        } else {
+            CandidateValue::Range(Range::full_non_null())
+        };
+        candidates
             .into_iter()
-            .fold(CandidateValue::All, |mut acc, e| {
+            .fold(initial_candidate, |mut acc, e| {
                 acc.intersect(e);
                 acc
             })
@@ -223,7 +237,7 @@ fn compute_statically_known_candidate<'a, 'b>(
 
     // Ensure the candidate isn't any value that is directly disallowed by
     // a `!=` or equivalent filter operation.
-    let disallowed_values: Vec<_> = filters_and_values
+    let disallowed_values = filters_and_values
         .iter()
         .filter_map(
             |(op, value)| -> Option<Box<dyn Iterator<Item = &FieldValue>>> {
@@ -239,36 +253,291 @@ fn compute_statically_known_candidate<'a, 'b>(
                 }
             },
         )
-        .flatten()
-        .collect();
-    match &mut candidate {
-        CandidateValue::Single(s) => {
-            if disallowed_values.contains(s) {
-                candidate = CandidateValue::Impossible;
-            }
-        }
-        CandidateValue::Multiple(vals) => {
-            vals.retain(|v| !disallowed_values.contains(v));
-        }
-        CandidateValue::Range(range) => {
-            // TODO: take advantage of discrete inclusive/exclusive values
-            //       for types like integers
-            if let Bound::Included(value) = range.start_bound() {
-                if disallowed_values.contains(value) {
-                    range.intersect(Range::with_start(Bound::Excluded(*value), true));
-                }
-            }
-            if let Bound::Included(value) = range.end_bound() {
-                if disallowed_values.contains(value) {
-                    range.intersect(Range::with_end(Bound::Excluded(*value), true));
-                }
-            }
-        }
-        _ => {}
-    };
-    candidate.normalize();
+        .flatten();
+    for disallowed in disallowed_values {
+        candidate.exclude_single_value(&disallowed);
+    }
 
     // TODO: use the other kinds of filters to exclude more candidate values
 
     Some(candidate)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{ops::Bound, sync::Arc};
+
+    use async_graphql_parser::types::Type;
+
+    use crate::{
+        interpreter::hints::{
+            vertex_info::compute_statically_known_candidate, CandidateValue, Range,
+        },
+        ir::{Argument, FieldValue, LocalField, Operation, VariableRef},
+    };
+
+    #[test]
+    fn exclude_not_equals_candidates() {
+        let first: Arc<str> = Arc::from("first");
+        let second: Arc<str> = Arc::from("second");
+        let third: Arc<str> = Arc::from("third");
+        let null: Arc<str> = Arc::from("null");
+        let list: Arc<str> = Arc::from("my_list");
+        let longer_list: Arc<str> = Arc::from("longer_list");
+        let nullable_int_type = Type::new("Int").unwrap();
+        let int_type = Type::new("Int!").unwrap();
+        let list_int_type = Type::new("[Int!]!").unwrap();
+
+        let first_var = Argument::Variable(VariableRef {
+            variable_name: first.clone(),
+            variable_type: int_type.clone(),
+        });
+        let second_var = Argument::Variable(VariableRef {
+            variable_name: second.clone(),
+            variable_type: int_type.clone(),
+        });
+        let null_var = Argument::Variable(VariableRef {
+            variable_name: null.clone(),
+            variable_type: nullable_int_type.clone(),
+        });
+        let list_var = Argument::Variable(VariableRef {
+            variable_name: list.clone(),
+            variable_type: list_int_type.clone(),
+        });
+        let longer_list_var = Argument::Variable(VariableRef {
+            variable_name: longer_list.clone(),
+            variable_type: list_int_type.clone(),
+        });
+
+        let local_field = LocalField {
+            field_name: Arc::from("my_field"),
+            field_type: nullable_int_type.clone(),
+        };
+
+        let variables = btreemap! {
+            first => FieldValue::Int64(1),
+            second => FieldValue::Int64(2),
+            third => FieldValue::Int64(3),
+            null => FieldValue::Null,
+            list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
+            longer_list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2), FieldValue::Int64(3)]),
+        };
+
+        let test_data = [
+            // Both `= 1` and `!= 1` are impossible to satisfy simultaneously.
+            (
+                vec![
+                    Operation::NotEquals(local_field.clone(), first_var.clone()),
+                    Operation::Equals(local_field.clone(), first_var.clone()),
+                ],
+                Some(CandidateValue::Impossible),
+            ),
+            // `= 2` and `!= 1` means the value must be 2.
+            (
+                vec![
+                    Operation::NotEquals(local_field.clone(), first_var.clone()),
+                    Operation::Equals(local_field.clone(), second_var.clone()),
+                ],
+                Some(CandidateValue::Single(&variables["second"])),
+            ),
+            //
+            // `one_of [1, 2]` and `!= 1` allows only `2`.
+            (
+                vec![
+                    Operation::OneOf(local_field.clone(), list_var.clone()),
+                    Operation::NotEquals(local_field.clone(), first_var.clone()),
+                ],
+                Some(CandidateValue::Single(&variables["second"])),
+            ),
+            //
+            // `one_of [1, 2, 3]` and `not_one_of [1, 2]` allows only `3`.
+            (
+                vec![
+                    Operation::OneOf(local_field.clone(), longer_list_var.clone()),
+                    Operation::NotOneOf(local_field.clone(), list_var.clone()),
+                ],
+                Some(CandidateValue::Single(&variables["third"])),
+            ),
+            //
+            // `>= 2` and `not_one_of [1, 2]` produces the exclusive > 2 range
+            (
+                vec![
+                    Operation::GreaterThanOrEqual(local_field.clone(), second_var.clone()),
+                    Operation::NotOneOf(local_field.clone(), list_var.clone()),
+                ],
+                Some(CandidateValue::Range(Range::with_start(
+                    Bound::Excluded(&variables["second"]),
+                    true,
+                ))),
+            ),
+            //
+            // `>= 2` and `is_not_null` and `not_one_of [1, 2]` produces the exclusive non-null > 2 range
+            (
+                vec![
+                    Operation::GreaterThanOrEqual(local_field.clone(), second_var.clone()),
+                    Operation::NotOneOf(local_field.clone(), list_var.clone()),
+                    Operation::IsNotNull(local_field.clone()),
+                ],
+                Some(CandidateValue::Range(Range::with_start(
+                    Bound::Excluded(&variables["second"]),
+                    false,
+                ))),
+            ),
+            //
+            // `> 2` and `is_not_null` produces the exclusive non-null > 2 range
+            (
+                vec![
+                    Operation::GreaterThan(local_field.clone(), second_var.clone()),
+                    Operation::IsNotNull(local_field.clone()),
+                ],
+                Some(CandidateValue::Range(Range::with_start(
+                    Bound::Excluded(&variables["second"]),
+                    false,
+                ))),
+            ),
+            //
+            // `<= 2` and `!= 2` and `is_not_null` produces the exclusive non-null < 2 range
+            (
+                vec![
+                    Operation::LessThanOrEqual(local_field.clone(), second_var.clone()),
+                    Operation::NotEquals(local_field.clone(), second_var.clone()),
+                    Operation::IsNotNull(local_field.clone()),
+                ],
+                Some(CandidateValue::Range(Range::with_end(
+                    Bound::Excluded(&variables["second"]),
+                    false,
+                ))),
+            ),
+            //
+            // `< 2` and `is_not_null` produces the exclusive non-null < 2 range
+            (
+                vec![
+                    Operation::LessThan(local_field.clone(), second_var.clone()),
+                    Operation::IsNotNull(local_field.clone()),
+                ],
+                Some(CandidateValue::Range(Range::with_end(
+                    Bound::Excluded(&variables["second"]),
+                    false,
+                ))),
+            ),
+            //
+            // `is_not_null` by itself only eliminates null
+            (
+                vec![Operation::IsNotNull(local_field.clone())],
+                Some(CandidateValue::Range(Range::full_non_null())),
+            ),
+            //
+            // `!= null` also elminates null
+            (
+                vec![Operation::NotEquals(local_field.clone(), null_var.clone())],
+                Some(CandidateValue::Range(Range::full_non_null())),
+            ),
+            //
+            // `!= 1` by itself doesn't produce any candidates
+            (
+                vec![Operation::NotEquals(local_field.clone(), first_var.clone())],
+                None,
+            ),
+            //
+            // `not_one_of [1, 2]` by itself doesn't produce any candidates
+            (
+                vec![Operation::NotEquals(local_field.clone(), list_var.clone())],
+                None,
+            ),
+        ];
+
+        for (filters, expected_output) in test_data {
+            assert_eq!(
+                expected_output,
+                compute_statically_known_candidate(&local_field, filters.iter(), &variables),
+                "with {filters:?}",
+            );
+        }
+
+        // Explicitly drop these values, so clippy stops complaining about unneccessary clones earlier.
+        drop((
+            first_var,
+            second_var,
+            null_var,
+            list_var,
+            longer_list_var,
+            local_field,
+            int_type,
+            nullable_int_type,
+            list_int_type,
+        ));
+    }
+
+    #[test]
+    fn use_schema_to_exclude_null_from_range() {
+        let first: Arc<str> = Arc::from("first");
+        let int_type = Type::new("Int!").unwrap();
+
+        let first_var = Argument::Variable(VariableRef {
+            variable_name: first.clone(),
+            variable_type: int_type.clone(),
+        });
+
+        let local_field = LocalField {
+            field_name: Arc::from("my_field"),
+            field_type: int_type.clone(),
+        };
+
+        let variables = btreemap! {
+            first => FieldValue::Int64(1),
+        };
+
+        let test_data = [
+            // The local field is non-nullable.
+            // When we apply a range bound on the field, the range must be non-nullable too.
+            (
+                vec![Operation::GreaterThanOrEqual(
+                    local_field.clone(),
+                    first_var.clone(),
+                )],
+                Some(CandidateValue::Range(Range::with_start(
+                    Bound::Included(&variables["first"]),
+                    false,
+                ))),
+            ),
+            (
+                vec![Operation::GreaterThan(
+                    local_field.clone(),
+                    first_var.clone(),
+                )],
+                Some(CandidateValue::Range(Range::with_start(
+                    Bound::Excluded(&variables["first"]),
+                    false,
+                ))),
+            ),
+            (
+                vec![Operation::LessThan(local_field.clone(), first_var.clone())],
+                Some(CandidateValue::Range(Range::with_end(
+                    Bound::Excluded(&variables["first"]),
+                    false,
+                ))),
+            ),
+            (
+                vec![Operation::LessThanOrEqual(
+                    local_field.clone(),
+                    first_var.clone(),
+                )],
+                Some(CandidateValue::Range(Range::with_end(
+                    Bound::Included(&variables["first"]),
+                    false,
+                ))),
+            ),
+        ];
+
+        for (filters, expected_output) in test_data {
+            assert_eq!(
+                expected_output,
+                compute_statically_known_candidate(&local_field, filters.iter(), &variables),
+                "with {filters:?}",
+            );
+        }
+
+        // Explicitly drop these values, so clippy stops complaining about unneccessary clones earlier.
+        drop((first_var, local_field, int_type));
+    }
 }

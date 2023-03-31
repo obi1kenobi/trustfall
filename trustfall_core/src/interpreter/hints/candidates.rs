@@ -545,6 +545,13 @@ mod tests {
                 Single(&FieldValue::NULL),
             ),
             //
+            // Intersecting ranges that only overlap on a single non-null value produces Single.
+            (
+                Range(R::new(Bound::Included(&one), Bound::Included(&two), false)),
+                Range(R::new(Bound::Included(&two), Bound::Included(&three), true)),
+                Single(&two),
+            ),
+            //
             // Intersecting ranges that don't overlap at all produces Impossible.
             (
                 Range(R::new(Bound::Included(&one), Bound::Included(&one), true)),
