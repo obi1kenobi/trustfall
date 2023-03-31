@@ -9,6 +9,7 @@ use crate::ir::{
 };
 
 mod candidates;
+mod sealed;
 mod vertex_info;
 
 pub use candidates::CandidateValue;
@@ -74,6 +75,9 @@ impl ResolveInfo {
         QueryInfo::new(&self.query)
     }
 }
+
+impl sealed::__Sealed for ResolveInfo {}
+impl sealed::__Sealed for NeighborInfo {}
 
 impl InternalVertexInfo for ResolveInfo {
     #[inline]
