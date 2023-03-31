@@ -769,6 +769,157 @@ mod tests {
     }
 
     #[test]
+    fn candidate_excluding_value() {
+        use super::super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let three = FieldValue::Int64(3);
+        let test_data = [
+            (Single(&one), &one, CandidateValue::Impossible),
+            (
+                // element order is preserved
+                Multiple(vec![&one, &two, &three]),
+                &one,
+                Multiple(vec![&two, &three]),
+            ),
+            (
+                // element order is preserved
+                Multiple(vec![&one, &two, &three]),
+                &two,
+                Multiple(vec![&one, &three]),
+            ),
+            (Multiple(vec![&one, &two]), &two, Single(&one)),
+            (
+                Multiple(vec![&one, &FieldValue::NULL]),
+                &one,
+                Single(&FieldValue::NULL),
+            ),
+            (
+                Multiple(vec![&one, &FieldValue::NULL]),
+                &FieldValue::NULL,
+                Single(&one),
+            ),
+            (Single(&one), &one, Impossible),
+            (Single(&FieldValue::NULL), &FieldValue::NULL, Impossible),
+            (All, &FieldValue::NULL, Range(R::full_non_null())),
+            (
+                Range(R::with_start(Bound::Included(&two), false)),
+                &two,
+                Range(R::with_start(Bound::Excluded(&two), false)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&two), true)),
+                &two,
+                Range(R::with_end(Bound::Excluded(&two), true)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&two), true)),
+                &FieldValue::NULL,
+                Range(R::with_end(Bound::Included(&two), false)),
+            ),
+        ];
+
+        for (candidate, excluded, expected) in test_data {
+            let mut base = candidate.clone();
+            base.exclude_single_value(&excluded);
+            assert_eq!(
+                expected, base,
+                "{candidate:?} - {excluded:?} produced {base:?} instead of {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_excluding_value_no_ops() {
+        use super::super::Range as R;
+        use CandidateValue::*;
+        let one = FieldValue::Int64(1);
+        let two = FieldValue::Int64(2);
+        let three = FieldValue::Int64(3);
+        let test_data = [
+            (Impossible, &one),
+            (Single(&one), &two),
+            (Multiple(vec![&one, &two]), &three),
+            (Range(R::full_non_null()), &FieldValue::NULL),
+            (Range(R::with_start(Bound::Included(&two), false)), &one),
+            (Range(R::with_start(Bound::Excluded(&two), false)), &two),
+            (Range(R::with_end(Bound::Included(&one), false)), &two),
+            (Range(R::with_end(Bound::Excluded(&one), false)), &one),
+            (
+                Range(R::new(
+                    Bound::Included(&one),
+                    Bound::Included(&three),
+                    false,
+                )),
+                &two,
+            ),
+        ];
+
+        for (candidate, excluded) in test_data {
+            let mut base = candidate.clone();
+            base.exclude_single_value(&excluded);
+            assert_eq!(
+                candidate, base,
+                "{candidate:?} - {excluded:?} should have been a no-op but it produced {base:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn candidate_excluding_value_of_different_integer_kind() {
+        use super::super::Range as R;
+        use CandidateValue::*;
+        let signed_one = FieldValue::Int64(1);
+        let signed_two = FieldValue::Int64(2);
+        let unsigned_one = FieldValue::Uint64(1);
+        let unsigned_two = FieldValue::Uint64(2);
+        let test_data = [
+            (Single(&signed_one), &unsigned_one, Impossible),
+            (
+                Multiple(vec![&signed_one, &signed_two]),
+                &unsigned_one,
+                Single(&signed_two),
+            ),
+            (
+                Range(R::with_start(Bound::Included(&signed_one), true)),
+                &unsigned_one,
+                Range(R::with_start(Bound::Excluded(&signed_one), true)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&signed_one), true)),
+                &unsigned_one,
+                Range(R::with_end(Bound::Excluded(&signed_one), true)),
+            ),
+            (Single(&unsigned_one), &signed_one, Impossible),
+            (
+                Multiple(vec![&unsigned_one, &unsigned_two]),
+                &signed_one,
+                Single(&unsigned_two),
+            ),
+            (
+                Range(R::with_start(Bound::Included(&unsigned_one), true)),
+                &signed_one,
+                Range(R::with_start(Bound::Excluded(&unsigned_one), true)),
+            ),
+            (
+                Range(R::with_end(Bound::Included(&unsigned_one), true)),
+                &signed_one,
+                Range(R::with_end(Bound::Excluded(&unsigned_one), true)),
+            ),
+        ];
+
+        for (candidate, excluded, expected) in test_data {
+            let mut base = candidate.clone();
+            base.exclude_single_value(&excluded);
+            assert_eq!(
+                expected, base,
+                "{candidate:?} - {excluded:?} produced {base:?} instead of {expected:?}"
+            );
+        }
+    }
+
+    #[test]
     fn candidate_direct_normalization() {
         use super::Range as R;
         use CandidateValue::*;
@@ -964,8 +1115,10 @@ mod tests {
             use CandidateValue::*;
             let signed_one = FieldValue::Int64(1);
             let signed_two = FieldValue::Int64(2);
+            let signed_three = FieldValue::Int64(3);
             let unsigned_one = FieldValue::Uint64(1);
             let unsigned_two = FieldValue::Uint64(2);
+            let unsigned_three = FieldValue::Uint64(3);
             let test_data = [
                 (Range(R::full_non_null()), &FieldValue::Int64(i64::MIN)),
                 (Range(R::full_non_null()), &FieldValue::Int64(i64::MAX)),
@@ -986,6 +1139,22 @@ mod tests {
                 (
                     Range(R::with_end(Bound::Excluded(&unsigned_two), false)),
                     &unsigned_one,
+                ),
+                (
+                    Range(R::new(
+                        Bound::Included(&unsigned_one),
+                        Bound::Included(&unsigned_three),
+                        false,
+                    )),
+                    &unsigned_two,
+                ),
+                (
+                    Range(R::new(
+                        Bound::Included(&signed_one),
+                        Bound::Included(&signed_three),
+                        false,
+                    )),
+                    &signed_two,
                 ),
             ];
 
