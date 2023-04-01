@@ -436,7 +436,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let type_name = &expanding_from.type_name;
 
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.eid);
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.to_vid, fold.eid);
 
     let edge_iterator = adapter_ref.resolve_neighbors(
         activated_vertex_iterator,
@@ -1178,7 +1178,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     carrier: &mut QueryCarrier,
     _component: &IRQueryComponent,
     expanding_from: &IRVertex,
-    _expanding_to: &IRVertex,
+    expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
@@ -1191,7 +1191,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 
     let type_name = &expanding_from.type_name;
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, edge_id);
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, expanding_to.vid, edge_id);
 
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
@@ -1333,14 +1333,14 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     _component: &IRQueryComponent,
     expanding_from_type: &Arc<str>,
     expanding_from: &IRVertex,
-    _expanding_to: &IRVertex,
+    expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, edge_id);
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, expanding_to.vid, edge_id);
 
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(

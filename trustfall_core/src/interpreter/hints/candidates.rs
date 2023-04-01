@@ -39,6 +39,20 @@ impl<T> CandidateValue<T> {
     }
 }
 
+impl<T: Clone> CandidateValue<&T> {
+    pub(super) fn cloned(&self) -> CandidateValue<T> {
+        match self {
+            CandidateValue::Impossible => CandidateValue::Impossible,
+            CandidateValue::Single(s) => CandidateValue::Single((*s).clone()),
+            CandidateValue::Multiple(m) => {
+                CandidateValue::Multiple(m.iter().copied().cloned().collect())
+            }
+            CandidateValue::Range(r) => CandidateValue::Range(r.cloned()),
+            CandidateValue::All => CandidateValue::All,
+        }
+    }
+}
+
 impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> CandidateValue<T> {
     pub(super) fn intersect(&mut self, mut other: CandidateValue<T>) {
         match self {
@@ -220,6 +234,26 @@ pub struct Range<T> {
     start: Bound<T>,
     end: Bound<T>,
     null_included: bool,
+}
+
+impl<T: Clone> Range<&T> {
+    pub(super) fn cloned(&self) -> Range<T> {
+        let start = match self.start {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(b) => Bound::Included(b.clone()),
+            Bound::Excluded(b) => Bound::Excluded(b.clone()),
+        };
+        let end = match self.end {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(b) => Bound::Included(b.clone()),
+            Bound::Excluded(b) => Bound::Excluded(b.clone()),
+        };
+        Range {
+            start,
+            end,
+            null_included: self.null_included,
+        }
+    }
 }
 
 impl<T> Range<T> {

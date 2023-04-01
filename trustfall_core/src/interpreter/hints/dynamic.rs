@@ -1,4 +1,4 @@
-use std::{fmt::Debug, ops::Bound, sync::Arc};
+use std::{fmt::Debug, ops::Bound};
 
 use crate::{
     interpreter::{
@@ -6,18 +6,18 @@ use crate::{
         hints::Range,
         Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery,
     },
-    ir::{ContextField, FieldValue, IRQueryComponent, Operation},
+    ir::{ContextField, FieldRef, FieldValue, IRQueryComponent, Operation},
 };
 
 use super::CandidateValue;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DynamicallyResolvedValue {
+pub struct DynamicallyResolvedValue<'a> {
     query: InterpretedQuery,
-    resolve_on_component: Arc<IRQueryComponent>,
-    field: ContextField,
-    operand_to: Operation<(), ()>,
+    resolve_on_component: &'a IRQueryComponent,
+    field: &'a FieldRef,
+    operation: Operation<(), ()>,
     initial_candidate: CandidateValue<FieldValue>,
 }
 
@@ -36,13 +36,47 @@ macro_rules! resolve_operation {
     };
 }
 
-impl DynamicallyResolvedValue {
+impl<'a> DynamicallyResolvedValue<'a> {
+    pub(super) fn new(
+        query: InterpretedQuery,
+        resolve_on_component: &'a IRQueryComponent,
+        field: &'a FieldRef,
+        operation: Operation<(), ()>,
+        initial_candidate: CandidateValue<FieldValue>,
+    ) -> Self {
+        Self {
+            query,
+            resolve_on_component,
+            field,
+            operation,
+            initial_candidate,
+        }
+    }
+
     pub fn resolve<
         'vertex,
         VertexT: Debug + Clone + 'vertex,
         AdapterT: Adapter<'vertex, Vertex = VertexT>,
     >(
-        mut self,
+        self,
+        adapter: &mut AdapterT,
+        contexts: ContextIterator<'vertex, VertexT>,
+    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        match self.field {
+            FieldRef::ContextField(context_field) => {
+                self.resolve_context_field(context_field, adapter, contexts)
+            }
+            FieldRef::FoldSpecificField(fold_field) => todo!(),
+        }
+    }
+
+    fn resolve_context_field<
+        'vertex,
+        VertexT: Debug + Clone + 'vertex,
+        AdapterT: Adapter<'vertex, Vertex = VertexT>,
+    >(
+        self,
+        context_field: &'a ContextField,
         adapter: &mut AdapterT,
         contexts: ContextIterator<'vertex, VertexT>,
     ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
@@ -52,15 +86,15 @@ impl DynamicallyResolvedValue {
         let iterator = compute_context_field_with_separate_value(
             adapter,
             &mut carrier,
-            &self.resolve_on_component,
-            &self.field,
+            self.resolve_on_component,
+            context_field,
             contexts,
         );
-        let ctx_vid = self.field.vertex_id;
-        let nullable_context_field = self.field.field_type.nullable;
+        let ctx_vid = context_field.vertex_id;
+        let nullable_context_field = context_field.field_type.nullable;
         let initial_candidate = self.initial_candidate;
 
-        match &self.operand_to {
+        match &self.operation {
             Operation::Equals(_, _) => {
                 resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Single(value));
@@ -104,6 +138,8 @@ impl DynamicallyResolvedValue {
                 })
             }
             Operation::OneOf(_, _) => {
+                let context_field_name = context_field.field_name.clone();
+                let context_field_type = context_field.field_type.clone();
                 resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     let values = value
                         .as_slice()
@@ -111,7 +147,7 @@ impl DynamicallyResolvedValue {
                             panic!(
                                 "\
 field {} of type {:?} produced an invalid value when resolving @tag: {value:?}",
-                                self.field.field_name, self.field.field_type,
+                                context_field_name, context_field_type,
                             )
                         })
                         .to_vec();
@@ -119,8 +155,8 @@ field {} of type {:?} produced an invalid value when resolving @tag: {value:?}",
                 })
             }
             _ => unreachable!(
-                "unsupported 'operand_to' {:?} for tag {:?} in component {:?}",
-                &self.operand_to, self.field, self.resolve_on_component,
+                "unsupported 'operation' {:?} for tag {:?} in component {:?}",
+                &self.operation, context_field, self.resolve_on_component,
             ),
         }
     }

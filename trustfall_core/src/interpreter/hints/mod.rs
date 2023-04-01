@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug, ops::Bound, sync::Arc};
 
 use self::vertex_info::InternalVertexInfo;
 
@@ -58,6 +58,7 @@ pub struct ResolveInfo {
 pub struct ResolveEdgeInfo {
     query: InterpretedQuery,
     current_vid: Vid,
+    target_vid: Vid,
     crossing_eid: Eid,
 }
 
@@ -83,6 +84,16 @@ impl sealed::__Sealed for NeighborInfo {}
 
 impl InternalVertexInfo for ResolveInfo {
     #[inline]
+    fn query(&self) -> &InterpretedQuery {
+        &self.query
+    }
+
+    #[inline]
+    fn execution_frontier(&self) -> Bound<Vid> {
+        Bound::Included(self.current_vid)
+    }
+
+    #[inline]
     fn current_vertex(&self) -> &IRVertex {
         &self.current_component().vertices[&self.current_vid]
     }
@@ -100,6 +111,7 @@ impl InternalVertexInfo for ResolveInfo {
     fn make_non_folded_edge_info(&self, edge: &IREdge) -> EdgeInfo {
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
+            execution_frontier: Bound::Included(self.current_vid),
             starting_vertex: self.current_vid,
             neighbor_vertex: edge.to_vid,
             neighbor_path: vec![edge.eid],
@@ -117,6 +129,7 @@ impl InternalVertexInfo for ResolveInfo {
     fn make_folded_edge_info(&self, fold: &IRFold) -> EdgeInfo {
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
+            execution_frontier: Bound::Included(self.current_vid),
             starting_vertex: self.current_vid,
             neighbor_vertex: fold.to_vid,
             neighbor_path: vec![fold.eid],
@@ -133,10 +146,16 @@ impl InternalVertexInfo for ResolveInfo {
 }
 
 impl ResolveEdgeInfo {
-    pub(crate) fn new(query: InterpretedQuery, current_vid: Vid, crossing_eid: Eid) -> Self {
+    pub(crate) fn new(
+        query: InterpretedQuery,
+        current_vid: Vid,
+        target_vid: Vid,
+        crossing_eid: Eid,
+    ) -> Self {
         Self {
             query,
             current_vid,
+            target_vid,
             crossing_eid,
         }
     }
@@ -168,7 +187,7 @@ impl ResolveEdgeInfo {
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
     pub fn destination_vid(&self) -> Vid {
-        self.destination().neighbor_vertex
+        self.target_vid
     }
 
     /// Info about the destination vertex of the edge being expanded where this value was provided.
@@ -184,32 +203,48 @@ impl ResolveEdgeInfo {
     pub fn edge(&self) -> EdgeInfo {
         let eid = self.eid();
         match &self.query.indexed_query.eids[&eid] {
-            EdgeKind::Regular(regular) => EdgeInfo {
-                eid,
-                parameters: regular.parameters.clone(),
-                optional: regular.optional,
-                recursive: regular.recursive.clone(),
-                folded: false,
-                destination: NeighborInfo {
-                    query: self.query.clone(),
-                    starting_vertex: self.origin_vid(),
-                    neighbor_vertex: regular.to_vid,
-                    neighbor_path: vec![eid],
-                },
-            },
-            EdgeKind::Fold(fold) => EdgeInfo {
-                eid,
-                parameters: fold.parameters.clone(),
-                optional: false,
-                recursive: None,
-                folded: true,
-                destination: NeighborInfo {
-                    query: self.query.clone(),
-                    starting_vertex: self.origin_vid(),
-                    neighbor_vertex: fold.to_vid,
-                    neighbor_path: vec![eid],
-                },
-            },
+            EdgeKind::Regular(regular) => {
+                debug_assert_eq!(
+                    self.target_vid, regular.to_vid,
+                    "expected Vid {:?} but got {:?} in edge {regular:?}",
+                    self.target_vid, regular.to_vid
+                );
+                EdgeInfo {
+                    eid,
+                    parameters: regular.parameters.clone(),
+                    optional: regular.optional,
+                    recursive: regular.recursive.clone(),
+                    folded: false,
+                    destination: NeighborInfo {
+                        query: self.query.clone(),
+                        execution_frontier: Bound::Excluded(self.target_vid),
+                        starting_vertex: self.origin_vid(),
+                        neighbor_vertex: regular.to_vid,
+                        neighbor_path: vec![eid],
+                    },
+                }
+            }
+            EdgeKind::Fold(fold) => {
+                debug_assert_eq!(
+                    self.target_vid, fold.to_vid,
+                    "expected Vid {:?} but got {:?} in fold {fold:?}",
+                    self.target_vid, fold.to_vid
+                );
+                EdgeInfo {
+                    eid,
+                    parameters: fold.parameters.clone(),
+                    optional: false,
+                    recursive: None,
+                    folded: true,
+                    destination: NeighborInfo {
+                        query: self.query.clone(),
+                        execution_frontier: Bound::Excluded(self.target_vid),
+                        starting_vertex: self.origin_vid(),
+                        neighbor_vertex: fold.to_vid,
+                        neighbor_path: vec![eid],
+                    },
+                }
+            }
         }
     }
 }
@@ -252,12 +287,23 @@ impl EdgeInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NeighborInfo {
     query: InterpretedQuery,
+    execution_frontier: Bound<Vid>, // how far query execution has progressed
     starting_vertex: Vid,
     neighbor_vertex: Vid,
     neighbor_path: Vec<Eid>,
 }
 
 impl InternalVertexInfo for NeighborInfo {
+    #[inline]
+    fn query(&self) -> &InterpretedQuery {
+        &self.query
+    }
+
+    #[inline]
+    fn execution_frontier(&self) -> Bound<Vid> {
+        self.execution_frontier
+    }
+
     #[inline]
     fn current_vertex(&self) -> &IRVertex {
         &self.current_component().vertices[&self.neighbor_vertex]
@@ -278,6 +324,7 @@ impl InternalVertexInfo for NeighborInfo {
         neighbor_path.push(edge.eid);
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
+            execution_frontier: self.execution_frontier,
             starting_vertex: self.starting_vertex,
             neighbor_vertex: edge.to_vid,
             neighbor_path,
@@ -297,6 +344,7 @@ impl InternalVertexInfo for NeighborInfo {
         neighbor_path.push(fold.eid);
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
+            execution_frontier: self.execution_frontier,
             starting_vertex: self.starting_vertex,
             neighbor_vertex: fold.to_vid,
             neighbor_path,
