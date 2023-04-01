@@ -1020,7 +1020,7 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
     }
 }
 
-fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
+pub(super) fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
     fold_eid: Eid,
     fold_specific_field: &FoldSpecificFieldKind,
     iterator: ContextIterator<'query, Vertex>,

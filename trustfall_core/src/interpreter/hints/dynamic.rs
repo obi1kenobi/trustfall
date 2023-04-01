@@ -2,11 +2,13 @@ use std::{fmt::Debug, ops::Bound};
 
 use crate::{
     interpreter::{
-        execution::{compute_context_field_with_separate_value, QueryCarrier},
+        execution::{
+            compute_context_field_with_separate_value, compute_fold_specific_field, QueryCarrier,
+        },
         hints::Range,
         Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery,
     },
-    ir::{ContextField, FieldRef, FieldValue, IRQueryComponent, Operation},
+    ir::{ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation},
 };
 
 use super::CandidateValue;
@@ -21,7 +23,7 @@ pub struct DynamicallyResolvedValue<'a> {
     initial_candidate: CandidateValue<FieldValue>,
 }
 
-macro_rules! resolve_operation {
+macro_rules! resolve_context_field {
     ($iterator:ident, $initial_candidate:ident, $context_field_vid:ident, $candidate:ident, $value:ident, $blk:block) => {
         Box::new($iterator.map(move |(ctx, $value)| {
             let mut $candidate = $initial_candidate.clone();
@@ -32,6 +34,16 @@ macro_rules! resolve_operation {
                 $blk
             };
             (ctx, $candidate)
+        }))
+    };
+}
+
+macro_rules! resolve_fold_field {
+    ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
+        Box::new($iterator.map(move |mut ctx| {
+            let $value = ctx.values.pop().expect("no value in values() stack");
+            let mut $candidate = $initial_candidate.clone();
+            $blk(ctx, $candidate)
         }))
     };
 }
@@ -53,33 +65,27 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }
     }
 
-    pub fn resolve<
-        'vertex,
-        VertexT: Debug + Clone + 'vertex,
-        AdapterT: Adapter<'vertex, Vertex = VertexT>,
-    >(
+    pub fn resolve<'vertex, AdapterT: Adapter<'vertex>>(
         self,
         adapter: &mut AdapterT,
-        contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
+    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
         match self.field {
             FieldRef::ContextField(context_field) => {
                 self.resolve_context_field(context_field, adapter, contexts)
             }
-            FieldRef::FoldSpecificField(fold_field) => todo!(),
+            FieldRef::FoldSpecificField(fold_field) => {
+                self.resolve_fold_specific_field(fold_field, contexts)
+            }
         }
     }
 
-    fn resolve_context_field<
-        'vertex,
-        VertexT: Debug + Clone + 'vertex,
-        AdapterT: Adapter<'vertex, Vertex = VertexT>,
-    >(
+    fn resolve_context_field<'vertex, AdapterT: Adapter<'vertex>>(
         self,
         context_field: &'a ContextField,
         adapter: &mut AdapterT,
-        contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
+    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
         let mut carrier = QueryCarrier {
             query: Some(self.query),
         };
@@ -96,17 +102,17 @@ impl<'a> DynamicallyResolvedValue<'a> {
 
         match &self.operation {
             Operation::Equals(_, _) => {
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Single(value));
                 })
             }
             Operation::NotEquals(_, _) => {
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.exclude_single_value(&value);
                 })
             }
             Operation::LessThan(_, _) => {
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Excluded(value),
                         nullable_context_field,
@@ -114,7 +120,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::LessThanOrEqual(_, _) => {
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Included(value),
                         nullable_context_field,
@@ -122,7 +128,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::GreaterThan(_, _) => {
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_start(
                         Bound::Excluded(value),
                         nullable_context_field,
@@ -130,7 +136,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::GreaterThanOrEqual(_, _) => {
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Included(value),
                         nullable_context_field,
@@ -140,7 +146,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
             Operation::OneOf(_, _) => {
                 let context_field_name = context_field.field_name.clone();
                 let context_field_type = context_field.field_type.clone();
-                resolve_operation!(iterator, initial_candidate, ctx_vid, candidate, value, {
+                resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     let values = value
                         .as_slice()
                         .unwrap_or_else(|| {
@@ -157,6 +163,79 @@ field {} of type {:?} produced an invalid value when resolving @tag: {value:?}",
             _ => unreachable!(
                 "unsupported 'operation' {:?} for tag {:?} in component {:?}",
                 &self.operation, context_field, self.resolve_on_component,
+            ),
+        }
+    }
+
+    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex>(
+        self,
+        fold_field: &'a FoldSpecificField,
+        contexts: ContextIterator<'vertex, VertexT>,
+    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        let iterator = compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, contexts);
+        let initial_candidate = self.initial_candidate;
+
+        match &self.operation {
+            Operation::Equals(_, _) => {
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    candidate.intersect(CandidateValue::Single(value));
+                })
+            }
+            Operation::NotEquals(_, _) => {
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    candidate.exclude_single_value(&value);
+                })
+            }
+            Operation::LessThan(_, _) => {
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    candidate.intersect(CandidateValue::Range(Range::with_end(
+                        Bound::Excluded(value),
+                        false,
+                    )));
+                })
+            }
+            Operation::LessThanOrEqual(_, _) => {
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    candidate.intersect(CandidateValue::Range(Range::with_end(
+                        Bound::Included(value),
+                        false,
+                    )));
+                })
+            }
+            Operation::GreaterThan(_, _) => {
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    candidate.intersect(CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(value),
+                        false,
+                    )));
+                })
+            }
+            Operation::GreaterThanOrEqual(_, _) => {
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    candidate.intersect(CandidateValue::Range(Range::with_end(
+                        Bound::Included(value),
+                        false,
+                    )));
+                })
+            }
+            Operation::OneOf(_, _) => {
+                let fold_field = fold_field.clone();
+                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                    let values = value
+                        .as_slice()
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "\
+field {fold_field:?} produced an invalid value when resolving @tag: {value:?}",
+                            )
+                        })
+                        .to_vec();
+                    candidate.intersect(CandidateValue::Multiple(values));
+                })
+            }
+            _ => unreachable!(
+                "unsupported 'operation' {:?} for tag {:?} in component {:?}",
+                &self.operation, fold_field, self.resolve_on_component,
             ),
         }
     }
