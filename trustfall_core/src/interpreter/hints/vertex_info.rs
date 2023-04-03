@@ -156,6 +156,18 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     }
 
     fn dynamically_known_property(&self, property: &str) -> Option<DynamicallyResolvedValue> {
+        if self.non_binding_filters() {
+            // This `VertexInfo` is in a place where the filters applied to fields
+            // don't actually constrain their value in the usual way that lends itself
+            // to optimization.
+            //
+            // For example, we may be looking at the data of a vertex produced by a `@recurse`,
+            // where the *final* vertices produced by the recursion must satisfy the filters, but
+            // intermediate layers of the recursion do not: non-matching ones will get filtered out,
+            // but only after the edge recurses to their own neighbors as well.
+            return None;
+        }
+
         // We only care about filtering operations that are all of the following:
         // - on the requested property of this vertex;
         // - dynamically-resolvable, i.e. depend on tagged arguments,
