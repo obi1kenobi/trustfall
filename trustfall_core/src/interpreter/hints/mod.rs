@@ -839,6 +839,33 @@ mod tests {
         }
 
         #[test]
+        fn filter_op_one_of() {
+            let input_name = "filter_op_one_of";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        assert_eq!(
+                            Some(CandidateValue::Multiple(vec![
+                                &"fourteen".into(),
+                                &"fifteen".into(),
+                            ])),
+                            info.statically_known_property("name"),
+                        );
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        }
+
+        #[test]
         fn filter_op_less_than() {
             let input_name = "filter_op_less_than";
 
