@@ -745,4 +745,252 @@ mod tests {
         assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
         assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
     }
+
+    mod property_values {
+        use std::ops::Bound;
+
+        use crate::{
+            interpreter::hints::{CandidateValue, Range},
+            ir::FieldValue,
+        };
+
+        use super::{
+            super::VertexInfo, eid, run_query, vid, ResolveEdgeInfoFn, ResolveInfoFn, TestAdapter,
+            TrackCalls,
+        };
+
+        #[test]
+        fn simple_filter() {
+            let input_name = "simple_filter";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        assert_eq!(None, info.statically_known_property("name"));
+                        assert_eq!(
+                            Some(CandidateValue::Single(&FieldValue::Int64(3))),
+                            info.statically_known_property("value"),
+                        );
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        }
+
+        #[test]
+        fn typename_filter() {
+            let input_name = "typename_filter";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        assert_eq!(None, info.statically_known_property("value"));
+                        assert_eq!(
+                            Some(CandidateValue::Single(&FieldValue::String("Prime".into()))),
+                            info.statically_known_property("__typename"),
+                        );
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        }
+
+        #[test]
+        fn filter_op_less_than() {
+            let input_name = "filter_op_less_than";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_end(Bound::Excluded(&FieldValue::Int64(9)), true))),
+                            info.statically_known_property("value"),
+                        );
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        }
+
+        #[test]
+        fn filter_op_less_or_equal() {
+            let input_name = "filter_op_less_or_equal";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_end(Bound::Included(&FieldValue::Int64(8)), true))),
+                            info.statically_known_property("value"),
+                        );
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        }
+
+        #[test]
+        fn filter_op_greater_than() {
+            let input_name = "filter_op_greater_than";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        let edge_info = info.first_edge("multiple").expect("no 'multiple' edge info");
+                        let neighbor = edge_info.destination();
+
+                        assert_eq!(vid(2), neighbor.vid());
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(25)), true))),
+                            neighbor.statically_known_property("value"),
+                        );
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(eid(1), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(2), info.destination_vid());
+                        assert_eq!(Some(&FieldValue::Int64(4)), info.edge().parameters().get("max"));
+
+                        let neighbor = info.destination();
+                        assert_eq!(vid(2), neighbor.vid());
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(25)), true))),
+                            neighbor.statically_known_property("value"),
+                        );
+                    }))
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+        }
+
+        #[test]
+        fn filter_op_greater_or_equal() {
+            let input_name = "filter_op_greater_or_equal";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        let edge_info = info.first_edge("multiple").expect("no 'multiple' edge info");
+                        let neighbor = edge_info.destination();
+
+                        assert_eq!(vid(2), neighbor.vid());
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_start(Bound::Included(&FieldValue::Int64(24)), true))),
+                            neighbor.statically_known_property("value"),
+                        );
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(eid(1), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(2), info.destination_vid());
+                        assert_eq!(Some(&FieldValue::Int64(4)), info.edge().parameters().get("max"));
+
+                        let neighbor = info.destination();
+                        assert_eq!(vid(2), neighbor.vid());
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_start(Bound::Included(&FieldValue::Int64(24)), true))),
+                            neighbor.statically_known_property("value"),
+                        );
+                    }))
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+        }
+
+        // #[test]
+        // fn recurse_then_filter_intermediate() {
+        //     let input_name = "recurse_then_filter_intermediate";
+
+        //     let adapter = TestAdapter {
+        //         on_starting_vertices: btreemap! {
+        //             vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+        //                 assert_eq!(vid(1), info.vid());
+        //                 assert!(info.coerced_to_type().is_none());
+
+        //                 let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+        //                 let neighbor = edge_info.destination();
+
+        //                 assert_eq!(vid(2), neighbor.vid());
+
+        //                 // This value actually *isn't* statically known, because it isn't limited.
+        //                 // The edge is recursively traversed up to 3 times, and the filter is
+        //                 // applied only afterward.
+        //                 //
+        //                 // The "middle" vertices in the recursion are not required to satisfy
+        //                 // the filter, and including the filter's value here would be a footgun.
+        //                 assert_eq!(None, neighbor.statically_known_property("value"));
+        //             })),
+        //         },
+        //         on_edge_resolver: btreemap! {
+        //             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+        //                 let destination = info.destination();
+        //                 assert_eq!(vid(2), destination.vid());
+        //                 assert!(destination.coerced_to_type().is_none());
+
+        //                 // This value actually *isn't* statically known, because it isn't limited.
+        //                 // The edge is recursively traversed up to 3 times, and the filter is
+        //                 // applied only afterward.
+        //                 //
+        //                 // The "middle" vertices in the recursion are not required to satisfy
+        //                 // the filter, and including the filter's value here would be a footgun.
+        //                 assert_eq!(None, destination.statically_known_property("value"));
+        //             })),
+        //         },
+        //         ..Default::default()
+        //     };
+
+        //     let adapter = run_query(adapter, input_name);
+        //     let adapter_ref = adapter.borrow();
+        //     assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        //     assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 3);
+        // }
+    }
 }
