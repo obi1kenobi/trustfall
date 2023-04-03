@@ -81,6 +81,8 @@ pub trait VertexInfo: super::sealed::__Sealed {
 pub(super) trait InternalVertexInfo: super::sealed::__Sealed {
     fn query(&self) -> &InterpretedQuery;
 
+    fn non_binding_filters(&self) -> bool;
+
     /// How far query execution has progressed thus far:
     /// - `Bound::Included` means that data from that [`Vid`] is available, and
     /// - `Bound::Excluded` means that data from that [`Vid`] is not yet available.
@@ -114,6 +116,18 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     }
 
     fn statically_known_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
+        if self.non_binding_filters() {
+            // This `VertexInfo` is in a place where the filters applied to fields
+            // don't actually constrain their value in the usual way that lends itself
+            // to optimization.
+            //
+            // For example, we may be looking at the data of a vertex produced by a `@recurse`,
+            // where the *final* vertices produced by the recursion must satisfy the filters, but
+            // intermediate layers of the recursion do not: non-matching ones will get filtered out,
+            // but only after the edge recurses to their own neighbors as well.
+            return None;
+        }
+
         let query_variables = self.query_variables();
 
         // We only care about filtering operations that are both:

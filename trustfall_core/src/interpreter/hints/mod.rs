@@ -89,6 +89,11 @@ impl InternalVertexInfo for ResolveInfo {
     }
 
     #[inline]
+    fn non_binding_filters(&self) -> bool {
+        false  // We are *at* the vertex itself. Filters always bind here.
+    }
+
+    #[inline]
     fn execution_frontier(&self) -> Bound<Vid> {
         Bound::Included(self.current_vid)
     }
@@ -115,6 +120,7 @@ impl InternalVertexInfo for ResolveInfo {
             starting_vertex: self.current_vid,
             neighbor_vertex: edge.to_vid,
             neighbor_path: vec![edge.eid],
+            non_binding_filters: check_non_binding_filters_for_edge(edge),
         };
         EdgeInfo {
             eid: edge.eid,
@@ -133,6 +139,7 @@ impl InternalVertexInfo for ResolveInfo {
             starting_vertex: self.current_vid,
             neighbor_vertex: fold.to_vid,
             neighbor_path: vec![fold.eid],
+            non_binding_filters: false,
         };
         EdgeInfo {
             eid: fold.eid,
@@ -221,6 +228,7 @@ impl ResolveEdgeInfo {
                         starting_vertex: self.origin_vid(),
                         neighbor_vertex: regular.to_vid,
                         neighbor_path: vec![eid],
+                        non_binding_filters: check_non_binding_filters_for_edge(regular),
                     },
                 }
             }
@@ -242,6 +250,7 @@ impl ResolveEdgeInfo {
                         starting_vertex: self.origin_vid(),
                         neighbor_vertex: fold.to_vid,
                         neighbor_path: vec![eid],
+                        non_binding_filters: false,
                     },
                 }
             }
@@ -291,12 +300,18 @@ pub struct NeighborInfo {
     starting_vertex: Vid,
     neighbor_vertex: Vid,
     neighbor_path: Vec<Eid>,
+    non_binding_filters: bool,  // for example, inside a `@recurse(depth: 2)` edge
 }
 
 impl InternalVertexInfo for NeighborInfo {
     #[inline]
     fn query(&self) -> &InterpretedQuery {
         &self.query
+    }
+
+    #[inline]
+    fn non_binding_filters(&self) -> bool {
+        self.non_binding_filters
     }
 
     #[inline]
@@ -322,12 +337,14 @@ impl InternalVertexInfo for NeighborInfo {
     fn make_non_folded_edge_info(&self, edge: &IREdge) -> EdgeInfo {
         let mut neighbor_path = self.neighbor_path.clone();
         neighbor_path.push(edge.eid);
+
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
             execution_frontier: self.execution_frontier,
             starting_vertex: self.starting_vertex,
             neighbor_vertex: edge.to_vid,
             neighbor_path,
+            non_binding_filters: check_non_binding_filters_for_edge(edge),
         };
         EdgeInfo {
             eid: edge.eid,
@@ -348,6 +365,7 @@ impl InternalVertexInfo for NeighborInfo {
             starting_vertex: self.starting_vertex,
             neighbor_vertex: fold.to_vid,
             neighbor_path,
+            non_binding_filters: false,
         };
         EdgeInfo {
             eid: fold.eid,
@@ -358,6 +376,17 @@ impl InternalVertexInfo for NeighborInfo {
             destination: neighboring_info,
         }
     }
+}
+
+/// For recursive edges to depth 2+, filter operations at the destination
+/// do not affect whether the edge is taken or not.
+///
+/// The query semantics state that recursive edge traversals happen first, then filters are applied.
+/// At depth 1, those filters are applied after only one edge expansion, so filters "count".
+/// With recursions to depth 2+, there are "middle" layers of vertices that don't have to satisfy
+/// the filters (and will be filtered out) but can still have more edge expansions in the recursion.
+fn check_non_binding_filters_for_edge(edge: &IREdge) -> bool {
+    edge.recursive.as_ref().map(|r| r.depth.get() >= 2).unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -945,52 +974,102 @@ mod tests {
             assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
         }
 
-        // #[test]
-        // fn recurse_then_filter_intermediate() {
-        //     let input_name = "recurse_then_filter_intermediate";
+        #[test]
+        fn recurse_then_filter_depth_one() {
+            let input_name = "recurse_then_filter_depth_one";
 
-        //     let adapter = TestAdapter {
-        //         on_starting_vertices: btreemap! {
-        //             vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
-        //                 assert_eq!(vid(1), info.vid());
-        //                 assert!(info.coerced_to_type().is_none());
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
 
-        //                 let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
-        //                 let neighbor = edge_info.destination();
+                        let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                        let neighbor = edge_info.destination();
 
-        //                 assert_eq!(vid(2), neighbor.vid());
+                        assert_eq!(vid(2), neighbor.vid());
 
-        //                 // This value actually *isn't* statically known, because it isn't limited.
-        //                 // The edge is recursively traversed up to 3 times, and the filter is
-        //                 // applied only afterward.
-        //                 //
-        //                 // The "middle" vertices in the recursion are not required to satisfy
-        //                 // the filter, and including the filter's value here would be a footgun.
-        //                 assert_eq!(None, neighbor.statically_known_property("value"));
-        //             })),
-        //         },
-        //         on_edge_resolver: btreemap! {
-        //             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
-        //                 let destination = info.destination();
-        //                 assert_eq!(vid(2), destination.vid());
-        //                 assert!(destination.coerced_to_type().is_none());
+                        // This value here is statically known, since the recursion is `depth: 1`.
+                        // The edge is recursively traversed only once, i.e. the selected vertices
+                        // are the starting vertex and the neighbors, so the filter is binding
+                        // to all neighboring vertices.
+                        assert_eq!(
+                            Some(CandidateValue::Single(&FieldValue::Int64(6))),
+                            neighbor.statically_known_property("value"),
+                        );
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
 
-        //                 // This value actually *isn't* statically known, because it isn't limited.
-        //                 // The edge is recursively traversed up to 3 times, and the filter is
-        //                 // applied only afterward.
-        //                 //
-        //                 // The "middle" vertices in the recursion are not required to satisfy
-        //                 // the filter, and including the filter's value here would be a footgun.
-        //                 assert_eq!(None, destination.statically_known_property("value"));
-        //             })),
-        //         },
-        //         ..Default::default()
-        //     };
+                        // This value here is statically known, since the recursion is `depth: 1`.
+                        // The edge is recursively traversed only once, i.e. the selected vertices
+                        // are the starting vertex and the neighbors, so the filter is binding
+                        // to all neighboring vertices.
+                        assert_eq!(
+                            Some(CandidateValue::Single(&FieldValue::Int64(6))),
+                            destination.statically_known_property("value"),
+                        );
+                    })),
+                },
+                ..Default::default()
+            };
 
-        //     let adapter = run_query(adapter, input_name);
-        //     let adapter_ref = adapter.borrow();
-        //     assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
-        //     assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 3);
-        // }
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+        }
+
+        #[test]
+        fn recurse_then_filter_depth_two() {
+            let input_name = "recurse_then_filter_depth_two";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
+
+                        let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                        let neighbor = edge_info.destination();
+
+                        assert_eq!(vid(2), neighbor.vid());
+
+                        // This value actually *isn't* statically known, because it isn't limited.
+                        // The edge is recursively traversed up to 2 times, and the filter is
+                        // applied only afterward.
+                        //
+                        // The "middle" vertices in the recursion are not required to satisfy
+                        // the filter, and including the filter's value here would be a footgun.
+                        assert_eq!(None, neighbor.statically_known_property("value"));
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // This value actually *isn't* statically known, because it isn't limited.
+                        // The edge is recursively traversed up to 2 times, and the filter is
+                        // applied only afterward.
+                        //
+                        // The "middle" vertices in the recursion are not required to satisfy
+                        // the filter, and including the filter's value here would be a footgun.
+                        assert_eq!(None, destination.statically_known_property("value"));
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 2);
+        }
     }
 }
