@@ -90,7 +90,7 @@ impl InternalVertexInfo for ResolveInfo {
 
     #[inline]
     fn non_binding_filters(&self) -> bool {
-        false  // We are *at* the vertex itself. Filters always bind here.
+        false // We are *at* the vertex itself. Filters always bind here.
     }
 
     #[inline]
@@ -300,7 +300,7 @@ pub struct NeighborInfo {
     starting_vertex: Vid,
     neighbor_vertex: Vid,
     neighbor_path: Vec<Eid>,
-    non_binding_filters: bool,  // for example, inside a `@recurse(depth: 2)` edge
+    non_binding_filters: bool, // for example, inside a `@recurse(depth: 2)` edge
 }
 
 impl InternalVertexInfo for NeighborInfo {
@@ -386,7 +386,10 @@ impl InternalVertexInfo for NeighborInfo {
 /// With recursions to depth 2+, there are "middle" layers of vertices that don't have to satisfy
 /// the filters (and will be filtered out) but can still have more edge expansions in the recursion.
 fn check_non_binding_filters_for_edge(edge: &IREdge) -> bool {
-    edge.recursive.as_ref().map(|r| r.depth.get() >= 2).unwrap_or(false)
+    edge.recursive
+        .as_ref()
+        .map(|r| r.depth.get() >= 2)
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -398,11 +401,11 @@ mod tests {
     use super::{ResolveEdgeInfo, ResolveInfo};
     use crate::{
         interpreter::{
-            execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator, DataContext,
+            execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator,
             VertexInfo, VertexIterator,
         },
         ir::{Eid, FieldValue, Recursive, Vid},
-        util::{TestIRQuery, TestIRQueryResult},
+        util::{TestIRQuery, TestIRQueryResult}, numbers_interpreter::NumbersAdapter,
     };
 
     type ResolveInfoFn = Box<dyn FnMut(&ResolveInfo)>;
@@ -441,79 +444,92 @@ mod tests {
         }
     }
 
-    #[derive(Default)]
     struct TestAdapter {
         on_starting_vertices: BTreeMap<Vid, TrackCalls<ResolveInfoFn>>,
         on_property_resolver: BTreeMap<Vid, TrackCalls<ResolveInfoFn>>,
         on_edge_resolver: BTreeMap<Eid, TrackCalls<ResolveEdgeInfoFn>>,
         on_type_coercion: BTreeMap<Vid, TrackCalls<ResolveInfoFn>>,
+        inner: NumbersAdapter,
+    }
+
+    impl TestAdapter {
+        fn new() -> Self {
+            Self {
+                inner: NumbersAdapter::new(),
+                on_starting_vertices: Default::default(),
+                on_property_resolver: Default::default(),
+                on_edge_resolver: Default::default(),
+                on_type_coercion: Default::default(),
+            }
+        }
+    }
+
+    impl Default for TestAdapter {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl Adapter<'static> for TestAdapter {
-        type Vertex = ();
+        type Vertex = <NumbersAdapter as Adapter<'static>>::Vertex;
 
         fn resolve_starting_vertices(
             &mut self,
-            _edge_name: &Arc<str>,
-            _parameters: &crate::ir::EdgeParameters,
+            edge_name: &Arc<str>,
+            parameters: &crate::ir::EdgeParameters,
             resolve_info: &super::ResolveInfo,
         ) -> VertexIterator<'static, Self::Vertex> {
             if let Some(x) = self.on_starting_vertices.get_mut(&resolve_info.current_vid) {
-                x.call(resolve_info)
+                x.call(resolve_info);
             }
-            Box::new(std::iter::empty())
+            self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
         }
 
         fn resolve_property(
             &mut self,
             contexts: ContextIterator<'static, Self::Vertex>,
-            _type_name: &Arc<str>,
-            _property_name: &Arc<str>,
+            type_name: &Arc<str>,
+            property_name: &Arc<str>,
             resolve_info: &super::ResolveInfo,
         ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
             if let Some(x) = self.on_property_resolver.get_mut(&resolve_info.current_vid) {
-                x.call(resolve_info)
+                x.call(resolve_info);
             }
-            Box::new(contexts.map(|ctx| (ctx, FieldValue::Null)))
+            self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
         }
 
         fn resolve_neighbors(
             &mut self,
             contexts: ContextIterator<'static, Self::Vertex>,
-            _type_name: &Arc<str>,
-            _edge_name: &Arc<str>,
-            _parameters: &crate::ir::EdgeParameters,
+            type_name: &Arc<str>,
+            edge_name: &Arc<str>,
+            parameters: &crate::ir::EdgeParameters,
             resolve_info: &super::ResolveEdgeInfo,
         ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
         {
             if let Some(x) = self.on_edge_resolver.get_mut(&resolve_info.eid()) {
-                x.call(resolve_info)
+                x.call(resolve_info);
             }
-            Box::new(
-                contexts.map(|ctx| -> (DataContext<()>, Box<dyn Iterator<Item = ()>>) {
-                    (ctx, Box::new(std::iter::empty()))
-                }),
-            )
+            self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
         }
 
         fn resolve_coercion(
             &mut self,
             contexts: ContextIterator<'static, Self::Vertex>,
-            _type_name: &Arc<str>,
-            _coerce_to_type: &Arc<str>,
+            type_name: &Arc<str>,
+            coerce_to_type: &Arc<str>,
             resolve_info: &super::ResolveInfo,
         ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
             if let Some(x) = self.on_type_coercion.get_mut(&resolve_info.current_vid) {
-                x.call(resolve_info)
+                x.call(resolve_info);
             }
-            Box::new(contexts.map(|ctx| (ctx, false)))
+            self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
         }
     }
 
     fn get_ir_for_named_query(stem: &str) -> TestIRQuery {
         let mut input_path = PathBuf::from("test_data/tests/valid_queries");
         input_path.push(format!("{stem}.ir.ron"));
-        dbg!(&input_path);
         let input_data = std::fs::read_to_string(input_path).unwrap();
         let test_query: TestIRQueryResult = ron::from_str(&input_data).unwrap();
         test_query.unwrap()
@@ -530,7 +546,7 @@ mod tests {
     fn run_query(adapter: TestAdapter, input_name: &str) -> Rc<RefCell<TestAdapter>> {
         let input = get_ir_for_named_query(input_name);
         let adapter = Rc::from(RefCell::new(adapter));
-        interpret_ir(
+        let _ = interpret_ir(
             adapter.clone(),
             Arc::new(input.ir_query.try_into().unwrap()),
             Arc::new(
@@ -542,26 +558,8 @@ mod tests {
             ),
         )
         .unwrap()
-        .next();
+        .collect::<Vec<_>>();
         adapter
-    }
-
-    #[test]
-    fn coercion_at_root() {
-        let input_name = "root_coercion";
-
-        let adapter = TestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
-                    assert_eq!(info.coerced_to_type().map(|x| x.as_ref()), Some("Prime"));
-                    assert_eq!(info.vid(), vid(1));
-                })),
-            },
-            ..Default::default()
-        };
-
-        let adapter = run_query(adapter, input_name);
-        assert_eq!(adapter.borrow().on_starting_vertices[&vid(1)].calls, 1);
     }
 
     #[test]
@@ -773,6 +771,55 @@ mod tests {
         let adapter_ref = adapter.borrow();
         assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
         assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+    }
+
+    #[test]
+    fn coercion_on_folded_edge() {
+        let input_name = "coercion_on_folded_edge";
+
+        let adapter = TestAdapter {
+            on_starting_vertices: btreemap! {
+                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                    assert!(info.coerced_to_type().is_none());
+                    assert_eq!(info.vid(), vid(1));
+
+                    let edge = info.first_edge("predecessor").expect("no edge returned");
+                    let destination = edge.destination();
+
+                    assert_eq!(
+                        Some("Prime"),
+                        destination.coerced_to_type().map(|x| x.as_ref()),
+                    );
+                })),
+            },
+            on_edge_resolver: btreemap! {
+                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(info.origin_vid(), vid(1));
+
+                    let destination = info.destination();
+                    assert_eq!(destination.vid(), vid(2));
+                    assert_eq!(
+                        Some("Prime"),
+                        destination.coerced_to_type().map(|x| x.as_ref()),
+                    );
+                })),
+            },
+            on_type_coercion: btreemap! {
+                vid(2) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(Some("Prime"), info.coerced_to_type().map(|x| x.as_ref()));
+                    assert_eq!(info.vid(), vid(2));
+                })),
+            },
+            ..Default::default()
+        };
+
+        let adapter = run_query(adapter, input_name);
+        let adapter_ref = adapter.borrow();
+        assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+        assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+
+        // it's inside a @fold with 7 elements
+        assert_eq!(adapter_ref.on_type_coercion[&vid(2)].calls, 7);
     }
 
     mod property_values {
