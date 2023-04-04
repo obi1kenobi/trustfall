@@ -4,8 +4,8 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 pub mod provider {
     pub use trustfall_core::interpreter::basic_adapter::BasicAdapter;
     pub use trustfall_core::interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, QueryInfo, ResolveEdgeInfo,
-        ResolveInfo, Typename, VertexInfo, VertexIterator,
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, EdgeInfo, QueryInfo,
+        ResolveEdgeInfo, ResolveInfo, Typename, VertexInfo, VertexIterator,
     };
     pub use trustfall_core::ir::{EdgeParameters, Eid, Vid};
 
