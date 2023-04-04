@@ -70,12 +70,30 @@ impl<'a> DynamicallyResolvedValue<'a> {
         adapter: &mut AdapterT,
         contexts: ContextIterator<'vertex, AdapterT::Vertex>,
     ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
-        match self.field {
+        match &self.field {
             FieldRef::ContextField(context_field) => {
-                self.resolve_context_field(context_field, adapter, contexts)
+                if context_field.vertex_id < self.resolve_on_component.root {
+                    // We're inside at least one level of `@fold` relative to
+                    // the origin of this tag.
+                    //
+                    // We'll have to grab the tag's value from the context directly.
+                    let field_ref = self.field;
+                    self.resolve_context_field_with_imported_tags(field_ref, contexts)
+                } else {
+                    self.resolve_context_field(context_field, adapter, contexts)
+                }
             }
             FieldRef::FoldSpecificField(fold_field) => {
-                self.resolve_fold_specific_field(fold_field, contexts)
+                if fold_field.fold_root_vid < self.resolve_on_component.root {
+                    // We're inside at least one level of `@fold` relative to
+                    // the origin of this tag.
+                    //
+                    // We'll have to grab the tag's value from the context directly.
+                    let field_ref = self.field;
+                    self.resolve_context_field_with_imported_tags(field_ref, contexts)
+                } else {
+                    self.resolve_fold_specific_field(fold_field, contexts)
+                }
             }
         }
     }
@@ -152,7 +170,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                         .unwrap_or_else(|| {
                             panic!(
                                 "\
-field {} of type {:?} produced an invalid value when resolving @tag: {value:?}",
+field {} of type {} produced an invalid value when resolving @tag: {value:?}",
                                 context_field_name, context_field_type,
                             )
                         })
@@ -163,6 +181,99 @@ field {} of type {:?} produced an invalid value when resolving @tag: {value:?}",
             _ => unreachable!(
                 "unsupported 'operation' {:?} for tag {:?} in component {:?}",
                 &self.operation, context_field, self.resolve_on_component,
+            ),
+        }
+    }
+
+    fn resolve_context_field_with_imported_tags<'vertex, VertexT: Debug + Clone + 'vertex>(
+        self,
+        field_ref: &'a FieldRef,
+        contexts: ContextIterator<'vertex, VertexT>,
+    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        let initial_candidate = self.initial_candidate;
+        let nullable_context_field = match field_ref {
+            FieldRef::ContextField(ctx) => ctx.field_type.nullable,
+            FieldRef::FoldSpecificField(_) => false,
+        };
+        let cloned_field_ref = field_ref.clone();
+        let iterator = contexts.map(move |ctx| {
+            let value = ctx.imported_tags[&cloned_field_ref].clone();
+            (ctx, value)
+        });
+
+        match &self.operation {
+            Operation::Equals(_, _) => Box::new(iterator.map(move |(ctx, value)| {
+                let mut candidate = initial_candidate.clone();
+                candidate.intersect(CandidateValue::Single(value));
+                (ctx, candidate)
+            })),
+            Operation::NotEquals(_, _) => Box::new(iterator.map(move |(ctx, value)| {
+                let mut candidate = initial_candidate.clone();
+                candidate.exclude_single_value(&value);
+                (ctx, candidate)
+            })),
+            Operation::LessThan(_, _) => Box::new(iterator.map(move |(ctx, value)| {
+                let mut candidate = initial_candidate.clone();
+                candidate.intersect(CandidateValue::Range(Range::with_end(
+                    Bound::Excluded(value),
+                    nullable_context_field,
+                )));
+                (ctx, candidate)
+            })),
+            Operation::LessThanOrEqual(_, _) => Box::new(iterator.map(move |(ctx, value)| {
+                let mut candidate = initial_candidate.clone();
+                candidate.intersect(CandidateValue::Range(Range::with_end(
+                    Bound::Included(value),
+                    nullable_context_field,
+                )));
+                (ctx, candidate)
+            })),
+            Operation::GreaterThan(_, _) => Box::new(iterator.map(move |(ctx, value)| {
+                let mut candidate = initial_candidate.clone();
+                candidate.intersect(CandidateValue::Range(Range::with_start(
+                    Bound::Excluded(value),
+                    nullable_context_field,
+                )));
+                (ctx, candidate)
+            })),
+            Operation::GreaterThanOrEqual(_, _) => Box::new(iterator.map(move |(ctx, value)| {
+                let mut candidate = initial_candidate.clone();
+                candidate.intersect(CandidateValue::Range(Range::with_end(
+                    Bound::Included(value),
+                    nullable_context_field,
+                )));
+                (ctx, candidate)
+            })),
+            Operation::OneOf(_, _) => {
+                let field_ref = field_ref.clone();
+                Box::new(iterator.map(move |(ctx, value)| {
+                    let mut candidate = initial_candidate.clone();
+                    let values = value
+                        .as_slice()
+                        .unwrap_or_else(|| match &field_ref {
+                            FieldRef::ContextField(context_field) => {
+                                panic!(
+                                    "\
+field {} of type {} produced an invalid value when resolving @tag: {value:?}",
+                                    context_field.field_name, context_field.field_type,
+                                )
+                            }
+                            FieldRef::FoldSpecificField(fold_specific) => {
+                                panic!(
+                                    "\
+field {:?} produced an invalid value when resolving @tag: {value:?}",
+                                    fold_specific,
+                                )
+                            }
+                        })
+                        .to_vec();
+                    candidate.intersect(CandidateValue::Multiple(values));
+                    (ctx, candidate)
+                }))
+            }
+            _ => unreachable!(
+                "unsupported 'operation' {:?} for tag {:?} in component {:?}",
+                &self.operation, field_ref, self.resolve_on_component,
             ),
         }
     }

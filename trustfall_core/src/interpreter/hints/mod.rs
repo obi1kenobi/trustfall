@@ -1481,5 +1481,144 @@ mod tests {
             assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
             assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 2);
         }
+
+        #[test]
+        fn filter_in_fold_using_external_tag() {
+            let input_name = "filter_in_fold_using_external_tag";
+
+            let adapter = DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        let edge = info.first_edge("multiple").expect("no 'multiple' edge");
+                        let destination = edge.destination();
+                        // We haven't resolved Vid 1 yet, so this property
+                        // isn't dynamically known yet.
+                        assert_eq!(None, destination.dynamically_known_property("name"));
+
+                        ctxs
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
+                        assert_eq!(eid(1), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(2), info.destination_vid());
+
+                        let destination = info.destination();
+
+                        let expected_values = vec![
+                            CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
+                        ];
+                        let candidate = destination.dynamically_known_property("name");
+                        Box::new(candidate
+                            .expect("no dynamic candidate for 'value' property")
+                            .resolve(adapter, ctxs)
+                            .zip_longest(expected_values.into_iter())
+                            .map(move |data| {
+                                if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                    assert_eq!(expected_value, value);
+                                    ctx
+                                } else {
+                                    panic!("unexpected iterator outcome: {data:?}")
+                                }
+                            }))
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+        }
+
+        #[test]
+        fn filter_in_nested_fold_using_external_tag() {
+            let input_name = "filter_in_nested_fold_using_external_tag";
+
+            let adapter = DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        let edge = info.first_edge("multiple").expect("no 'multiple' edge");
+                        let destination = edge.destination();
+                        // We haven't resolved Vid 1 yet, so this property
+                        // isn't dynamically known yet.
+                        assert_eq!(None, destination.dynamically_known_property("name"));
+
+                        ctxs
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
+                        assert_eq!(eid(1), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(2), info.destination_vid());
+
+                        // Go into the next fold and ensure we could
+                        // push down the predicate at this point.
+                        let edge = info
+                            .destination()
+                            .first_edge("multiple")
+                            .expect("no 'multiple' edge");
+                        let destination = edge.destination();
+
+                        let expected_values = vec![
+                            CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
+                        ];
+                        let candidate = destination.dynamically_known_property("name");
+                        Box::new(candidate
+                            .expect("no dynamic candidate for 'name' property")
+                            .resolve(adapter, ctxs)
+                            .zip_longest(expected_values.into_iter())
+                            .map(move |data| {
+                                if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                    assert_eq!(expected_value, value);
+                                    ctx
+                                } else {
+                                    panic!("unexpected iterator outcome: {data:?}")
+                                }
+                            }))
+                    })),
+                    eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
+                        assert_eq!(eid(2), info.eid());
+                        assert_eq!(vid(2), info.origin_vid());
+                        assert_eq!(vid(3), info.destination_vid());
+
+                        let destination = info.destination();
+
+                        let expected_values = vec![
+                            CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
+                        ];
+                        let candidate = destination.dynamically_known_property("name");
+                        Box::new(candidate
+                            .expect("no dynamic candidate for 'name' property")
+                            .resolve(adapter, ctxs)
+                            .zip_longest(expected_values.into_iter())
+                            .map(move |data| {
+                                if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                    assert_eq!(expected_value, value);
+                                    ctx
+                                } else {
+                                    panic!("unexpected iterator outcome: {data:?}")
+                                }
+                            }))
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(2)].calls, 1);
+        }
     }
 }
