@@ -22,7 +22,10 @@ mod hints;
 pub mod replay;
 pub mod trace;
 
-pub use hints::{EdgeInfo, NeighborInfo, QueryInfo, ResolveEdgeInfo, ResolveInfo, VertexInfo};
+pub use hints::{
+    CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,
+    ResolveEdgeInfo, ResolveInfo, VertexInfo,
+};
 
 /// An iterator of vertices representing data points we are querying.
 pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
