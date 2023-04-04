@@ -1,0 +1,21 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 3, max: 4) {
+        value @tag(name: "prior") @output
+
+        successor {
+            value @filter(op: "one_of", value: ["$collection"])
+                  @filter(op: ">=", value: ["%prior"])
+        }
+    }
+}"#,
+    arguments: {
+        "collection": List([
+            Int64(3),
+            Int64(4),
+            Int64(5),
+        ]),
+    },
+)

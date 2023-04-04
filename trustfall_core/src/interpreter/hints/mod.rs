@@ -50,6 +50,7 @@ impl<'a> QueryInfo<'a> {
 pub struct ResolveInfo {
     query: InterpretedQuery,
     current_vid: Vid,
+    vertex_completed: bool,
 }
 
 /// Information about an edge is being resolved.
@@ -63,8 +64,8 @@ pub struct ResolveEdgeInfo {
 }
 
 impl ResolveInfo {
-    pub(crate) fn new(query: InterpretedQuery, current_vid: Vid) -> Self {
-        Self { query, current_vid }
+    pub(crate) fn new(query: InterpretedQuery, current_vid: Vid, vertex_completed: bool) -> Self {
+        Self { query, current_vid, vertex_completed }
     }
 
     pub(crate) fn into_inner(self) -> InterpretedQuery {
@@ -95,7 +96,12 @@ impl InternalVertexInfo for ResolveInfo {
 
     #[inline]
     fn execution_frontier(&self) -> Bound<Vid> {
-        Bound::Included(self.current_vid)
+        if self.vertex_completed {
+            Bound::Included(self.current_vid)
+        } else {
+            // e.g. during type coercions or in `get_starting_vertices()`
+            Bound::Excluded(self.current_vid)
+        }
     }
 
     #[inline]
@@ -116,7 +122,7 @@ impl InternalVertexInfo for ResolveInfo {
     fn make_non_folded_edge_info(&self, edge: &IREdge) -> EdgeInfo {
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
-            execution_frontier: Bound::Included(self.current_vid),
+            execution_frontier: self.execution_frontier(),
             starting_vertex: self.current_vid,
             neighbor_vertex: edge.to_vid,
             neighbor_path: vec![edge.eid],
@@ -135,7 +141,7 @@ impl InternalVertexInfo for ResolveInfo {
     fn make_folded_edge_info(&self, fold: &IRFold) -> EdgeInfo {
         let neighboring_info = NeighborInfo {
             query: self.query.clone(),
-            execution_frontier: Bound::Included(self.current_vid),
+            execution_frontier: self.execution_frontier(),
             starting_vertex: self.current_vid,
             neighbor_vertex: fold.to_vid,
             neighbor_path: vec![fold.eid],
@@ -543,7 +549,7 @@ mod tests {
         Eid::new(n.try_into().unwrap())
     }
 
-    fn run_query(adapter: TestAdapter, input_name: &str) -> Rc<RefCell<TestAdapter>> {
+    fn run_query<A: Adapter<'static> + 'static>(adapter: A, input_name: &str) -> Rc<RefCell<A>> {
         let input = get_ir_for_named_query(input_name);
         let adapter = Rc::from(RefCell::new(adapter));
         let _ = interpret_ir(
@@ -1144,6 +1150,192 @@ mod tests {
             let adapter_ref = adapter.borrow();
             assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
             assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 2);
+        }
+    }
+
+    mod dynamic_property_values {
+        use std::{collections::BTreeMap, sync::Arc};
+
+        use itertools::{Itertools, EitherOrBoth};
+
+        use crate::{interpreter::{VertexIterator, ResolveInfo, ResolveEdgeInfo, Adapter, ContextIterator, ContextOutcomeIterator, hints::CandidateValue, VertexInfo}, numbers_interpreter::NumbersAdapter, ir::{Vid, Eid, FieldValue}};
+
+        use super::*;
+
+        type CtxIter = ContextIterator<'static, <DynamicTestAdapter as Adapter<'static>>::Vertex>;
+        type ResolveInfoFn = Box<dyn FnMut(&mut NumbersAdapter, CtxIter, &ResolveInfo) -> CtxIter>;
+        type ResolveEdgeInfoFn = Box<dyn FnMut(&mut NumbersAdapter, CtxIter, &ResolveEdgeInfo) -> CtxIter>;
+
+        #[derive(Default)]
+        struct TrackCalls<F> {
+            underlying: F,
+            calls: usize,
+        }
+
+        impl<F> TrackCalls<F> {
+            fn new_underlying(underlying: F) -> Self {
+                Self {
+                    underlying,
+                    calls: 0,
+                }
+            }
+        }
+
+        impl TrackCalls<ResolveInfoFn> {
+            fn call(&mut self, adapter: &mut NumbersAdapter, ctxs: CtxIter, info: &ResolveInfo) -> CtxIter {
+                self.calls += 1;
+                (self.underlying)(adapter, ctxs, info)
+            }
+        }
+
+        impl TrackCalls<ResolveEdgeInfoFn> {
+            fn call(&mut self, adapter: &mut NumbersAdapter, ctxs: CtxIter, info: &ResolveEdgeInfo) -> CtxIter {
+                self.calls += 1;
+                (self.underlying)(adapter, ctxs, info)
+            }
+        }
+
+        struct DynamicTestAdapter {
+            on_starting_vertices: BTreeMap<Vid, TrackCalls<ResolveInfoFn>>,
+            on_property_resolver: BTreeMap<Vid, TrackCalls<ResolveInfoFn>>,
+            on_edge_resolver: BTreeMap<Eid, TrackCalls<ResolveEdgeInfoFn>>,
+            on_type_coercion: BTreeMap<Vid, TrackCalls<ResolveInfoFn>>,
+            inner: NumbersAdapter,
+        }
+
+        impl DynamicTestAdapter {
+            fn new() -> Self {
+                Self {
+                    inner: NumbersAdapter::new(),
+                    on_starting_vertices: Default::default(),
+                    on_property_resolver: Default::default(),
+                    on_edge_resolver: Default::default(),
+                    on_type_coercion: Default::default(),
+                }
+            }
+        }
+
+        impl Default for DynamicTestAdapter {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
+        impl Adapter<'static> for DynamicTestAdapter {
+            type Vertex = <NumbersAdapter as Adapter<'static>>::Vertex;
+
+            fn resolve_starting_vertices(
+                &mut self,
+                edge_name: &Arc<str>,
+                parameters: &crate::ir::EdgeParameters,
+                resolve_info: &super::ResolveInfo,
+            ) -> VertexIterator<'static, Self::Vertex> {
+                if let Some(x) = self.on_starting_vertices.get_mut(&resolve_info.current_vid) {
+                    // the starting vertices call doesn't have an iterator
+                    let _ = x.call(&mut self.inner, Box::new(std::iter::empty()), resolve_info);
+                }
+                self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
+            }
+
+            fn resolve_property(
+                &mut self,
+                mut contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &Arc<str>,
+                property_name: &Arc<str>,
+                resolve_info: &super::ResolveInfo,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+                if let Some(x) = self.on_property_resolver.get_mut(&resolve_info.current_vid) {
+                    contexts = x.call(&mut self.inner, contexts, resolve_info);
+                }
+                self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
+            }
+
+            fn resolve_neighbors(
+                &mut self,
+                mut contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &Arc<str>,
+                edge_name: &Arc<str>,
+                parameters: &crate::ir::EdgeParameters,
+                resolve_info: &super::ResolveEdgeInfo,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
+            {
+                if let Some(x) = self.on_edge_resolver.get_mut(&resolve_info.eid()) {
+                    contexts = x.call(&mut self.inner, contexts, resolve_info);
+                }
+                self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
+            }
+
+            fn resolve_coercion(
+                &mut self,
+                mut contexts: ContextIterator<'static, Self::Vertex>,
+                type_name: &Arc<str>,
+                coerce_to_type: &Arc<str>,
+                resolve_info: &super::ResolveInfo,
+            ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+                if let Some(x) = self.on_type_coercion.get_mut(&resolve_info.current_vid) {
+                    contexts = x.call(&mut self.inner, contexts, resolve_info);
+                }
+                self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+            }
+        }
+
+        /// Ensure that statically-known values are propagated and automatically
+        /// intersected with dynamically-known property values.
+        #[test]
+        fn static_and_dynamic_filter() {
+            let input_name = "static_and_dynamic_filter";
+
+            let adapter = DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        // This property isn't known or needed at all.
+                        assert_eq!(None, info.dynamically_known_property("name"));
+
+                        let edge = info.first_edge("successor").expect("no 'successor' edge");
+                        let destination = edge.destination();
+                        // We haven't resolved Vid 1 yet, so this property
+                        // isn't dynamically known yet.
+                        assert_eq!(None, destination.dynamically_known_property("value"));
+
+                        ctxs
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
+                        assert_eq!(eid(1), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(2), info.destination_vid());
+
+                        let destination = info.destination();
+
+                        let expected_values = vec![
+                            CandidateValue::Single(FieldValue::Int64(3)),
+                            CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
+                        ];
+                        let value_candidate = destination.dynamically_known_property("value");
+                        Box::new(value_candidate
+                            .expect("no dynamic candidate for 'value' property")
+                            .resolve(adapter, ctxs)
+                            .zip_longest(expected_values.into_iter())
+                            .map(move |data| {
+                                if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                    assert_eq!(expected_value, value);
+                                    ctx
+                                } else {
+                                    panic!("unexpected iterator outcome: {data:?}")
+                                }
+                            }))
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
         }
     }
 }
