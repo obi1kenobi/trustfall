@@ -822,7 +822,7 @@ mod tests {
         assert_eq!(adapter_ref.on_type_coercion[&vid(2)].calls, 7);
     }
 
-    mod property_values {
+    mod static_property_values {
         use std::ops::Bound;
 
         use crate::{
