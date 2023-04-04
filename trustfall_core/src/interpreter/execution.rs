@@ -33,7 +33,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub(super) struct QueryCarrier {
-    query: Option<InterpretedQuery>,
+    pub(in crate::interpreter) query: Option<InterpretedQuery>,
 }
 
 #[allow(clippy::type_complexity)]
@@ -54,7 +54,7 @@ where
 
     let mut carrier = QueryCarrier { query: None };
 
-    let resolve_info = ResolveInfo::new(query.clone(), root_vid);
+    let resolve_info = ResolveInfo::new(query.clone(), root_vid, false);
 
     let mut adapter_ref = adapter.borrow_mut();
     let mut iterator: ContextIterator<'query, Vertex> = Box::new(
@@ -107,7 +107,7 @@ where
     let mut adapter_ref = adapter.borrow_mut();
 
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, vertex.vid);
+    let resolve_info = ResolveInfo::new(query, vertex.vid, false);
     let coercion_iter =
         adapter_ref.resolve_coercion(iterator, coerced_from, coerce_to, &resolve_info);
     carrier.query = Some(resolve_info.into_inner());
@@ -241,7 +241,7 @@ fn construct_outputs<'query, Vertex: Clone + Debug + 'query>(
         }));
 
         let mut adapter_ref = adapter.borrow_mut();
-        let resolve_info = ResolveInfo::new(query, vertex_id);
+        let resolve_info = ResolveInfo::new(query, vertex_id, true);
 
         let type_name = &root_component.vertices[&vertex_id].type_name;
         let field_data_iterator = adapter_ref.resolve_property(
@@ -391,7 +391,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
                 let type_name = &field_vertex.type_name;
 
                 let query = carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id);
+                let resolve_info = ResolveInfo::new(query, vertex_id, true);
 
                 let context_and_value_iterator = adapter_ref.resolve_property(
                     activated_vertex_iterator,
@@ -436,7 +436,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
     let type_name = &expanding_from.type_name;
 
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.eid);
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.to_vid, fold.eid);
 
     let edge_iterator = adapter_ref.resolve_neighbors(
         activated_vertex_iterator,
@@ -579,7 +579,7 @@ fn compute_fold<'query, Vertex: Clone + Debug + 'query>(
 
                 let mut adapter_ref = cloned_adapter.borrow_mut();
                 let query = cloned_carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id);
+                let resolve_info = ResolveInfo::new(query, vertex_id, true);
                 let field_data_iterator = adapter_ref.resolve_property(
                     moved_iterator,
                     &fold.component.vertices[&vertex_id].type_name,
@@ -991,7 +991,7 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
 
         let type_name = &vertex.type_name;
         let query = carrier.query.take().expect("query was not returned");
-        let resolve_info = ResolveInfo::new(query, vertex_id);
+        let resolve_info = ResolveInfo::new(query, vertex_id, true);
 
         let context_and_value_iterator = adapter
             .resolve_property(
@@ -1020,7 +1020,7 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
     }
 }
 
-fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
+pub(super) fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
     fold_eid: Eid,
     fold_specific_field: &FoldSpecificFieldKind,
     iterator: ContextIterator<'query, Vertex>,
@@ -1045,7 +1045,7 @@ fn compute_local_field<'query, Vertex: Clone + Debug + 'query>(
     let type_name = &component.vertices[&current_vid].type_name;
     let mut adapter_ref = adapter.borrow_mut();
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, current_vid);
+    let resolve_info = ResolveInfo::new(query, current_vid, true);
 
     let context_and_value_iterator =
         adapter_ref.resolve_property(iterator, type_name, &local_field.field_name, &resolve_info);
@@ -1178,7 +1178,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     carrier: &mut QueryCarrier,
     _component: &IRQueryComponent,
     expanding_from: &IRVertex,
-    _expanding_to: &IRVertex,
+    expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
@@ -1191,7 +1191,7 @@ fn expand_non_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
 
     let type_name = &expanding_from.type_name;
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, edge_id);
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, expanding_to.vid, edge_id);
 
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(
@@ -1285,7 +1285,7 @@ fn expand_recursive_edge<'query, Vertex: Clone + Debug + 'query>(
     for _ in 2..=max_depth {
         if let Some(coerce_to) = recursive.coerce_to.as_ref() {
             let query = carrier.query.take().expect("query was not returned");
-            let resolve_info = ResolveInfo::new(query, expanding_from_vid);
+            let resolve_info = ResolveInfo::new(query, expanding_from_vid, false);
 
             let mut adapter_ref = adapter.borrow_mut();
             let coercion_iter = adapter_ref.resolve_coercion(
@@ -1333,14 +1333,14 @@ fn perform_one_recursive_edge_expansion<'query, Vertex: Clone + Debug + 'query>(
     _component: &IRQueryComponent,
     expanding_from_type: &Arc<str>,
     expanding_from: &IRVertex,
-    _expanding_to: &IRVertex,
+    expanding_to: &IRVertex,
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
     let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, edge_id);
+    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, expanding_to.vid, edge_id);
 
     let mut adapter_ref = adapter.borrow_mut();
     let edge_iterator = adapter_ref.resolve_neighbors(

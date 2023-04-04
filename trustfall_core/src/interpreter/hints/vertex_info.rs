@@ -1,12 +1,22 @@
-use std::{collections::BTreeMap, ops::Bound, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    ops::{Bound, RangeBounds},
+    sync::Arc,
+};
 
 use itertools::Itertools;
 
-use crate::ir::{
-    Argument, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField, Operation, Vid,
+use crate::{
+    interpreter::InterpretedQuery,
+    ir::{
+        Argument, FieldRef, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField,
+        Operation, Vid,
+    },
 };
 
-use super::{candidates::NullableValue, CandidateValue, EdgeInfo, Range};
+use super::{
+    candidates::NullableValue, dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range,
+};
 
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
@@ -24,6 +34,24 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// `@filter(op: "=", value: ["$expected"])` means the filtered property will
     /// need to match the value of the `expected` query variable.
     fn statically_known_property(&self, name: &str) -> Option<CandidateValue<&FieldValue>>;
+
+    /// Check whether the query demands this vertex property to be in a known set of values,
+    /// where this set is known *dynamically* i.e. requires some of the query
+    /// to have already been executed at the point when this method is called.
+    ///
+    /// For example, filtering a property with `@filter(op: "=", value: ["%expected"])`
+    /// means the property must have a value equal to the value of an earlier property
+    /// whose value is tagged like `@tag(name: "expected")`. If the vertex containing
+    /// the tagged property has already been computed in this query, this method will offer
+    /// to dynamically resolve the tagged value.
+    ///
+    /// Candidate values produced via this method already reflect all statically-known information
+    /// about the property. Calling [`VertexInfo::statically_known_property()`] in addition
+    /// to this method is not necessary.
+    ///
+    /// TODO: this returns `None` even if there's a valid tag with a supported filter,
+    ///       if the tag's vertex *has not been resolved yet* -- make sure to test this!!
+    fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
 
     /// Returns info for the first edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
@@ -51,6 +79,17 @@ pub trait VertexInfo: super::sealed::__Sealed {
 }
 
 pub(super) trait InternalVertexInfo: super::sealed::__Sealed {
+    fn query(&self) -> &InterpretedQuery;
+
+    fn non_binding_filters(&self) -> bool;
+
+    /// How far query execution has progressed thus far:
+    /// - `Bound::Included` means that data from that [`Vid`] is available, and
+    /// - `Bound::Excluded` means that data from that [`Vid`] is not yet available.
+    /// Data from vertices with [`Vid`] values smaller than the given number is always available.
+    fn execution_frontier(&self) -> Bound<Vid>;
+
+    /// The vertex that this [`InternalVertexInfo`] represents.
     fn current_vertex(&self) -> &IRVertex;
 
     fn current_component(&self) -> &IRQueryComponent;
@@ -77,6 +116,18 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     }
 
     fn statically_known_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
+        if self.non_binding_filters() {
+            // This `VertexInfo` is in a place where the filters applied to fields
+            // don't actually constrain their value in the usual way that lends itself
+            // to optimization.
+            //
+            // For example, we may be looking at the data of a vertex produced by a `@recurse`,
+            // where the *final* vertices produced by the recursion must satisfy the filters, but
+            // intermediate layers of the recursion do not: non-matching ones will get filtered out,
+            // but only after the edge recurses to their own neighbors as well.
+            return None;
+        }
+
         let query_variables = self.query_variables();
 
         // We only care about filtering operations that are both:
@@ -102,6 +153,116 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         );
 
         candidate
+    }
+
+    fn dynamically_known_property(&self, property: &str) -> Option<DynamicallyResolvedValue> {
+        if self.non_binding_filters() {
+            // This `VertexInfo` is in a place where the filters applied to fields
+            // don't actually constrain their value in the usual way that lends itself
+            // to optimization.
+            //
+            // For example, we may be looking at the data of a vertex produced by a `@recurse`,
+            // where the *final* vertices produced by the recursion must satisfy the filters, but
+            // intermediate layers of the recursion do not: non-matching ones will get filtered out,
+            // but only after the edge recurses to their own neighbors as well.
+            return None;
+        }
+
+        // We only care about filtering operations that are all of the following:
+        // - on the requested property of this vertex;
+        // - dynamically-resolvable, i.e. depend on tagged arguments,
+        // - the used tagged argument is from a vertex that has already been computed
+        //   at the time this call was made, and
+        // - use a supported filtering operation using those tagged arguments.
+        let resolved_range = (Bound::Unbounded, self.execution_frontier());
+        let relevant_filters: Vec<_> = filters_on_local_property(self.current_vertex(), property)
+            .filter(|op| {
+                matches!(
+                    op,
+                    Operation::Equals(..)
+                        | Operation::NotEquals(..)
+                        | Operation::LessThan(..)
+                        | Operation::LessThanOrEqual(..)
+                        | Operation::GreaterThan(..)
+                        | Operation::GreaterThanOrEqual(..)
+                        | Operation::OneOf(..)
+                ) && match op.right() {
+                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                        // Ensure the vertex holding the @tag has already been computed.
+                        resolved_range.contains(&ctx.vertex_id)
+                    }
+                    Some(Argument::Tag(FieldRef::FoldSpecificField(fsf))) => {
+                        // Ensure the fold holding the @tag has already been computed.
+                        resolved_range.contains(&fsf.fold_root_vid)
+                    }
+                    _ => false,
+                }
+            })
+            .collect();
+
+        // Early-return in case there are no filters that apply here.
+        let first_filter = relevant_filters.first()?;
+
+        let initial_candidate = self
+            .statically_known_property(property)
+            .unwrap_or_else(|| {
+                if first_filter.left().field_type.nullable {
+                    CandidateValue::All
+                } else {
+                    CandidateValue::Range(Range::full_non_null())
+                }
+            })
+            .cloned();
+
+        // Right now, this API only supports materializing the constraint from a single tag.
+        // Choose which @filter to choose as the one providing the value.
+        //
+        // In order of priority, we'll choose:
+        // - an `=` filter
+        // - a `one_of` filter
+        // - a `< / <= / > / >=` filter
+        // - a `!=` filter,
+        // breaking ties based on which filter was specified first.
+        let filter_to_use = {
+            relevant_filters
+                .iter()
+                .find(|op| matches!(op, Operation::Equals(..)))
+                .unwrap_or_else(|| {
+                    relevant_filters
+                        .iter()
+                        .find(|op| matches!(op, Operation::OneOf(..)))
+                        .unwrap_or_else(|| {
+                            relevant_filters
+                                .iter()
+                                .find(|op| {
+                                    matches!(
+                                        op,
+                                        Operation::LessThan(..)
+                                            | Operation::LessThanOrEqual(..)
+                                            | Operation::GreaterThan(..)
+                                            | Operation::GreaterThanOrEqual(..)
+                                    )
+                                })
+                                .unwrap_or(first_filter)
+                        })
+                })
+        };
+
+        let field = filter_to_use
+            .right()
+            .expect("filter did not have an operand")
+            .as_tag()
+            .expect("operand was not a tag");
+        let bare_operation = filter_to_use
+            .try_map(|_| Ok::<(), ()>(()), |_| Ok(()))
+            .expect("removing operands failed");
+        Some(DynamicallyResolvedValue::new(
+            self.query().clone(),
+            self.current_component(),
+            field,
+            bare_operation,
+            initial_candidate,
+        ))
     }
 
     fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a> {
@@ -132,10 +293,10 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     }
 }
 
-fn filters_on_local_property<'a>(
+fn filters_on_local_property<'a: 'b, 'b>(
     vertex: &'a IRVertex,
-    property_name: &'a str,
-) -> impl Iterator<Item = &'a Operation<LocalField, Argument>> {
+    property_name: &'b str,
+) -> impl Iterator<Item = &'a Operation<LocalField, Argument>> + 'b {
     vertex
         .filters
         .iter()

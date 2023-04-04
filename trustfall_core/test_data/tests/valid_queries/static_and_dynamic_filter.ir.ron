@@ -1,0 +1,67 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: EdgeParameters(
+      contents: {
+        "max": Int64(4),
+        "min": Int64(3),
+      },
+    ),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+        ),
+        Vid(2): IRVertex(
+          vid: Vid(2),
+          type_name: "Number",
+          filters: [
+            OneOf(LocalField(
+              field_name: "value",
+              field_type: "Int",
+            ), Variable(VariableRef(
+              variable_name: "collection",
+              variable_type: "[Int]!",
+            ))),
+            GreaterThanOrEqual(LocalField(
+              field_name: "value",
+              field_type: "Int",
+            ), Tag(ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "value",
+              field_type: "Int",
+            )))),
+          ],
+        ),
+      },
+      edges: {
+        Eid(1): IREdge(
+          eid: Eid(1),
+          from_vid: Vid(1),
+          to_vid: Vid(2),
+          edge_name: "successor",
+        ),
+      },
+      outputs: {
+        "value": ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        ),
+      },
+    ),
+    variables: {
+      "collection": "[Int]!",
+    },
+  ),
+  arguments: {
+    "collection": List([
+      Int64(3),
+      Int64(4),
+      Int64(5),
+    ]),
+  },
+))
