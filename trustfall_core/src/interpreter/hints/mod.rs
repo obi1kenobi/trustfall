@@ -1620,5 +1620,59 @@ mod tests {
             assert_eq!(adapter_ref.on_edge_resolver[&eid(1)].calls, 1);
             assert_eq!(adapter_ref.on_edge_resolver[&eid(2)].calls, 1);
         }
+
+        #[test]
+        fn fold_count_tag_explicitly_named() {
+            let input_name = "fold_count_tag_explicitly_named";
+
+            let adapter = DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        assert!(info.coerced_to_type().is_none());
+                        assert_eq!(vid(1), info.vid());
+
+                        let edge = info.first_edge("predecessor").expect("no 'predecessor' edge");
+                        let destination = edge.destination();
+                        // We haven't resolved Vid 1 nor Vid 2 yet,
+                        // so this property isn't dynamically known yet.
+                        assert_eq!(None, destination.dynamically_known_property("value"));
+
+                        ctxs
+                    })),
+                },
+                on_edge_resolver: btreemap! {
+                    eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
+                        assert_eq!(eid(2), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(3), info.destination_vid());
+
+                        let destination = info.destination();
+
+                        let expected_values = vec![
+                            CandidateValue::Single(FieldValue::Int64(1)),
+                        ];
+                        let candidate = destination.dynamically_known_property("value");
+                        Box::new(candidate
+                            .expect("no dynamic candidate for 'value' property")
+                            .resolve(adapter, ctxs)
+                            .zip_longest(expected_values.into_iter())
+                            .map(move |data| {
+                                if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                    assert_eq!(expected_value, value);
+                                    ctx
+                                } else {
+                                    panic!("unexpected iterator outcome: {data:?}")
+                                }
+                            }))
+                    })),
+                },
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            let adapter_ref = adapter.borrow();
+            assert_eq!(adapter_ref.on_starting_vertices[&vid(1)].calls, 1);
+            assert_eq!(adapter_ref.on_edge_resolver[&eid(2)].calls, 1);
+        }
     }
 }
