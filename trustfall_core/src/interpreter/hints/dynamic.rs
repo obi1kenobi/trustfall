@@ -65,6 +65,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }
     }
 
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     pub fn resolve<'vertex, AdapterT: Adapter<'vertex>>(
         self,
         adapter: &mut AdapterT,
