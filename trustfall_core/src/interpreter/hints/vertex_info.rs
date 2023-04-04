@@ -48,9 +48,6 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// Candidate values produced via this method already reflect all statically-known information
     /// about the property. Calling [`VertexInfo::statically_known_property()`] in addition
     /// to this method is not necessary.
-    ///
-    /// TODO: this returns `None` even if there's a valid tag with a supported filter,
-    ///       if the tag's vertex *has not been resolved yet* -- make sure to test this!!
     fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
 
     /// Returns info for the first edge by the given name that is *mandatory*:
