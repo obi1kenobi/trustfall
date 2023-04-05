@@ -25,4 +25,4 @@ There is no local data ingestion step in this demo — we don't ETL the data int
 
 The [feeds](feeds/) demo project runs Trustfall queries over the feeds of PCGamer and Wired magazines.
 
-It downloads the feed contents (as XML data files), then parses those files and runs Trustfall queries on them.
+It downloads the feed contents as XML data files, then parses those files and runs Trustfall queries on them.

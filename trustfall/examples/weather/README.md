@@ -4,6 +4,9 @@ This demo project queries meteorogical data from the US Aviation Weather Center:
 
 The data is delivered as a CSV file from the following link: [https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv](https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv)
 
+- [Example: Find the temperature, dewpoint, wind, and clouds in Boston](#example-find-the-temperature-dewpoint-wind-and-clouds-in-boston)
+- [Example: Which weather stations are reporting 25+ knot winds and gusty conditions?](#example-which-weather-stations-are-reporting-25-knot-winds-and-gusty-conditions)
+
 ## Example: Find the temperature, dewpoint, wind, and clouds in Boston
 
 Query: ([link](example_queries/boston_weather.ron))
