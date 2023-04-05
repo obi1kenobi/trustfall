@@ -1,12 +1,12 @@
 # Querying CSV files: aviation weather reports (METAR)
 
-This demo project queries meteorogical data from the US Aviation Weather Center ([https://www.aviationweather.gov/metar](https://www.aviationweather.gov/metar)).
+This demo project queries meteorogical data from the US Aviation Weather Center: [https://www.aviationweather.gov/metar](https://www.aviationweather.gov/metar))
 
 The data is delivered as a CSV file from the following link: [https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv](https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv)
 
 ## Example: Find the temperature, dewpoint, wind, and clouds in Boston
 
-Query: ([link](trustfall/examples/weather/example_queries/boston_weather.ron))
+Query: ([link](example_queries/boston_weather.ron))
 ```graphql
 {
     LatestMetarReportForAirport(airport_code: "KBOS") {
@@ -46,7 +46,7 @@ $ cargo run --example weather query ./examples/weather/example_queries/boston_we
 
 ## Example: Which weather stations are reporting 25+ knot winds and gusty conditions?
 
-Query: ([link](trustfall/examples/weather/example_queries/high_winds.ron))
+Query: ([link](example_queries/high_winds.ron))
 ```graphql
 {
     MetarReport {
