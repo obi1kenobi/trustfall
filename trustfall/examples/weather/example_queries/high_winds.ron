@@ -6,11 +6,9 @@ InputQuery (
         latitude @output
         longitude @output
 
-        wind_speed_kts @output
-                     @filter(op: ">", value:["$min_wind"])
+        wind_speed_kts @output @filter(op: ">", value: ["$min_wind"])
         wind_direction @output
-        wind_gusts_kts @output
-                     @filter(op: "is_not_null")
+        wind_gusts_kts @output @filter(op: "is_not_null")
         temperature @output
         dewpoint @output
 
