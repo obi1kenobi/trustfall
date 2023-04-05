@@ -1,6 +1,6 @@
 # Querying CSV files: aviation weather reports (METAR)
 
-This demo project queries meteorogical data from the US Aviation Weather Center: [https://www.aviationweather.gov/metar](https://www.aviationweather.gov/metar))
+This demo project queries meteorogical data from the US Aviation Weather Center: [https://www.aviationweather.gov/metar](https://www.aviationweather.gov/metar)
 
 The data is delivered as a CSV file from the following link: [https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv](https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv)
 
