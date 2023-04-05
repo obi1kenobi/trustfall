@@ -6,14 +6,17 @@ InputQuery (
         feed_type @output
 
         title_: title {
-            src @output
             content @output
             content_type @output
         }
 
-        links_: links @fold {
-            title @output
-            href @output
+        entries @fold {
+            title {
+                entry_title: content @output
+            }
+            links {
+                entry_link: href @output
+            }
         }
     }
 }"#,
