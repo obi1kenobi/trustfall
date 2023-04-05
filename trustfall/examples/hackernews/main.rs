@@ -1,7 +1,7 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{cell::RefCell, fs};
 use std::{env, process};
 
 use serde::Deserialize;
@@ -13,12 +13,12 @@ use crate::adapter::HackerNewsAdapter;
 extern crate lazy_static;
 
 pub mod adapter;
+mod util;
 pub mod vertex;
 
 lazy_static! {
     static ref SCHEMA: Schema =
-        Schema::parse(fs::read_to_string("./examples/hackernews/hackernews.graphql").unwrap())
-            .unwrap();
+        Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql")).unwrap();
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -29,7 +29,7 @@ struct InputQuery<'a> {
 }
 
 fn run_query(path: &str, max_results: Option<usize>) {
-    let content = fs::read_to_string(path).unwrap();
+    let content = util::read_file(path);
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let adapter = Rc::new(RefCell::new(HackerNewsAdapter::new()));

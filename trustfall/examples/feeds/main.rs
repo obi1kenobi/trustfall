@@ -19,6 +19,7 @@ extern crate lazy_static;
 use crate::adapter::FeedAdapter;
 
 mod adapter;
+mod util;
 
 const PCGAMER_FEED_URI: &str =
     "https://airedale.futurecdn.net/feeds/en_feed_96a4cb95.rss-fse?nb_results=50&site=pcgamer";
@@ -28,7 +29,7 @@ const WIRED_FEED_LOCATION: &str = "/tmp/feeds-wired.xml";
 
 lazy_static! {
     static ref SCHEMA: Schema =
-        Schema::parse(fs::read_to_string("./examples/feeds/feeds.graphql").unwrap()).unwrap();
+        Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).unwrap();
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -61,7 +62,7 @@ fn refresh_data() {
 }
 
 fn run_query(path: &str) {
-    let content = fs::read_to_string(path).unwrap();
+    let content = util::read_file(path);
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let data = read_feed_data();
