@@ -23,7 +23,7 @@ fn get_service_doc() -> ServiceDocument {
 }
 
 lazy_static! {
-    static ref SCHEMA: Schema = Schema::new(get_service_doc());
+    static ref SCHEMA: Schema = Schema::new(get_service_doc()).unwrap();
 }
 
 fuzz_target!(|data: &[u8]| {
