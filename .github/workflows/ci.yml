@@ -31,6 +31,7 @@ jobs:
         run: |
           echo "lint: ${{ needs.lint.result }}"
           echo "rust-tests: ${{ needs.rust-tests.result }}"
+          echo "rust-fuzz: ${{ needs.rust-fuzz.result }}"
           echo "python-tests: ${{ needs.python-tests.result }}"
           echo "wasm-tests: ${{ needs.wasm-tests.result }}"
           echo "js-lint: ${{ needs.js-lint.result }}"
@@ -43,6 +44,8 @@ jobs:
       - if: ${{ needs.lint.result != 'success' }}
         run: exit 1
       - if: ${{ needs.rust-tests.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.rust-fuzz.result != 'success' }}
         run: exit 1
       - if: ${{ needs.python-tests.result != 'success' }}
         run: exit 1

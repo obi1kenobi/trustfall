@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use async_graphql_parser::{parse_query, parse_schema, types::ServiceDocument};
 use lazy_static::lazy_static;
 use trustfall_core::{
-    frontend::{error::FrontendError, parse},
+    frontend::{error::FrontendError, parse_doc},
     graphql_query::error::ParseError,
     schema::Schema,
 };
@@ -30,7 +30,7 @@ fuzz_target!(|data: &[u8]| {
     if let Ok(query_string) = std::str::from_utf8(data) {
         if query_string.match_indices("...").count() <= 3 {
             if let Ok(document) = parse_query(query_string) {
-                let result = parse(&SCHEMA, &document);
+                let result = parse_doc(&SCHEMA, &document);
                 if let Err(
                     FrontendError::OtherError(..)
                     | FrontendError::ParseError(ParseError::OtherError(..)),
