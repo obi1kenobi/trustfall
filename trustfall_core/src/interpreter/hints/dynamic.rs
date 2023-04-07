@@ -68,7 +68,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     pub fn resolve<'vertex, AdapterT: Adapter<'vertex>>(
         self,
-        adapter: &mut AdapterT,
+        adapter: &AdapterT,
         contexts: ContextIterator<'vertex, AdapterT::Vertex>,
     ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
         match &self.field {
@@ -102,7 +102,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
     fn resolve_context_field<'vertex, AdapterT: Adapter<'vertex>>(
         self,
         context_field: &'a ContextField,
-        adapter: &mut AdapterT,
+        adapter: &AdapterT,
         contexts: ContextIterator<'vertex, AdapterT::Vertex>,
     ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
         let mut carrier = QueryCarrier {

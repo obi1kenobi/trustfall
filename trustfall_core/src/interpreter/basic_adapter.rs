@@ -40,7 +40,7 @@ pub trait BasicAdapter<'vertex> {
     /// - The specified edge is a starting edge in the schema being queried.
     /// - Any parameters the edge requires per the schema have values provided.
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &str,
         parameters: &EdgeParameters,
     ) -> VertexIterator<'vertex, Self::Vertex>;
@@ -73,7 +73,7 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// [`DataContext`]: super::DataContext
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         property_name: &str,
@@ -104,7 +104,7 @@ pub trait BasicAdapter<'vertex> {
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
@@ -148,7 +148,7 @@ pub trait BasicAdapter<'vertex> {
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &str,
         coerce_to_type: &str,
@@ -202,7 +202,7 @@ pub trait BasicAdapter<'vertex> {
     /// [`DataContext`]: super::DataContext
     /// [`Schema`]: crate::schema::Schema
     fn resolve_typename(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         _type_name: &str,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
@@ -217,7 +217,7 @@ where
     type Vertex = T::Vertex;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
@@ -226,7 +226,7 @@ where
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         property_name: &std::sync::Arc<str>,
@@ -245,7 +245,7 @@ where
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         edge_name: &std::sync::Arc<str>,
@@ -262,7 +262,7 @@ where
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &std::sync::Arc<str>,
         coerce_to_type: &std::sync::Arc<str>,

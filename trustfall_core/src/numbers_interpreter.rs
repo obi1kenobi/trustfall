@@ -201,7 +201,7 @@ impl Adapter<'static> for NumbersAdapter {
     type Vertex = NumbersVertex;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
@@ -232,7 +232,7 @@ impl Adapter<'static> for NumbersAdapter {
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
@@ -259,7 +259,7 @@ impl Adapter<'static> for NumbersAdapter {
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
@@ -374,7 +374,7 @@ impl Adapter<'static> for NumbersAdapter {
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
