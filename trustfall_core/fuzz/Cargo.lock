@@ -112,12 +112,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "camino"
-version = "1.0.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869119e97797867fd90f5e22af7d0bd274bd4635ebb9eb68c04f3f513ae6c412"
-
-[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -163,17 +157,6 @@ name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
-
-[[package]]
-name = "filetests_proc_macro"
-version = "0.2.0"
-dependencies = [
- "globset",
- "proc-macro2",
- "quote",
- "syn",
- "walkdir",
-]
 
 [[package]]
 name = "fnv"
@@ -222,9 +205,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.3"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
 dependencies = [
  "either",
 ]
@@ -521,20 +504,17 @@ dependencies = [
 
 [[package]]
 name = "trustfall_core"
-version = "0.1.0"
+version = "0.4.0-beta.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "camino",
  "chrono",
- "filetests_proc_macro",
  "itertools",
  "lazy_static",
  "maplit",
  "regex",
  "ron 0.6.6",
  "serde",
- "serde_json",
  "smallvec",
  "thiserror",
 ]
@@ -545,12 +525,17 @@ version = "0.0.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "byteorder",
+ "globset",
+ "itertools",
  "lazy_static",
  "libfuzzer-sys",
+ "maplit",
  "regex",
  "ron 0.7.0",
  "serde",
  "trustfall_core",
+ "walkdir",
 ]
 
 [[package]]
