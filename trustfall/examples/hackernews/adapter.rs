@@ -124,7 +124,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     type Vertex = Vertex;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &str,
         parameters: &EdgeParameters,
     ) -> VertexIterator<'static, Self::Vertex> {
@@ -147,7 +147,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &str,
         property_name: &str,
@@ -205,7 +205,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
@@ -358,7 +358,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'static, Self::Vertex>,
         type_name: &str,
         coerce_to_type: &str,

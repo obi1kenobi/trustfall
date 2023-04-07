@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, rc::Rc, sync::Arc};
 
 use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 
@@ -79,7 +79,7 @@ pub fn interpret_query(
     query: &str,
     #[pyo3(from_py_with = "to_query_arguments")] arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
 ) -> PyResult<ResultIterator> {
-    let wrapped_adapter = Rc::new(RefCell::new(adapter));
+    let wrapped_adapter = Rc::new(adapter);
 
     let indexed_query = parse(&schema.inner, query).map_err(|err| match err {
         FrontendError::ParseError(parse_err) => Python::with_gil(|py| {
@@ -236,7 +236,7 @@ impl Adapter<'static> for AdapterShim {
     type Vertex = Arc<Py<PyAny>>;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
@@ -262,7 +262,7 @@ impl Adapter<'static> for AdapterShim {
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
@@ -286,7 +286,7 @@ impl Adapter<'static> for AdapterShim {
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
@@ -321,7 +321,7 @@ impl Adapter<'static> for AdapterShim {
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: BaseContextIterator<'static, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,

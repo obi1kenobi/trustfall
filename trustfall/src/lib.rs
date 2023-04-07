@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, rc::Rc, sync::Arc};
 
 /// Components needed to implement data providers.
 pub mod provider {
@@ -30,7 +30,7 @@ pub use trustfall_core::schema::Schema;
 /// Run a Trustfall query over the data provider specified by the given schema and adapter.
 pub fn execute_query<'vertex>(
     schema: &Schema,
-    adapter: Rc<RefCell<impl provider::Adapter<'vertex> + 'vertex>>,
+    adapter: Rc<impl provider::Adapter<'vertex> + 'vertex>,
     query: &str,
     variables: BTreeMap<impl Into<Arc<str>>, impl Into<FieldValue>>,
 ) -> anyhow::Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex>> {
