@@ -471,7 +471,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
@@ -493,7 +493,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
@@ -573,7 +573,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
@@ -1081,7 +1081,7 @@ impl<'a> Adapter<'a> for RustdocAdapter<'a> {
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
