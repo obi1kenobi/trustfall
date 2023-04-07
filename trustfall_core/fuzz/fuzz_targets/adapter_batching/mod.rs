@@ -93,7 +93,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> VariableBatchingAdapter<'a, AdapterT> {
     }
 }
 
-impl<'a, AdapterT: Adapter<'a> + 'a,> Adapter<'a> for VariableBatchingAdapter<'a, AdapterT> {
+impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a, AdapterT> {
     type Vertex = AdapterT::Vertex;
 
     fn resolve_starting_vertices(
@@ -117,9 +117,12 @@ impl<'a, AdapterT: Adapter<'a> + 'a,> Adapter<'a> for VariableBatchingAdapter<'a
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
     ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         let sequence = self.cursor.read_u64::<LittleEndian>().unwrap_or(0);
-        let inner = self
-            .adapter
-            .resolve_property(Box::new(contexts), type_name, property_name, resolve_info);
+        let inner = self.adapter.resolve_property(
+            Box::new(contexts),
+            type_name,
+            property_name,
+            resolve_info,
+        );
         Box::new(VariableChunkIterator::new(inner, sequence))
     }
 
@@ -178,12 +181,13 @@ pub(crate) struct TestIRQuery {
     pub(crate) arguments: BTreeMap<String, FieldValue>,
 }
 
+type QueryAndArgs = (Arc<IndexedQuery>, Arc<BTreeMap<Arc<str>, FieldValue>>);
+
 lazy_static! {
-    static ref QUERY_DATA: Vec<(Arc<IndexedQuery>, Arc<BTreeMap<Arc<str>, FieldValue>>)> =
-        load_queries();
+    static ref QUERY_DATA: Vec<QueryAndArgs> = load_queries();
 }
 
-fn load_queries() -> Vec<(Arc<IndexedQuery>, Arc<BTreeMap<Arc<str>, FieldValue>>)> {
+fn load_queries() -> Vec<QueryAndArgs> {
     let mut buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     buf.pop();
     buf.push("test_data/tests/valid_queries");
@@ -213,7 +217,9 @@ fn load_queries() -> Vec<(Arc<IndexedQuery>, Arc<BTreeMap<Arc<str>, FieldValue>>
     let mut outputs = vec![];
     for path in paths {
         let contents = std::fs::read_to_string(path).expect("failed to read file");
-        let input_data: TestIRQuery = ron::from_str::<Result<TestIRQuery, ()>>(&contents).expect("failed to parse file").expect("Err result");
+        let input_data: TestIRQuery = ron::from_str::<Result<TestIRQuery, ()>>(&contents)
+            .expect("failed to parse file")
+            .expect("Err result");
         if input_data.schema_name == "numbers" {
             let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
             let arguments = Arc::new(
@@ -250,7 +256,7 @@ impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
     }
 }
 
-fn execute_query_with_fuzzed_batching<'a>(test_case: TestCase<'a>) {
+fn execute_query_with_fuzzed_batching(test_case: TestCase<'_>) {
     let adapter = Rc::new(RefCell::new(VariableBatchingAdapter::new(
         numbers_adapter::NumbersAdapter,
         test_case.cursor,
