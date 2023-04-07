@@ -21,6 +21,7 @@ jobs:
     needs:
       - lint
       - rust-tests
+      - rust-fuzz
       - python-tests
       - wasm-tests
       - js-lint
@@ -180,6 +181,41 @@ jobs:
 
       - name: cargo test
         run: cargo test
+
+  rust-fuzz:
+    name: Check fuzz targets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: r7kamura/rust-problem-matchers@v1
+
+      - name: cargo clippy
+        run: |
+          cd trustfall_core/fuzz
+          cargo clippy --workspace --all-features --all-targets -- -D warnings --allow deprecated
+
+      - name: cargo fmt
+        run: |
+          cd trustfall_core/fuzz
+          cargo fmt -- --check
+
+      - name: cargo doc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          cd trustfall_core/fuzz
+          cargo doc --workspace --all-features --no-deps --document-private-items
 
   wasm-tests:
     name: WASM tests
