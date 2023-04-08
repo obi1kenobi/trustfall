@@ -1476,4 +1476,218 @@ mod tests {
 
         assert_eq!(check_parsed, constructed_test_item);
     }
+
+    mod batching_fuzzer_repro_cases {
+        use std::{cell::RefCell, collections::VecDeque, marker::PhantomData, rc::Rc, sync::Arc};
+
+        use crate::{
+            interpreter::{
+                execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator,
+                ResolveEdgeInfo, ResolveInfo, VertexIterator,
+            },
+            ir::{EdgeParameters, FieldValue},
+            numbers_interpreter::NumbersAdapter,
+            util::{TestIRQuery, TestInterpreterOutputTrace},
+        };
+
+        struct VariableChunkIterator<I: Iterator> {
+            iter: I,
+            buffer: VecDeque<I::Item>,
+            chunk_sequence: u64,
+            offset: usize,
+        }
+
+        impl<I: Iterator> VariableChunkIterator<I> {
+            fn new(iter: I, chunk_sequence: u64) -> Self {
+                let mut value = Self {
+                    iter,
+                    buffer: VecDeque::with_capacity(4),
+                    chunk_sequence,
+                    offset: 0,
+                };
+
+                // Eagerly advancing the input iterator is important because that's how we repro:
+                // https://github.com/obi1kenobi/trustfall/issues/205
+                let chunk_size = value.next_chunk_size();
+                value.buffer.extend(value.iter.by_ref().take(chunk_size));
+                value
+            }
+
+            fn next_chunk_size(&mut self) -> usize {
+                let next_chunk = ((self.chunk_sequence >> self.offset) & 3) + 1;
+                if self.offset >= 62 {
+                    self.offset = 0;
+                } else {
+                    self.offset += 2;
+                }
+                assert!(next_chunk >= 1);
+                next_chunk as usize
+            }
+        }
+
+        impl<I: Iterator> Iterator for VariableChunkIterator<I> {
+            type Item = I::Item;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if let Some(element) = self.buffer.pop_front() {
+                    Some(element)
+                } else {
+                    let next = self.iter.next();
+                    if next.is_some() {
+                        let elements_to_buffer = self.next_chunk_size() - 1;
+                        self.buffer
+                            .extend(self.iter.by_ref().take(elements_to_buffer));
+                    }
+                    next
+                }
+            }
+        }
+
+        struct VariableBatchingAdapter<'a, AdapterT: Adapter<'a> + 'a> {
+            adapter: AdapterT,
+            batch_sequences: RefCell<VecDeque<u64>>,
+            _marker: PhantomData<&'a ()>,
+        }
+
+        impl<'a, AdapterT: Adapter<'a> + 'a> VariableBatchingAdapter<'a, AdapterT> {
+            fn new(adapter: AdapterT, batch_sequences: VecDeque<u64>) -> Self {
+                Self {
+                    adapter,
+                    batch_sequences: RefCell::new(batch_sequences),
+                    _marker: PhantomData,
+                }
+            }
+        }
+
+        impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a, AdapterT> {
+            type Vertex = AdapterT::Vertex;
+
+            fn resolve_starting_vertices(
+                &self,
+                edge_name: &Arc<str>,
+                parameters: &EdgeParameters,
+                resolve_info: &ResolveInfo,
+            ) -> VertexIterator<'a, Self::Vertex> {
+                let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
+                let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
+                drop(batch_sequences_ref);
+
+                let inner =
+                    self.adapter
+                        .resolve_starting_vertices(edge_name, parameters, resolve_info);
+                Box::new(VariableChunkIterator::new(inner, sequence))
+            }
+
+            fn resolve_property(
+                &self,
+                contexts: ContextIterator<'a, Self::Vertex>,
+                type_name: &Arc<str>,
+                property_name: &Arc<str>,
+                resolve_info: &ResolveInfo,
+            ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
+                let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
+                drop(batch_sequences_ref);
+
+                let inner = self.adapter.resolve_property(
+                    Box::new(contexts),
+                    type_name,
+                    property_name,
+                    resolve_info,
+                );
+                Box::new(VariableChunkIterator::new(inner, sequence))
+            }
+
+            fn resolve_neighbors(
+                &self,
+                contexts: ContextIterator<'a, Self::Vertex>,
+                type_name: &Arc<str>,
+                edge_name: &Arc<str>,
+                parameters: &EdgeParameters,
+                resolve_info: &ResolveEdgeInfo,
+            ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+            {
+                let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
+                let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
+                drop(batch_sequences_ref);
+
+                let inner = self.adapter.resolve_neighbors(
+                    contexts,
+                    type_name,
+                    edge_name,
+                    parameters,
+                    resolve_info,
+                );
+                Box::new(VariableChunkIterator::new(inner, sequence))
+            }
+
+            fn resolve_coercion(
+                &self,
+                contexts: ContextIterator<'a, Self::Vertex>,
+                type_name: &Arc<str>,
+                coerce_to_type: &Arc<str>,
+                resolve_info: &ResolveInfo,
+            ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
+                let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
+                drop(batch_sequences_ref);
+
+                let inner = self.adapter.resolve_coercion(
+                    contexts,
+                    type_name,
+                    coerce_to_type,
+                    resolve_info,
+                );
+                Box::new(VariableChunkIterator::new(inner, sequence))
+            }
+        }
+
+        fn run_test(file_stub: &str, batch_sequences: Vec<u64>) {
+            let contents = std::fs::read_to_string(format!(
+                "test_data/tests/valid_queries/{file_stub}.ir.ron"
+            ))
+            .expect("failed to read file");
+            let input_data: TestIRQuery = ron::from_str::<Result<TestIRQuery, ()>>(&contents)
+                .expect("failed to parse file")
+                .expect("Err result");
+
+            let trace_contents = std::fs::read_to_string(format!(
+                "test_data/tests/valid_queries/{file_stub}.trace.ron"
+            ))
+            .expect("failed to read file");
+            let trace_data: TestInterpreterOutputTrace<<NumbersAdapter as Adapter>::Vertex> =
+                ron::from_str(&trace_contents).expect("failed to parse file");
+
+            let batch_sequences: VecDeque<u64> = batch_sequences.into_iter().collect();
+
+            let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
+            let arguments = Arc::new(
+                input_data
+                    .arguments
+                    .into_iter()
+                    .map(|(k, v)| (k.into(), v))
+                    .collect(),
+            );
+            let adapter = Rc::new(VariableBatchingAdapter::new(
+                NumbersAdapter::new(),
+                batch_sequences,
+            ));
+            let actual_results: Vec<_> = interpret_ir(adapter, indexed_query, arguments)
+                .unwrap()
+                .collect();
+
+            assert_eq!(trace_data.results, actual_results);
+        }
+
+        /// Reentrancy crash when `@output` resolution eagerly pulls
+        /// multiple upstream contexts which subsequently need to enter and resolve a `@fold`:
+        /// https://github.com/obi1kenobi/trustfall/issues/205
+        #[test]
+        fn repro_issue_205() {
+            let input_file = "outputs_both_inside_and_outside_fold";
+            let batch_sequences = vec![0, 0, u64::MAX];
+
+            run_test(input_file, batch_sequences);
+        }
+    }
 }
