@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, rc::Rc, sync::Arc};
 
 use trustfall_wasm::{
     adapter::{AdapterShim, JsAdapter},
@@ -153,7 +153,7 @@ pub fn run_numbers_query(
 
     let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
 
-    let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
+    let wrapped_adapter = Rc::new(AdapterShim::new(adapter));
 
     let results: Vec<_> = trustfall_core::interpreter::execution::interpret_ir(
         wrapped_adapter,

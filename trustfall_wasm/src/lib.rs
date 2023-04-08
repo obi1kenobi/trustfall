@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, rc::Rc, sync::Arc};
 
 use gloo_utils::format::JsValueSerdeExt;
 use trustfall_core::ir::FieldValue;
@@ -76,7 +76,7 @@ pub fn execute_query(
 
     let query = trustfall_core::frontend::parse(schema, query).map_err(|e| format!("{e}"))?;
 
-    let wrapped_adapter = Rc::new(RefCell::new(AdapterShim::new(adapter)));
+    let wrapped_adapter = Rc::new(AdapterShim::new(adapter));
 
     let results_iter =
         trustfall_core::interpreter::execution::interpret_ir(wrapped_adapter, query, args)

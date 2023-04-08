@@ -428,7 +428,7 @@ pub trait Adapter<'vertex> {
     /// - The specified edge is a starting edge in the schema being queried.
     /// - Any parameters the edge requires per the schema have values provided.
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
@@ -456,7 +456,7 @@ pub trait Adapter<'vertex> {
     /// - Produce property values whose type matches the property's type defined in the schema.
     /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
@@ -488,7 +488,7 @@ pub trait Adapter<'vertex> {
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
@@ -533,7 +533,7 @@ pub trait Adapter<'vertex> {
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,

@@ -24,8 +24,9 @@ impl Value {
 
 impl trustfall::provider::BasicAdapter<'static> for Adapter {
     type Vertex = V;
+
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         _edge_name: &str,
         _parameters: &trustfall::provider::EdgeParameters,
     ) -> trustfall::provider::VertexIterator<'static, Self::Vertex> {
@@ -34,7 +35,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
         })))
     }
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: trustfall::provider::ContextIterator<'static, Self::Vertex>,
         type_name: &str,
         property_name: &str,
@@ -54,7 +55,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         _contexts: trustfall::provider::ContextIterator<'static, Self::Vertex>,
         _type_name: &str,
         _edge_name: &str,
@@ -68,7 +69,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         _contexts: trustfall::provider::ContextIterator<'static, Self::Vertex>,
         _type_name: &str,
         _coerce_to_type: &str,
@@ -79,7 +80,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
 
 #[test]
 fn main() {
-    let adapter = std::rc::Rc::new(std::cell::RefCell::new(Adapter));
+    let adapter = std::rc::Rc::new(Adapter);
     let schema = trustfall::Schema::parse(
         "\
 schema {

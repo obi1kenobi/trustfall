@@ -1,7 +1,7 @@
 pub mod adapter;
 pub mod indexed_crate;
 
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, rc::Rc, sync::Arc};
 
 use gloo_utils::format::JsValueSerdeExt;
 use ouroboros::self_referencing;
@@ -50,10 +50,10 @@ pub fn run_query(
     trustfall_wasm::util::initialize().expect("init failed");
 
     let schema = RustdocAdapter::schema();
-    let adapter = Rc::new(RefCell::new(RustdocAdapter::new(
+    let adapter = Rc::new(RustdocAdapter::new(
         crate_info.inner.borrow_indexed_crate(),
         None,
-    )));
+    ));
 
     let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
     let args = from_js_args(args)?;

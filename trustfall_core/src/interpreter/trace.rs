@@ -214,7 +214,7 @@ where
 
 #[allow(dead_code)]
 pub(crate) fn tap_results<'vertex, AdapterT>(
-    adapter_tap: Rc<RefCell<AdapterTap<'vertex, AdapterT>>>,
+    adapter_tap: Rc<AdapterTap<'vertex, AdapterT>>,
     result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex,
 ) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex
 where
@@ -223,8 +223,7 @@ where
     for<'de2> AdapterT::Vertex: Deserialize<'de2>,
 {
     result_iter.map(move |result| {
-        let adapter_ref = adapter_tap.borrow_mut();
-        adapter_ref
+        adapter_tap
             .tracer
             .borrow_mut()
             .record(TraceOpContent::ProduceQueryResult(result.clone()), None);
@@ -242,7 +241,7 @@ where
     type Vertex = AdapterT::Vertex;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
@@ -277,7 +276,7 @@ where
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
@@ -344,7 +343,7 @@ where
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
@@ -437,7 +436,7 @@ where
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: ContextIterator<'vertex, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,

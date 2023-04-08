@@ -43,7 +43,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
     type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &str,
         _parameters: &EdgeParameters,
     ) -> VertexIterator<'a, Self::Vertex> {
@@ -57,7 +57,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         property_name: &str,
@@ -135,7 +135,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
@@ -183,7 +183,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         _contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         coerce_to_type: &str,

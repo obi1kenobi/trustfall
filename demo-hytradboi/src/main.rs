@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 use std::env;
+use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::{cell::RefCell, fs};
 
 use adapter::DemoAdapter;
 use serde::Deserialize;
@@ -37,7 +37,7 @@ fn execute_query(path: &str) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
-    let adapter = Rc::new(RefCell::new(DemoAdapter::new()));
+    let adapter = Rc::new(DemoAdapter::new());
 
     let query = parse(&SCHEMA, input_query.query).unwrap();
     let arguments = input_query.args;

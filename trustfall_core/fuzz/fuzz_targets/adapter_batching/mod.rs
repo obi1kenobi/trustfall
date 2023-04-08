@@ -79,7 +79,7 @@ impl<I: Iterator> Iterator for VariableChunkIterator<I> {
 
 struct VariableBatchingAdapter<'a, AdapterT: Adapter<'a> + 'a> {
     adapter: AdapterT,
-    cursor: Cursor<&'a [u8]>,
+    cursor: RefCell<Cursor<&'a [u8]>>,
     _marker: PhantomData<&'a ()>,
 }
 
@@ -87,7 +87,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> VariableBatchingAdapter<'a, AdapterT> {
     fn new(adapter: AdapterT, cursor: Cursor<&'a [u8]>) -> Self {
         Self {
             adapter,
-            cursor,
+            cursor: RefCell::new(cursor),
             _marker: PhantomData,
         }
     }
@@ -97,12 +97,15 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
     type Vertex = AdapterT::Vertex;
 
     fn resolve_starting_vertices(
-        &mut self,
+        &self,
         edge_name: &Arc<str>,
         parameters: &trustfall_core::ir::EdgeParameters,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
     ) -> trustfall_core::interpreter::VertexIterator<'a, Self::Vertex> {
-        let sequence = self.cursor.read_u64::<LittleEndian>().unwrap_or(0);
+        let mut cursor_ref = self.cursor.borrow_mut();
+        let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
+        drop(cursor_ref);
+
         let inner = self
             .adapter
             .resolve_starting_vertices(edge_name, parameters, resolve_info);
@@ -110,13 +113,16 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
     }
 
     fn resolve_property(
-        &mut self,
+        &self,
         contexts: trustfall_core::interpreter::ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
     ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-        let sequence = self.cursor.read_u64::<LittleEndian>().unwrap_or(0);
+        let mut cursor_ref = self.cursor.borrow_mut();
+        let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
+        drop(cursor_ref);
+
         let inner = self.adapter.resolve_property(
             Box::new(contexts),
             type_name,
@@ -127,7 +133,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
     }
 
     fn resolve_neighbors(
-        &mut self,
+        &self,
         contexts: trustfall_core::interpreter::ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
@@ -138,7 +144,10 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         Self::Vertex,
         trustfall_core::interpreter::VertexIterator<'a, Self::Vertex>,
     > {
-        let sequence = self.cursor.read_u64::<LittleEndian>().unwrap_or(0);
+        let mut cursor_ref = self.cursor.borrow_mut();
+        let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
+        drop(cursor_ref);
+
         let inner = self.adapter.resolve_neighbors(
             contexts,
             type_name,
@@ -150,13 +159,16 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
     }
 
     fn resolve_coercion(
-        &mut self,
+        &self,
         contexts: trustfall_core::interpreter::ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
     ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, Self::Vertex, bool> {
-        let sequence = self.cursor.read_u64::<LittleEndian>().unwrap_or(0);
+        let mut cursor_ref = self.cursor.borrow_mut();
+        let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
+        drop(cursor_ref);
+
         let inner =
             self.adapter
                 .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info);
@@ -257,10 +269,10 @@ impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
 }
 
 fn execute_query_with_fuzzed_batching(test_case: TestCase<'_>) {
-    let adapter = Rc::new(RefCell::new(VariableBatchingAdapter::new(
+    let adapter = Rc::new(VariableBatchingAdapter::new(
         numbers_adapter::NumbersAdapter,
         test_case.cursor,
-    )));
+    ));
     interpret_ir(adapter, test_case.query, test_case.arguments)
         .unwrap()
         .for_each(drop);
