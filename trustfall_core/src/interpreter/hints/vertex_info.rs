@@ -281,8 +281,12 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
     }
 
     fn first_mandatory_edge(&self, name: &str) -> Option<EdgeInfo> {
-        self.edges_with_name(name)
-            .find(|edge| !edge.folded && !edge.optional && edge.recursive.is_none())
+        if self.non_binding_filters() {
+            None
+        } else {
+            self.edges_with_name(name)
+                .find(|edge| !edge.folded && !edge.optional && edge.recursive.is_none())
+        }
     }
 
     fn first_edge(&self, name: &str) -> Option<EdgeInfo> {
