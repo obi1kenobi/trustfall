@@ -1,0 +1,26 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query tests an edge case of the semantics of `@optional` with a nested required edge.
+    //
+    // `@optional` applies *only* to whether the edge exists. After the edge is resolved,
+    // subsequent edges are resolved normally. If the thus-resolved vertices fail to have
+    // a subsequent required edge, they are discarded.
+    //
+    // We *do not* get to "retroactively" pretend that the edge did not exist at the `@optional`
+    // and thereby preserve that result set with nulls for the `@optional` contents.
+    //
+    // Our "numbers" dataset doesn't include any negative numbers,
+    // so the number 0 doesn't have a predecessor.
+    // If the below query returns *any* data, that's a bug.
+    query: r#"
+{
+    One {
+        predecessor @optional {
+            predecessor {
+                value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
