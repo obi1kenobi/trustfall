@@ -130,7 +130,8 @@ impl InternalVertexInfo for ResolveInfo {
             starting_vertex: self.current_vid,
             neighbor_vertex: edge.to_vid,
             neighbor_path: vec![edge.eid],
-            non_binding_filters: check_non_binding_filters_for_edge(edge),
+            within_optional_scope: edge.optional,
+            locally_non_binding_filters: check_locally_non_binding_filters_for_edge(edge),
         };
         EdgeInfo {
             eid: edge.eid,
@@ -149,7 +150,8 @@ impl InternalVertexInfo for ResolveInfo {
             starting_vertex: self.current_vid,
             neighbor_vertex: fold.to_vid,
             neighbor_path: vec![fold.eid],
-            non_binding_filters: false,
+            within_optional_scope: false,
+            locally_non_binding_filters: false,
         };
         EdgeInfo {
             eid: fold.eid,
@@ -238,7 +240,10 @@ impl ResolveEdgeInfo {
                         starting_vertex: self.origin_vid(),
                         neighbor_vertex: regular.to_vid,
                         neighbor_path: vec![eid],
-                        non_binding_filters: check_non_binding_filters_for_edge(regular),
+                        within_optional_scope: regular.optional,
+                        locally_non_binding_filters: check_locally_non_binding_filters_for_edge(
+                            regular,
+                        ),
                     },
                 }
             }
@@ -260,7 +265,8 @@ impl ResolveEdgeInfo {
                         starting_vertex: self.origin_vid(),
                         neighbor_vertex: fold.to_vid,
                         neighbor_path: vec![eid],
-                        non_binding_filters: false,
+                        within_optional_scope: false,
+                        locally_non_binding_filters: false,
                     },
                 }
             }
@@ -310,7 +316,15 @@ pub struct NeighborInfo {
     starting_vertex: Vid,
     neighbor_vertex: Vid,
     neighbor_path: Vec<Eid>,
-    non_binding_filters: bool, // for example, inside a `@recurse(depth: 2)` edge
+
+    // Filtering operations (filters, required edges, etc.) don't bind inside an `@optional` scope,
+    // to ensure that optional-then-filter semantics are upheld and avoid adapter footguns.
+    // See test cases with names like `optional_with_nested_filter_*` for examples.
+    within_optional_scope: bool,
+
+    // A situation specific to *this vertex in particular* makes filters non-binding.
+    // For example: a `@recurse(depth: 2)` edge.
+    locally_non_binding_filters: bool,
 }
 
 impl InternalVertexInfo for NeighborInfo {
@@ -321,7 +335,7 @@ impl InternalVertexInfo for NeighborInfo {
 
     #[inline]
     fn non_binding_filters(&self) -> bool {
-        self.non_binding_filters
+        self.within_optional_scope || self.locally_non_binding_filters
     }
 
     #[inline]
@@ -354,7 +368,8 @@ impl InternalVertexInfo for NeighborInfo {
             starting_vertex: self.starting_vertex,
             neighbor_vertex: edge.to_vid,
             neighbor_path,
-            non_binding_filters: check_non_binding_filters_for_edge(edge),
+            within_optional_scope: self.within_optional_scope,
+            locally_non_binding_filters: check_locally_non_binding_filters_for_edge(edge),
         };
         EdgeInfo {
             eid: edge.eid,
@@ -375,7 +390,8 @@ impl InternalVertexInfo for NeighborInfo {
             starting_vertex: self.starting_vertex,
             neighbor_vertex: fold.to_vid,
             neighbor_path,
-            non_binding_filters: false,
+            within_optional_scope: self.within_optional_scope,
+            locally_non_binding_filters: false,
         };
         EdgeInfo {
             eid: fold.eid,
@@ -395,7 +411,7 @@ impl InternalVertexInfo for NeighborInfo {
 /// At depth 1, those filters are applied after only one edge expansion, so filters "count".
 /// With recursions to depth 2+, there are "middle" layers of vertices that don't have to satisfy
 /// the filters (and will be filtered out) but can still have more edge expansions in the recursion.
-fn check_non_binding_filters_for_edge(edge: &IREdge) -> bool {
+fn check_locally_non_binding_filters_for_edge(edge: &IREdge) -> bool {
     edge.recursive
         .as_ref()
         .map(|r| r.depth.get() >= 2)
@@ -850,6 +866,115 @@ mod tests {
         assert_eq!(adapter.on_type_coercion.borrow()[&vid(2)].calls, 7);
     }
 
+    #[test]
+    fn recurse_then_required_edge_depth_one() {
+        let input_name = "recurse_then_required_edge_depth_one";
+
+        let adapter = TestAdapter {
+            on_starting_vertices: btreemap! {
+                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(vid(1), info.vid());
+                    assert!(info.coerced_to_type().is_none());
+
+                    let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                    let neighbor = edge_info.destination();
+
+                    assert_eq!(vid(2), neighbor.vid());
+
+                    // This edge is mandatory, since the recursion is `depth: 1`.
+                    // The edge is recursively traversed only once, i.e. the selected vertices
+                    // are the starting vertex and the neighbors, so the mandatory edge is binding
+                    // to all neighboring vertices.
+                    let next_edge_info = neighbor.first_mandatory_edge("predecessor").expect("no 'predecessor' edge info");
+                    let next_neighbor = next_edge_info.destination();
+                    assert_eq!(eid(2), next_edge_info.eid());
+                    assert_eq!(vid(3), next_neighbor.vid());
+                })),
+            }.into(),
+            on_edge_resolver: btreemap! {
+                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                    let destination = info.destination();
+                    assert_eq!(vid(2), destination.vid());
+                    assert!(destination.coerced_to_type().is_none());
+
+                    // This edge is mandatory, since the recursion is `depth: 1`.
+                    // The edge is recursively traversed only once, i.e. the selected vertices
+                    // are the starting vertex and the neighbors, so the mandatory edge is binding
+                    // to all neighboring vertices.
+                    let edge_info = destination.first_mandatory_edge("predecessor").expect("no 'predecessor' edge info");
+                    let neighbor = edge_info.destination();
+                    assert_eq!(eid(2), edge_info.eid());
+                    assert_eq!(vid(3), neighbor.vid());
+                })),
+            }.into(),
+            ..Default::default()
+        };
+
+        let adapter = run_query(adapter, input_name);
+        assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+        assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
+    }
+
+    #[test]
+    fn recurse_then_nested_required_edge_depth_two() {
+        let input_name = "recurse_then_nested_required_edge_depth_two";
+
+        let adapter = TestAdapter {
+            on_starting_vertices: btreemap! {
+                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                    assert_eq!(vid(1), info.vid());
+                    assert!(info.coerced_to_type().is_none());
+
+                    let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                    let neighbor = edge_info.destination();
+
+                    assert_eq!(vid(2), neighbor.vid());
+
+                    // The `predecessor` edge *isn't* mandatory here. The `successor` edge from
+                    // the prior step is recursively traversed up to 2 times, and the `predecessor`
+                    // edge is only subsequently resolved.
+                    //
+                    // The "middle" vertices in the recursion are not required to include
+                    // the `predecessor` edge, and including it here would be a footgun.
+                    assert_eq!(None, neighbor.first_mandatory_edge("predecessor"));
+                })),
+            }.into(),
+            on_edge_resolver: btreemap! {
+                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                    let destination = info.destination();
+                    assert_eq!(vid(2), destination.vid());
+                    assert!(destination.coerced_to_type().is_none());
+
+                    // The `predecessor` edge *isn't* mandatory here. The `successor` edge from
+                    // the prior step is recursively traversed up to 2 times, and the `predecessor`
+                    // edge is only subsequently resolved.
+                    //
+                    // The "middle" vertices in the recursion are not required to include
+                    // the `predecessor` edge, and including it here would be a footgun.
+                    assert_eq!(None, destination.first_mandatory_edge("predecessor"));
+                })),
+                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                    let destination = info.destination();
+                    assert_eq!(vid(3), destination.vid());
+                    assert!(destination.coerced_to_type().is_none());
+
+                    // Now the edge is mandatory, because we've already finished resolving
+                    // the `@recurse` in a prior step.
+                    let edge_info = destination.first_mandatory_edge("predecessor").expect("no 'predecessor' edge info");
+                    let neighbor = edge_info.destination();
+                    assert_eq!(eid(3), edge_info.eid());
+                    assert_eq!(vid(4), neighbor.vid());
+                })),
+            }.into(),
+            ..Default::default()
+        };
+
+        let adapter = run_query(adapter, input_name);
+        assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+        assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 2); // depth 2 recursion
+        assert_eq!(adapter.on_edge_resolver.borrow()[&eid(2)].calls, 1);
+    }
+
     mod static_property_values {
         use std::ops::Bound;
 
@@ -1166,6 +1291,187 @@ mod tests {
             let adapter = run_query(adapter, input_name);
             assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
             assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 2);
+        }
+
+        #[test]
+        fn optional_with_nested_filter_semantics() {
+            let input_name = "optional_with_nested_filter_semantics";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
+
+                        let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                        let neighbor = edge_info.destination();
+
+                        assert_eq!(vid(2), neighbor.vid());
+
+                        // This value actually *isn't* statically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, neighbor.statically_known_property("value"));
+                    })),
+                }.into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // This value actually *isn't* statically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, destination.statically_known_property("value"));
+                    })),
+                }.into(),
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
+        }
+
+        #[test]
+        fn optional_with_nested_required_edge_semantics() {
+            let input_name = "optional_with_nested_required_edge_semantics";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
+
+                        let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                        let neighbor = edge_info.destination();
+
+                        assert_eq!(vid(2), neighbor.vid());
+
+                        // The nested `predecessor` edge isn't actually mandatory here, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* of the outer edges exist, even if none of
+                        // the resolved vertices will satisfy the subsequent mandatory edge.
+                        //
+                        // Showing the nested edge as mandatory here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, neighbor.first_mandatory_edge("predecessor"));
+
+                        // However, it's fine to report that the edge is used as non-mandatory.
+                        assert!(neighbor.first_edge("predecessor").is_some());
+                    })),
+                }.into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // The nested `predecessor` edge isn't actually mandatory here, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* of the outer edges exist, even if none of
+                        // the resolved vertices will satisfy the subsequent mandatory edge.
+                        //
+                        // Showing the nested edge as mandatory here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, destination.first_mandatory_edge("predecessor"));
+
+                        // However, it's fine to report that the edge is used as non-mandatory.
+                        assert!(destination.first_edge("predecessor").is_some());
+                    })),
+                }.into(),
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
+        }
+
+        #[test]
+        fn optional_with_nested_edge_and_filter() {
+            let input_name = "optional_with_nested_edge_and_filter";
+
+            let adapter = TestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
+
+                        let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                        let neighbor = edge_info.destination();
+                        assert_eq!(vid(2), neighbor.vid());
+
+                        let next_edge_info = neighbor.first_edge("successor").expect("no 'successor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value actually *isn't* statically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                    })),
+                }.into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        let next_edge_info = destination.first_edge("successor").expect("no 'successor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value actually *isn't* statically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                    })),
+                    eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(3), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // Here the value *is* statically known, since the `@optional`
+                        // has already been resolved in a prior step.
+                        assert_eq!(
+                            Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(1)), true)),),
+                            destination.statically_known_property("value"),
+                        );
+                    })),
+                }.into(),
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(2)].calls, 1);
         }
     }
 
@@ -1681,6 +1987,148 @@ mod tests {
 
             let adapter = run_query(adapter, input_name);
             assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(2)].calls, 1);
+        }
+
+        #[test]
+        fn optional_with_nested_filter_with_tag_semantics() {
+            let input_name = "optional_with_nested_filter_with_tag_semantics";
+
+            let adapter = DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
+
+                        let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                        let neighbor = edge_info.destination();
+
+                        assert_eq!(vid(2), neighbor.vid());
+
+                        // This value actually *isn't* dynamically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, neighbor.dynamically_known_property("value"));
+
+                        ctxs
+                    })),
+                }.into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // This value actually *isn't* dynamically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, destination.dynamically_known_property("value"));
+
+                        ctxs
+                    })),
+                }.into(),
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
+        }
+
+        #[test]
+        fn optional_with_nested_edge_with_filter_and_tag() {
+            let input_name = "optional_with_nested_edge_with_filter_and_tag";
+
+            let adapter = DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        assert_eq!(vid(1), info.vid());
+                        assert!(info.coerced_to_type().is_none());
+
+                        let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                        let neighbor = edge_info.destination();
+                        assert_eq!(vid(2), neighbor.vid());
+
+                        let next_edge_info = neighbor.first_edge("successor").expect("no 'successor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value actually *isn't* dynamically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+
+                        ctxs
+                    })),
+                }.into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        let next_edge_info = destination.first_edge("successor").expect("no 'successor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value actually *isn't* dynamically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+
+                        ctxs
+                    })),
+                    eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
+                        let destination = info.destination();
+                        assert_eq!(vid(3), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // Here the value *is* dynamically known, since the `@optional`
+                        // has already been resolved in a prior step.
+                        let expected_values = vec![
+                            CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
+                        ];
+                        let candidate = destination.dynamically_known_property("value");
+                        Box::new(candidate
+                            .expect("no dynamic candidate for 'value' property")
+                            .resolve(adapter, ctxs)
+                            .zip_longest(expected_values.into_iter())
+                            .map(move |data| {
+                                if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                    assert_eq!(expected_value, value);
+                                    ctx
+                                } else {
+                                    panic!("unexpected iterator outcome: {data:?}")
+                                }
+                            }))
+                    })),
+                }.into(),
+                ..Default::default()
+            };
+
+            let adapter = run_query(adapter, input_name);
+            assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+            assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
             assert_eq!(adapter.on_edge_resolver.borrow()[&eid(2)].calls, 1);
         }
     }
