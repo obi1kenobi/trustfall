@@ -1,0 +1,26 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query tests an edge case of the semantics of `@optional` with nested `@filter`.
+    //
+    // `@optional` applies *only* to whether the edge exists. After the edge is resolved,
+    // subsequent edges and filters are resolved normally. If the thus-resolved vertices fail
+    // to satisfy a subsequent required edge or filter, they are discarded.
+    //
+    // We *do not* get to "retroactively" pretend that the edge did not exist at the `@optional`
+    // and thereby preserve that result set with nulls for the `@optional` contents.
+    //
+    // If the below query returns *any* data, that's a bug.
+    query: r#"
+{
+    One {
+        value @tag
+
+        predecessor @optional {
+            successor {
+                value @filter(op: ">", value: ["%value"]) @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
