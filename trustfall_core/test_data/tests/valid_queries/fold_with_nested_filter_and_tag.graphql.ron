@@ -1,0 +1,19 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // When resolving `One` or its `successor` edge, the `value` property inside `predecessor`
+    // does not have a known value. Regardless of what number it holds, it cannot affect
+    // which vertices `One` and `successor` resolve to.
+    query: r#"
+{
+    One {
+        value @tag @output
+
+        successor {
+            predecessor @fold {
+                value @filter(op: "=", value: ["%value"]) @output(name: "inner")
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
