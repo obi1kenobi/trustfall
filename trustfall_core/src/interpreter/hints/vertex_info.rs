@@ -4,8 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use itertools::Itertools;
-
 use crate::{
     interpreter::InterpretedQuery,
     ir::{
@@ -14,9 +12,7 @@ use crate::{
     },
 };
 
-use super::{
-    candidates::NullableValue, dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range,
-};
+use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
 
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
@@ -309,120 +305,12 @@ fn compute_statically_known_candidate<'a, 'b>(
     relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
 ) -> Option<CandidateValue<&'b FieldValue>> {
-    let (candidates, post_processing_filters): (Vec<_>, Vec<&Operation<_, _>>) = relevant_filters
-        .partition_map(|op| match op {
-            Operation::IsNull(..) => {
-                itertools::Either::Left(CandidateValue::Single(&FieldValue::NULL))
-            }
-            Operation::IsNotNull(..) => {
-                itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
-            }
-            Operation::Equals(_, Argument::Variable(var)) => itertools::Either::Left(
-                CandidateValue::Single(&query_variables[var.variable_name.as_ref()]),
-            ),
-            Operation::LessThan(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_end(
-                    Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::LessThanOrEqual(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_end(
-                    Bound::Included(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::GreaterThan(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_start(
-                    Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::GreaterThanOrEqual(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_start(
-                    Bound::Included(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::OneOf(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Multiple(
-                    query_variables[var.variable_name.as_ref()]
-                        .as_vec(Option::Some)
-                        .expect("query variable was not list-typed"),
-                ))
-            }
-            Operation::NotEquals(_, Argument::Variable(var))
-                if query_variables[var.variable_name.as_ref()].is_null() =>
-            {
-                // Special case: `!= null` can generate candidates;
-                // it's the only `!=` operand for which this is true.
-                itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
-            }
-            _ => itertools::Either::Right(op),
-        });
-
-    let mut candidate = if candidates.is_empty() {
-        // No valid candidate-producing filters found.
-        return None;
-    } else {
-        let initial_candidate = if field.field_type.nullable {
-            CandidateValue::All
-        } else {
-            CandidateValue::Range(Range::full_non_null())
-        };
-        candidates
-            .into_iter()
-            .fold(initial_candidate, |mut acc, e| {
-                acc.intersect(e);
-                acc
-            })
-    };
-    candidate.normalize();
-
-    // If we have any filters that may affect the candidate value in post-processing,
-    // get their operand values now.
-    if post_processing_filters.is_empty() {
-        return Some(candidate);
-    }
-    let filters_and_values: Vec<_> = post_processing_filters
-        .into_iter()
-        .filter_map(|op| {
-            op.right().and_then(|arg| {
-                if let Argument::Variable(var) = arg {
-                    Some((op, &query_variables[var.variable_name.as_ref()]))
-                } else {
-                    None
-                }
-            })
-        })
-        .collect();
-
-    // Ensure the candidate isn't any value that is directly disallowed by
-    // a `!=` or equivalent filter operation.
-    let disallowed_values = filters_and_values
-        .iter()
-        .filter_map(
-            |(op, value)| -> Option<Box<dyn Iterator<Item = &FieldValue>>> {
-                match op {
-                    Operation::NotEquals(..) => Some(Box::new(std::iter::once(*value))),
-                    Operation::NotOneOf(..) => Some(Box::new(
-                        value
-                            .as_slice()
-                            .expect("not_one_of operand was not a list")
-                            .iter(),
-                    )),
-                    _ => None,
-                }
-            },
-        )
-        .flatten();
-    for disallowed in disallowed_values {
-        candidate.exclude_single_value(&disallowed);
-    }
-
-    // TODO: use the other kinds of filters to exclude more candidate values
-
-    Some(candidate)
+    let is_subject_field_nullable = field.field_type.nullable;
+    super::filters::candidate_from_statically_evaluated_filters(
+        relevant_filters,
+        query_variables,
+        is_subject_field_nullable,
+    )
 }
 
 #[cfg(test)]
