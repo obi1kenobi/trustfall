@@ -85,7 +85,12 @@ pub(super) trait InternalVertexInfo: super::sealed::__Sealed {
     /// The vertex that this [`InternalVertexInfo`] represents.
     fn current_vertex(&self) -> &IRVertex;
 
+    /// The component where the vertex represented by this [`InternalVertexInfo`] is found.
     fn current_component(&self) -> &IRQueryComponent;
+
+    /// The component where resolution is happening,
+    /// i.e. where the traversal through the optimization hints began.
+    fn starting_component(&self) -> &IRQueryComponent;
 
     fn query_variables(&self) -> &BTreeMap<Arc<str>, FieldValue>;
 
@@ -251,7 +256,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             .expect("removing operands failed");
         Some(DynamicallyResolvedValue::new(
             self.query().clone(),
-            self.current_component(),
+            self.starting_component(),
             field,
             bare_operation,
             initial_candidate,

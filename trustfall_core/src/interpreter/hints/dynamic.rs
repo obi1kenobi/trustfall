@@ -73,18 +73,10 @@ impl<'a> DynamicallyResolvedValue<'a> {
     ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
         match &self.field {
             FieldRef::ContextField(context_field) => {
-                if context_field.vertex_id < self.resolve_on_component.root {
-                    // We're inside at least one level of `@fold` relative to
-                    // the origin of this tag.
-                    //
-                    // We'll have to grab the tag's value from the context directly.
-                    let field_ref = self.field;
-                    self.resolve_context_field_with_imported_tags(field_ref, contexts)
-                } else {
-                    self.resolve_context_field(context_field, adapter, contexts)
-                }
+                self.resolve_context_field(context_field, adapter, contexts)
             }
             FieldRef::FoldSpecificField(fold_field) => {
+                // TODO cover this with tests
                 if fold_field.fold_root_vid < self.resolve_on_component.root {
                     // We're inside at least one level of `@fold` relative to
                     // the origin of this tag.
@@ -131,6 +123,8 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::LessThan(_, _) => {
+                dbg!(ctx_vid);
+                dbg!(self.resolve_on_component.root);
                 resolve_context_field!(iterator, initial_candidate, ctx_vid, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Excluded(value),

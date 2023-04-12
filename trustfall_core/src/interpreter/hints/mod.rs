@@ -116,6 +116,13 @@ impl InternalVertexInfo for ResolveInfo {
 
     #[inline]
     fn current_component(&self) -> &IRQueryComponent {
+        // Inside `ResolveInfo`, the starting component and
+        // the current component are one and the same.
+        self.starting_component()
+    }
+
+    #[inline]
+    fn starting_component(&self) -> &IRQueryComponent {
         &self.query.indexed_query.vids[&self.current_vid]
     }
 
@@ -371,6 +378,11 @@ impl InternalVertexInfo for NeighborInfo {
     #[inline]
     fn current_component(&self) -> &IRQueryComponent {
         &self.query.indexed_query.vids[&self.neighbor_vertex]
+    }
+
+    #[inline]
+    fn starting_component(&self) -> &IRQueryComponent {
+        &self.query.indexed_query.vids[&self.starting_vertex]
     }
 
     #[inline]
