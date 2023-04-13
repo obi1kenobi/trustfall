@@ -447,12 +447,4 @@ TestInterpreterOutputTrace(
       ]),
     },
   ),
-  results: [
-    {
-      "factors": List([
-        Int64(2),
-      ]),
-      "value": Int64(32),
-    },
-  ],
 )

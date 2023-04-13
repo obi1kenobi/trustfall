@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+use crate::ir::Output;
 use crate::{
     frontend::error::FrontendError,
     graphql_query::{error::ParseError, query::Query},
@@ -197,6 +198,13 @@ where
     pub(crate) schema_name: String,
 
     pub(crate) trace: Trace<Vertex>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct TestInterpreterOutputData {
+    pub(crate) schema_name: String,
+
+    pub(crate) outputs: BTreeMap<Arc<str>, Output>,
 
     pub(crate) results: Vec<BTreeMap<Arc<str>, FieldValue>>,
 }

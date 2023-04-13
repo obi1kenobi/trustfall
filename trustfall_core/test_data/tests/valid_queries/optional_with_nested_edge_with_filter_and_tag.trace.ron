@@ -309,5 +309,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [],
 )

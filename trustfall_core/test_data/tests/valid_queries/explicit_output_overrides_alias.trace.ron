@@ -279,11 +279,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "one": Int64(1),
-      "succ_name": String("two"),
-      "two": Int64(2),
-    },
-  ],
 )

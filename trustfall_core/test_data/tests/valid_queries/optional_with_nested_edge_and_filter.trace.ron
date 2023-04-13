@@ -255,5 +255,4 @@ TestInterpreterOutputTrace(
       "one": Int64(1),
     },
   ),
-  results: [],
 )

@@ -211,5 +211,4 @@ TestInterpreterOutputTrace(
       "two": Int64(2),
     },
   ),
-  results: [],
 )

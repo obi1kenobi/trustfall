@@ -1,0 +1,47 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "top_bottom_mult_value": Output(
+      name: "top_bottom_mult_value",
+      value_type: "Int",
+      vid: Vid(5),
+    ),
+    "top_bottom_value": Output(
+      name: "top_bottom_value",
+      value_type: "Int",
+      vid: Vid(4),
+    ),
+    "top_value": Output(
+      name: "top_value",
+      value_type: "Int",
+      vid: Vid(3),
+    ),
+  },
+  results: [
+    {
+      "top_bottom_mult_value": Null,
+      "top_bottom_value": Null,
+      "top_value": Int64(0),
+    },
+    {
+      "top_bottom_mult_value": Int64(4),
+      "top_bottom_value": Int64(2),
+      "top_value": Int64(3),
+    },
+    {
+      "top_bottom_mult_value": Int64(6),
+      "top_bottom_value": Int64(2),
+      "top_value": Int64(3),
+    },
+    {
+      "top_bottom_mult_value": Int64(6),
+      "top_bottom_value": Int64(3),
+      "top_value": Int64(4),
+    },
+    {
+      "top_bottom_mult_value": Int64(9),
+      "top_bottom_value": Int64(3),
+      "top_value": Int64(4),
+    },
+  ],
+)

@@ -320,9 +320,4 @@ TestInterpreterOutputTrace(
       "min_primes": Uint64(2),
     },
   ),
-  results: [
-    {
-      "value": Int64(30),
-    },
-  ],
 )

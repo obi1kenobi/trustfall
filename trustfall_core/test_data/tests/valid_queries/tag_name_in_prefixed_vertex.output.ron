@@ -1,0 +1,33 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "m1_value": Output(
+      name: "m1_value",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "m2_value": Output(
+      name: "m2_value",
+      value_type: "Int",
+      vid: Vid(3),
+    ),
+  },
+  results: [
+    {
+      "m1_value": Int64(4),
+      "m2_value": Int64(4),
+    },
+    {
+      "m1_value": Int64(6),
+      "m2_value": Int64(6),
+    },
+    {
+      "m1_value": Int64(6),
+      "m2_value": Int64(6),
+    },
+    {
+      "m1_value": Int64(9),
+      "m2_value": Int64(9),
+    },
+  ],
+)

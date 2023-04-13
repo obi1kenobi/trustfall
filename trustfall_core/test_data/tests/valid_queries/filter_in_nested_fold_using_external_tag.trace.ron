@@ -690,17 +690,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "first": List([
-        Int64(4),
-      ]),
-      "second": List([
-        List([
-          Int64(4),
-          Int64(8),
-        ]),
-      ]),
-    },
-  ],
 )

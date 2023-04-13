@@ -1,0 +1,11 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "name": Output(
+      name: "name",
+      value_type: "String",
+      vid: Vid(1),
+    ),
+  },
+  results: [],
+)

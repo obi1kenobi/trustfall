@@ -1,0 +1,85 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "base": Output(
+      name: "base",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "mult": Output(
+      name: "mult",
+      value_type: "[[Int]!]!",
+      vid: Vid(3),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "[Int]!",
+      vid: Vid(2),
+    ),
+  },
+  results: [
+    {
+      "base": Int64(5),
+      "mult": List([
+        List([
+          Int64(10),
+          Int64(20),
+          Int64(30),
+        ]),
+        List([
+          Int64(15),
+          Int64(30),
+          Int64(45),
+        ]),
+      ]),
+      "value": List([
+        Int64(10),
+        Int64(15),
+      ]),
+    },
+    {
+      "base": Int64(6),
+      "mult": List([
+        List([
+          Int64(6),
+          Int64(12),
+          Int64(18),
+        ]),
+        List([
+          Int64(12),
+          Int64(24),
+          Int64(36),
+        ]),
+        List([
+          Int64(18),
+          Int64(36),
+          Int64(54),
+        ]),
+      ]),
+      "value": List([
+        Int64(6),
+        Int64(12),
+        Int64(18),
+      ]),
+    },
+    {
+      "base": Int64(7),
+      "mult": List([
+        List([
+          Int64(14),
+          Int64(28),
+          Int64(42),
+        ]),
+        List([
+          Int64(21),
+          Int64(42),
+          Int64(63),
+        ]),
+      ]),
+      "value": List([
+        Int64(14),
+        Int64(21),
+      ]),
+    },
+  ],
+)

@@ -207,18 +207,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "number_name": String("zero"),
-    },
-    {
-      "number_name": String("one"),
-    },
-    {
-      "number_name": String("two"),
-    },
-    {
-      "number_name": String("three"),
-    },
-  ],
 )

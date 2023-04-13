@@ -218,10 +218,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "successor": Int64(2),
-      "value": Int64(1),
-    },
-  ],
 )

@@ -210,9 +210,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "predecessorcount": Uint64(1),
-    },
-  ],
 )

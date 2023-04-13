@@ -133,12 +133,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": Int64(0),
-    },
-    {
-      "value": Int64(1),
-    },
-  ],
 )

@@ -281,9 +281,4 @@ TestInterpreterOutputTrace(
       "min_value": Int64(5),
     },
   ),
-  results: [
-    {
-      "value": Int64(6),
-    },
-  ],
 )

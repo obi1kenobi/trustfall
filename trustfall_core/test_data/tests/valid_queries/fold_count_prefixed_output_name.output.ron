@@ -1,0 +1,23 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "factor_count": Output(
+      name: "factor_count",
+      value_type: "Int!",
+      vid: Vid(2),
+    ),
+    "factor_numbers": Output(
+      name: "factor_numbers",
+      value_type: "[Int]!",
+      vid: Vid(2),
+    ),
+  },
+  results: [
+    {
+      "factor_count": Uint64(1),
+      "factor_numbers": List([
+        Int64(2),
+      ]),
+    },
+  ],
+)

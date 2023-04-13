@@ -1,0 +1,65 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "prime": Output(
+      name: "prime",
+      value_type: "[Int]!",
+      vid: Vid(2),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "prime": List([
+        Int64(2),
+        Int64(5),
+      ]),
+      "value": Int64(10),
+    },
+    {
+      "prime": List([
+        Int64(2),
+        Int64(3),
+      ]),
+      "value": Int64(12),
+    },
+    {
+      "prime": List([
+        Int64(2),
+        Int64(7),
+      ]),
+      "value": Int64(14),
+    },
+    {
+      "prime": List([
+        Int64(3),
+        Int64(5),
+      ]),
+      "value": Int64(15),
+    },
+    {
+      "prime": List([
+        Int64(2),
+      ]),
+      "value": Int64(16),
+    },
+    {
+      "prime": List([
+        Int64(2),
+        Int64(3),
+      ]),
+      "value": Int64(18),
+    },
+    {
+      "prime": List([
+        Int64(2),
+        Int64(5),
+      ]),
+      "value": Int64(20),
+    },
+  ],
+)

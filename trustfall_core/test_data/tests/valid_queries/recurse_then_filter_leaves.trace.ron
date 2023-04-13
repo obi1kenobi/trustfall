@@ -2006,9 +2006,4 @@ TestInterpreterOutputTrace(
       "bound": Int64(7),
     },
   ),
-  results: [
-    {
-      "value": Int64(8),
-    },
-  ],
 )

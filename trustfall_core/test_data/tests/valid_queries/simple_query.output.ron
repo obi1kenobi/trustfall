@@ -1,0 +1,24 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "number_name": Output(
+      name: "number_name",
+      value_type: "String",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "number_name": String("zero"),
+    },
+    {
+      "number_name": String("one"),
+    },
+    {
+      "number_name": String("two"),
+    },
+    {
+      "number_name": String("three"),
+    },
+  ],
+)

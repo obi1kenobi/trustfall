@@ -766,20 +766,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "factors": List([
-        Int64(2),
-        Int64(3),
-      ]),
-      "multiplecount": Uint64(3),
-      "multiples": List([
-        Int64(6),
-        Int64(12),
-        Int64(18),
-      ]),
-      "primeFactorcount": Uint64(2),
-      "value": Int64(6),
-    },
-  ],
 )

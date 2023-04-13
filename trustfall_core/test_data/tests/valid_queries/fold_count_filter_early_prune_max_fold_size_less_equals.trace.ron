@@ -444,12 +444,4 @@ TestInterpreterOutputTrace(
       "one": Uint64(1),
     },
   ),
-  results: [
-    {
-      "factors": List([
-        Int64(2),
-      ]),
-      "value": Int64(32),
-    },
-  ],
 )
