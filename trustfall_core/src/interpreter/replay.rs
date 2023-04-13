@@ -136,10 +136,10 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context);
+                    assert_eq!(context, &input_context, "at {input_op:?}");
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
-                    assert_eq!(None, input_data);
+                    assert_eq!(None, input_data, "at {input_op:?}");
                 } else {
                     unreachable!();
                 }
@@ -151,11 +151,11 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveProperty(trace_context, value)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context);
+                assert_eq!(trace_context, &input_context, "at {next_op:?}");
                 Some((input_context, value.clone()))
             }
             TraceOpContent::OutputIteratorExhausted => {
-                assert_eq!(None, self.input_batch.pop_front());
+                assert_eq!(None, self.input_batch.pop_front(), "at {next_op:?}");
                 self.exhausted = true;
                 None
             }
@@ -218,11 +218,11 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context);
+                    assert_eq!(context, &input_context, "at {input_op:?}");
 
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
-                    assert_eq!(None, input_data);
+                    assert_eq!(None, input_data, "at {input_op:?}");
                 } else {
                     unreachable!();
                 }
@@ -234,11 +234,11 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(trace_context, can_coerce)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context);
+                assert_eq!(trace_context, &input_context, "at {next_op:?}");
                 Some((input_context, *can_coerce))
             }
             TraceOpContent::OutputIteratorExhausted => {
-                assert_eq!(None, self.input_batch.pop_front());
+                assert_eq!(None, self.input_batch.pop_front(), "at {next_op:?}");
                 self.exhausted = true;
                 None
             }
@@ -300,11 +300,11 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context);
+                    assert_eq!(context, &input_context, "at {input_op:?}");
 
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
-                    assert_eq!(None, input_data);
+                    assert_eq!(None, input_data, "at {input_op:?}");
                 } else {
                     unreachable!();
                 }
@@ -316,7 +316,7 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(trace_context)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context);
+                assert_eq!(trace_context, &input_context, "at {next_op:?}");
 
                 let neighbors = Box::new(TraceReaderNeighborIter {
                     exhausted: false,
@@ -328,7 +328,7 @@ where
                 Some((input_context, neighbors))
             }
             TraceOpContent::OutputIteratorExhausted => {
-                assert_eq!(None, self.input_batch.pop_front());
+                assert_eq!(None, self.input_batch.pop_front(), "at {next_op:?}");
                 self.exhausted = true;
                 None
             }
@@ -378,7 +378,7 @@ where
                 None
             }
             TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(index, vertex)) => {
-                assert_eq!(self.next_index, *index);
+                assert_eq!(self.next_index, *index, "at {trace_op:?}");
                 self.next_index += 1;
                 Some(vertex.clone())
             }

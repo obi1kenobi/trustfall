@@ -5,17 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use regex::Regex;
-
 use crate::{
-    interpreter::{
-        filtering::{
-            contains, equals, greater_than, greater_than_or_equal, has_prefix, has_substring,
-            has_suffix, less_than, less_than_or_equal, one_of, regex_matches_optimized,
-            regex_matches_slow_path,
-        },
-        ValueOrVec,
-    },
     ir::{
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
         IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation, Recursive,
@@ -25,8 +15,9 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, Adapter, ContextIterator, DataContext, InterpretedQuery,
-    ResolveEdgeInfo, ResolveInfo, VertexIterator,
+    error::QueryArgumentsError, filtering::apply_filter, Adapter, ContextIterator,
+    ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
+    TaggedValue, ValueOrVec, VertexIterator,
 };
 
 #[derive(Debug, Clone)]
@@ -242,7 +233,11 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     carrier.query = Some(query);
 
     Box::new(output_iterator.map(move |mut context| {
-        assert!(context.values.len() == output_names.len());
+        assert!(
+            context.values.len() == output_names.len(),
+            "expected {output_names:?} but got {:?}",
+            &context.values
+        );
 
         let mut output: BTreeMap<Arc<str>, FieldValue> = output_names
             .iter()
@@ -381,28 +376,43 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 
                 let cloned_field = imported_field.clone();
                 iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
-                    context.imported_tags.insert(cloned_field.clone(), value);
+                    // Check whether the tagged value is coming from an `@optional` scope
+                    // that did not exist, in order to satisfy its filtering semantics.
+                    let tag_value = if context.vertices[&vertex_id].is_some() {
+                        TaggedValue::Some(value)
+                    } else {
+                        TaggedValue::NonexistentOptional
+                    };
+                    context
+                        .imported_tags
+                        .insert(cloned_field.clone(), tag_value);
                     context
                 }));
             }
             FieldRef::FoldSpecificField(fold_specific_field) => {
                 let cloned_field = imported_field.clone();
-                iterator = Box::new(
-                    compute_fold_specific_field(
-                        fold_specific_field.fold_eid,
-                        &fold_specific_field.kind,
-                        iterator,
-                    )
-                    .map(move |mut ctx| {
-                        ctx.imported_tags.insert(
-                            cloned_field.clone(),
-                            ctx.values
-                                .pop()
-                                .expect("fold-specific field computed and pushed onto the stack"),
-                        );
-                        ctx
-                    }),
-                );
+                let fold_eid = fold_specific_field.fold_eid;
+                iterator =
+                    Box::new(
+                        compute_fold_specific_field(
+                            fold_specific_field.fold_eid,
+                            &fold_specific_field.kind,
+                            iterator,
+                        )
+                        .map(move |mut ctx| {
+                            // TODO: Check whether the tagged value is coming from an `@optional` scope
+                            //       that did not exist, in order to satisfy its filtering semantics.
+                            //       Right now this will produce wrong results on tagged
+                            //       specific fields inside an `@optional` scope that doesn't exist.
+                            ctx.imported_tags.insert(
+                                cloned_field.clone(),
+                                TaggedValue::Some(ctx.values.pop().expect(
+                                    "fold-specific field computed and pushed onto the stack",
+                                )),
+                            );
+                            ctx
+                        }),
+                    );
             }
         }
     }
@@ -614,70 +624,6 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     Box::new(final_iterator)
 }
 
-/// Check whether a tagged value that is being used in a filter originates from
-/// a scope that is optional and missing, and therefore the filter should pass.
-///
-/// A small subtlety is important here: it's possible that the tagged value is *local* to
-/// the scope being filtered. In that case, the context *will not* yet have a vertex associated
-/// with the [Vid] of the tag's ContextField. However, in such cases, the tagged value
-/// is *never* optional relative to the current scope, so we can safely return `false`.
-#[inline(always)]
-fn is_tag_optional_and_missing<'query, Vertex: Clone + Debug + 'query>(
-    context: &DataContext<Vertex>,
-    tagged_field: &FieldRef,
-) -> bool {
-    // Get a representative Vid that will show whether the tagged value exists or not.
-    let vid = match tagged_field {
-        FieldRef::ContextField(field) => field.vertex_id,
-        FieldRef::FoldSpecificField(field) => field.fold_root_vid,
-    };
-
-    // Some(None) means "there's a value associated with that Vid, and it's None".
-    // None would mean that the tagged value is local, i.e. nothing is associated with that Vid yet.
-    // Some(Some(vertex)) would mean that a vertex was found and associated with that Vid.
-    matches!(context.vertices.get(&vid), Some(None))
-}
-
-macro_rules! implement_filter {
-    ( $iter: ident, $right: ident, $func: ident ) => {
-        Box::new($iter.filter_map(move |mut context| {
-            let right_value = context.values.pop().unwrap();
-            let left_value = context.values.pop().unwrap();
-            if let Argument::Tag(field) = &$right {
-                if is_tag_optional_and_missing(&context, field) {
-                    return Some(context);
-                }
-            }
-
-            if $func(&left_value, &right_value) {
-                Some(context)
-            } else {
-                None
-            }
-        }))
-    };
-}
-
-macro_rules! implement_negated_filter {
-    ( $iter: ident, $right: ident, $func: ident ) => {
-        Box::new($iter.filter_map(move |mut context| {
-            let right_value = context.values.pop().unwrap();
-            let left_value = context.values.pop().unwrap();
-            if let Argument::Tag(field) = &$right {
-                if is_tag_optional_and_missing(&context, field) {
-                    return Some(context);
-                }
-            }
-
-            if $func(&left_value, &right_value) {
-                None
-            } else {
-                Some(context)
-            }
-        }))
-    };
-}
-
 fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -701,7 +647,7 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
         carrier,
         component,
         current_vid,
-        filter,
+        &filter.map(|_| (), |r| r),
         field_iterator,
     )
 }
@@ -723,223 +669,9 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
         carrier,
         component,
         current_vid,
-        filter,
+        &filter.map(|_| (), |r| r),
         field_iterator,
     )
-}
-
-fn apply_filter<'query, AdapterT: Adapter<'query>, LeftT: Debug + Clone + PartialEq + Eq>(
-    adapter: &AdapterT,
-    carrier: &mut QueryCarrier,
-    component: &IRQueryComponent,
-    current_vid: Vid,
-    filter: &Operation<LeftT, Argument>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
-    let expression_iterator = match filter.right() {
-        Some(Argument::Tag(FieldRef::ContextField(context_field))) => {
-            if context_field.vertex_id == current_vid {
-                // This tag is from the vertex we're currently filtering. That means the field
-                // whose value we want to get is actually local, so there's no need to compute it
-                // using the more expensive approach we use for non-local fields.
-                let local_equivalent_field = LocalField {
-                    field_name: context_field.field_name.clone(),
-                    field_type: context_field.field_type.clone(),
-                };
-                compute_local_field(
-                    adapter,
-                    carrier,
-                    component,
-                    current_vid,
-                    &local_equivalent_field,
-                    iterator,
-                )
-            } else {
-                compute_context_field(adapter, carrier, component, context_field, iterator)
-            }
-        }
-        Some(Argument::Tag(field_ref @ FieldRef::FoldSpecificField(fold_field))) => {
-            if component.folds.contains_key(&fold_field.fold_eid) {
-                // This value comes from one of this component's folds:
-                // the @tag is a sibling to the current computation and needs to be materialized.
-                compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, iterator)
-            } else {
-                // This value represents an imported tag value from an outer component.
-                // Grab its value from the context itself.
-                let cloned_ref = field_ref.clone();
-                Box::new(iterator.map(move |mut ctx| {
-                    let right_value = ctx.imported_tags[&cloned_ref].clone();
-                    ctx.values.push(right_value);
-                    ctx
-                }))
-            }
-        }
-        Some(Argument::Variable(var)) => {
-            let query_arguments = &carrier
-                .query
-                .as_ref()
-                .expect("query was not returned")
-                .arguments;
-            let right_value = query_arguments[var.variable_name.as_ref()].to_owned();
-            Box::new(iterator.map(move |mut ctx| {
-                // TODO: implement more efficient filtering with:
-                //       - no clone of runtime parameter values
-                //       - omit the "tag from missing optional" check if the filter argument isn't
-                //         a tag, or if it's a tag that isn't from an optional scope relative to
-                //         the current scope
-                //       - type awareness: we know the type of the field being filtered,
-                //         and we probably know (or can infer) the type of the filtering argument(s)
-                //       - precomputation to improve efficiency: build regexes once,
-                //         turn "in_collection" filter arguments into sets if possible, etc.
-                ctx.values.push(right_value.to_owned());
-                ctx
-            }))
-        }
-        None => iterator,
-    };
-
-    match filter.clone() {
-        Operation::IsNull(_) => {
-            let output_iter = expression_iterator.filter_map(move |mut context| {
-                let last_value = context.values.pop().unwrap();
-                match last_value {
-                    FieldValue::Null => Some(context),
-                    _ => None,
-                }
-            });
-            Box::new(output_iter)
-        }
-        Operation::IsNotNull(_) => {
-            let output_iter = expression_iterator.filter_map(move |mut context| {
-                let last_value = context.values.pop().unwrap();
-                match last_value {
-                    FieldValue::Null => None,
-                    _ => Some(context),
-                }
-            });
-            Box::new(output_iter)
-        }
-        Operation::Equals(_, right) => {
-            implement_filter!(expression_iterator, right, equals)
-        }
-        Operation::NotEquals(_, right) => {
-            implement_negated_filter!(expression_iterator, right, equals)
-        }
-        Operation::GreaterThan(_, right) => {
-            implement_filter!(expression_iterator, right, greater_than)
-        }
-        Operation::GreaterThanOrEqual(_, right) => {
-            implement_filter!(expression_iterator, right, greater_than_or_equal)
-        }
-        Operation::LessThan(_, right) => {
-            implement_filter!(expression_iterator, right, less_than)
-        }
-        Operation::LessThanOrEqual(_, right) => {
-            implement_filter!(expression_iterator, right, less_than_or_equal)
-        }
-        Operation::HasSubstring(_, right) => {
-            implement_filter!(expression_iterator, right, has_substring)
-        }
-        Operation::NotHasSubstring(_, right) => {
-            implement_negated_filter!(expression_iterator, right, has_substring)
-        }
-        Operation::OneOf(_, right) => {
-            implement_filter!(expression_iterator, right, one_of)
-        }
-        Operation::NotOneOf(_, right) => {
-            implement_negated_filter!(expression_iterator, right, one_of)
-        }
-        Operation::Contains(_, right) => {
-            implement_filter!(expression_iterator, right, contains)
-        }
-        Operation::NotContains(_, right) => {
-            implement_negated_filter!(expression_iterator, right, contains)
-        }
-        Operation::HasPrefix(_, right) => {
-            implement_filter!(expression_iterator, right, has_prefix)
-        }
-        Operation::NotHasPrefix(_, right) => {
-            implement_negated_filter!(expression_iterator, right, has_prefix)
-        }
-        Operation::HasSuffix(_, right) => {
-            implement_filter!(expression_iterator, right, has_suffix)
-        }
-        Operation::NotHasSuffix(_, right) => {
-            implement_negated_filter!(expression_iterator, right, has_suffix)
-        }
-        Operation::RegexMatches(_, right) => match &right {
-            Argument::Tag(_) => {
-                implement_filter!(expression_iterator, right, regex_matches_slow_path)
-            }
-            Argument::Variable(var) => {
-                let query_arguments = &carrier
-                    .query
-                    .as_ref()
-                    .expect("query was not returned")
-                    .arguments;
-                let variable_value = &query_arguments[var.variable_name.as_ref()];
-                let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
-
-                Box::new(expression_iterator.filter_map(move |mut context| {
-                    let _ = context.values.pop().unwrap();
-                    let left_value = context.values.pop().unwrap();
-
-                    if regex_matches_optimized(&left_value, &pattern) {
-                        Some(context)
-                    } else {
-                        None
-                    }
-                }))
-            }
-        },
-        Operation::NotRegexMatches(_, right) => match &right {
-            Argument::Tag(_) => {
-                implement_negated_filter!(expression_iterator, right, regex_matches_slow_path)
-            }
-            Argument::Variable(var) => {
-                let query_arguments = &carrier
-                    .query
-                    .as_ref()
-                    .expect("query was not returned")
-                    .arguments;
-                let variable_value = &query_arguments[var.variable_name.as_ref()];
-                let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
-
-                Box::new(expression_iterator.filter_map(move |mut context| {
-                    let _ = context.values.pop().unwrap();
-                    let left_value = context.values.pop().unwrap();
-
-                    if !regex_matches_optimized(&left_value, &pattern) {
-                        Some(context)
-                    } else {
-                        None
-                    }
-                }))
-            }
-        },
-    }
-}
-
-fn compute_context_field<'query, AdapterT: Adapter<'query>>(
-    adapter: &AdapterT,
-    carrier: &mut QueryCarrier,
-    component: &IRQueryComponent,
-    context_field: &ContextField,
-    iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query> {
-    let output_iterator = compute_context_field_with_separate_value(
-        adapter,
-        carrier,
-        component,
-        context_field,
-        iterator,
-    )
-    .map(|(mut context, value)| {
-        context.values.push(value);
-        context
-    });
-
-    Box::new(output_iterator)
 }
 
 pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
@@ -948,7 +680,7 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
     component: &IRQueryComponent,
     context_field: &ContextField,
     iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
-) -> Box<dyn Iterator<Item = (DataContext<AdapterT::Vertex>, FieldValue)> + 'query> {
+) -> Box<dyn Iterator<Item = (DataContext<AdapterT::Vertex>, TaggedValue)> + 'query> {
     let vertex_id = context_field.vertex_id;
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
@@ -970,11 +702,18 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
                 &context_field.field_name,
                 &resolve_info,
             )
-            .map(|(mut context, value)| {
+            .map(move |(mut context, value)| {
+                let tagged_value = if context.vertices[&vertex_id].is_some() {
+                    TaggedValue::Some(value)
+                } else {
+                    // The value is coming from an @optional scope that didn't exist.
+                    TaggedValue::NonexistentOptional
+                };
+
                 // Make sure that the context has the same "current" token
                 // as before evaluating the context field.
                 let old_current_token = context.suspended_vertices.pop().unwrap();
-                (context.move_to_vertex(old_current_token), value)
+                (context.move_to_vertex(old_current_token), tagged_value)
             });
         carrier.query = Some(resolve_info.into_inner());
 
@@ -995,6 +734,10 @@ pub(super) fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query
     fold_specific_field: &FoldSpecificFieldKind,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
+    // TODO: this is broken, an `@output` on a fold-specific field (like Count)
+    //       that is inside a non-existent @optional produces `null` not 0.
+    //       Ensure output type inference handles this correctly too...
+    // TODO: use the compute_fold_specific_field_with_separate_value() fn here instead
     match fold_specific_field {
         FoldSpecificFieldKind::Count => Box::new(iterator.map(move |mut ctx| {
             let value = ctx.folded_contexts[&fold_eid].len();
@@ -1002,6 +745,44 @@ pub(super) fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query
             ctx
         })),
     }
+}
+
+pub(super) fn compute_fold_specific_field_with_separate_value<
+    'query,
+    Vertex: Clone + Debug + 'query,
+>(
+    fold_eid: Eid,
+    fold_specific_field: &FoldSpecificFieldKind,
+    iterator: ContextIterator<'query, Vertex>,
+) -> ContextOutcomeIterator<'query, Vertex, TaggedValue> {
+    match fold_specific_field {
+        FoldSpecificFieldKind::Count => Box::new(iterator.map(move |ctx| {
+            // TODO: this is broken, an `@output` on a fold-specific field (like Count)
+            //       that is inside a non-existent @optional produces `null` not 0.
+            //       Ensure output type inference handles this correctly too...
+            let value = ctx.folded_contexts[&fold_eid].len();
+            (ctx, TaggedValue::Some(FieldValue::Uint64(value as u64)))
+        })),
+    }
+}
+
+pub(super) fn compute_local_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
+    adapter: &AdapterT,
+    carrier: &mut QueryCarrier,
+    component: &IRQueryComponent,
+    current_vid: Vid,
+    local_field: &LocalField,
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> ContextOutcomeIterator<'query, AdapterT::Vertex, FieldValue> {
+    let type_name = &component.vertices[&current_vid].type_name;
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveInfo::new(query, current_vid, true);
+
+    let context_and_value_iterator =
+        adapter.resolve_property(iterator, type_name, &local_field.field_name, &resolve_info);
+    carrier.query = Some(resolve_info.into_inner());
+
+    context_and_value_iterator
 }
 
 fn compute_local_field<'query, AdapterT: Adapter<'query>>(
@@ -1012,13 +793,14 @@ fn compute_local_field<'query, AdapterT: Adapter<'query>>(
     local_field: &LocalField,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
-    let type_name = &component.vertices[&current_vid].type_name;
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, current_vid, true);
-
-    let context_and_value_iterator =
-        adapter.resolve_property(iterator, type_name, &local_field.field_name, &resolve_info);
-    carrier.query = Some(resolve_info.into_inner());
+    let context_and_value_iterator = compute_local_field_with_separate_value(
+        adapter,
+        carrier,
+        component,
+        current_vid,
+        local_field,
+        iterator,
+    );
 
     Box::new(context_and_value_iterator.map(|(mut context, value)| {
         context.values.push(value);
