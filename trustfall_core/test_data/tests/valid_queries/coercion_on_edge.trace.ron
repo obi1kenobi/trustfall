@@ -1360,26 +1360,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "prime": Int64(2),
-      "value": Int64(1),
-    },
-    {
-      "prime": Int64(3),
-      "value": Int64(2),
-    },
-    {
-      "prime": Int64(5),
-      "value": Int64(4),
-    },
-    {
-      "prime": Int64(7),
-      "value": Int64(6),
-    },
-    {
-      "prime": Int64(11),
-      "value": Int64(10),
-    },
-  ],
 )

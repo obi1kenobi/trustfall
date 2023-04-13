@@ -1,0 +1,33 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "successor": Output(
+      name: "successor",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "successor": Int64(1),
+      "value": Int64(0),
+    },
+    {
+      "successor": Int64(2),
+      "value": Int64(1),
+    },
+    {
+      "successor": Int64(3),
+      "value": Int64(2),
+    },
+    {
+      "successor": Int64(4),
+      "value": Int64(3),
+    },
+  ],
+)

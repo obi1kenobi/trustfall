@@ -1206,40 +1206,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "prime": List([]),
-      "value": Int64(0),
-    },
-    {
-      "prime": List([]),
-      "value": Int64(1),
-    },
-    {
-      "prime": List([]),
-      "value": Int64(2),
-    },
-    {
-      "prime": List([
-        Int64(2),
-      ]),
-      "value": Int64(3),
-    },
-    {
-      "prime": List([
-        Int64(3),
-      ]),
-      "value": Int64(4),
-    },
-    {
-      "prime": List([]),
-      "value": Int64(5),
-    },
-    {
-      "prime": List([
-        Int64(5),
-      ]),
-      "value": Int64(6),
-    },
-  ],
 )

@@ -330,10 +330,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "successor_value": Int64(2),
-      "value": Int64(1),
-    },
-  ],
 )

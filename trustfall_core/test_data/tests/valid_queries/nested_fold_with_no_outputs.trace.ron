@@ -1053,9 +1053,4 @@ TestInterpreterOutputTrace(
       "two": Uint64(2),
     },
   ),
-  results: [
-    {
-      "value": Int64(64),
-    },
-  ],
 )

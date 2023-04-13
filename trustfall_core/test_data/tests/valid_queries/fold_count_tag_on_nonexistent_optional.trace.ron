@@ -540,11 +540,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "count": Null,
-      "start": Int64(1),
-      "succ": Int64(2),
-    },
-  ],
 )

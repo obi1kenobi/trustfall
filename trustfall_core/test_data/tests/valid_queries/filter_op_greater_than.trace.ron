@@ -1304,26 +1304,4 @@ TestInterpreterOutputTrace(
       "num": Int64(25),
     },
   ),
-  results: [
-    {
-      "mult": Int64(32),
-      "value": Int64(8),
-    },
-    {
-      "mult": Int64(27),
-      "value": Int64(9),
-    },
-    {
-      "mult": Int64(36),
-      "value": Int64(9),
-    },
-    {
-      "mult": Int64(30),
-      "value": Int64(10),
-    },
-    {
-      "mult": Int64(40),
-      "value": Int64(10),
-    },
-  ],
 )

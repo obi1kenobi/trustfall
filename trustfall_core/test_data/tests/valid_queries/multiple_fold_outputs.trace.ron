@@ -597,22 +597,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "name": List([
-        String("four"),
-        String("six"),
-        String("eight"),
-        String("ten"),
-        String("twelve"),
-      ]),
-      "value": List([
-        Int64(4),
-        Int64(6),
-        Int64(8),
-        Int64(10),
-        Int64(12),
-      ]),
-    },
-  ],
 )

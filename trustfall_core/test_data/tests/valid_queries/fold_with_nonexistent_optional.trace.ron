@@ -290,14 +290,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": List([
-        Null,
-      ]),
-      "zero": List([
-        Int64(0),
-      ]),
-    },
-  ],
 )

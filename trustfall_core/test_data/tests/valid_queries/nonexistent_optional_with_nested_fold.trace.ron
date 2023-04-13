@@ -318,12 +318,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "predecessor": Null,
-      "successor_counts": Null,
-      "successors": Null,
-      "zero": Int64(0),
-    },
-  ],
 )

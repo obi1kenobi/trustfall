@@ -584,11 +584,16 @@ mod tests {
         filesystem_interpreter::FilesystemVertex,
         interpreter::replay::assert_interpreted_results,
         numbers_interpreter::NumbersVertex,
-        util::{TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace},
+        util::{
+            TestIRQuery, TestIRQueryResult, TestInterpreterOutputData, TestInterpreterOutputTrace,
+        },
     };
 
-    fn check_trace<Vertex>(expected_ir: TestIRQuery, test_data: TestInterpreterOutputTrace<Vertex>)
-    where
+    fn check_trace<Vertex>(
+        expected_ir: TestIRQuery,
+        test_data: TestInterpreterOutputTrace<Vertex>,
+        test_outputs: TestInterpreterOutputData,
+    ) where
         Vertex: Debug + Clone + PartialEq + Eq + Serialize,
         for<'de> Vertex: Deserialize<'de>,
     {
@@ -596,15 +601,19 @@ mod tests {
         assert_eq!(expected_ir.ir_query, test_data.trace.ir_query);
         assert_eq!(expected_ir.arguments, test_data.trace.arguments);
 
-        assert_interpreted_results(&test_data.trace, &test_data.results, true);
+        assert_interpreted_results(&test_data.trace, &test_outputs.results, true);
     }
 
-    fn check_filesystem_trace(expected_ir: TestIRQuery, input_data: &str) {
+    fn check_filesystem_trace(
+        expected_ir: TestIRQuery,
+        input_data: &str,
+        test_outputs: TestInterpreterOutputData,
+    ) {
         match ron::from_str::<TestInterpreterOutputTrace<FilesystemVertex>>(input_data) {
             Ok(test_data) => {
                 assert_eq!(expected_ir.schema_name, "filesystem");
                 assert_eq!(test_data.schema_name, "filesystem");
-                check_trace(expected_ir, test_data);
+                check_trace(expected_ir, test_data, test_outputs);
             }
             Err(e) => {
                 unreachable!("failed to parse trace file: {e}");
@@ -612,12 +621,16 @@ mod tests {
         }
     }
 
-    fn check_numbers_trace(expected_ir: TestIRQuery, input_data: &str) {
+    fn check_numbers_trace(
+        expected_ir: TestIRQuery,
+        input_data: &str,
+        test_outputs: TestInterpreterOutputData,
+    ) {
         match ron::from_str::<TestInterpreterOutputTrace<NumbersVertex>>(input_data) {
             Ok(test_data) => {
                 assert_eq!(expected_ir.schema_name, "numbers");
                 assert_eq!(test_data.schema_name, "numbers");
-                check_trace(expected_ir, test_data);
+                check_trace(expected_ir, test_data, test_outputs);
             }
             Err(e) => {
                 unreachable!("failed to parse trace file: {e}");
@@ -632,6 +645,13 @@ mod tests {
 
         let input_data = fs::read_to_string(input_path).unwrap();
 
+        let mut output_data_path = PathBuf::from(base);
+        output_data_path.push(format!("{stem}.output.ron"));
+        let output_data =
+            fs::read_to_string(output_data_path).expect("failed to read outputs file");
+        let test_outputs: TestInterpreterOutputData =
+            ron::from_str(&output_data).expect("failed to parse outputs file");
+
         let mut check_path = PathBuf::from(base);
         check_path.push(format!("{stem}.ir.ron"));
         let check_data = fs::read_to_string(check_path).unwrap();
@@ -639,8 +659,8 @@ mod tests {
         let expected_ir = expected_ir.unwrap();
 
         match expected_ir.schema_name.as_str() {
-            "filesystem" => check_filesystem_trace(expected_ir, input_data.as_str()),
-            "numbers" => check_numbers_trace(expected_ir, input_data.as_str()),
+            "filesystem" => check_filesystem_trace(expected_ir, input_data.as_str(), test_outputs),
+            "numbers" => check_numbers_trace(expected_ir, input_data.as_str(), test_outputs),
             _ => unreachable!("{}", expected_ir.schema_name),
         }
     }

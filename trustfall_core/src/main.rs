@@ -19,29 +19,40 @@ mod schema;
 mod util;
 
 use std::{
-    cell::RefCell, collections::BTreeMap, convert::TryInto, env, fmt::Debug, fs, rc::Rc, sync::Arc,
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet},
+    convert::TryInto,
+    env,
+    fmt::Debug,
+    fs,
+    path::PathBuf,
+    rc::Rc,
+    str::FromStr,
+    sync::Arc,
 };
 
 use async_graphql_parser::{parse_query, parse_schema};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use trustfall_core::{interpreter::error::QueryArgumentsError, schema::error::InvalidSchemaError};
 
 use crate::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemVertex},
     graphql_query::error::ParseError,
     graphql_query::query::parse_document,
+    interpreter::error::QueryArgumentsError,
     interpreter::{
         execution,
         trace::{tap_results, AdapterTap, Trace},
         Adapter,
     },
+    ir::{FieldValue, IndexedQuery},
     nullables_interpreter::NullablesAdapter,
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
+    schema::error::InvalidSchemaError,
     schema::Schema,
     util::{
-        TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputTrace,
-        TestParsedGraphQLQuery, TestParsedGraphQLQueryResult,
+        TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputData,
+        TestInterpreterOutputTrace, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult,
     },
 };
 
@@ -114,8 +125,78 @@ fn check_fuzzed(path: &str, schema_name: &str) {
     println!("{}", serialize_to_ron(&query));
 }
 
-fn trace_with_adapter<'a, AdapterT>(adapter: AdapterT, test_query: TestIRQuery)
+fn outputs_with_adapter<'a, AdapterT>(adapter: AdapterT, test_query: TestIRQuery)
 where
+    AdapterT: Adapter<'a> + Clone + 'a,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize,
+    for<'de> AdapterT::Vertex: Deserialize<'de>,
+{
+    let query: Arc<IndexedQuery> = Arc::new(test_query.ir_query.clone().try_into().unwrap());
+    let arguments: Arc<BTreeMap<_, _>> = Arc::new(
+        test_query
+            .arguments
+            .iter()
+            .map(|(k, v)| (Arc::from(k.to_owned()), v.clone()))
+            .collect(),
+    );
+
+    let outputs = query.outputs.clone();
+    let output_names: BTreeSet<_> = outputs.keys().collect();
+
+    let execution_result = execution::interpret_ir(Rc::new(adapter), query, arguments);
+    match execution_result {
+        Ok(results_iter) => {
+            let results = results_iter.collect_vec();
+
+            // Ensure that each result has each of the declared outputs in the metadata,
+            // and no unexpected outputs.
+            for row in &results {
+                let columns_present: BTreeSet<_> = row.keys().collect();
+                assert_eq!(
+                    output_names, columns_present,
+                    "expected {output_names:?} but got {columns_present:?} for result {row:?}"
+                );
+            }
+
+            let data = TestInterpreterOutputData {
+                schema_name: test_query.schema_name,
+                outputs,
+                results,
+            };
+
+            println!("{}", serialize_to_ron(&data));
+        }
+        Err(e) => unreachable!("failed to execute query: {e:?}"),
+    }
+}
+
+fn outputs(path: &str) {
+    let input_data = fs::read_to_string(path).unwrap();
+    let test_query_result: TestIRQueryResult = ron::from_str(&input_data).unwrap();
+    let test_query = test_query_result.unwrap();
+
+    match test_query.schema_name.as_str() {
+        "filesystem" => {
+            let adapter = FilesystemInterpreter::new(".".to_owned());
+            outputs_with_adapter(adapter, test_query);
+        }
+        "numbers" => {
+            let adapter = NumbersAdapter::new();
+            outputs_with_adapter(adapter, test_query);
+        }
+        "nullables" => {
+            let adapter = NullablesAdapter;
+            outputs_with_adapter(adapter, test_query);
+        }
+        _ => unreachable!("Unknown schema name: {}", test_query.schema_name),
+    };
+}
+
+fn trace_with_adapter<'a, AdapterT>(
+    adapter: AdapterT,
+    test_query: TestIRQuery,
+    expected_results: &Vec<BTreeMap<Arc<str>, FieldValue>>,
+) where
     AdapterT: Adapter<'a> + Clone + 'a,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize,
     for<'de> AdapterT::Vertex: Deserialize<'de>,
@@ -139,12 +220,15 @@ where
     match execution_result {
         Ok(results_iter) => {
             let results = tap_results(adapter_tap.clone(), results_iter).collect_vec();
+            assert_eq!(
+                expected_results, &results,
+                "tracing execution produced different outputs from expected (untraced) outputs"
+            );
 
             let trace = Rc::make_mut(&mut adapter_tap).clone().finish();
             let data = TestInterpreterOutputTrace {
                 schema_name: test_query.schema_name,
                 trace,
-                results,
             };
 
             println!("{}", serialize_to_ron(&data));
@@ -160,18 +244,33 @@ fn trace(path: &str) {
     let test_query_result: TestIRQueryResult = ron::from_str(&input_data).unwrap();
     let test_query = test_query_result.unwrap();
 
+    let mut outputs_path = PathBuf::from_str(path).unwrap();
+    let ir_file_name = outputs_path
+        .file_name()
+        .expect("not a file")
+        .to_str()
+        .unwrap();
+    let outputs_file_name = ir_file_name.replace(".ir.ron", ".output.ron");
+    outputs_path.pop();
+    outputs_path.push(&outputs_file_name);
+    let outputs_data =
+        fs::read_to_string(outputs_path).expect("failed to read expected outputs file");
+    let test_outputs: TestInterpreterOutputData =
+        ron::from_str(&outputs_data).expect("failed to parse outputs file");
+    let expected_results = &test_outputs.results;
+
     match test_query.schema_name.as_str() {
         "filesystem" => {
             let adapter = FilesystemInterpreter::new(".".to_owned());
-            trace_with_adapter(adapter, test_query);
+            trace_with_adapter(adapter, test_query, expected_results);
         }
         "numbers" => {
             let adapter = NumbersAdapter::new();
-            trace_with_adapter(adapter, test_query);
+            trace_with_adapter(adapter, test_query, expected_results);
         }
         "nullables" => {
             let adapter = NullablesAdapter;
-            trace_with_adapter(adapter, test_query);
+            trace_with_adapter(adapter, test_query, expected_results);
         }
         _ => unreachable!("Unknown schema name: {}", test_query.schema_name),
     };
@@ -196,6 +295,10 @@ fn reserialize(path: &str) {
         Some((_, "ir" | "frontend-error")) => {
             let test_query_result: TestIRQueryResult = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&test_query_result)
+        }
+        Some((_, "output")) => {
+            let test_output_data: TestInterpreterOutputData = ron::from_str(&input_data).unwrap();
+            serialize_to_ron(&test_output_data)
         }
         Some((_, "trace")) => {
             if let Ok(test_trace) =
@@ -280,6 +383,13 @@ fn main() {
             Some(path) => {
                 assert!(reversed_args.is_empty());
                 frontend(path)
+            }
+        },
+        Some("outputs") => match reversed_args.pop() {
+            None => panic!("No filename provided"),
+            Some(path) => {
+                assert!(reversed_args.is_empty());
+                outputs(path)
             }
         },
         Some("trace") => match reversed_args.pop() {

@@ -1271,9 +1271,9 @@ mod tests {
                 execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator,
                 ResolveEdgeInfo, ResolveInfo, VertexIterator,
             },
-            ir::{EdgeParameters, FieldValue},
+            ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
-            util::{TestIRQuery, TestInterpreterOutputTrace},
+            util::{TestIRQuery, TestInterpreterOutputData},
         };
 
         struct VariableChunkIterator<I: Iterator> {
@@ -1437,16 +1437,19 @@ mod tests {
                 .expect("failed to parse file")
                 .expect("Err result");
 
-            let trace_contents = std::fs::read_to_string(format!(
-                "test_data/tests/valid_queries/{file_stub}.trace.ron"
+            let output_contents = std::fs::read_to_string(format!(
+                "test_data/tests/valid_queries/{file_stub}.output.ron"
             ))
             .expect("failed to read file");
-            let trace_data: TestInterpreterOutputTrace<<NumbersAdapter as Adapter>::Vertex> =
-                ron::from_str(&trace_contents).expect("failed to parse file");
+            let output_data: TestInterpreterOutputData =
+                ron::from_str(&output_contents).expect("failed to parse file");
 
             let batch_sequences: VecDeque<u64> = batch_sequences.into_iter().collect();
 
-            let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
+            let indexed_query: Arc<IndexedQuery> =
+                Arc::new(input_data.ir_query.try_into().unwrap());
+            assert_eq!(&output_data.outputs, &indexed_query.outputs);
+
             let arguments = Arc::new(
                 input_data
                     .arguments
@@ -1462,7 +1465,7 @@ mod tests {
                 .unwrap()
                 .collect();
 
-            assert_eq!(trace_data.results, actual_results);
+            assert_eq!(output_data.results, actual_results);
         }
 
         /// Reentrancy crash when `@output` resolution eagerly pulls

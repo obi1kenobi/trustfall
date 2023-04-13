@@ -1423,24 +1423,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": Int64(1),
-    },
-    {
-      "value": Int64(2),
-    },
-    {
-      "value": Int64(3),
-    },
-    {
-      "value": Int64(4),
-    },
-    {
-      "value": Int64(5),
-    },
-    {
-      "value": Int64(6),
-    },
-  ],
 )

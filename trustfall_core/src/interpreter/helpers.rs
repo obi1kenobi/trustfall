@@ -346,7 +346,7 @@ pub fn resolve_typename<'a, Vertex: Typename + Debug + Clone + 'a>(
     // `type_name` is the statically-known type. The vertices are definitely *at least* that type,
     // but could also be one of its subtypes. If there are no subtypes, they *must* be that type.
     let mut subtypes_iter = match schema.subtypes(type_name) {
-        Some(iter) => iter.map(|x| dbg!(x)),
+        Some(iter) => iter,
         None => panic!("type {type_name} is not part of this schema"),
     };
 

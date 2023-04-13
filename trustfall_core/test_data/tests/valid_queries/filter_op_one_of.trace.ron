@@ -348,12 +348,4 @@ TestInterpreterOutputTrace(
       ]),
     },
   ),
-  results: [
-    {
-      "name": String("fourteen"),
-    },
-    {
-      "name": String("fifteen"),
-    },
-  ],
 )

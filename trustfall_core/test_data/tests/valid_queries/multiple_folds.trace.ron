@@ -611,17 +611,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "div": List([
-        Int64(1),
-        Int64(2),
-      ]),
-      "mult": List([
-        Int64(4),
-        Int64(8),
-      ]),
-      "value": Int64(4),
-    },
-  ],
 )

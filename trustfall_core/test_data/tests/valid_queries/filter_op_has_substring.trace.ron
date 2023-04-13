@@ -292,12 +292,4 @@ TestInterpreterOutputTrace(
       "substr": String("el"),
     },
   ),
-  results: [
-    {
-      "name": String("eleven"),
-    },
-    {
-      "name": String("twelve"),
-    },
-  ],
 )

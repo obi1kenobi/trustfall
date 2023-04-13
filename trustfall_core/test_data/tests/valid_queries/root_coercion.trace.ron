@@ -530,18 +530,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": Int64(2),
-    },
-    {
-      "value": Int64(3),
-    },
-    {
-      "value": Int64(5),
-    },
-    {
-      "value": Int64(7),
-    },
-  ],
 )

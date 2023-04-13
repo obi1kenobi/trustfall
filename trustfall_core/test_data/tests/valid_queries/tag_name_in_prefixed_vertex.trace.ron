@@ -1650,22 +1650,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "m1_value": Int64(4),
-      "m2_value": Int64(4),
-    },
-    {
-      "m1_value": Int64(6),
-      "m2_value": Int64(6),
-    },
-    {
-      "m1_value": Int64(6),
-      "m2_value": Int64(6),
-    },
-    {
-      "m1_value": Int64(9),
-      "m2_value": Int64(9),
-    },
-  ],
 )

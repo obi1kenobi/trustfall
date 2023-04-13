@@ -217,11 +217,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "predecessor": List([]),
-      "successors": List([]),
-      "zero": Int64(0),
-    },
-  ],
 )

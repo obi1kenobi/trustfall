@@ -90,9 +90,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "__typename": String("Prime"),
-    },
-  ],
 )

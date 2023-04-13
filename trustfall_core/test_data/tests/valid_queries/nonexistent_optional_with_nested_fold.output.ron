@@ -1,0 +1,33 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "predecessor": Output(
+      name: "predecessor",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "successor_counts": Output(
+      name: "successor_counts",
+      value_type: "Int!",
+      vid: Vid(3),
+    ),
+    "successors": Output(
+      name: "successors",
+      value_type: "[Int]!",
+      vid: Vid(3),
+    ),
+    "zero": Output(
+      name: "zero",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "predecessor": Null,
+      "successor_counts": Null,
+      "successors": Null,
+      "zero": Int64(0),
+    },
+  ],
+)

@@ -346,9 +346,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": Int64(1),
-    },
-  ],
 )

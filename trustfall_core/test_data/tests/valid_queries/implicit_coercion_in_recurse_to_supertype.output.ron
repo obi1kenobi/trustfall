@@ -1,0 +1,77 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "base": Output(
+      name: "base",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+  },
+  results: [
+    {
+      "base": Int64(10),
+      "value": Int64(10),
+    },
+    {
+      "base": Int64(10),
+      "value": Int64(1),
+    },
+    {
+      "base": Int64(10),
+      "value": Int64(2),
+    },
+    {
+      "base": Int64(10),
+      "value": Int64(5),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(12),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(1),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(2),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(3),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(4),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(1),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(2),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(6),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(1),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(2),
+    },
+    {
+      "base": Int64(12),
+      "value": Int64(3),
+    },
+  ],
+)

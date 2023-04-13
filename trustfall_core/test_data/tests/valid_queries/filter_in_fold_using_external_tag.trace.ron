@@ -429,12 +429,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": List([
-        Int64(4),
-        Int64(6),
-      ]),
-    },
-  ],
 )

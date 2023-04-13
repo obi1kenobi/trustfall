@@ -230,9 +230,4 @@ TestInterpreterOutputTrace(
       "value": Int64(3),
     },
   ),
-  results: [
-    {
-      "number_name": String("three"),
-    },
-  ],
 )

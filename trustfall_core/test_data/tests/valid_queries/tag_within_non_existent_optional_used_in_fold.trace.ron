@@ -2546,27 +2546,4 @@ TestInterpreterOutputTrace(
       "prime": Int64(2),
     },
   ),
-  results: [
-    {
-      "mult": Int64(4),
-      "start": Int64(2),
-      "succ": List([
-        Int64(3),
-      ]),
-    },
-    {
-      "mult": Int64(6),
-      "start": Int64(2),
-      "succ": List([
-        Int64(3),
-      ]),
-    },
-    {
-      "mult": Int64(6),
-      "start": Int64(3),
-      "succ": List([
-        Int64(4),
-      ]),
-    },
-  ],
 )

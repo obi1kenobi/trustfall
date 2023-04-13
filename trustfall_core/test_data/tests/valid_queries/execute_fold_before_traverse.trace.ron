@@ -546,13 +546,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "mult": List([
-        Int64(4),
-        Int64(6),
-      ]),
-      "succ": Int64(3),
-    },
-  ],
 )
