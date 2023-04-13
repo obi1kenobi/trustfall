@@ -323,11 +323,6 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
         }
         Some(Argument::Tag(field_ref @ FieldRef::FoldSpecificField(fold_field))) => {
             let argument_value_iterator = if component.folds.contains_key(&fold_field.fold_eid) {
-                // Check if the fold is guaranteed to exist or not -- it might be inside an @optional!
-                // TODO: ^^^^^
-
-                // This value comes from one of this component's folds:
-                // the @tag is a sibling to the current computation and needs to be materialized.
                 compute_fold_specific_field_with_separate_value(
                     fold_field.fold_eid,
                     &fold_field.kind,
