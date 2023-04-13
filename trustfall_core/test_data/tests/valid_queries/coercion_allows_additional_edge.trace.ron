@@ -199,7 +199,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -212,7 +212,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -237,7 +237,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -250,7 +250,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -474,7 +474,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -487,7 +487,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -512,7 +512,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -525,7 +525,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -749,7 +749,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -762,7 +762,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(7))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -787,7 +787,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -800,7 +800,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(7))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -998,7 +998,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
@@ -1011,7 +1011,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1036,7 +1036,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
@@ -1049,7 +1049,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1208,14 +1208,14 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(2))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1237,14 +1237,14 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(2))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1466,7 +1466,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -1479,7 +1479,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1504,7 +1504,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -1517,7 +1517,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1741,7 +1741,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -1754,7 +1754,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
@@ -1779,7 +1779,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -1792,7 +1792,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "prime"): Some(Vec([
