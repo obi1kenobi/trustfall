@@ -1230,11 +1230,32 @@ mod tests {
     use crate::{
         interpreter::{error::QueryArgumentsError, InterpretedQuery},
         ir::{FieldValue, IndexedQuery},
-        util::TestIRQueryResult,
+        util::{TestIRQueryResult, TestInterpreterOutputData},
     };
 
+    #[parameterize("trustfall_core/test_data/tests/valid_queries")]
+    fn parameterized_output_metadata_tester(base: &Path, stem: &str) {
+        let mut input_path = PathBuf::from(base);
+        input_path.push(format!("{stem}.ir.ron"));
+
+        let input_data = fs::read_to_string(input_path).unwrap();
+        let test_query: TestIRQueryResult = ron::from_str(&input_data).unwrap();
+        let test_query = test_query.unwrap();
+
+        let mut check_path = PathBuf::from(base);
+        check_path.push(format!("{stem}.output.ron"));
+        let check_data = fs::read_to_string(check_path).unwrap();
+        let expected_output_data: TestInterpreterOutputData = ron::from_str(&check_data).unwrap();
+
+        let indexed_query: IndexedQuery = test_query
+            .ir_query
+            .try_into()
+            .expect("failed to create IndexedQuery");
+        assert_eq!(expected_output_data.outputs, indexed_query.outputs);
+    }
+
     #[parameterize("trustfall_core/test_data/tests/execution_errors")]
-    fn parameterizable_tester(base: &Path, stem: &str) {
+    fn parameterized_execution_error_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
         input_path.push(format!("{stem}.ir.ron"));
 
