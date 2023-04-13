@@ -1,0 +1,26 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        start: value @output
+
+        predecessor {
+            # This edge won't exist.
+            predecessor @optional {
+                multiple(max: 3) @fold
+                                 @transform(op: "count")
+                                 @tag(name: "count")
+                                 @output(name: "count")  # This output must be `null` not 0.
+            }
+        }
+
+        successor {
+            # The tagged value here comes from an `@optional` that doesn't exist.
+            # The query semantics dictate that the `@filter` is elided ("passes").
+            succ: value @output @filter(op: "<", value: ["%count"])
+        }
+    }
+}"#,
+    arguments: {},
+)

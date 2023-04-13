@@ -71,14 +71,14 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
         )),
       ),
@@ -91,14 +91,14 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
         ))),
       ),
