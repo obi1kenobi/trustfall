@@ -8,7 +8,7 @@ TestInterpreterOutputData(
     ),
     "multiplecount": Output(
       name: "multiplecount",
-      value_type: "Int!",
+      value_type: "[Int!]!",
       vid: Vid(3),
     ),
     "multiples": Output(
