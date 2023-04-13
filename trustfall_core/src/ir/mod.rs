@@ -462,6 +462,73 @@ where
         }
     }
 
+    pub(crate) fn map<'a, LeftF, LeftOutT, RightF, RightOutT>(
+        &'a self,
+        map_left: LeftF,
+        map_right: RightF,
+    ) -> Operation<LeftOutT, RightOutT>
+    where
+        LeftOutT: Debug + Clone + PartialEq + Eq,
+        RightOutT: Debug + Clone + PartialEq + Eq,
+        LeftF: FnOnce(&'a LeftT) -> LeftOutT,
+        RightF: FnOnce(&'a RightT) -> RightOutT,
+    {
+        match self {
+            Operation::IsNull(left) => Operation::IsNull(map_left(left)),
+            Operation::IsNotNull(left) => Operation::IsNotNull(map_left(left)),
+            Operation::Equals(left, right) => Operation::Equals(map_left(left), map_right(right)),
+            Operation::NotEquals(left, right) => {
+                Operation::NotEquals(map_left(left), map_right(right))
+            }
+            Operation::LessThan(left, right) => {
+                Operation::LessThan(map_left(left), map_right(right))
+            }
+            Operation::LessThanOrEqual(left, right) => {
+                Operation::LessThanOrEqual(map_left(left), map_right(right))
+            }
+            Operation::GreaterThan(left, right) => {
+                Operation::GreaterThan(map_left(left), map_right(right))
+            }
+            Operation::GreaterThanOrEqual(left, right) => {
+                Operation::GreaterThanOrEqual(map_left(left), map_right(right))
+            }
+            Operation::Contains(left, right) => {
+                Operation::Contains(map_left(left), map_right(right))
+            }
+            Operation::NotContains(left, right) => {
+                Operation::NotContains(map_left(left), map_right(right))
+            }
+            Operation::OneOf(left, right) => Operation::OneOf(map_left(left), map_right(right)),
+            Operation::NotOneOf(left, right) => {
+                Operation::NotOneOf(map_left(left), map_right(right))
+            }
+            Operation::HasPrefix(left, right) => {
+                Operation::HasPrefix(map_left(left), map_right(right))
+            }
+            Operation::NotHasPrefix(left, right) => {
+                Operation::NotHasPrefix(map_left(left), map_right(right))
+            }
+            Operation::HasSuffix(left, right) => {
+                Operation::HasSuffix(map_left(left), map_right(right))
+            }
+            Operation::NotHasSuffix(left, right) => {
+                Operation::NotHasSuffix(map_left(left), map_right(right))
+            }
+            Operation::HasSubstring(left, right) => {
+                Operation::HasSubstring(map_left(left), map_right(right))
+            }
+            Operation::NotHasSubstring(left, right) => {
+                Operation::NotHasSubstring(map_left(left), map_right(right))
+            }
+            Operation::RegexMatches(left, right) => {
+                Operation::RegexMatches(map_left(left), map_right(right))
+            }
+            Operation::NotRegexMatches(left, right) => {
+                Operation::NotRegexMatches(map_left(left), map_right(right))
+            }
+        }
+    }
+
     pub(crate) fn try_map<LeftF, LeftOutT, RightF, RightOutT, Err>(
         &self,
         map_left: LeftF,

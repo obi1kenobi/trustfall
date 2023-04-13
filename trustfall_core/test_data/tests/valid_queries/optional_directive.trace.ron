@@ -1109,42 +1109,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "mult": Null,
-      "value": Int64(0),
-    },
-    {
-      "mult": Null,
-      "value": Int64(1),
-    },
-    {
-      "mult": Int64(4),
-      "value": Int64(2),
-    },
-    {
-      "mult": Int64(6),
-      "value": Int64(2),
-    },
-    {
-      "mult": Int64(6),
-      "value": Int64(3),
-    },
-    {
-      "mult": Int64(9),
-      "value": Int64(3),
-    },
-    {
-      "mult": Int64(4),
-      "value": Int64(4),
-    },
-    {
-      "mult": Int64(8),
-      "value": Int64(4),
-    },
-    {
-      "mult": Int64(12),
-      "value": Int64(4),
-    },
-  ],
 )

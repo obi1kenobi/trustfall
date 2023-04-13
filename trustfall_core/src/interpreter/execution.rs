@@ -5,17 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use regex::Regex;
-
 use crate::{
-    interpreter::{
-        filtering::{
-            contains, equals, greater_than, greater_than_or_equal, has_prefix, has_substring,
-            has_suffix, less_than, less_than_or_equal, one_of, regex_matches_optimized,
-            regex_matches_slow_path,
-        },
-        ValueOrVec,
-    },
     ir::{
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
         IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation, Recursive,
@@ -25,8 +15,9 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, Adapter, ContextIterator, DataContext, InterpretedQuery,
-    ResolveEdgeInfo, ResolveInfo, VertexIterator,
+    error::QueryArgumentsError, filtering::apply_filter, Adapter, ContextIterator,
+    ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
+    TaggedValue, ValueOrVec, VertexIterator,
 };
 
 #[derive(Debug, Clone)]
@@ -242,7 +233,11 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     carrier.query = Some(query);
 
     Box::new(output_iterator.map(move |mut context| {
-        assert!(context.values.len() == output_names.len());
+        assert!(
+            context.values.len() == output_names.len(),
+            "expected {output_names:?} but got {:?}",
+            &context.values
+        );
 
         let mut output: BTreeMap<Arc<str>, FieldValue> = output_names
             .iter()
@@ -381,25 +376,30 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 
                 let cloned_field = imported_field.clone();
                 iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
-                    context.imported_tags.insert(cloned_field.clone(), value);
+                    // Check whether the tagged value is coming from an `@optional` scope
+                    // that did not exist, in order to satisfy its filtering semantics.
+                    let tag_value = if context.vertices[&vertex_id].is_some() {
+                        TaggedValue::Some(value)
+                    } else {
+                        TaggedValue::NonexistentOptional
+                    };
+                    context
+                        .imported_tags
+                        .insert(cloned_field.clone(), tag_value);
                     context
                 }));
             }
             FieldRef::FoldSpecificField(fold_specific_field) => {
                 let cloned_field = imported_field.clone();
+                let fold_eid = fold_specific_field.fold_eid;
                 iterator = Box::new(
-                    compute_fold_specific_field(
+                    compute_fold_specific_field_with_separate_value(
                         fold_specific_field.fold_eid,
                         &fold_specific_field.kind,
                         iterator,
                     )
-                    .map(move |mut ctx| {
-                        ctx.imported_tags.insert(
-                            cloned_field.clone(),
-                            ctx.values
-                                .pop()
-                                .expect("fold-specific field computed and pushed onto the stack"),
-                        );
+                    .map(move |(mut ctx, tagged_value)| {
+                        ctx.imported_tags.insert(cloned_field.clone(), tagged_value);
                         ctx
                     }),
                 );
@@ -449,13 +449,17 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             neighbor_contexts,
         );
 
-        let fold_elements = match collect_fold_elements(computed_iterator, &max_fold_size) {
-            None => {
-                // We were able to discard this fold early.
-                return None;
-            }
-            Some(f) => f,
+        // Check whether this @fold is inside an @optional that doesn't exist.
+        // This is not the same as having *zero* elements: nonexistent != empty.
+        let fold_exists = context.vertices[&expanding_from_vid].is_some();
+        let fold_elements = if fold_exists {
+            // N.B.: Note the `?` at the end here!
+            //       This lets us early-discard folds that failed a post-processing filter.
+            Some(collect_fold_elements(computed_iterator, &max_fold_size)?)
+        } else {
+            None
         };
+
         context
             .folded_contexts
             .insert_or_error(fold_eid, fold_elements)
@@ -492,35 +496,39 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let mut cloned_carrier = carrier.clone();
     let fold_component = fold.component.clone();
     let final_iterator = post_filtered_iterator.map(move |mut ctx| {
-        // If the @fold is inside an @optional that doesn't exist,
-        // its outputs should be `null` rather than empty lists (the usual for empty folds).
-        // Transformed outputs should also be `null` rather than their usual transformed defaults.
-        let did_fold_root_exist = ctx.vertices[&expanding_from_vid].is_some();
-        let default_value = if did_fold_root_exist {
-            Some(ValueOrVec::Vec(vec![]))
-        } else {
-            None
-        };
-
-        let fold_elements = ctx.folded_contexts.get(&fold_eid).unwrap();
+        let fold_elements = &ctx.folded_contexts[&fold_eid];
+        debug_assert_eq!(
+            // Two ways to check if the `@fold` is inside an `@optional` that didn't exist:
+            ctx.vertices[&expanding_from_vid].is_some(),
+            fold_elements.is_some(),
+            "\
+mismatch on whether the fold below {expanding_from_vid:?} was inside an `@optional`: {ctx:?}",
+        );
 
         // Add any fold-specific field outputs to the context's folded values.
         for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
-            let value = match fold_specific_field {
-                FoldSpecificFieldKind::Count => {
-                    ValueOrVec::Value(FieldValue::Uint64(fold_elements.len() as u64))
-                }
-            };
+            // If the @fold is inside an @optional that doesn't exist,
+            // its outputs should be `null` rather than empty lists (the usual for empty folds).
+            // Transformed outputs should also be `null` rather than their usual transformed defaults.
+            let value = fold_elements
+                .as_ref()
+                .map(|elements| match fold_specific_field {
+                    FoldSpecificFieldKind::Count => {
+                        ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+                    }
+                });
             ctx.folded_values
-                .insert_or_error(
-                    (fold_eid, output_name.clone()),
-                    did_fold_root_exist.then_some(value),
-                )
-                .unwrap();
+                .insert_or_error((fold_eid, output_name.clone()), value)
+                .expect("this fold output was already computed");
         }
 
         // Prepare empty vectors for all the outputs from this @fold component.
         // If the fold-root vertex didn't exist, the default is `null` instead.
+        let default_value = if fold_elements.is_some() {
+            Some(ValueOrVec::Vec(vec![]))
+        } else {
+            None
+        };
         let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), default_value.clone()))
@@ -528,9 +536,14 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
         // Skip the adapter resolve_property() calls and add the empty output values directly.
-        if fold_elements.is_empty() {
+        let fold_contains_elements = fold_elements
+            .as_ref()
+            .map(|e| !e.is_empty())
+            .unwrap_or(false);
+        if !fold_contains_elements {
             // We need to make sure any outputs from any nested @fold components (recursively)
-            // are set to empty lists.
+            // are set to the default value (empty list if the @fold existed and was empty,
+            // null if it didn't exist because it was inside an @optional).
             let mut queue: Vec<_> = fold_component.folds.values().collect();
             while let Some(inner_fold) = queue.pop() {
                 for output in inner_fold.fold_specific_outputs.keys() {
@@ -543,9 +556,17 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             }
         } else {
             // Iterate through the elements of the fold and get the values we need.
-            let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> =
-                Box::new(fold_elements.clone().into_iter());
+            let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> = Box::new(
+                fold_elements
+                    .as_ref()
+                    .expect("fold did not contain elements")
+                    .clone()
+                    .into_iter(),
+            );
             for output_name in output_names.iter() {
+                // This is a slimmed-down version of computing a context field:
+                // - it does not restore the prior active vertex after getting each value
+                // - it already knows that the context field is guaranteed to exist
                 let context_field = &fold.component.outputs[output_name.as_ref()];
                 let vertex_id = context_field.vertex_id;
                 let moved_iterator = Box::new(output_iterator.map(move |context| {
@@ -614,70 +635,6 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     Box::new(final_iterator)
 }
 
-/// Check whether a tagged value that is being used in a filter originates from
-/// a scope that is optional and missing, and therefore the filter should pass.
-///
-/// A small subtlety is important here: it's possible that the tagged value is *local* to
-/// the scope being filtered. In that case, the context *will not* yet have a vertex associated
-/// with the [Vid] of the tag's ContextField. However, in such cases, the tagged value
-/// is *never* optional relative to the current scope, so we can safely return `false`.
-#[inline(always)]
-fn is_tag_optional_and_missing<'query, Vertex: Clone + Debug + 'query>(
-    context: &DataContext<Vertex>,
-    tagged_field: &FieldRef,
-) -> bool {
-    // Get a representative Vid that will show whether the tagged value exists or not.
-    let vid = match tagged_field {
-        FieldRef::ContextField(field) => field.vertex_id,
-        FieldRef::FoldSpecificField(field) => field.fold_root_vid,
-    };
-
-    // Some(None) means "there's a value associated with that Vid, and it's None".
-    // None would mean that the tagged value is local, i.e. nothing is associated with that Vid yet.
-    // Some(Some(vertex)) would mean that a vertex was found and associated with that Vid.
-    matches!(context.vertices.get(&vid), Some(None))
-}
-
-macro_rules! implement_filter {
-    ( $iter: ident, $right: ident, $func: ident ) => {
-        Box::new($iter.filter_map(move |mut context| {
-            let right_value = context.values.pop().unwrap();
-            let left_value = context.values.pop().unwrap();
-            if let Argument::Tag(field) = &$right {
-                if is_tag_optional_and_missing(&context, field) {
-                    return Some(context);
-                }
-            }
-
-            if $func(&left_value, &right_value) {
-                Some(context)
-            } else {
-                None
-            }
-        }))
-    };
-}
-
-macro_rules! implement_negated_filter {
-    ( $iter: ident, $right: ident, $func: ident ) => {
-        Box::new($iter.filter_map(move |mut context| {
-            let right_value = context.values.pop().unwrap();
-            let left_value = context.values.pop().unwrap();
-            if let Argument::Tag(field) = &$right {
-                if is_tag_optional_and_missing(&context, field) {
-                    return Some(context);
-                }
-            }
-
-            if $func(&left_value, &right_value) {
-                None
-            } else {
-                Some(context)
-            }
-        }))
-    };
-}
-
 fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -701,7 +658,7 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
         carrier,
         component,
         current_vid,
-        filter,
+        &filter.map(|_| (), |r| r),
         field_iterator,
     )
 }
@@ -716,230 +673,25 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let fold_specific_field = filter.left();
-    let field_iterator = compute_fold_specific_field(fold.eid, fold_specific_field, iterator);
+    let field_iterator = Box::new(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
+        let value = match tagged_value {
+            TaggedValue::Some(value) => value,
+            TaggedValue::NonexistentOptional => {
+                unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+            }
+        };
+        ctx.values.push(value);
+        ctx
+    }));
 
     apply_filter(
         adapter,
         carrier,
         component,
         current_vid,
-        filter,
+        &filter.map(|_| (), |r| r),
         field_iterator,
     )
-}
-
-fn apply_filter<'query, AdapterT: Adapter<'query>, LeftT: Debug + Clone + PartialEq + Eq>(
-    adapter: &AdapterT,
-    carrier: &mut QueryCarrier,
-    component: &IRQueryComponent,
-    current_vid: Vid,
-    filter: &Operation<LeftT, Argument>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
-    let expression_iterator = match filter.right() {
-        Some(Argument::Tag(FieldRef::ContextField(context_field))) => {
-            if context_field.vertex_id == current_vid {
-                // This tag is from the vertex we're currently filtering. That means the field
-                // whose value we want to get is actually local, so there's no need to compute it
-                // using the more expensive approach we use for non-local fields.
-                let local_equivalent_field = LocalField {
-                    field_name: context_field.field_name.clone(),
-                    field_type: context_field.field_type.clone(),
-                };
-                compute_local_field(
-                    adapter,
-                    carrier,
-                    component,
-                    current_vid,
-                    &local_equivalent_field,
-                    iterator,
-                )
-            } else {
-                compute_context_field(adapter, carrier, component, context_field, iterator)
-            }
-        }
-        Some(Argument::Tag(field_ref @ FieldRef::FoldSpecificField(fold_field))) => {
-            if component.folds.contains_key(&fold_field.fold_eid) {
-                // This value comes from one of this component's folds:
-                // the @tag is a sibling to the current computation and needs to be materialized.
-                compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, iterator)
-            } else {
-                // This value represents an imported tag value from an outer component.
-                // Grab its value from the context itself.
-                let cloned_ref = field_ref.clone();
-                Box::new(iterator.map(move |mut ctx| {
-                    let right_value = ctx.imported_tags[&cloned_ref].clone();
-                    ctx.values.push(right_value);
-                    ctx
-                }))
-            }
-        }
-        Some(Argument::Variable(var)) => {
-            let query_arguments = &carrier
-                .query
-                .as_ref()
-                .expect("query was not returned")
-                .arguments;
-            let right_value = query_arguments[var.variable_name.as_ref()].to_owned();
-            Box::new(iterator.map(move |mut ctx| {
-                // TODO: implement more efficient filtering with:
-                //       - no clone of runtime parameter values
-                //       - omit the "tag from missing optional" check if the filter argument isn't
-                //         a tag, or if it's a tag that isn't from an optional scope relative to
-                //         the current scope
-                //       - type awareness: we know the type of the field being filtered,
-                //         and we probably know (or can infer) the type of the filtering argument(s)
-                //       - precomputation to improve efficiency: build regexes once,
-                //         turn "in_collection" filter arguments into sets if possible, etc.
-                ctx.values.push(right_value.to_owned());
-                ctx
-            }))
-        }
-        None => iterator,
-    };
-
-    match filter.clone() {
-        Operation::IsNull(_) => {
-            let output_iter = expression_iterator.filter_map(move |mut context| {
-                let last_value = context.values.pop().unwrap();
-                match last_value {
-                    FieldValue::Null => Some(context),
-                    _ => None,
-                }
-            });
-            Box::new(output_iter)
-        }
-        Operation::IsNotNull(_) => {
-            let output_iter = expression_iterator.filter_map(move |mut context| {
-                let last_value = context.values.pop().unwrap();
-                match last_value {
-                    FieldValue::Null => None,
-                    _ => Some(context),
-                }
-            });
-            Box::new(output_iter)
-        }
-        Operation::Equals(_, right) => {
-            implement_filter!(expression_iterator, right, equals)
-        }
-        Operation::NotEquals(_, right) => {
-            implement_negated_filter!(expression_iterator, right, equals)
-        }
-        Operation::GreaterThan(_, right) => {
-            implement_filter!(expression_iterator, right, greater_than)
-        }
-        Operation::GreaterThanOrEqual(_, right) => {
-            implement_filter!(expression_iterator, right, greater_than_or_equal)
-        }
-        Operation::LessThan(_, right) => {
-            implement_filter!(expression_iterator, right, less_than)
-        }
-        Operation::LessThanOrEqual(_, right) => {
-            implement_filter!(expression_iterator, right, less_than_or_equal)
-        }
-        Operation::HasSubstring(_, right) => {
-            implement_filter!(expression_iterator, right, has_substring)
-        }
-        Operation::NotHasSubstring(_, right) => {
-            implement_negated_filter!(expression_iterator, right, has_substring)
-        }
-        Operation::OneOf(_, right) => {
-            implement_filter!(expression_iterator, right, one_of)
-        }
-        Operation::NotOneOf(_, right) => {
-            implement_negated_filter!(expression_iterator, right, one_of)
-        }
-        Operation::Contains(_, right) => {
-            implement_filter!(expression_iterator, right, contains)
-        }
-        Operation::NotContains(_, right) => {
-            implement_negated_filter!(expression_iterator, right, contains)
-        }
-        Operation::HasPrefix(_, right) => {
-            implement_filter!(expression_iterator, right, has_prefix)
-        }
-        Operation::NotHasPrefix(_, right) => {
-            implement_negated_filter!(expression_iterator, right, has_prefix)
-        }
-        Operation::HasSuffix(_, right) => {
-            implement_filter!(expression_iterator, right, has_suffix)
-        }
-        Operation::NotHasSuffix(_, right) => {
-            implement_negated_filter!(expression_iterator, right, has_suffix)
-        }
-        Operation::RegexMatches(_, right) => match &right {
-            Argument::Tag(_) => {
-                implement_filter!(expression_iterator, right, regex_matches_slow_path)
-            }
-            Argument::Variable(var) => {
-                let query_arguments = &carrier
-                    .query
-                    .as_ref()
-                    .expect("query was not returned")
-                    .arguments;
-                let variable_value = &query_arguments[var.variable_name.as_ref()];
-                let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
-
-                Box::new(expression_iterator.filter_map(move |mut context| {
-                    let _ = context.values.pop().unwrap();
-                    let left_value = context.values.pop().unwrap();
-
-                    if regex_matches_optimized(&left_value, &pattern) {
-                        Some(context)
-                    } else {
-                        None
-                    }
-                }))
-            }
-        },
-        Operation::NotRegexMatches(_, right) => match &right {
-            Argument::Tag(_) => {
-                implement_negated_filter!(expression_iterator, right, regex_matches_slow_path)
-            }
-            Argument::Variable(var) => {
-                let query_arguments = &carrier
-                    .query
-                    .as_ref()
-                    .expect("query was not returned")
-                    .arguments;
-                let variable_value = &query_arguments[var.variable_name.as_ref()];
-                let pattern = Regex::new(variable_value.as_str().unwrap()).unwrap();
-
-                Box::new(expression_iterator.filter_map(move |mut context| {
-                    let _ = context.values.pop().unwrap();
-                    let left_value = context.values.pop().unwrap();
-
-                    if !regex_matches_optimized(&left_value, &pattern) {
-                        Some(context)
-                    } else {
-                        None
-                    }
-                }))
-            }
-        },
-    }
-}
-
-fn compute_context_field<'query, AdapterT: Adapter<'query>>(
-    adapter: &AdapterT,
-    carrier: &mut QueryCarrier,
-    component: &IRQueryComponent,
-    context_field: &ContextField,
-    iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
-) -> Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query> {
-    let output_iterator = compute_context_field_with_separate_value(
-        adapter,
-        carrier,
-        component,
-        context_field,
-        iterator,
-    )
-    .map(|(mut context, value)| {
-        context.values.push(value);
-        context
-    });
-
-    Box::new(output_iterator)
 }
 
 pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
@@ -948,7 +700,7 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
     component: &IRQueryComponent,
     context_field: &ContextField,
     iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
-) -> Box<dyn Iterator<Item = (DataContext<AdapterT::Vertex>, FieldValue)> + 'query> {
+) -> Box<dyn Iterator<Item = (DataContext<AdapterT::Vertex>, TaggedValue)> + 'query> {
     let vertex_id = context_field.vertex_id;
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
@@ -970,11 +722,18 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
                 &context_field.field_name,
                 &resolve_info,
             )
-            .map(|(mut context, value)| {
+            .map(move |(mut context, value)| {
+                let tagged_value = if context.vertices[&vertex_id].is_some() {
+                    TaggedValue::Some(value)
+                } else {
+                    // The value is coming from an @optional scope that didn't exist.
+                    TaggedValue::NonexistentOptional
+                };
+
                 // Make sure that the context has the same "current" token
                 // as before evaluating the context field.
                 let old_current_token = context.suspended_vertices.pop().unwrap();
-                (context.move_to_vertex(old_current_token), value)
+                (context.move_to_vertex(old_current_token), tagged_value)
             });
         carrier.query = Some(resolve_info.into_inner());
 
@@ -990,18 +749,44 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
     }
 }
 
-pub(super) fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
+pub(super) fn compute_fold_specific_field_with_separate_value<
+    'query,
+    Vertex: Clone + Debug + 'query,
+>(
     fold_eid: Eid,
     fold_specific_field: &FoldSpecificFieldKind,
     iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
+) -> ContextOutcomeIterator<'query, Vertex, TaggedValue> {
     match fold_specific_field {
-        FoldSpecificFieldKind::Count => Box::new(iterator.map(move |mut ctx| {
-            let value = ctx.folded_contexts[&fold_eid].len();
-            ctx.values.push(FieldValue::Uint64(value as u64));
-            ctx
+        FoldSpecificFieldKind::Count => Box::new(iterator.map(move |ctx| {
+            // TODO: Ensure output type inference handles this correctly too...
+            let folded_contexts = ctx.folded_contexts[&fold_eid].as_ref();
+            let value = match folded_contexts {
+                None => TaggedValue::NonexistentOptional,
+                Some(v) => TaggedValue::Some(FieldValue::Uint64(v.len() as u64)),
+            };
+            (ctx, value)
         })),
     }
+}
+
+pub(super) fn compute_local_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
+    adapter: &AdapterT,
+    carrier: &mut QueryCarrier,
+    component: &IRQueryComponent,
+    current_vid: Vid,
+    local_field: &LocalField,
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> ContextOutcomeIterator<'query, AdapterT::Vertex, FieldValue> {
+    let type_name = &component.vertices[&current_vid].type_name;
+    let query = carrier.query.take().expect("query was not returned");
+    let resolve_info = ResolveInfo::new(query, current_vid, true);
+
+    let context_and_value_iterator =
+        adapter.resolve_property(iterator, type_name, &local_field.field_name, &resolve_info);
+    carrier.query = Some(resolve_info.into_inner());
+
+    context_and_value_iterator
 }
 
 fn compute_local_field<'query, AdapterT: Adapter<'query>>(
@@ -1012,13 +797,14 @@ fn compute_local_field<'query, AdapterT: Adapter<'query>>(
     local_field: &LocalField,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
-    let type_name = &component.vertices[&current_vid].type_name;
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, current_vid, true);
-
-    let context_and_value_iterator =
-        adapter.resolve_property(iterator, type_name, &local_field.field_name, &resolve_info);
-    carrier.query = Some(resolve_info.into_inner());
+    let context_and_value_iterator = compute_local_field_with_separate_value(
+        adapter,
+        carrier,
+        component,
+        current_vid,
+        local_field,
+        iterator,
+    );
 
     Box::new(context_and_value_iterator.map(|(mut context, value)| {
         context.values.push(value);
@@ -1444,11 +1230,32 @@ mod tests {
     use crate::{
         interpreter::{error::QueryArgumentsError, InterpretedQuery},
         ir::{FieldValue, IndexedQuery},
-        util::TestIRQueryResult,
+        util::{TestIRQueryResult, TestInterpreterOutputData},
     };
 
+    #[parameterize("trustfall_core/test_data/tests/valid_queries")]
+    fn parameterized_output_metadata_tester(base: &Path, stem: &str) {
+        let mut input_path = PathBuf::from(base);
+        input_path.push(format!("{stem}.ir.ron"));
+
+        let input_data = fs::read_to_string(input_path).unwrap();
+        let test_query: TestIRQueryResult = ron::from_str(&input_data).unwrap();
+        let test_query = test_query.unwrap();
+
+        let mut check_path = PathBuf::from(base);
+        check_path.push(format!("{stem}.output.ron"));
+        let check_data = fs::read_to_string(check_path).unwrap();
+        let expected_output_data: TestInterpreterOutputData = ron::from_str(&check_data).unwrap();
+
+        let indexed_query: IndexedQuery = test_query
+            .ir_query
+            .try_into()
+            .expect("failed to create IndexedQuery");
+        assert_eq!(expected_output_data.outputs, indexed_query.outputs);
+    }
+
     #[parameterize("trustfall_core/test_data/tests/execution_errors")]
-    fn parameterizable_tester(base: &Path, stem: &str) {
+    fn parameterized_execution_error_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
         input_path.push(format!("{stem}.ir.ron"));
 
@@ -1485,9 +1292,9 @@ mod tests {
                 execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator,
                 ResolveEdgeInfo, ResolveInfo, VertexIterator,
             },
-            ir::{EdgeParameters, FieldValue},
+            ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
-            util::{TestIRQuery, TestInterpreterOutputTrace},
+            util::{TestIRQuery, TestInterpreterOutputData},
         };
 
         struct VariableChunkIterator<I: Iterator> {
@@ -1651,16 +1458,19 @@ mod tests {
                 .expect("failed to parse file")
                 .expect("Err result");
 
-            let trace_contents = std::fs::read_to_string(format!(
-                "test_data/tests/valid_queries/{file_stub}.trace.ron"
+            let output_contents = std::fs::read_to_string(format!(
+                "test_data/tests/valid_queries/{file_stub}.output.ron"
             ))
             .expect("failed to read file");
-            let trace_data: TestInterpreterOutputTrace<<NumbersAdapter as Adapter>::Vertex> =
-                ron::from_str(&trace_contents).expect("failed to parse file");
+            let output_data: TestInterpreterOutputData =
+                ron::from_str(&output_contents).expect("failed to parse file");
 
             let batch_sequences: VecDeque<u64> = batch_sequences.into_iter().collect();
 
-            let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
+            let indexed_query: Arc<IndexedQuery> =
+                Arc::new(input_data.ir_query.try_into().unwrap());
+            assert_eq!(&output_data.outputs, &indexed_query.outputs);
+
             let arguments = Arc::new(
                 input_data
                     .arguments
@@ -1676,7 +1486,7 @@ mod tests {
                 .unwrap()
                 .collect();
 
-            assert_eq!(trace_data.results, actual_results);
+            assert_eq!(output_data.results, actual_results);
         }
 
         /// Reentrancy crash when `@output` resolution eagerly pulls

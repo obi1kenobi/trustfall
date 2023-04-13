@@ -1,0 +1,81 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "next": Output(
+      name: "next",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "next": Int64(0),
+      "value": Int64(0),
+    },
+    {
+      "next": Int64(1),
+      "value": Int64(0),
+    },
+    {
+      "next": Int64(2),
+      "value": Int64(0),
+    },
+    {
+      "next": Int64(3),
+      "value": Int64(0),
+    },
+    {
+      "next": Int64(1),
+      "value": Int64(1),
+    },
+    {
+      "next": Int64(2),
+      "value": Int64(1),
+    },
+    {
+      "next": Int64(3),
+      "value": Int64(1),
+    },
+    {
+      "next": Int64(4),
+      "value": Int64(1),
+    },
+    {
+      "next": Int64(2),
+      "value": Int64(2),
+    },
+    {
+      "next": Int64(3),
+      "value": Int64(2),
+    },
+    {
+      "next": Int64(4),
+      "value": Int64(2),
+    },
+    {
+      "next": Int64(5),
+      "value": Int64(2),
+    },
+    {
+      "next": Int64(3),
+      "value": Int64(3),
+    },
+    {
+      "next": Int64(4),
+      "value": Int64(3),
+    },
+    {
+      "next": Int64(5),
+      "value": Int64(3),
+    },
+    {
+      "next": Int64(6),
+      "value": Int64(3),
+    },
+  ],
+)

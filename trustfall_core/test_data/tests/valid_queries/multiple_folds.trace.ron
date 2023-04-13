@@ -190,7 +190,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -211,7 +211,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "mult"): Some(Vec([
@@ -234,7 +234,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -255,7 +255,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "mult"): Some(Vec([
@@ -363,7 +363,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -384,8 +384,8 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
               ),
-            ],
-            Eid(2): [
+            ]),
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -398,7 +398,7 @@ TestInterpreterOutputTrace(
                   Vid(3): Some(Prime(PrimeNumber(2))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "mult"): Some(Vec([
@@ -425,7 +425,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -446,8 +446,8 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
               ),
-            ],
-            Eid(2): [
+            ]),
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -460,7 +460,7 @@ TestInterpreterOutputTrace(
                   Vid(3): Some(Prime(PrimeNumber(2))),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(1), "mult"): Some(Vec([
@@ -611,17 +611,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "div": List([
-        Int64(1),
-        Int64(2),
-      ]),
-      "mult": List([
-        Int64(4),
-        Int64(8),
-      ]),
-      "value": Int64(4),
-    },
-  ],
 )

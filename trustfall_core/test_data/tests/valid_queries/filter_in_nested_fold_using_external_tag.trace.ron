@@ -65,7 +65,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -82,7 +82,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ))),
       ),
@@ -120,7 +120,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -141,7 +141,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ))),
       ),
@@ -175,7 +175,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -192,7 +192,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ), String("four"))),
       ),
@@ -221,7 +221,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -238,7 +238,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ), String("eight"))),
       ),
@@ -289,7 +289,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -310,7 +310,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ), Int64(4))),
       ),
@@ -336,7 +336,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -357,7 +357,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ), Int64(8))),
       ),
@@ -419,7 +419,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -434,7 +434,7 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "name",
                     field_type: "String",
-                  )): String("two"),
+                  )): Some(String("two")),
                 },
               ),
               SerializableContext(
@@ -451,10 +451,10 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "name",
                     field_type: "String",
-                  )): String("two"),
+                  )): Some(String("two")),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(2), "second"): Some(Vec([
@@ -467,7 +467,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         )),
       ),
@@ -484,7 +484,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -499,7 +499,7 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "name",
                     field_type: "String",
-                  )): String("two"),
+                  )): Some(String("two")),
                 },
               ),
               SerializableContext(
@@ -516,10 +516,10 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "name",
                     field_type: "String",
-                  )): String("two"),
+                  )): Some(String("two")),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(2), "second"): Some(Vec([
@@ -532,7 +532,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "name",
               field_type: "String",
-            )): String("two"),
+            )): Some(String("two")),
           },
         ), Int64(4))),
       ),
@@ -690,17 +690,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "first": List([
-        Int64(4),
-      ]),
-      "second": List([
-        List([
-          Int64(4),
-          Int64(8),
-        ]),
-      ]),
-    },
-  ],
 )

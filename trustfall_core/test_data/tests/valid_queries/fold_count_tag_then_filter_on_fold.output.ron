@@ -1,0 +1,15 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "predecessorcount": Output(
+      name: "predecessorcount",
+      value_type: "Int!",
+      vid: Vid(3),
+    ),
+  },
+  results: [
+    {
+      "predecessorcount": Uint64(1),
+    },
+  ],
+)

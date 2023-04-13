@@ -1,0 +1,31 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "vowelsInName": Output(
+      name: "vowelsInName",
+      value_type: "[String]",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "value": Int64(8),
+      "vowelsInName": List([
+        String("e"),
+        String("i"),
+      ]),
+    },
+    {
+      "value": Int64(9),
+      "vowelsInName": List([
+        String("i"),
+        String("e"),
+      ]),
+    },
+  ],
+)

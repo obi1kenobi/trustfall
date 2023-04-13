@@ -59,6 +59,17 @@ pub trait Typename {
     fn typename(&self) -> &'static str;
 }
 
+/// A tagged value captured and imported from another query component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum TaggedValue {
+    /// This tagged value comes from an @optional scope that didn't exist.
+    /// All comparisons against it should succeed, per our spec.
+    NonexistentOptional,
+
+    /// This tagged value was resolved to the specified value.
+    Some(FieldValue),
+}
+
 /// A partial result of a Trustfall query within the interpreter defined in this module.
 #[derive(Debug, Clone)]
 pub struct DataContext<Vertex: Clone + Debug> {
@@ -66,10 +77,10 @@ pub struct DataContext<Vertex: Clone + Debug> {
     vertices: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
     suspended_vertices: Vec<Option<Vertex>>,
-    folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
+    folded_contexts: BTreeMap<Eid, Option<Vec<DataContext<Vertex>>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<Vertex>>>,
-    imported_tags: BTreeMap<FieldRef, FieldValue>,
+    imported_tags: BTreeMap<FieldRef, TaggedValue>,
 }
 
 impl<Vertex: Clone + Debug> DataContext<Vertex> {
@@ -130,7 +141,7 @@ where
     suspended_vertices: Vec<Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
+    folded_contexts: BTreeMap<Eid, Option<Vec<DataContext<Vertex>>>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
@@ -140,7 +151,7 @@ where
 
     /// Tagged values imported from an ancestor component of the one currently being evaluated.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    imported_tags: BTreeMap<FieldRef, FieldValue>,
+    imported_tags: BTreeMap<FieldRef, TaggedValue>,
 }
 
 impl<Vertex> From<SerializableContext<Vertex>> for DataContext<Vertex>

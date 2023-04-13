@@ -81,21 +81,21 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
           imported_tags: {
             FoldSpecificField(FoldSpecificField(
               fold_eid: Eid(1),
               fold_root_vid: Vid(2),
               kind: Count,
-            )): Uint64(1),
+            )): Some(Uint64(1)),
           },
         )),
       ),
@@ -108,21 +108,21 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
+            ]),
           },
           imported_tags: {
             FoldSpecificField(FoldSpecificField(
               fold_eid: Eid(1),
               fold_root_vid: Vid(2),
               kind: Count,
-            )): Uint64(1),
+            )): Some(Uint64(1)),
           },
         ))),
       ),
@@ -152,7 +152,7 @@ TestInterpreterOutputTrace(
               fold_eid: Eid(1),
               fold_root_vid: Vid(2),
               kind: Count,
-            )): Uint64(1),
+            )): Some(Uint64(1)),
           },
         )),
       ),
@@ -167,7 +167,7 @@ TestInterpreterOutputTrace(
               fold_eid: Eid(1),
               fold_root_vid: Vid(2),
               kind: Count,
-            )): Uint64(1),
+            )): Some(Uint64(1)),
           },
         ), Int64(1))),
       ),
@@ -200,15 +200,15 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
-            Eid(2): [
+            ]),
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -219,10 +219,10 @@ TestInterpreterOutputTrace(
                     fold_eid: Eid(1),
                     fold_root_vid: Vid(2),
                     kind: Count,
-                  )): Uint64(1),
+                  )): Some(Uint64(1)),
                 },
               ),
-            ],
+            ]),
           },
         )),
       ),
@@ -235,15 +235,15 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(3))),
                 vertices: {
                   Vid(2): Some(Prime(PrimeNumber(3))),
                 },
               ),
-            ],
-            Eid(2): [
+            ]),
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -254,10 +254,10 @@ TestInterpreterOutputTrace(
                     fold_eid: Eid(1),
                     fold_root_vid: Vid(2),
                     kind: Count,
-                  )): Uint64(1),
+                  )): Some(Uint64(1)),
                 },
               ),
-            ],
+            ]),
           },
         ), Int64(2))),
       ),
@@ -388,9 +388,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "value": Int64(2),
-    },
-  ],
 )

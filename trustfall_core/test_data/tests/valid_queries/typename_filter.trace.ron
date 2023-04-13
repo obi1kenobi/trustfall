@@ -178,9 +178,4 @@ TestInterpreterOutputTrace(
       "type": String("Prime"),
     },
   ),
-  results: [
-    {
-      "value": Int64(2),
-    },
-  ],
 )

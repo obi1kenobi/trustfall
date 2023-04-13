@@ -344,12 +344,4 @@ TestInterpreterOutputTrace(
       "bound": Int64(5),
     },
   ),
-  results: [
-    {
-      "name": List([
-        String("six"),
-        String("eight"),
-      ]),
-    },
-  ],
 )

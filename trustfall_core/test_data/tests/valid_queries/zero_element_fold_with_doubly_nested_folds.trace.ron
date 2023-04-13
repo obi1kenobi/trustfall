@@ -86,7 +86,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           folded_contexts: {
-            Eid(1): [],
+            Eid(1): Some([]),
           },
           folded_values: {
             (Eid(1), "predecessor"): Some(Vec([])),
@@ -106,7 +106,7 @@ TestInterpreterOutputTrace(
             Vid(1): Some(Neither(NeitherNumber(0))),
           },
           folded_contexts: {
-            Eid(1): [],
+            Eid(1): Some([]),
           },
           folded_values: {
             (Eid(1), "predecessor"): Some(Vec([])),
@@ -263,14 +263,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "next_successor_counts": List([]),
-      "next_successors": List([]),
-      "predecessor": List([]),
-      "successor_counts": List([]),
-      "successors": List([]),
-      "zero": Int64(0),
-    },
-  ],
 )

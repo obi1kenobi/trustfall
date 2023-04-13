@@ -289,10 +289,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "one": Int64(1),
-      "one2": Int64(1),
-    },
-  ],
 )

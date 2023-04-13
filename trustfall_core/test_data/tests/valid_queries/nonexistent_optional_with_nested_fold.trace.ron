@@ -101,11 +101,6 @@ TestInterpreterOutputTrace(
       ),
       Opid(16): TraceOp(
         opid: Opid(16),
-        parent_opid: Some(Opid(15)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(17): TraceOp(
-        opid: Opid(17),
         parent_opid: Some(Opid(4)),
         content: YieldInto(SerializableContext(
           active_vertex: None,
@@ -114,7 +109,7 @@ TestInterpreterOutputTrace(
             Vid(2): None,
           },
           folded_contexts: {
-            Eid(2): [],
+            Eid(2): None,
           },
           folded_values: {
             (Eid(2), "successor_counts"): None,
@@ -122,8 +117,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(18): TraceOp(
-        opid: Opid(18),
+      Opid(17): TraceOp(
+        opid: Opid(17),
         parent_opid: Some(Opid(4)),
         content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: None,
@@ -132,7 +127,7 @@ TestInterpreterOutputTrace(
             Vid(2): None,
           },
           folded_contexts: {
-            Eid(2): [],
+            Eid(2): None,
           },
           folded_values: {
             (Eid(2), "successor_counts"): None,
@@ -140,8 +135,8 @@ TestInterpreterOutputTrace(
           },
         ), Null)),
       ),
-      Opid(19): TraceOp(
-        opid: Opid(19),
+      Opid(18): TraceOp(
+        opid: Opid(18),
         parent_opid: Some(Opid(5)),
         content: YieldInto(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
@@ -153,7 +148,7 @@ TestInterpreterOutputTrace(
             Null,
           ],
           folded_contexts: {
-            Eid(2): [],
+            Eid(2): None,
           },
           folded_values: {
             (Eid(2), "successor_counts"): None,
@@ -161,8 +156,8 @@ TestInterpreterOutputTrace(
           },
         )),
       ),
-      Opid(20): TraceOp(
-        opid: Opid(20),
+      Opid(19): TraceOp(
+        opid: Opid(19),
         parent_opid: Some(Opid(5)),
         content: YieldFrom(ResolveProperty(SerializableContext(
           active_vertex: Some(Neither(NeitherNumber(0))),
@@ -174,7 +169,7 @@ TestInterpreterOutputTrace(
             Null,
           ],
           folded_contexts: {
-            Eid(2): [],
+            Eid(2): None,
           },
           folded_values: {
             (Eid(2), "successor_counts"): None,
@@ -182,8 +177,8 @@ TestInterpreterOutputTrace(
           },
         ), Int64(0))),
       ),
-      Opid(21): TraceOp(
-        opid: Opid(21),
+      Opid(20): TraceOp(
+        opid: Opid(20),
         parent_opid: None,
         content: ProduceQueryResult({
           "predecessor": Null,
@@ -192,68 +187,68 @@ TestInterpreterOutputTrace(
           "zero": Int64(0),
         }),
       ),
+      Opid(21): TraceOp(
+        opid: Opid(21),
+        parent_opid: Some(Opid(5)),
+        content: AdvanceInputIterator,
+      ),
       Opid(22): TraceOp(
         opid: Opid(22),
-        parent_opid: Some(Opid(5)),
+        parent_opid: Some(Opid(4)),
         content: AdvanceInputIterator,
       ),
       Opid(23): TraceOp(
         opid: Opid(23),
-        parent_opid: Some(Opid(4)),
+        parent_opid: Some(Opid(3)),
         content: AdvanceInputIterator,
       ),
       Opid(24): TraceOp(
         opid: Opid(24),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(2)),
         content: AdvanceInputIterator,
       ),
       Opid(25): TraceOp(
         opid: Opid(25),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
       ),
       Opid(26): TraceOp(
         opid: Opid(26),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
       ),
       Opid(27): TraceOp(
         opid: Opid(27),
         parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        content: OutputIteratorExhausted,
       ),
       Opid(28): TraceOp(
         opid: Opid(28),
-        parent_opid: Some(Opid(2)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
       ),
       Opid(29): TraceOp(
         opid: Opid(29),
         parent_opid: Some(Opid(3)),
-        content: InputIteratorExhausted,
+        content: OutputIteratorExhausted,
       ),
       Opid(30): TraceOp(
         opid: Opid(30),
-        parent_opid: Some(Opid(3)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(4)),
+        content: InputIteratorExhausted,
       ),
       Opid(31): TraceOp(
         opid: Opid(31),
         parent_opid: Some(Opid(4)),
-        content: InputIteratorExhausted,
+        content: OutputIteratorExhausted,
       ),
       Opid(32): TraceOp(
         opid: Opid(32),
-        parent_opid: Some(Opid(4)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(33): TraceOp(
-        opid: Opid(33),
         parent_opid: Some(Opid(5)),
         content: InputIteratorExhausted,
       ),
-      Opid(34): TraceOp(
-        opid: Opid(34),
+      Opid(33): TraceOp(
+        opid: Opid(33),
         parent_opid: Some(Opid(5)),
         content: OutputIteratorExhausted,
       ),
@@ -323,12 +318,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "predecessor": Null,
-      "successor_counts": Null,
-      "successors": Null,
-      "zero": Int64(0),
-    },
-  ],
 )

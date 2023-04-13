@@ -1,0 +1,46 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "factors": Output(
+      name: "factors",
+      value_type: "[Int]!",
+      vid: Vid(2),
+    ),
+    "primeFactorcount": Output(
+      name: "primeFactorcount",
+      value_type: "Int!",
+      vid: Vid(2),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "factors": List([
+        Int64(2),
+        Int64(7),
+      ]),
+      "primeFactorcount": Uint64(2),
+      "value": Int64(28),
+    },
+    {
+      "factors": List([
+        Int64(2),
+        Int64(3),
+        Int64(5),
+      ]),
+      "primeFactorcount": Uint64(3),
+      "value": Int64(30),
+    },
+    {
+      "factors": List([
+        Int64(2),
+      ]),
+      "primeFactorcount": Uint64(1),
+      "value": Int64(32),
+    },
+  ],
+)

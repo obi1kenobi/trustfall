@@ -12,8 +12,10 @@ for INPUT_FILE in "$@"; do
     PARSED_FILE="$DIR_NAME/$STUB_NAME.graphql-parsed.ron"
     IR_FILE="$DIR_NAME/$STUB_NAME.ir.ron"
     TRACE_FILE="$DIR_NAME/$STUB_NAME.trace.ron"
+    OUTPUTS_FILE="$DIR_NAME/$STUB_NAME.output.ron"
 
     cargo run parse "$INPUT_FILE" >"$PARSED_FILE"
     cargo run frontend "$PARSED_FILE" >"$IR_FILE"
+    cargo run outputs "$IR_FILE" >"$OUTPUTS_FILE"
     cargo run trace "$IR_FILE" >"$TRACE_FILE"
 done

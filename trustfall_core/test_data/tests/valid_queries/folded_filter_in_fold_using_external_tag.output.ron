@@ -1,0 +1,27 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "first": Output(
+      name: "first",
+      value_type: "[Int]!",
+      vid: Vid(2),
+    ),
+    "second": Output(
+      name: "second",
+      value_type: "[[Int]!]!",
+      vid: Vid(3),
+    ),
+  },
+  results: [
+    {
+      "first": List([
+        Int64(4),
+      ]),
+      "second": List([
+        List([
+          Int64(8),
+        ]),
+      ]),
+    },
+  ],
+)

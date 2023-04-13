@@ -143,7 +143,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -162,7 +162,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
         )),
       ),
@@ -183,7 +183,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Prime(PrimeNumber(2))),
                 vertices: {
@@ -202,7 +202,7 @@ TestInterpreterOutputTrace(
                   Vid(2): Some(Prime(PrimeNumber(5))),
                 },
               ),
-            ],
+            ]),
           },
         ), Int64(30))),
       ),
@@ -320,9 +320,4 @@ TestInterpreterOutputTrace(
       "min_primes": Uint64(2),
     },
   ),
-  results: [
-    {
-      "value": Int64(30),
-    },
-  ],
 )

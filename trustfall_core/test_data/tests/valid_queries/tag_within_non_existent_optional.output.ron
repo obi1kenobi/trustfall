@@ -1,0 +1,37 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "mult": Output(
+      name: "mult",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "start": Output(
+      name: "start",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "succ": Output(
+      name: "succ",
+      value_type: "Int",
+      vid: Vid(7),
+    ),
+  },
+  results: [
+    {
+      "mult": Int64(4),
+      "start": Int64(2),
+      "succ": Int64(3),
+    },
+    {
+      "mult": Int64(6),
+      "start": Int64(2),
+      "succ": Int64(3),
+    },
+    {
+      "mult": Int64(6),
+      "start": Int64(3),
+      "succ": Int64(4),
+    },
+  ],
+)

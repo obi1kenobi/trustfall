@@ -564,7 +564,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -575,7 +575,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -588,7 +588,7 @@ TestInterpreterOutputTrace(
                         Vid(3): Some(Prime(PrimeNumber(2))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
               SerializableContext(
@@ -601,7 +601,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -624,7 +624,7 @@ TestInterpreterOutputTrace(
                         ]))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
               SerializableContext(
@@ -637,7 +637,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -670,7 +670,7 @@ TestInterpreterOutputTrace(
                         ]))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
               SerializableContext(
@@ -683,7 +683,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -726,10 +726,10 @@ TestInterpreterOutputTrace(
                         ]))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
-            ],
+            ]),
           },
         )),
       ),
@@ -746,7 +746,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(1): [
+            Eid(1): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(4, [
                   2,
@@ -757,7 +757,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -770,7 +770,7 @@ TestInterpreterOutputTrace(
                         Vid(3): Some(Prime(PrimeNumber(2))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
               SerializableContext(
@@ -783,7 +783,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -806,7 +806,7 @@ TestInterpreterOutputTrace(
                         ]))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
               SerializableContext(
@@ -819,7 +819,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -852,7 +852,7 @@ TestInterpreterOutputTrace(
                         ]))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
               SerializableContext(
@@ -865,7 +865,7 @@ TestInterpreterOutputTrace(
                   ]))),
                 },
                 folded_contexts: {
-                  Eid(2): [
+                  Eid(2): Some([
                     SerializableContext(
                       active_vertex: Some(Neither(NeitherNumber(1))),
                       vertices: {
@@ -908,10 +908,10 @@ TestInterpreterOutputTrace(
                         ]))),
                       },
                     ),
-                  ],
+                  ]),
                 },
               ),
-            ],
+            ]),
           },
         ), Int64(64))),
       ),
@@ -1053,9 +1053,4 @@ TestInterpreterOutputTrace(
       "two": Uint64(2),
     },
   ),
-  results: [
-    {
-      "value": Int64(64),
-    },
-  ],
 )

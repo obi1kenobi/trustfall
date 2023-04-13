@@ -198,9 +198,4 @@ TestInterpreterOutputTrace(
       "num": Int64(9),
     },
   ),
-  results: [
-    {
-      "value": Int64(8),
-    },
-  ],
 )

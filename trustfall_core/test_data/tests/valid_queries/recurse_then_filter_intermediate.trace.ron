@@ -2106,15 +2106,4 @@ TestInterpreterOutputTrace(
       "bound": Int64(6),
     },
   ),
-  results: [
-    {
-      "value": Int64(6),
-    },
-    {
-      "value": Int64(6),
-    },
-    {
-      "value": Int64(6),
-    },
-  ],
 )

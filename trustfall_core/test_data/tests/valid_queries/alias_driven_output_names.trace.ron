@@ -218,10 +218,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "succ_value": Int64(1),
-      "zero": Int64(0),
-    },
-  ],
 )

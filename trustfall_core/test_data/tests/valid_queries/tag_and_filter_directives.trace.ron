@@ -1133,10 +1133,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "start": Int64(3),
-      "target": Int64(3),
-    },
-  ],
 )

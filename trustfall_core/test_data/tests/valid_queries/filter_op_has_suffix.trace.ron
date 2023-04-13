@@ -647,27 +647,4 @@ TestInterpreterOutputTrace(
       "suffix": String("teen"),
     },
   ),
-  results: [
-    {
-      "name": String("thirteen"),
-    },
-    {
-      "name": String("fourteen"),
-    },
-    {
-      "name": String("fifteen"),
-    },
-    {
-      "name": String("sixteen"),
-    },
-    {
-      "name": String("seventeen"),
-    },
-    {
-      "name": String("eighteen"),
-    },
-    {
-      "name": String("nineteen"),
-    },
-  ],
 )

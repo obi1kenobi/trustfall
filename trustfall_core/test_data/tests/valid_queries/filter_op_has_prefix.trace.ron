@@ -518,12 +518,4 @@ TestInterpreterOutputTrace(
       "prefix": String("four"),
     },
   ),
-  results: [
-    {
-      "name": String("four"),
-    },
-    {
-      "name": String("fourteen"),
-    },
-  ],
 )

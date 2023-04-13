@@ -178,12 +178,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "factor_count": Uint64(1),
-      "factor_numbers": List([
-        Int64(2),
-      ]),
-    },
-  ],
 )

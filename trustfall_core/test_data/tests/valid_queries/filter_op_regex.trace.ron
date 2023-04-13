@@ -345,12 +345,4 @@ TestInterpreterOutputTrace(
       "pattern": String("f.+teen"),
     },
   ),
-  results: [
-    {
-      "name": String("fourteen"),
-    },
-    {
-      "name": String("fifteen"),
-    },
-  ],
 )
