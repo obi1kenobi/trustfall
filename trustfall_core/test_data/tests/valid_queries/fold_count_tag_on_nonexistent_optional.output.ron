@@ -3,7 +3,7 @@ TestInterpreterOutputData(
   outputs: {
     "count": Output(
       name: "count",
-      value_type: "Int!",
+      value_type: "Int",
       vid: Vid(4),
     ),
     "start": Output(

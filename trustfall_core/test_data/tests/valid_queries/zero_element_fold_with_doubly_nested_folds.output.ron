@@ -3,7 +3,7 @@ TestInterpreterOutputData(
   outputs: {
     "next_successor_counts": Output(
       name: "next_successor_counts",
-      value_type: "Int!",
+      value_type: "[[Int!]!]!",
       vid: Vid(4),
     ),
     "next_successors": Output(
@@ -18,7 +18,7 @@ TestInterpreterOutputData(
     ),
     "successor_counts": Output(
       name: "successor_counts",
-      value_type: "Int!",
+      value_type: "[Int!]!",
       vid: Vid(3),
     ),
     "successors": Output(
