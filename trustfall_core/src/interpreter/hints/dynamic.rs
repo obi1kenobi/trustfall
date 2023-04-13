@@ -92,6 +92,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 }
             }
             FieldRef::FoldSpecificField(fold_field) => {
+                // TODO cover this with tests
                 if fold_field.fold_root_vid < self.resolve_on_component.root {
                     // We're inside at least one level of `@fold` relative to
                     // the origin of this tag.
