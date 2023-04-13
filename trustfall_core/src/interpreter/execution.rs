@@ -392,27 +392,17 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             FieldRef::FoldSpecificField(fold_specific_field) => {
                 let cloned_field = imported_field.clone();
                 let fold_eid = fold_specific_field.fold_eid;
-                iterator =
-                    Box::new(
-                        compute_fold_specific_field(
-                            fold_specific_field.fold_eid,
-                            &fold_specific_field.kind,
-                            iterator,
-                        )
-                        .map(move |mut ctx| {
-                            // TODO: Check whether the tagged value is coming from an `@optional` scope
-                            //       that did not exist, in order to satisfy its filtering semantics.
-                            //       Right now this will produce wrong results on tagged
-                            //       specific fields inside an `@optional` scope that doesn't exist.
-                            ctx.imported_tags.insert(
-                                cloned_field.clone(),
-                                TaggedValue::Some(ctx.values.pop().expect(
-                                    "fold-specific field computed and pushed onto the stack",
-                                )),
-                            );
-                            ctx
-                        }),
-                    );
+                iterator = Box::new(
+                    compute_fold_specific_field_with_separate_value(
+                        fold_specific_field.fold_eid,
+                        &fold_specific_field.kind,
+                        iterator,
+                    )
+                    .map(move |(mut ctx, tagged_value)| {
+                        ctx.imported_tags.insert(cloned_field.clone(), tagged_value);
+                        ctx
+                    }),
+                );
             }
         }
     }
@@ -459,13 +449,17 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             neighbor_contexts,
         );
 
-        let fold_elements = match collect_fold_elements(computed_iterator, &max_fold_size) {
-            None => {
-                // We were able to discard this fold early.
-                return None;
-            }
-            Some(f) => f,
+        // Check whether this @fold is inside an @optional that doesn't exist.
+        // This is not the same as having *zero* elements: nonexistent != empty.
+        let fold_exists = context.vertices[&expanding_from_vid].is_some();
+        let fold_elements = if fold_exists {
+            // N.B.: Note the `?` at the end here!
+            //       This lets us early-discard folds that failed a post-processing filter.
+            Some(collect_fold_elements(computed_iterator, &max_fold_size)?)
+        } else {
+            None
         };
+
         context
             .folded_contexts
             .insert_or_error(fold_eid, fold_elements)
@@ -502,35 +496,39 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let mut cloned_carrier = carrier.clone();
     let fold_component = fold.component.clone();
     let final_iterator = post_filtered_iterator.map(move |mut ctx| {
-        // If the @fold is inside an @optional that doesn't exist,
-        // its outputs should be `null` rather than empty lists (the usual for empty folds).
-        // Transformed outputs should also be `null` rather than their usual transformed defaults.
-        let did_fold_root_exist = ctx.vertices[&expanding_from_vid].is_some();
-        let default_value = if did_fold_root_exist {
-            Some(ValueOrVec::Vec(vec![]))
-        } else {
-            None
-        };
-
-        let fold_elements = ctx.folded_contexts.get(&fold_eid).unwrap();
+        let fold_elements = &ctx.folded_contexts[&fold_eid];
+        debug_assert_eq!(
+            // Two ways to check if the `@fold` is inside an `@optional` that didn't exist:
+            ctx.vertices[&expanding_from_vid].is_some(),
+            fold_elements.is_some(),
+            "\
+mismatch on whether the fold below {expanding_from_vid:?} was inside an `@optional`: {ctx:?}",
+        );
 
         // Add any fold-specific field outputs to the context's folded values.
         for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
-            let value = match fold_specific_field {
-                FoldSpecificFieldKind::Count => {
-                    ValueOrVec::Value(FieldValue::Uint64(fold_elements.len() as u64))
-                }
-            };
+            // If the @fold is inside an @optional that doesn't exist,
+            // its outputs should be `null` rather than empty lists (the usual for empty folds).
+            // Transformed outputs should also be `null` rather than their usual transformed defaults.
+            let value = fold_elements
+                .as_ref()
+                .map(|elements| match fold_specific_field {
+                    FoldSpecificFieldKind::Count => {
+                        ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+                    }
+                });
             ctx.folded_values
-                .insert_or_error(
-                    (fold_eid, output_name.clone()),
-                    did_fold_root_exist.then_some(value),
-                )
-                .unwrap();
+                .insert_or_error((fold_eid, output_name.clone()), value)
+                .expect("this fold output was already computed");
         }
 
         // Prepare empty vectors for all the outputs from this @fold component.
         // If the fold-root vertex didn't exist, the default is `null` instead.
+        let default_value = if fold_elements.is_some() {
+            Some(ValueOrVec::Vec(vec![]))
+        } else {
+            None
+        };
         let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), default_value.clone()))
@@ -538,9 +536,14 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
         // Skip the adapter resolve_property() calls and add the empty output values directly.
-        if fold_elements.is_empty() {
+        let fold_contains_elements = fold_elements
+            .as_ref()
+            .map(|e| !e.is_empty())
+            .unwrap_or(false);
+        if !fold_contains_elements {
             // We need to make sure any outputs from any nested @fold components (recursively)
-            // are set to empty lists.
+            // are set to the default value (empty list if the @fold existed and was empty,
+            // null if it didn't exist because it was inside an @optional).
             let mut queue: Vec<_> = fold_component.folds.values().collect();
             while let Some(inner_fold) = queue.pop() {
                 for output in inner_fold.fold_specific_outputs.keys() {
@@ -553,9 +556,17 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             }
         } else {
             // Iterate through the elements of the fold and get the values we need.
-            let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> =
-                Box::new(fold_elements.clone().into_iter());
+            let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> = Box::new(
+                fold_elements
+                    .as_ref()
+                    .expect("fold did not contain elements")
+                    .clone()
+                    .into_iter(),
+            );
             for output_name in output_names.iter() {
+                // This is a slimmed-down version of computing a context field:
+                // - it does not restore the prior active vertex after getting each value
+                // - it already knows that the context field is guaranteed to exist
                 let context_field = &fold.component.outputs[output_name.as_ref()];
                 let vertex_id = context_field.vertex_id;
                 let moved_iterator = Box::new(output_iterator.map(move |context| {
@@ -662,7 +673,16 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let fold_specific_field = filter.left();
-    let field_iterator = compute_fold_specific_field(fold.eid, fold_specific_field, iterator);
+    let field_iterator = Box::new(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
+        let value = match tagged_value {
+            TaggedValue::Some(value) => value,
+            TaggedValue::NonexistentOptional => {
+                unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+            }
+        };
+        ctx.values.push(value);
+        ctx
+    }));
 
     apply_filter(
         adapter,
@@ -729,24 +749,6 @@ pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapte
     }
 }
 
-pub(super) fn compute_fold_specific_field<'query, Vertex: Clone + Debug + 'query>(
-    fold_eid: Eid,
-    fold_specific_field: &FoldSpecificFieldKind,
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
-    // TODO: this is broken, an `@output` on a fold-specific field (like Count)
-    //       that is inside a non-existent @optional produces `null` not 0.
-    //       Ensure output type inference handles this correctly too...
-    // TODO: use the compute_fold_specific_field_with_separate_value() fn here instead
-    match fold_specific_field {
-        FoldSpecificFieldKind::Count => Box::new(iterator.map(move |mut ctx| {
-            let value = ctx.folded_contexts[&fold_eid].len();
-            ctx.values.push(FieldValue::Uint64(value as u64));
-            ctx
-        })),
-    }
-}
-
 pub(super) fn compute_fold_specific_field_with_separate_value<
     'query,
     Vertex: Clone + Debug + 'query,
@@ -757,11 +759,13 @@ pub(super) fn compute_fold_specific_field_with_separate_value<
 ) -> ContextOutcomeIterator<'query, Vertex, TaggedValue> {
     match fold_specific_field {
         FoldSpecificFieldKind::Count => Box::new(iterator.map(move |ctx| {
-            // TODO: this is broken, an `@output` on a fold-specific field (like Count)
-            //       that is inside a non-existent @optional produces `null` not 0.
-            //       Ensure output type inference handles this correctly too...
-            let value = ctx.folded_contexts[&fold_eid].len();
-            (ctx, TaggedValue::Some(FieldValue::Uint64(value as u64)))
+            // TODO: Ensure output type inference handles this correctly too...
+            let folded_contexts = ctx.folded_contexts[&fold_eid].as_ref();
+            let value = match folded_contexts {
+                None => TaggedValue::NonexistentOptional,
+                Some(v) => TaggedValue::Some(FieldValue::Uint64(v.len() as u64)),
+            };
+            (ctx, value)
         })),
     }
 }

@@ -381,7 +381,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(8, [
                   2,
@@ -399,7 +399,7 @@ TestInterpreterOutputTrace(
                   )): Some(String("four")),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(2), "second"): Some(Vec([
@@ -421,7 +421,7 @@ TestInterpreterOutputTrace(
             ]))),
           },
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Composite(CompositeNumber(8, [
                   2,
@@ -439,7 +439,7 @@ TestInterpreterOutputTrace(
                   )): Some(String("four")),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(2), "second"): Some(Vec([
