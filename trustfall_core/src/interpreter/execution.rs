@@ -1247,7 +1247,10 @@ mod tests {
         let check_data = fs::read_to_string(check_path).unwrap();
         let expected_output_data: TestInterpreterOutputData = ron::from_str(&check_data).unwrap();
 
-        let indexed_query: IndexedQuery = test_query.ir_query.try_into().expect("failed to create IndexedQuery");
+        let indexed_query: IndexedQuery = test_query
+            .ir_query
+            .try_into()
+            .expect("failed to create IndexedQuery");
         assert_eq!(expected_output_data.outputs, indexed_query.outputs);
     }
 
