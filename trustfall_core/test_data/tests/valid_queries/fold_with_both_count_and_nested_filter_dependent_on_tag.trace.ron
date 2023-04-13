@@ -123,7 +123,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
-            )): Int64(1),
+            )): Some(Int64(1)),
           },
         )),
       ),
@@ -141,7 +141,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
-            )): Int64(1),
+            )): Some(Int64(1)),
           },
         ))),
       ),
@@ -171,7 +171,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
-            )): Int64(1),
+            )): Some(Int64(1)),
           },
         )),
       ),
@@ -186,7 +186,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
-            )): Int64(1),
+            )): Some(Int64(1)),
           },
         ), Int64(1))),
       ),
@@ -226,7 +226,7 @@ TestInterpreterOutputTrace(
             Some(Prime(PrimeNumber(2))),
           ],
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -237,10 +237,10 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "value",
                     field_type: "Int",
-                  )): Int64(1),
+                  )): Some(Int64(1)),
                 },
               ),
-            ],
+            ]),
           },
         )),
       ),
@@ -260,7 +260,7 @@ TestInterpreterOutputTrace(
             Some(Prime(PrimeNumber(2))),
           ],
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -271,10 +271,10 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "value",
                     field_type: "Int",
-                  )): Int64(1),
+                  )): Some(Int64(1)),
                 },
               ),
-            ],
+            ]),
           },
         ), Int64(1))),
       ),
@@ -301,7 +301,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
-            )): Int64(1),
+            )): Some(Int64(1)),
           },
         )),
       ),
@@ -318,7 +318,7 @@ TestInterpreterOutputTrace(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
-            )): Int64(1),
+            )): Some(Int64(1)),
           },
         ), Int64(1))),
       ),
@@ -347,7 +347,7 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -358,10 +358,10 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "value",
                     field_type: "Int",
-                  )): Int64(1),
+                  )): Some(Int64(1)),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(2), "inner"): Some(Vec([
@@ -380,7 +380,7 @@ TestInterpreterOutputTrace(
             Vid(2): Some(Prime(PrimeNumber(2))),
           },
           folded_contexts: {
-            Eid(2): [
+            Eid(2): Some([
               SerializableContext(
                 active_vertex: Some(Neither(NeitherNumber(1))),
                 vertices: {
@@ -391,10 +391,10 @@ TestInterpreterOutputTrace(
                     vertex_id: Vid(1),
                     field_name: "value",
                     field_type: "Int",
-                  )): Int64(1),
+                  )): Some(Int64(1)),
                 },
               ),
-            ],
+            ]),
           },
           folded_values: {
             (Eid(2), "inner"): Some(Vec([
@@ -579,12 +579,4 @@ TestInterpreterOutputTrace(
       ),
     ),
   ),
-  results: [
-    {
-      "inner": List([
-        Int64(1),
-      ]),
-      "value": Int64(1),
-    },
-  ],
 )

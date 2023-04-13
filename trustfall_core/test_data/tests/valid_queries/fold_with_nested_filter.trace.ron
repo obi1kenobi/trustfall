@@ -289,11 +289,4 @@ TestInterpreterOutputTrace(
       "one": Int64(1),
     },
   ),
-  results: [
-    {
-      "value": List([
-        Int64(1),
-      ]),
-    },
-  ],
 )
