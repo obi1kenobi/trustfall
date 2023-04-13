@@ -77,7 +77,7 @@ pub struct DataContext<Vertex: Clone + Debug> {
     vertices: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
     suspended_vertices: Vec<Option<Vertex>>,
-    folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
+    folded_contexts: BTreeMap<Eid, Option<Vec<DataContext<Vertex>>>>,
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
     piggyback: Option<Vec<DataContext<Vertex>>>,
     imported_tags: BTreeMap<FieldRef, TaggedValue>,
@@ -141,7 +141,7 @@ where
     suspended_vertices: Vec<Option<Vertex>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    folded_contexts: BTreeMap<Eid, Vec<DataContext<Vertex>>>,
+    folded_contexts: BTreeMap<Eid, Option<Vec<DataContext<Vertex>>>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,

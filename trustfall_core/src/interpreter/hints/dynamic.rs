@@ -5,7 +5,8 @@ use async_graphql_parser::types::Type;
 use crate::{
     interpreter::{
         execution::{
-            compute_context_field_with_separate_value, compute_fold_specific_field, QueryCarrier,
+            compute_context_field_with_separate_value,
+            compute_fold_specific_field_with_separate_value, QueryCarrier,
         },
         hints::Range,
         Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
@@ -42,12 +43,14 @@ macro_rules! compute_candidate_from_tagged_value {
     };
 }
 
-macro_rules! resolve_fold_field {
+macro_rules! resolve_fold_specific_field {
     ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
-        Box::new($iterator.map(move |mut ctx| {
-            let $value = ctx.values.pop().expect("no value in values() stack");
+        Box::new($iterator.map(move |(ctx, tagged_value)| {
             let mut $candidate = $initial_candidate.clone();
-            $blk(ctx, $candidate)
+            if let TaggedValue::Some($value) = tagged_value {
+                $blk
+            }
+            (ctx, $candidate)
         }))
     };
 }
@@ -165,22 +168,26 @@ impl<'a> DynamicallyResolvedValue<'a> {
         fold_field: &'a FoldSpecificField,
         contexts: ContextIterator<'vertex, VertexT>,
     ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
-        let iterator = compute_fold_specific_field(fold_field.fold_eid, &fold_field.kind, contexts);
+        let iterator = compute_fold_specific_field_with_separate_value(
+            fold_field.fold_eid,
+            &fold_field.kind,
+            contexts,
+        );
         let initial_candidate = self.initial_candidate;
 
         match &self.operation {
             Operation::Equals(_, _) => {
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     candidate.intersect(CandidateValue::Single(value));
                 })
             }
             Operation::NotEquals(_, _) => {
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     candidate.exclude_single_value(&value);
                 })
             }
             Operation::LessThan(_, _) => {
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Excluded(value),
                         false,
@@ -188,7 +195,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::LessThanOrEqual(_, _) => {
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Included(value),
                         false,
@@ -196,7 +203,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::GreaterThan(_, _) => {
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_start(
                         Bound::Excluded(value),
                         false,
@@ -204,7 +211,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 })
             }
             Operation::GreaterThanOrEqual(_, _) => {
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     candidate.intersect(CandidateValue::Range(Range::with_end(
                         Bound::Included(value),
                         false,
@@ -213,7 +220,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
             }
             Operation::OneOf(_, _) => {
                 let fold_field = fold_field.clone();
-                resolve_fold_field!(iterator, initial_candidate, candidate, value, {
+                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
                     let values = value
                         .as_slice()
                         .unwrap_or_else(|| {
