@@ -40,7 +40,7 @@ impl<T> CandidateValue<T> {
 }
 
 impl<T: Clone> CandidateValue<&T> {
-    pub(super) fn cloned(&self) -> CandidateValue<T> {
+    pub fn cloned(&self) -> CandidateValue<T> {
         match self {
             CandidateValue::Impossible => CandidateValue::Impossible,
             CandidateValue::Single(s) => CandidateValue::Single((*s).clone()),
@@ -229,7 +229,7 @@ impl NullableValue for &FieldValue {
 
 /// A range of values. Both its endpoints may be included or excluded in the range, or unbounded.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Range<T> {
     start: Bound<T>,
     end: Bound<T>,
@@ -237,7 +237,7 @@ pub struct Range<T> {
 }
 
 impl<T: Clone> Range<&T> {
-    pub(super) fn cloned(&self) -> Range<T> {
+    pub fn cloned(&self) -> Range<T> {
         let start = match self.start {
             Bound::Unbounded => Bound::Unbounded,
             Bound::Included(b) => Bound::Included(b.clone()),
