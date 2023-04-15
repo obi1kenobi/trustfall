@@ -18,7 +18,7 @@ pub use candidates::{CandidateValue, Range};
 pub use dynamic::DynamicallyResolvedValue;
 pub use vertex_info::VertexInfo;
 
-/// Information about the query being processed.
+/// Contains overall information about the query being executed, such as its outputs and variables.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QueryInfo<'a> {
@@ -37,15 +37,15 @@ impl<'a> QueryInfo<'a> {
         &self.query.indexed_query.outputs
     }
 
-    /// The arguments with which the query was executed.
+    /// The variables with which the query was executed.
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     #[inline]
-    pub fn arguments(&self) -> &Arc<BTreeMap<Arc<str>, FieldValue>> {
+    pub fn variables(&self) -> &Arc<BTreeMap<Arc<str>, FieldValue>> {
         &self.query.arguments
     }
 }
 
-/// Information about how vertex data is being resolved.
+/// Enables adapter optimizations by showing how a query uses a vertex. Implements [`VertexInfo`].
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolveInfo {
@@ -54,7 +54,7 @@ pub struct ResolveInfo {
     vertex_completed: bool,
 }
 
-/// Information about an edge is being resolved.
+/// Enables adapter optimizations by showing how a query uses a particular edge.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolveEdgeInfo {
@@ -291,6 +291,7 @@ impl ResolveEdgeInfo {
     }
 }
 
+/// Information about an edge that is being resolved as part of a query.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdgeInfo {
@@ -325,6 +326,7 @@ impl EdgeInfo {
     }
 }
 
+/// Information about a neighboring vertex. Implements [`VertexInfo`].
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NeighborInfo {

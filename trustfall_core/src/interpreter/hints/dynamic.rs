@@ -10,12 +10,129 @@ use crate::{
         },
         hints::Range,
         Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
+        VertexIterator,
     },
     ir::{ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation},
 };
 
 use super::CandidateValue;
 
+/// Indicates that a property's value is dependent on another value in the query.
+///
+/// If [`VertexInfo::dynamically_known_property()`](super::VertexInfo::dynamically_known_property)
+/// is able to determine a value for the specified property, it returns
+/// a [`DynamicallyResolvedValue`]. The specified property's value may be different
+/// in different query results, but the way in which it varies can be determined programmatically
+/// and can be resolved to a [`CandidateValue`] for each query result.
+///
+/// ## Example
+///
+/// The following query fetches emails where the sender also sent a copy of the email
+/// to their own address:
+/// ```graphql
+/// {
+///     Email {
+///         contents @output
+///
+///         sender {
+///             address @tag(name: "sender")
+///         }
+///         recipient {
+///             address @filter(op: "=", value: ["%sender"])
+///         }
+///     }
+/// }
+/// ```
+///
+/// Consider the process of resolving the `recipient` edge. To improve query runtime,
+/// our [`Adapter::resolve_neighbors()`] implementation may want to avoid loading _all_ recipients
+/// and instead attempt to only load the recipient that matches the sender's address.
+///
+/// However, as the sender's address varies from email to email, its value must be resolved
+/// dynamically, i.e. separately for each possible query result. Resolving the `recipient` edge
+/// might then look like this:
+/// ```rust
+/// # use std::sync::Arc;
+/// # use trustfall_core::{
+/// #     ir::{EdgeParameters, FieldValue},
+/// #     interpreter::{
+/// #         Adapter, CandidateValue, ContextIterator, ContextOutcomeIterator,
+/// #         ResolveEdgeInfo, ResolveInfo, VertexInfo, VertexIterator,
+/// #     },
+/// # };
+/// # #[derive(Debug, Clone)]
+/// # struct Vertex;
+/// # struct EmailAdapter;
+/// # impl<'a> Adapter<'a> for EmailAdapter {
+/// #     type Vertex = Vertex;
+/// #
+/// #     fn resolve_starting_vertices(
+/// #         &self,
+/// #         edge_name: &Arc<str>,
+/// #         parameters: &EdgeParameters,
+/// #         resolve_info: &ResolveInfo,
+/// #     ) -> VertexIterator<'a, Self::Vertex> { todo!() }
+/// #
+/// #     fn resolve_property(
+/// #         &self,
+/// #         contexts: ContextIterator<'a, Self::Vertex>,
+/// #         type_name: &Arc<str>,
+/// #         property_name: &Arc<str>,
+/// #         resolve_info: &ResolveInfo,
+/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> { todo!() }
+/// #
+/// #     fn resolve_neighbors(
+/// #         &self,
+/// #         contexts: ContextIterator<'a, Self::Vertex>,
+/// #         type_name: &Arc<str>,
+/// #         edge_name: &Arc<str>,
+/// #         parameters: &EdgeParameters,
+/// #         resolve_info: &ResolveEdgeInfo,
+/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> { todo!() }
+/// #
+/// #     fn resolve_coercion(
+/// #         &self,
+/// #         contexts: ContextIterator<'a, Self::Vertex>,
+/// #         type_name: &Arc<str>,
+/// #         coerce_to_type: &Arc<str>,
+/// #         resolve_info: &ResolveInfo,
+/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> { todo!() }
+/// # }
+/// #
+/// # fn resolve_recipient_from_candidate_value<'a>(
+/// #     vertex: &Vertex,
+/// #     candidate: CandidateValue<FieldValue>
+/// # ) -> VertexIterator<'a, Vertex> {
+/// #     todo!()
+/// # }
+/// #
+/// # fn resolve_recipient_otherwise<'a>(
+/// #     contexts: ContextIterator<'a, Vertex>,
+/// # ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+/// #     todo!()
+/// # }
+/// #
+/// # impl EmailAdapter {
+/// // Inside our adapter implementation:
+/// // we use this method to resolve `recipient` edges.
+/// fn resolve_recipient_edge<'a>(
+///     &self,
+///     contexts: ContextIterator<'a, Vertex>,
+///     resolve_info: &ResolveEdgeInfo,
+/// ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+///     if let Some(dynamic_value) = resolve_info.destination().dynamically_known_property("address") {
+///         // The query is looking for a specific recipient's address,
+///         // so let's look it up directly.
+///         dynamic_value.resolve_with(self, contexts, |vertex, candidate| {
+///             resolve_recipient_from_candidate_value(vertex, candidate)
+///         })
+///     } else {
+///         // No specific recipient address, use the general-case edge resolver logic.
+///         resolve_recipient_otherwise(contexts)
+///     }
+/// }
+/// # }
+/// ```
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DynamicallyResolvedValue<'a> {
@@ -105,6 +222,30 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 }
             }
         }
+    }
+
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    pub fn resolve_with<'vertex, AdapterT: Adapter<'vertex>>(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
+        mut neighbor_resolver: impl FnMut(
+                &AdapterT::Vertex,
+                CandidateValue<FieldValue>,
+            ) -> VertexIterator<'vertex, AdapterT::Vertex>
+            + 'vertex,
+    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, VertexIterator<'vertex, AdapterT::Vertex>>
+    {
+        Box::new(
+            self.resolve(adapter, contexts)
+                .map(move |(ctx, candidate)| {
+                    let neighbors = match ctx.active_vertex.as_ref() {
+                        Some(vertex) => neighbor_resolver(vertex, candidate),
+                        None => Box::new(std::iter::empty()),
+                    };
+                    (ctx, neighbors)
+                }),
+        )
     }
 
     fn compute_candidate_from_tagged_value<'vertex, AdapterT: Adapter<'vertex>>(

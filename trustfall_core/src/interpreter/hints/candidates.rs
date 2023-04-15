@@ -20,6 +20,8 @@ pub enum CandidateValue<T> {
     Multiple(Vec<T>),
 
     /// A continuous range of values for this property could satisfy this query.
+    /// The endpoints of the range may be inclusive or exclusive, and
+    /// the range may include or exclude the `null` value.
     Range(Range<T>),
 
     /// We've detected no constraints on the value of this property.
@@ -40,6 +42,7 @@ impl<T> CandidateValue<T> {
 }
 
 impl<T: Clone> CandidateValue<&T> {
+    /// Converts from `CandidateValue<&T>` to `CandidateValue<T>`.
     pub fn cloned(&self) -> CandidateValue<T> {
         match self {
             CandidateValue::Impossible => CandidateValue::Impossible,
@@ -211,7 +214,9 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
     }
 }
 
+/// A way to check whether the value represents `null`.
 pub trait NullableValue {
+    /// Returns `true` if the value represents `null`.
     fn is_null(&self) -> bool;
 }
 
@@ -237,6 +242,7 @@ pub struct Range<T> {
 }
 
 impl<T: Clone> Range<&T> {
+    /// Converts from `Range<&T>` to `Range<T>`.
     pub fn cloned(&self) -> Range<T> {
         let start = match self.start {
             Bound::Unbounded => Bound::Unbounded,
@@ -408,21 +414,26 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
         self.null_included &= other.null_included;
     }
 
+    /// The range's start point. May include or exclude the value at the specified point.
     #[inline]
     pub fn start_bound(&self) -> Bound<&T> {
         self.start.as_ref()
     }
 
+    /// The range's end point. May include or exclude the value at the specified point.
     #[inline]
     pub fn end_bound(&self) -> Bound<&T> {
         self.end.as_ref()
     }
 
+    /// Whether the range includes the `null` value or not.
     #[inline]
     pub fn null_included(&self) -> bool {
         self.null_included
     }
 
+    /// A range is considered degenerate if it cannot contain any non-`null` values.
+    /// Degenerate ranges may still contain the `null` value.
     #[inline]
     pub fn degenerate(&self) -> bool {
         match (self.start_bound(), self.end_bound()) {
@@ -434,11 +445,13 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
         }
     }
 
+    /// Returns `true` if the range *only* contains the `null` value.
     #[inline]
     pub fn null_only(&self) -> bool {
         self.null_included && self.degenerate()
     }
 
+    /// Checks whether the specified value is part of the range.
     pub fn contains(&self, item: &T) -> bool {
         let is_null = item.is_null();
         if is_null {
