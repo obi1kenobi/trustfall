@@ -30,7 +30,7 @@ lazy_static! {
     pub(crate) static ref TYPENAME_META_FIELD_ARC: Arc<str> = Arc::from(TYPENAME_META_FIELD);
 }
 
-/// Vertex ID
+/// Unique vertex ID identifying a specific vertex in a Trustfall query
 #[doc(alias("vertex", "node"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Vid(pub(crate) NonZeroUsize);
@@ -41,7 +41,7 @@ impl Vid {
     }
 }
 
-/// Edge ID
+/// Unique edge ID identifying a specific edge in a Trustfall query
 #[doc(alias = "edge")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Eid(pub(crate) NonZeroUsize);
