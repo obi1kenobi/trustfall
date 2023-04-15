@@ -27,8 +27,8 @@ use super::CandidateValue;
 ///
 /// ## Example
 ///
-/// The following query fetches emails where the sender also sent a copy of the email
-/// to their own address:
+/// Consider the following query, which fetches emails where the sender also included
+/// their own address in the receipients:
 /// ```graphql
 /// {
 ///     Email {
@@ -44,9 +44,12 @@ use super::CandidateValue;
 /// }
 /// ```
 ///
-/// Consider the process of resolving the `recipient` edge. To improve query runtime,
-/// our [`Adapter::resolve_neighbors()`] implementation may want to avoid loading _all_ recipients
-/// and instead attempt to only load the recipient that matches the sender's address.
+/// A naïve implementation of resolving the `recipient` edge would resolve all recipients
+/// for each email and rely on Trustfall to filter out recipient addresses that don't match
+/// the sender's address. This implementation is valid, but can be made faster.
+///
+/// To improve performance, the implementation could avoid loading _all_ recipients and instead
+/// only load the recipient that matches the sender's address (if any).
 ///
 /// However, as the sender's address varies from email to email, its value must be resolved
 /// dynamically, i.e. separately for each possible query result. Resolving the `recipient` edge
@@ -71,7 +74,9 @@ use super::CandidateValue;
 /// #         edge_name: &Arc<str>,
 /// #         parameters: &EdgeParameters,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> VertexIterator<'a, Self::Vertex> { todo!() }
+/// #     ) -> VertexIterator<'a, Self::Vertex> {
+/// #         todo!()
+/// #     }
 /// #
 /// #     fn resolve_property(
 /// #         &self,
@@ -79,7 +84,9 @@ use super::CandidateValue;
 /// #         type_name: &Arc<str>,
 /// #         property_name: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> { todo!() }
+/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+/// #         todo!()
+/// #     }
 /// #
 /// #     fn resolve_neighbors(
 /// #         &self,
@@ -88,7 +95,9 @@ use super::CandidateValue;
 /// #         edge_name: &Arc<str>,
 /// #         parameters: &EdgeParameters,
 /// #         resolve_info: &ResolveEdgeInfo,
-/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> { todo!() }
+/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+/// #         todo!()
+/// #     }
 /// #
 /// #     fn resolve_coercion(
 /// #         &self,
@@ -96,7 +105,9 @@ use super::CandidateValue;
 /// #         type_name: &Arc<str>,
 /// #         coerce_to_type: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> { todo!() }
+/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+/// #         todo!()
+/// #     }
 /// # }
 /// #
 /// # fn resolve_recipient_from_candidate_value<'a>(

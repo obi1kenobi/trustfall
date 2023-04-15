@@ -415,8 +415,16 @@ fn validate_argument_type(
 
 /// Trustfall data providers implement this trait to enable querying their data sets.
 ///
-/// Simpler variants of this trait exist, at the expense of some flexibility.
-/// See [`BasicAdapter`](self::basic_adapter::BasicAdapter) for details.
+/// The most straightforward way to implement this trait is by implementing
+/// [`BasicAdapter`](self::basic_adapter::BasicAdapter) instead, which is a simpler version
+/// of this trait and is faster to implement.
+///
+/// Most often, it's best to first implement [`BasicAdapter`](self::basic_adapter::BasicAdapter) and
+/// only convert to a direct implementation of this trait if your use case absolutely demands it:
+/// - If you need optimizations like batching or caching, you can implement them within
+///   [`BasicAdapter`](self::basic_adapter::BasicAdapter) as well.
+/// - If you need more advanced optimizations such as predicate pushdown, or need to access
+///   Trustfall's static analysis capabilities, implement this trait directly instead.
 pub trait Adapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
     /// It's frequently a good idea to use an Rc<...> type for cheaper cloning here.

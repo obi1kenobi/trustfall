@@ -41,9 +41,11 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// the tagged property has already been computed in this query, this method will offer
     /// to dynamically resolve the tagged value.
     ///
-    /// Candidate values produced via this method already reflect all statically-known information
-    /// about the property. Calling [`VertexInfo::statically_known_property()`] in addition
-    /// to this method is not necessary.
+    /// If *only* static information and no dynamic information is known about a property's value,
+    /// this method will return `None` in order to avoid unnecessary cloning.
+    ///
+    /// If *both* static and dynamic information is known about a property's value, all information
+    /// will be merged automatically and presented via the output of this method.
     fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
 
     /// Returns info for the first not-yet-resolved edge by the given name that is *mandatory*:
