@@ -178,7 +178,15 @@ impl FieldValue {
         }
     }
 
+    #[deprecated(since = "0.4.0", note = "renamed to `as_vec_with()`")]
     pub fn as_vec<'a, T>(&'a self, inner: impl Fn(&'a FieldValue) -> Option<T>) -> Option<Vec<T>> {
+        self.as_vec_with(inner)
+    }
+
+    pub fn as_vec_with<'a, T>(
+        &'a self,
+        inner: impl Fn(&'a FieldValue) -> Option<T>,
+    ) -> Option<Vec<T>> {
         match self {
             FieldValue::List(l) => {
                 let maybe_vec: Option<Vec<T>> = l.iter().map(inner).collect();

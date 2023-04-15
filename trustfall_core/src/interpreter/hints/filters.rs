@@ -49,7 +49,7 @@ pub(super) fn candidate_from_statically_evaluated_filters<'a, 'b, T: Debug + Clo
             Operation::OneOf(_, Argument::Variable(var)) => {
                 itertools::Either::Left(CandidateValue::Multiple(
                     query_variables[var.variable_name.as_ref()]
-                        .as_vec(Option::Some)
+                        .as_vec_with(Option::Some)
                         .expect("query variable was not list-typed"),
                 ))
             }
