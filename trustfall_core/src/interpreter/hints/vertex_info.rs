@@ -46,7 +46,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// to this method is not necessary.
     fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
 
-    /// Returns info for the first edge by the given name that is *mandatory*:
+    /// Returns info for the first not-yet-resolved edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
     ///
     /// Edges marked `@optional`, `@fold`, or `@recurse` are not mandatory:
@@ -54,16 +54,14 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// - `@fold` edges that don't exist produce empty aggregations.
     /// - `@recurse` always starts at depth 0 (i.e. returning the *current* vertex),
     ///   so the edge is not required to exist.
-    ///
-    /// Just a convenience wrapper over [`VertexInfo::edges_with_name()`].
     fn first_mandatory_edge(&self, name: &str) -> Option<EdgeInfo>;
 
-    /// Returns info for the first edge by the given name.
+    /// Returns info for the first not-yet-resolved edge by the given name.
     ///
     /// Just a convenience wrapper over [`VertexInfo::edges_with_name()`].
     fn first_edge(&self, name: &str) -> Option<EdgeInfo>;
 
-    /// Returns an iterator of all the edges by that name being resolved from this vertex.
+    /// Returns an iterator of all not-yet-resolved edges by that name originating from this vertex.
     ///
     /// This is the building block of [`VertexInfo::first_edge()`] and
     /// [`VertexInfo::first_mandatory_edge()`].
