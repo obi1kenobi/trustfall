@@ -19,7 +19,7 @@ use super::CandidateValue;
 
 /// Indicates that a property's value is dependent on another value in the query.
 ///
-/// If [`VertexInfo::dynamically_known_property()`](super::VertexInfo::dynamically_known_property)
+/// If [`VertexInfo::dynamically_required_property()`](super::VertexInfo::dynamically_required_property)
 /// is able to determine a value for the specified property, it returns
 /// a [`DynamicallyResolvedValue`]. The specified property's value may be different
 /// in different query results, but the way in which it varies can be determined programmatically
@@ -131,7 +131,7 @@ use super::CandidateValue;
 ///     contexts: ContextIterator<'a, Vertex>,
 ///     resolve_info: &ResolveEdgeInfo,
 /// ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-///     if let Some(dynamic_value) = resolve_info.destination().dynamically_known_property("address") {
+///     if let Some(dynamic_value) = resolve_info.destination().dynamically_required_property("address") {
 ///         // The query is looking for a specific recipient's address,
 ///         // so let's look it up directly.
 ///         dynamic_value.resolve_with(self, contexts, |vertex, candidate| {

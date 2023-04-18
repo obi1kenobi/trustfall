@@ -23,30 +23,40 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
 
-    /// Check whether the query demands this vertex property to be in a known set of values,
-    /// where this set is known *statically* i.e. up-front and without executing any of the query.
+    /// Check whether the query demands this vertex property to have specific values:
+    /// a single value, or one of a set or range of values. The candidate values
+    /// are known *statically*: up-front, without executing any of the query.
     ///
-    /// For example, filtering a property with a query argument like
-    /// `@filter(op: "=", value: ["$expected"])` means the filtered property will
-    /// need to match the value of the `expected` query variable.
-    fn statically_known_property(&self, name: &str) -> Option<CandidateValue<&FieldValue>>;
+    /// For example, filtering a property based on a query variable (e.g.
+    /// `@filter(op: "=", value: ["$expected"])`) means the filtered property will
+    /// need to match the value of the `expected` query variable. This variable's value is known
+    /// up-front at the beginning of query execution, so the filtered property has
+    /// a statically-required value.
+    ///
+    /// In contrast, filters relying the value of a `@tag` do not produce
+    /// statically-required values, since the `@tag` value must be computed at runtime.
+    /// For this case, see the [`VertexInfo::dynamically_required_property()`] method.
+    fn statically_required_property(&self, name: &str) -> Option<CandidateValue<&FieldValue>>;
 
-    /// Check whether the query demands this vertex property to be in a known set of values,
-    /// where this set is known *dynamically* i.e. requires some of the query
+    /// Check whether the query demands this vertex property to have specific values:
+    /// a single value, or one of a set or range of values. The candidate values
+    /// are only known *dynamically* i.e. require some of the query
     /// to have already been executed at the point when this method is called.
     ///
     /// For example, filtering a property with `@filter(op: "=", value: ["%expected"])`
     /// means the property must have a value equal to the value of an earlier property
     /// whose value is tagged like `@tag(name: "expected")`. If the vertex containing
-    /// the tagged property has already been computed in this query, this method will offer
-    /// to dynamically resolve the tagged value.
+    /// the tagged property has already been resolved in this query, this method will offer
+    /// to produce candidate values based on that tag's value.
     ///
     /// If *only* static information and no dynamic information is known about a property's value,
     /// this method will return `None` in order to avoid unnecessary cloning.
+    /// The [`VertexInfo::statically_required_property()`] method can be used to retrieve
+    /// the statically-known information about the property's value.
     ///
     /// If *both* static and dynamic information is known about a property's value, all information
     /// will be merged automatically and presented via the output of this method.
-    fn dynamically_known_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
+    fn dynamically_required_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
 
     /// Returns info for the first not-yet-resolved edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
@@ -65,10 +75,19 @@ pub trait VertexInfo: super::sealed::__Sealed {
 
     /// Returns an iterator of all not-yet-resolved edges by that name originating from this vertex.
     ///
-    /// This is the building block of [`VertexInfo::first_edge()`] and
-    /// [`VertexInfo::first_mandatory_edge()`].
-    /// When possible, prefer using those methods as they are much simpler to understand.
+    /// This is the building block of [`VertexInfo::first_edge()`].
+    /// When possible, prefer using that method as it will lead to more readable code.
     fn edges_with_name<'a>(&'a self, name: &'a str) -> Box<dyn Iterator<Item = EdgeInfo> + 'a>;
+
+    /// Returns an iterator of all not-yet-resolved edges by that name that are *mandatory*:
+    /// this vertex must contain the edge, or its result set will be discarded.
+    ///
+    /// This is the building block of [`VertexInfo::first_mandatory_edge()`].
+    /// When possible, prefer using that method as it will lead to more readable code.
+    fn mandatory_edges_with_name<'a>(
+        &'a self,
+        name: &'a str,
+    ) -> Box<dyn Iterator<Item = EdgeInfo> + 'a>;
 }
 
 pub(super) trait InternalVertexInfo: super::sealed::__Sealed {
@@ -113,7 +132,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         }
     }
 
-    fn statically_known_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
+    fn statically_required_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
         if self.non_binding_filters() {
             // This `VertexInfo` is in a place where the filters applied to fields
             // don't actually constrain their value in the usual way that lends itself
@@ -153,7 +172,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         candidate
     }
 
-    fn dynamically_known_property(&self, property: &str) -> Option<DynamicallyResolvedValue> {
+    fn dynamically_required_property(&self, property: &str) -> Option<DynamicallyResolvedValue> {
         if self.non_binding_filters() {
             // This `VertexInfo` is in a place where the filters applied to fields
             // don't actually constrain their value in the usual way that lends itself
@@ -202,7 +221,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let first_filter = relevant_filters.first()?;
 
         let initial_candidate = self
-            .statically_known_property(property)
+            .statically_required_property(property)
             .unwrap_or_else(|| {
                 if first_filter.left().field_type.nullable {
                     CandidateValue::All
@@ -281,13 +300,22 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         Box::new(non_folded_edges.chain(folded_edges))
     }
 
-    fn first_mandatory_edge(&self, name: &str) -> Option<EdgeInfo> {
+    fn mandatory_edges_with_name<'a>(
+        &'a self,
+        name: &'a str,
+    ) -> Box<dyn Iterator<Item = EdgeInfo> + 'a> {
         if self.non_binding_filters() {
-            None
+            Box::new(std::iter::empty())
         } else {
-            self.edges_with_name(name)
-                .find(|edge| !edge.folded && !edge.optional && edge.recursive.is_none())
+            Box::new(
+                self.edges_with_name(name)
+                    .filter(|edge| !edge.folded && !edge.optional && edge.recursive.is_none()),
+            )
         }
+    }
+
+    fn first_mandatory_edge(&self, name: &str) -> Option<EdgeInfo> {
+        self.mandatory_edges_with_name(name).next()
     }
 
     fn first_edge(&self, name: &str) -> Option<EdgeInfo> {
