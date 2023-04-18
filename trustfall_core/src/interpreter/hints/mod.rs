@@ -677,7 +677,10 @@ mod tests {
                     assert_eq!(second_edge.eid(), eid(2));
                     assert!(second_edge.parameters().is_empty());
 
-                    // The "first_*" methods produce the same outcome as the iterator-based method.
+                    let mandatory_edges: Vec<_> = info.mandatory_edges_with_name("successor").collect();
+                    assert_eq!(edges, mandatory_edges);
+
+                    // The "first_*" methods produce the same outcome as the iterator-based methods.
                     assert_eq!(first_edge, &info.first_edge("successor").unwrap());
                     assert_eq!(first_edge, &info.first_mandatory_edge("successor").unwrap());
 
@@ -1035,10 +1038,10 @@ mod tests {
                         assert!(info.coerced_to_type().is_none());
                         assert_eq!(vid(1), info.vid());
 
-                        assert_eq!(None, info.statically_known_property("name"));
+                        assert_eq!(None, info.statically_required_property("name"));
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(3))),
-                            info.statically_known_property("value"),
+                            info.statically_required_property("value"),
                         );
                     })),
                 }
@@ -1060,10 +1063,10 @@ mod tests {
                         assert!(info.coerced_to_type().is_none());
                         assert_eq!(vid(1), info.vid());
 
-                        assert_eq!(None, info.statically_known_property("value"));
+                        assert_eq!(None, info.statically_required_property("value"));
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::String("Prime".into()))),
-                            info.statically_known_property("__typename"),
+                            info.statically_required_property("__typename"),
                         );
                     })),
                 }
@@ -1090,7 +1093,7 @@ mod tests {
                                 &"fourteen".into(),
                                 &"fifteen".into(),
                             ])),
-                            info.statically_known_property("name"),
+                            info.statically_required_property("name"),
                         );
                     })),
                 }
@@ -1114,7 +1117,7 @@ mod tests {
 
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_end(Bound::Excluded(&FieldValue::Int64(9)), true))),
-                            info.statically_known_property("value"),
+                            info.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1137,7 +1140,7 @@ mod tests {
 
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_end(Bound::Included(&FieldValue::Int64(8)), true))),
-                            info.statically_known_property("value"),
+                            info.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1164,7 +1167,7 @@ mod tests {
                         assert_eq!(vid(2), neighbor.vid());
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(25)), true))),
-                            neighbor.statically_known_property("value"),
+                            neighbor.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1179,7 +1182,7 @@ mod tests {
                         assert_eq!(vid(2), neighbor.vid());
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(25)), true))),
-                            neighbor.statically_known_property("value"),
+                            neighbor.statically_required_property("value"),
                         );
                     }))
                 }.into(),
@@ -1207,7 +1210,7 @@ mod tests {
                         assert_eq!(vid(2), neighbor.vid());
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_start(Bound::Included(&FieldValue::Int64(24)), true))),
-                            neighbor.statically_known_property("value"),
+                            neighbor.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1222,7 +1225,7 @@ mod tests {
                         assert_eq!(vid(2), neighbor.vid());
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_start(Bound::Included(&FieldValue::Int64(24)), true))),
-                            neighbor.statically_known_property("value"),
+                            neighbor.statically_required_property("value"),
                         );
                     }))
                 }.into(),
@@ -1255,7 +1258,7 @@ mod tests {
                         // to all neighboring vertices.
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(6))),
-                            neighbor.statically_known_property("value"),
+                            neighbor.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1271,7 +1274,7 @@ mod tests {
                         // to all neighboring vertices.
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(6))),
-                            destination.statically_known_property("value"),
+                            destination.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1304,7 +1307,7 @@ mod tests {
                         //
                         // The "middle" vertices in the recursion are not required to satisfy
                         // the filter, and including the filter's value here would be a footgun.
-                        assert_eq!(None, neighbor.statically_known_property("value"));
+                        assert_eq!(None, neighbor.statically_required_property("value"));
                     })),
                 }.into(),
                 on_edge_resolver: btreemap! {
@@ -1319,7 +1322,7 @@ mod tests {
                         //
                         // The "middle" vertices in the recursion are not required to satisfy
                         // the filter, and including the filter's value here would be a footgun.
-                        assert_eq!(None, destination.statically_known_property("value"));
+                        assert_eq!(None, destination.statically_required_property("value"));
                     })),
                 }.into(),
                 ..Default::default()
@@ -1353,7 +1356,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, neighbor.statically_known_property("value"));
+                        assert_eq!(None, neighbor.statically_required_property("value"));
                     })),
                 }.into(),
                 on_edge_resolver: btreemap! {
@@ -1370,7 +1373,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, destination.statically_known_property("value"));
+                        assert_eq!(None, destination.statically_required_property("value"));
                     })),
                 }.into(),
                 ..Default::default()
@@ -1466,7 +1469,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                        assert_eq!(None, next_neighbor.statically_required_property("value"));
                     })),
                 }.into(),
                 on_edge_resolver: btreemap! {
@@ -1487,7 +1490,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                        assert_eq!(None, next_neighbor.statically_required_property("value"));
                     })),
                     eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                         let destination = info.destination();
@@ -1498,7 +1501,7 @@ mod tests {
                         // has already been resolved in a prior step.
                         assert_eq!(
                             Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(1)), true)),),
-                            destination.statically_known_property("value"),
+                            destination.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1534,7 +1537,7 @@ mod tests {
                         // can possibly cause the *currently-resolved edge* to be discarded.
                         //
                         // Including the filter's value here would be a footgun.
-                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                        assert_eq!(None, next_neighbor.statically_required_property("value"));
                     })),
                 }.into(),
                 on_edge_resolver: btreemap! {
@@ -1552,7 +1555,7 @@ mod tests {
                         // can possibly cause the *currently-resolved edge* to be discarded.
                         //
                         // Including the filter's value here would be a footgun.
-                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                        assert_eq!(None, next_neighbor.statically_required_property("value"));
                     })),
                     eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                         let destination = info.destination();
@@ -1563,7 +1566,7 @@ mod tests {
                         // affect which vertices this edge is resolved to.
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(1))),
-                            destination.statically_known_property("value"),
+                            destination.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1599,7 +1602,7 @@ mod tests {
                         // from the currently-resolved edge will be discarded.
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(1))),
-                            next_neighbor.statically_known_property("value"),
+                            next_neighbor.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1618,7 +1621,7 @@ mod tests {
                         // from the currently-resolved edge will be discarded.
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(1))),
-                            next_neighbor.statically_known_property("value"),
+                            next_neighbor.statically_required_property("value"),
                         );
                     })),
                     eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
@@ -1630,7 +1633,7 @@ mod tests {
                         // to the edge being resolved.
                         assert_eq!(
                             Some(CandidateValue::Single(&FieldValue::Int64(1))),
-                            destination.statically_known_property("value"),
+                            destination.statically_required_property("value"),
                         );
                     })),
                 }.into(),
@@ -1819,13 +1822,13 @@ mod tests {
                         assert_eq!(vid(1), info.vid());
 
                         // This property isn't known or needed at all.
-                        assert_eq!(None, info.dynamically_known_property("name"));
+                        assert_eq!(None, info.dynamically_required_property("name"));
 
                         let edge = info.first_edge("successor").expect("no 'successor' edge");
                         let destination = edge.destination();
                         // We haven't resolved Vid 1 yet, so this property
                         // isn't dynamically known yet.
-                        assert_eq!(None, destination.dynamically_known_property("value"));
+                        assert_eq!(None, destination.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -1842,7 +1845,7 @@ mod tests {
                             CandidateValue::Single(FieldValue::Int64(3)),
                             CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
                         ];
-                        let value_candidate = destination.dynamically_known_property("value");
+                        let value_candidate = destination.dynamically_required_property("value");
                         Box::new(value_candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -1882,7 +1885,7 @@ mod tests {
                         let destination = edge.destination();
                         // We haven't resolved Vid 1 yet, so this property
                         // isn't dynamically known yet.
-                        assert_eq!(None, destination.dynamically_known_property("value"));
+                        assert_eq!(None, destination.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -1903,7 +1906,7 @@ mod tests {
                             CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(4)), true)),
                             CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(5)), true)),
                         ];
-                        let value_candidate = destination.dynamically_known_property("value");
+                        let value_candidate = destination.dynamically_required_property("value");
                         Box::new(value_candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -1943,7 +1946,7 @@ mod tests {
                         let destination = edge.destination();
                         // We haven't resolved Vid 1 yet, so this property
                         // isn't dynamically known yet.
-                        assert_eq!(None, destination.dynamically_known_property("value"));
+                        assert_eq!(None, destination.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -1956,7 +1959,7 @@ mod tests {
 
                         let destination = info.destination();
 
-                        let value_candidate = destination.dynamically_known_property("value");
+                        let value_candidate = destination.dynamically_required_property("value");
                         assert_eq!(None, value_candidate);
                         ctxs
                     })),
@@ -1983,7 +1986,7 @@ mod tests {
                         let destination = edge.destination();
                         // We haven't resolved Vid 1 yet, so this property
                         // isn't dynamically known yet.
-                        assert_eq!(None, destination.dynamically_known_property("name"));
+                        assert_eq!(None, destination.dynamically_required_property("name"));
 
                         ctxs
                     })),
@@ -1999,7 +2002,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
                         ];
-                        let candidate = destination.dynamically_known_property("name");
+                        let candidate = destination.dynamically_required_property("name");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -2036,7 +2039,7 @@ mod tests {
                         let destination = edge.destination();
                         // We haven't resolved Vid 1 yet, so this property
                         // isn't dynamically known yet.
-                        assert_eq!(None, destination.dynamically_known_property("name"));
+                        assert_eq!(None, destination.dynamically_required_property("name"));
 
                         ctxs
                     })),
@@ -2056,7 +2059,7 @@ mod tests {
                         // For the purposes of *this* edge, the subsequent fold's values aren't yet
                         // dynamically known: no matter their value, they can't affect the vertices
                         // that this edge resolves to.
-                        assert_eq!(None, destination.dynamically_known_property("name"));
+                        assert_eq!(None, destination.dynamically_required_property("name"));
 
                         ctxs
                     })),
@@ -2070,7 +2073,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
                         ];
-                        let candidate = destination.dynamically_known_property("name");
+                        let candidate = destination.dynamically_required_property("name");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'name' property")
                             .resolve(adapter, ctxs)
@@ -2108,7 +2111,7 @@ mod tests {
                         let destination = edge.destination();
                         // We haven't resolved Vid 1 nor Vid 2 yet,
                         // so this property isn't dynamically known yet.
-                        assert_eq!(None, destination.dynamically_known_property("value"));
+                        assert_eq!(None, destination.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2124,7 +2127,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Single(FieldValue::Int64(1)),
                         ];
-                        let candidate = destination.dynamically_known_property("value");
+                        let candidate = destination.dynamically_required_property("value");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -2170,7 +2173,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2189,7 +2192,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, destination.dynamically_known_property("value"));
+                        assert_eq!(None, destination.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2228,7 +2231,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2251,7 +2254,7 @@ mod tests {
                         // In the absence of a way for the resolver to indicate
                         // "no matching edges existed, but some other edges were present"
                         // the safest thing to do is to return `None` here.
-                        assert_eq!(None, next_neighbor.statically_known_property("value"));
+                        assert_eq!(None, next_neighbor.statically_required_property("value"));
 
                         ctxs
                     })),
@@ -2265,7 +2268,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
                         ];
-                        let candidate = destination.dynamically_known_property("value");
+                        let candidate = destination.dynamically_required_property("value");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -2312,7 +2315,7 @@ mod tests {
                         // can possibly cause the *currently-resolved edge* to be discarded.
                         //
                         // Including the filter's value here would be a footgun.
-                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2332,7 +2335,7 @@ mod tests {
                         // can possibly cause the *currently-resolved edge* to be discarded.
                         //
                         // Including the filter's value here would be a footgun.
-                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2346,7 +2349,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Single(FieldValue::Int64(1)),
                         ];
-                        let candidate = destination.dynamically_known_property("value");
+                        let candidate = destination.dynamically_required_property("value");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -2389,7 +2392,7 @@ mod tests {
 
                         // This value is not yet dynamically known: Vid 1 hasn't been resolved yet,
                         // and the dynamic candidate value depends on Vid 1.
-                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2410,7 +2413,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Single(FieldValue::Int64(1)),
                         ];
-                        let candidate = next_neighbor.dynamically_known_property("value");
+                        let candidate = next_neighbor.dynamically_required_property("value");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -2434,7 +2437,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Single(FieldValue::Int64(1)),
                         ];
-                        let candidate = destination.dynamically_known_property("value");
+                        let candidate = destination.dynamically_required_property("value");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
@@ -2484,7 +2487,7 @@ mod tests {
 
                         // This value is not yet dynamically known: Vid 1 hasn't been resolved yet,
                         // and the dynamic candidate value depends on Vid 1.
-                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2518,7 +2521,7 @@ mod tests {
                         //
                         // TODO: consider making the hints analysis smarter here,
                         //       as described above
-                        assert_eq!(None, next_neighbor.dynamically_known_property("value"));
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
                         ctxs
                     })),
@@ -2532,7 +2535,7 @@ mod tests {
                         let expected_values = vec![
                             CandidateValue::Single(FieldValue::Int64(1)),
                         ];
-                        let candidate = destination.dynamically_known_property("value");
+                        let candidate = destination.dynamically_required_property("value");
                         Box::new(candidate
                             .expect("no dynamic candidate for 'value' property")
                             .resolve(adapter, ctxs)
