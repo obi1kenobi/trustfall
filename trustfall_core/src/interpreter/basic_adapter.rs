@@ -17,7 +17,7 @@ use super::{
 /// - Automatic handling of the `__typename` special property.
 ///
 /// The easiest way to implement this trait is with the `Vertex` associated type set
-/// to an enum that is [`#[derive(Debug, Clone, TrustfallEnumVertex)]`].
+/// to an enum that is `#[derive(Debug, Clone, TrustfallEnumVertex)]`.
 pub trait BasicAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
     /// It's frequently a good idea to use an Rc<...> type for cheaper cloning here.
