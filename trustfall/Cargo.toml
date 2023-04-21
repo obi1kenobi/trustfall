@@ -1,6 +1,6 @@
 [package]
 name = "trustfall"
-version = "0.4.0-beta.2"
+version = "0.4.0-beta.3"
 edition = "2021"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 anyhow = "1.0.69"
-trustfall_core = { version = "=0.4.0-beta.2", path = "../trustfall_core" }
+trustfall_core = { version = "=0.4.0-beta.3", path = "../trustfall_core" }
 trustfall_derive = { version = "=0.3.0", path = "../trustfall_derive" }
 
 [dev-dependencies]  # including examples dependencies
