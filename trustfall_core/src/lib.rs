@@ -14,7 +14,10 @@ pub mod graphql_query;
 pub mod interpreter;
 pub mod ir;
 pub mod schema;
+mod serialization;
 mod util;
+
+pub use serialization::TryIntoStruct;
 
 #[cfg(test)]
 mod numbers_interpreter;

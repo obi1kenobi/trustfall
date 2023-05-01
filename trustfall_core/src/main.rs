@@ -16,6 +16,7 @@ mod ir;
 mod nullables_interpreter;
 mod numbers_interpreter;
 mod schema;
+mod serialization;
 mod util;
 
 use std::{
