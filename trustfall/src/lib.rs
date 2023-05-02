@@ -62,6 +62,9 @@ pub use trustfall_core::ir::{FieldValue, TransparentValue};
 /// Trustfall query schema.
 pub use trustfall_core::schema::Schema;
 
+// Trait for converting query results into structs.
+pub use trustfall_core::TryIntoStruct;
+
 /// Run a Trustfall query over the data provider specified by the given schema and adapter.
 pub fn execute_query<'vertex>(
     schema: &Schema,
