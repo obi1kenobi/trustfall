@@ -49,7 +49,7 @@ pub enum FrontendError {
     )]
     ExplicitTagNameRequired(String),
 
-    #[error("Incompatible types encountered in @filter.")]
+    #[error("Incompatible types encountered in @filter: {0}")]
     FilterTypeError(#[from] FilterTypeError),
 
     #[error("Found an edge with an @output directive, this is not supported: {0}")]
