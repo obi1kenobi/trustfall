@@ -72,22 +72,24 @@ const _userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
 
 function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null {
   const itemMatch = url.match(_itemPattern);
+  let ret: any
   if (itemMatch) {
     // This is an item.
-    return materializeItem(fetchPort, parseInt(itemMatch[1]));
+    ret = materializeItem(fetchPort, parseInt(itemMatch[1]));
   } else {
     const userMatch = url.match(_userPattern);
     if (userMatch) {
       // This is a user.
-      return materializeUser(fetchPort, userMatch[1]);
+      ret = materializeUser(fetchPort, userMatch[1]);
     } else {
       // This is some other type of webpage that we don't have a more specific type for.
-      return {
-        __typename: 'Website',
-        url,
+      ret = {
+        __typename: 'Website'
       };
     }
   }
+  ret.url = url
+  return ret
 }
 
 function* linksInHnMarkup(fetchPort: MessagePort, hnText: string | null): IterableIterator<Vertex> {
