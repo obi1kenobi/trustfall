@@ -33,7 +33,7 @@
 //! More details on the role Trustfall plays in that use case are available in
 //! [this blog post](https://predr.ag/blog/speeding-up-rust-semver-checking-by-over-2000x/).
 
-use std::{collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
 /// Components needed to implement data providers.
 pub mod provider {
@@ -69,7 +69,7 @@ pub use trustfall_core::TryIntoStruct;
 /// Run a Trustfall query over the data provider specified by the given schema and adapter.
 pub fn execute_query<'vertex>(
     schema: &Schema,
-    adapter: Rc<impl provider::Adapter<'vertex> + 'vertex>,
+    adapter: Arc<impl provider::Adapter<'vertex> + 'vertex>,
     query: &str,
     variables: BTreeMap<impl Into<Arc<str>>, impl Into<FieldValue>>,
 ) -> anyhow::Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex>> {

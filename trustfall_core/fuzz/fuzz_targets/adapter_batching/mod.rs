@@ -6,7 +6,6 @@ use std::collections::{BTreeMap, VecDeque};
 use std::io::Cursor;
 use std::marker::PhantomData;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -269,7 +268,7 @@ impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
 }
 
 fn execute_query_with_fuzzed_batching(test_case: TestCase<'_>) {
-    let adapter = Rc::new(VariableBatchingAdapter::new(
+    let adapter = Arc::new(VariableBatchingAdapter::new(
         numbers_adapter::NumbersAdapter,
         test_case.cursor,
     ));
