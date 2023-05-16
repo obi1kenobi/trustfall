@@ -229,10 +229,10 @@ directive @transform(op: String!) on FIELD
 
     /// If the named type is defined, iterate through the names of its subtypes including itself.
     /// Otherwise, return None.
-    pub fn subtypes<'slf, 'a: 'slf>(
+    pub fn subtypes<'a, 'slf: 'a>(
         &'slf self,
         type_name: &'a str,
-    ) -> Option<impl Iterator<Item = &'slf str> + 'slf> {
+    ) -> Option<impl Iterator<Item = &'slf str> + 'a> {
         if !self.vertex_types.contains_key(type_name) {
             return None;
         }
