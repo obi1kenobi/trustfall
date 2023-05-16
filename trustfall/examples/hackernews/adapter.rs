@@ -5,18 +5,17 @@ use std::collections::HashSet;
 use hn_api::{types::Item, HnClient};
 use trustfall::{
     provider::{
-        field_property, resolve_coercion_with, resolve_neighbors_with, resolve_property_with,
-        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, VertexIterator,
+        field_property, resolve_coercion_using_schema, resolve_neighbors_with,
+        resolve_property_with, BasicAdapter, ContextIterator, ContextOutcomeIterator,
+        EdgeParameters, VertexIterator,
     },
-    FieldValue, Schema,
+    FieldValue,
 };
 
-use crate::vertex::Vertex;
+use crate::{vertex::Vertex, SCHEMA};
 
 lazy_static! {
     static ref CLIENT: HnClient = HnClient::init().expect("HnClient instantiated");
-    static ref SCHEMA: Schema =
-        Schema::parse(include_str!("hackernews.graphql")).expect("valid schema");
 }
 
 #[derive(Debug, Clone, Default)]
@@ -360,18 +359,9 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
     fn resolve_coercion(
         &self,
         contexts: ContextIterator<'static, Self::Vertex>,
-        type_name: &str,
+        _type_name: &str,
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
-        match (type_name, coerce_to_type) {
-            ("Item", "Job") => resolve_coercion_with(contexts, |v| v.as_job().is_some()),
-            ("Item", "Story") => resolve_coercion_with(contexts, |v| v.as_story().is_some()),
-            ("Item", "Comment") => resolve_coercion_with(contexts, |v| v.as_comment().is_some()),
-            ("Item", "Poll") => resolve_coercion_with(contexts, |v| v.as_poll().is_some()),
-            ("Item", "PollOption") => {
-                resolve_coercion_with(contexts, |v| v.as_poll_option().is_some())
-            }
-            _ => unreachable!(),
-        }
+        resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
     }
 }
