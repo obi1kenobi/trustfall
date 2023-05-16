@@ -1,6 +1,4 @@
-use std::{
-    cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, sync::Arc,
-};
+use std::{cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, sync::Arc};
 
 use super::{ResolveEdgeInfo, ResolveInfo};
 use crate::{
