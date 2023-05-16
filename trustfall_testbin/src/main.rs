@@ -1,23 +1,5 @@
 #![forbid(unsafe_code)]
 #![forbid(unused_lifetimes)]
-#![allow(clippy::result_large_err)] // TODO: clean this up repo-wide
-
-#[macro_use]
-extern crate maplit;
-
-#[macro_use]
-extern crate lazy_static;
-
-mod filesystem_interpreter;
-mod frontend;
-mod graphql_query;
-mod interpreter;
-mod ir;
-mod nullables_interpreter;
-mod numbers_interpreter;
-mod schema;
-mod serialization;
-mod util;
 
 use std::{
     cell::RefCell,
@@ -36,10 +18,10 @@ use async_graphql_parser::{parse_query, parse_schema};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use trustfall_core::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemVertex},
     graphql_query::error::ParseError,
-    graphql_query::query::parse_document,
+    graphql_query::parse_document,
     interpreter::error::QueryArgumentsError,
     interpreter::{
         execution,
@@ -47,29 +29,28 @@ use crate::{
         Adapter,
     },
     ir::{FieldValue, IndexedQuery},
-    nullables_interpreter::NullablesAdapter,
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
     schema::error::InvalidSchemaError,
     schema::Schema,
-    util::{
+    test_types::{
         TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputData,
         TestInterpreterOutputTrace, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult,
-    },
+    }
 };
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
     let schema_text =
-        fs::read_to_string(format!("test_data/schemas/{schema_name}.graphql",)).unwrap();
+        fs::read_to_string(format!("../trustfall_core/test_data/schemas/{schema_name}.graphql",)).unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
     Schema::new(schema_document).unwrap()
 }
 
 fn serialize_to_ron<S: Serialize>(s: &S) -> String {
     let mut buf = Vec::new();
-    let mut config = ron::ser::PrettyConfig::new();
+    let mut config = ron::ser::PrettyConfig::new().struct_names(true);
     config.new_line = "\n".to_string();
     config.indentor = "  ".to_string();
-    let mut serializer = ron::ser::Serializer::new(&mut buf, Some(config), true).unwrap();
+    let mut serializer = ron::ser::Serializer::new(&mut buf, Some(config)).unwrap();
 
     s.serialize(&mut serializer).unwrap();
     String::from_utf8(buf).unwrap()
@@ -100,7 +81,7 @@ fn frontend(path: &str) {
     let schema = get_schema_by_name(test_query.schema_name.as_str());
 
     let arguments = test_query.arguments;
-    let ir_query_result = frontend::make_ir_for_query(&schema, &test_query.query);
+    let ir_query_result = trustfall_core::frontend::make_ir_for_query(&schema, &test_query.query);
     let result: TestIRQueryResult = ir_query_result.map(move |ir_query| TestIRQuery {
         schema_name: test_query.schema_name,
         ir_query,
@@ -115,7 +96,7 @@ fn check_fuzzed(path: &str, schema_name: &str) {
 
     let query_string = fs::read_to_string(path).unwrap();
 
-    let query = match frontend::parse(&schema, query_string.as_str()) {
+    let query = match trustfall_core::frontend::parse(&schema, query_string.as_str()) {
         Ok(query) => query,
         Err(e) => {
             println!("{}", serialize_to_ron(&e));
@@ -183,10 +164,6 @@ fn outputs(path: &str) {
         }
         "numbers" => {
             let adapter = NumbersAdapter::new();
-            outputs_with_adapter(adapter, test_query);
-        }
-        "nullables" => {
-            let adapter = NullablesAdapter;
             outputs_with_adapter(adapter, test_query);
         }
         _ => unreachable!("Unknown schema name: {}", test_query.schema_name),
@@ -267,10 +244,6 @@ fn trace(path: &str) {
         }
         "numbers" => {
             let adapter = NumbersAdapter::new();
-            trace_with_adapter(adapter, test_query, expected_results);
-        }
-        "nullables" => {
-            let adapter = NullablesAdapter;
             trace_with_adapter(adapter, test_query, expected_results);
         }
         _ => unreachable!("Unknown schema name: {}", test_query.schema_name),

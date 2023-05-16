@@ -1230,7 +1230,7 @@ mod tests {
     use crate::{
         interpreter::{error::QueryArgumentsError, InterpretedQuery},
         ir::{FieldValue, IndexedQuery},
-        util::{TestIRQueryResult, TestInterpreterOutputData},
+        test_types::{TestIRQueryResult, TestInterpreterOutputData},
     };
 
     #[parameterize("trustfall_core/test_data/tests/valid_queries")]
@@ -1294,7 +1294,7 @@ mod tests {
             },
             ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
-            util::{TestIRQuery, TestInterpreterOutputData},
+            test_types::{TestIRQuery, TestInterpreterOutputData},
         };
 
         struct VariableChunkIterator<I: Iterator> {

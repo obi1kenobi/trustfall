@@ -2,6 +2,7 @@
 members = [
     "trustfall",
     "trustfall_core",
+    "trustfall_testbin",
     "trustfall_filetests_macros",
     "trustfall_derive",
     "trustfall_wasm",

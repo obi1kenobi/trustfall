@@ -19,8 +19,14 @@ mod util;
 
 pub use serialization::TryIntoStruct;
 
-#[cfg(test)]
-mod numbers_interpreter;
-
-#[cfg(test)]
-mod filesystem_interpreter;
+// Test-only uses. `#[doc(hidden)]` items are not part of public API
+// and are not subject to semantic versioning rules.
+#[cfg(any(test, feature = "__private"))]
+#[doc(hidden)]
+pub mod filesystem_interpreter;
+#[cfg(any(test, feature = "__private"))]
+#[doc(hidden)]
+pub mod numbers_interpreter;
+#[cfg(any(test, feature = "__private"))]
+#[doc(hidden)]
+pub mod test_types;

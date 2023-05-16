@@ -1,6 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use itertools::Itertools;
+use maplit::btreeset;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum NumbersVertex {
+pub enum NumbersVertex {
     Neither(NeitherNumber), // zero and one
     Prime(PrimeNumber),
     Composite(CompositeNumber),
@@ -76,7 +77,7 @@ trait Number {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct NeitherNumber(i64);
+pub struct NeitherNumber(i64);
 
 impl Number for NeitherNumber {
     fn typename(&self) -> &'static str {
@@ -89,7 +90,7 @@ impl Number for NeitherNumber {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct PrimeNumber(i64);
+pub struct PrimeNumber(i64);
 
 impl Number for PrimeNumber {
     fn typename(&self) -> &'static str {
@@ -102,7 +103,7 @@ impl Number for PrimeNumber {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct CompositeNumber(i64, BTreeSet<i64>);
+pub struct CompositeNumber(i64, BTreeSet<i64>);
 
 impl Number for CompositeNumber {
     fn typename(&self) -> &'static str {
@@ -182,22 +183,29 @@ fn make_number_vertex(primes: &mut BTreeSet<i64>, num: i64) -> NumbersVertex {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct NumbersAdapter {
+pub struct NumbersAdapter {
     schema: Schema,
 }
 
 impl NumbersAdapter {
-    #[allow(dead_code)]
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            schema: Schema::parse(include_str!("../test_data/schemas/numbers.graphql"))
-                .expect("schema is not valid"),
+            schema: Schema::parse(include_str!(
+                "../../trustfall_core/test_data/schemas/numbers.graphql"
+            ))
+            .expect("schema is not valid"),
         }
     }
 }
 
+impl Default for NumbersAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused_variables)]
-impl Adapter<'static> for NumbersAdapter {
+impl<'a> Adapter<'a> for NumbersAdapter {
     type Vertex = NumbersVertex;
 
     fn resolve_starting_vertices(
@@ -205,7 +213,7 @@ impl Adapter<'static> for NumbersAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'static, Self::Vertex> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         let mut primes = btreeset![2, 3];
         match edge_name.as_ref() {
             "Zero" => Box::new(std::iter::once(make_number_vertex(&mut primes, 0))),
@@ -233,11 +241,11 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn resolve_property(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         if property_name.as_ref() == "__typename" {
             return interpreter::helpers::resolve_typename(contexts, &self.schema, type_name);
         }
@@ -260,12 +268,12 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn resolve_neighbors(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
         match (type_name.as_ref(), edge_name.as_ref()) {
@@ -375,11 +383,11 @@ impl Adapter<'static> for NumbersAdapter {
 
     fn resolve_coercion(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => resolve_coercion_with(contexts, |vertex| {
                 matches!(vertex, NumbersVertex::Prime(..))
