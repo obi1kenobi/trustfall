@@ -31,7 +31,7 @@ where
     pub ir_query: IRQuery,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub(crate) arguments: BTreeMap<String, FieldValue>,
+    pub arguments: BTreeMap<String, FieldValue>,
 }
 
 impl<Vertex> Trace<Vertex>
@@ -212,8 +212,7 @@ where
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn tap_results<'vertex, AdapterT>(
+pub fn tap_results<'vertex, AdapterT>(
     adapter_tap: Rc<AdapterTap<'vertex, AdapterT>>,
     result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex,
 ) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex

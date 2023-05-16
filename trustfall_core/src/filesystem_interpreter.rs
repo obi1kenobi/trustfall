@@ -1,17 +1,20 @@
 #![allow(dead_code)]
 
-use serde::{Deserialize, Serialize};
-
-use crate::interpreter::{
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo,
-    VertexIterator,
-};
-use crate::ir::{EdgeParameters, FieldValue};
 use std::fs::{self, ReadDir};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    interpreter::{
+        Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo,
+        ResolveInfo, VertexIterator,
+    },
+    ir::{EdgeParameters, FieldValue},
+};
 
 #[derive(Debug, Clone)]
 pub struct FilesystemInterpreter {
@@ -166,24 +169,24 @@ impl Iterator for SubdirectoryIterator {
 
 pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
-type IndividualEdgeResolver =
-    fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'static, FilesystemVertex>;
-type ContextAndIterableOfEdges = (
+type IndividualEdgeResolver<'a> =
+    fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
+type ContextAndIterableOfEdges<'a> = (
     DataContext<FilesystemVertex>,
-    VertexIterator<'static, FilesystemVertex>,
+    VertexIterator<'a, FilesystemVertex>,
 );
 
-struct EdgeResolverIterator {
+struct EdgeResolverIterator<'a> {
     origin: Rc<String>,
-    contexts: VertexIterator<'static, DataContext<FilesystemVertex>>,
-    edge_resolver: IndividualEdgeResolver,
+    contexts: VertexIterator<'a, DataContext<FilesystemVertex>>,
+    edge_resolver: IndividualEdgeResolver<'a>,
 }
 
-impl EdgeResolverIterator {
+impl<'a> EdgeResolverIterator<'a> {
     pub fn new(
         origin: Rc<String>,
-        contexts: VertexIterator<'static, DataContext<FilesystemVertex>>,
-        edge_resolver: IndividualEdgeResolver,
+        contexts: VertexIterator<'a, DataContext<FilesystemVertex>>,
+        edge_resolver: IndividualEdgeResolver<'a>,
     ) -> Self {
         Self {
             origin,
@@ -193,13 +196,13 @@ impl EdgeResolverIterator {
     }
 }
 
-impl Iterator for EdgeResolverIterator {
+impl<'a> Iterator for EdgeResolverIterator<'a> {
     type Item = (
         DataContext<FilesystemVertex>,
-        VertexIterator<'static, FilesystemVertex>,
+        VertexIterator<'a, FilesystemVertex>,
     );
 
-    fn next(&mut self) -> Option<ContextAndIterableOfEdges> {
+    fn next(&mut self) -> Option<ContextAndIterableOfEdges<'a>> {
         if let Some(context) = self.contexts.next() {
             if let Some(vertex) = context.active_vertex() {
                 let neighbors = (self.edge_resolver)(self.origin.clone(), vertex);
@@ -233,10 +236,10 @@ pub struct FileVertex {
     pub path: String,
 }
 
-fn directory_contains_file_handler(
+fn directory_contains_file_handler<'a>(
     origin: Rc<String>,
     vertex: &FilesystemVertex,
-) -> VertexIterator<'static, FilesystemVertex> {
+) -> VertexIterator<'a, FilesystemVertex> {
     let directory_vertex = match vertex {
         FilesystemVertex::Directory(dir) => dir,
         _ => unreachable!(),
@@ -244,10 +247,10 @@ fn directory_contains_file_handler(
     Box::from(DirectoryContainsFileIterator::new(origin, directory_vertex))
 }
 
-fn directory_subdirectory_handler(
+fn directory_subdirectory_handler<'a>(
     origin: Rc<String>,
     vertex: &FilesystemVertex,
-) -> VertexIterator<'static, FilesystemVertex> {
+) -> VertexIterator<'a, FilesystemVertex> {
     let directory_vertex = match vertex {
         FilesystemVertex::Directory(dir) => dir,
         _ => unreachable!(),
@@ -256,7 +259,7 @@ fn directory_subdirectory_handler(
 }
 
 #[allow(unused_variables)]
-impl Adapter<'static> for FilesystemInterpreter {
+impl<'a> Adapter<'a> for FilesystemInterpreter {
     type Vertex = FilesystemVertex;
 
     fn resolve_starting_vertices(
@@ -264,7 +267,7 @@ impl Adapter<'static> for FilesystemInterpreter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'static, Self::Vertex> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_empty());
         let vertex = DirectoryVertex {
@@ -276,11 +279,11 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn resolve_property(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
             "Directory" => match property_name.as_ref() {
                 "name" => Box::new(contexts.map(|context| match context.active_vertex() {
@@ -346,12 +349,12 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn resolve_neighbors(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {
                 let iterator = EdgeResolverIterator::new(
@@ -375,11 +378,11 @@ impl Adapter<'static> for FilesystemInterpreter {
 
     fn resolve_coercion(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         todo!()
     }
 }

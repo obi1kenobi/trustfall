@@ -2473,6 +2473,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ron"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
+dependencies = [
+ "base64 0.13.1",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3388,6 +3399,20 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
+]
+
+[[package]]
+name = "trustfall_testbin"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-parser",
+ "itertools",
+ "lazy_static",
+ "maplit",
+ "ron 0.8.0",
+ "serde",
+ "trustfall_core",
 ]
 
 [[package]]

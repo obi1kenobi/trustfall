@@ -404,7 +404,7 @@ fn make_filter_expr<LeftT: NamedTypedValue>(
     }
 }
 
-pub(crate) fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, FrontendError> {
+pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, FrontendError> {
     validate_query_against_schema(schema, query)?;
 
     let mut vid_maker = successors(Some(Vid::new(NonZeroUsize::new(1).unwrap())), |x| {
@@ -1416,7 +1416,7 @@ mod tests {
     use crate::{
         frontend::make_ir_for_query,
         schema::Schema,
-        util::{TestIRQuery, TestIRQueryResult, TestParsedGraphQLQueryResult},
+        test_types::{TestIRQuery, TestIRQueryResult, TestParsedGraphQLQueryResult},
     };
 
     lazy_static! {
