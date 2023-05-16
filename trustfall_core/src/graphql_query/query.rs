@@ -511,7 +511,7 @@ fn make_transform_group(
     })
 }
 
-/// Parses a query document. May fail if a query root is missing (see [try_get_query_root](try_get_query_root))
+/// Parses a query document. May fail if there is no query root.
 pub fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError> {
     let query_root = try_get_query_root(document)?;
 
