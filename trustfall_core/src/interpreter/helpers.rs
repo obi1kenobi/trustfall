@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{collections::BTreeSet, fmt::Debug};
 
 use crate::{ir::FieldValue, schema::Schema};
 
@@ -66,6 +66,35 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
         None => (ctx, false),
         Some(vertex) => {
             let can_coerce = resolver(vertex);
+            (ctx, can_coerce)
+        }
+    }))
+}
+
+/// Helper for implementing [`BasicAdapter::resolve_coercion`] and equivalents.
+///
+/// Uses the schema to look up all the subtypes of the coercion target type.
+/// Then uses the [`Typename`] trait to look up the exact runtime type of each vertex
+/// and checks if it's equal or a subtype of the coercion target type.
+///
+/// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
+pub fn resolve_coercion_using_schema<'vertex, Vertex: Debug + Clone + Typename + 'vertex>(
+    contexts: ContextIterator<'vertex, Vertex>,
+    schema: &'vertex Schema,
+    coerce_to_type: &str,
+) -> ContextOutcomeIterator<'vertex, Vertex, bool> {
+    // If the vertex's typename is one of these types,
+    // then the coercion's result is `true`.
+    let subtypes: BTreeSet<_> = schema
+        .subtypes(coerce_to_type)
+        .unwrap_or_else(|| panic!("type {coerce_to_type} is not part of this schema"))
+        .collect();
+
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
+        None => (ctx, false),
+        Some(vertex) => {
+            let typename = vertex.typename();
+            let can_coerce = subtypes.contains(typename);
             (ctx, can_coerce)
         }
     }))
