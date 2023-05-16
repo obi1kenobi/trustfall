@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc,
+    cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, sync::Arc,
 };
 
 use super::{ResolveEdgeInfo, ResolveInfo};
@@ -159,9 +159,9 @@ fn eid(n: usize) -> Eid {
     Eid::new(n.try_into().unwrap())
 }
 
-fn run_query<A: Adapter<'static> + 'static>(adapter: A, input_name: &str) -> Rc<A> {
+fn run_query<A: Adapter<'static> + 'static>(adapter: A, input_name: &str) -> Arc<A> {
     let input = get_ir_for_named_query(input_name);
-    let adapter = Rc::from(adapter);
+    let adapter = Arc::from(adapter);
     let _ = interpret_ir(
         adapter.clone(),
         Arc::new(input.ir_query.try_into().unwrap()),

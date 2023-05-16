@@ -1,7 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -27,7 +26,7 @@ pub(super) struct QueryCarrier {
 
 #[allow(clippy::type_complexity)]
 pub fn interpret_ir<'query, AdapterT: Adapter<'query> + 'query>(
-    adapter: Rc<AdapterT>,
+    adapter: Arc<AdapterT>,
     indexed_query: Arc<IndexedQuery>,
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
 ) -> Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>, QueryArgumentsError>
@@ -100,7 +99,7 @@ fn perform_coercion<'query, AdapterT: Adapter<'query>>(
 }
 
 fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
-    adapter: Rc<AdapterT>,
+    adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     mut iterator: ContextIterator<'query, AdapterT::Vertex>,
@@ -345,7 +344,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
 
 #[allow(unused_variables)]
 fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
-    adapter: Rc<AdapterT>,
+    adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     expanding_from: &IRVertex,
     parent_component: &IRQueryComponent,
@@ -1285,7 +1284,7 @@ mod tests {
     }
 
     mod batching_fuzzer_repro_cases {
-        use std::{cell::RefCell, collections::VecDeque, marker::PhantomData, rc::Rc, sync::Arc};
+        use std::{cell::RefCell, collections::VecDeque, marker::PhantomData, sync::Arc};
 
         use crate::{
             interpreter::{
@@ -1478,7 +1477,7 @@ mod tests {
                     .map(|(k, v)| (k.into(), v))
                     .collect(),
             );
-            let adapter = Rc::new(VariableBatchingAdapter::new(
+            let adapter = Arc::new(VariableBatchingAdapter::new(
                 NumbersAdapter::new(),
                 batch_sequences,
             ));

@@ -127,7 +127,7 @@ where
     let outputs = query.outputs.clone();
     let output_names: BTreeSet<_> = outputs.keys().collect();
 
-    let execution_result = execution::interpret_ir(Rc::new(adapter), query, arguments);
+    let execution_result = execution::interpret_ir(Arc::new(adapter), query, arguments);
     match execution_result {
         Ok(results_iter) => {
             let results = results_iter.collect_vec();
@@ -194,7 +194,7 @@ fn trace_with_adapter<'a, AdapterT>(
         test_query.ir_query.clone(),
         test_query.arguments,
     )));
-    let mut adapter_tap = Rc::new(AdapterTap::new(adapter, tracer));
+    let mut adapter_tap = Arc::new(AdapterTap::new(adapter, tracer));
 
     let execution_result = execution::interpret_ir(adapter_tap.clone(), query, arguments);
     match execution_result {
@@ -205,7 +205,7 @@ fn trace_with_adapter<'a, AdapterT>(
                 "tracing execution produced different outputs from expected (untraced) outputs"
             );
 
-            let trace = Rc::make_mut(&mut adapter_tap).clone().finish();
+            let trace = Arc::make_mut(&mut adapter_tap).clone().finish();
             let data = TestInterpreterOutputTrace {
                 schema_name: test_query.schema_name,
                 trace,

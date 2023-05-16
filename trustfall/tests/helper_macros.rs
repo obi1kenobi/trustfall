@@ -80,7 +80,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
 
 #[test]
 fn main() {
-    let adapter = std::rc::Rc::new(Adapter);
+    let adapter = std::sync::Arc::new(Adapter);
     let schema = trustfall::Schema::parse(
         "\
 schema {

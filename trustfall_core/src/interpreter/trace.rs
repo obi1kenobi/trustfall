@@ -213,7 +213,7 @@ where
 }
 
 pub fn tap_results<'vertex, AdapterT>(
-    adapter_tap: Rc<AdapterTap<'vertex, AdapterT>>,
+    adapter_tap: Arc<AdapterTap<'vertex, AdapterT>>,
     result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex,
 ) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex
 where

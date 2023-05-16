@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, rc::Rc, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
 use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 
@@ -79,7 +79,7 @@ pub fn interpret_query(
     query: &str,
     #[pyo3(from_py_with = "to_query_arguments")] arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
 ) -> PyResult<ResultIterator> {
-    let wrapped_adapter = Rc::new(adapter);
+    let wrapped_adapter = Arc::from(adapter);
 
     let indexed_query = parse(&schema.inner, query).map_err(|err| match err {
         FrontendError::ParseError(parse_err) => Python::with_gil(|py| {
