@@ -26,57 +26,57 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FieldConnection {
-    pub position: Pos,
-    pub name: Arc<str>,
+    pub(crate) position: Pos,
+    pub(crate) name: Arc<str>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub alias: Option<Arc<str>>,
+    pub(crate) alias: Option<Arc<str>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub arguments: BTreeMap<Arc<str>, FieldValue>,
+    pub(crate) arguments: BTreeMap<Arc<str>, FieldValue>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub optional: Option<OptionalDirective>,
+    pub(crate) optional: Option<OptionalDirective>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recurse: Option<RecurseDirective>,
+    pub(crate) recurse: Option<RecurseDirective>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fold: Option<FoldGroup>,
+    pub(crate) fold: Option<FoldGroup>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct FieldNode {
-    pub position: Pos,
-    pub name: Arc<str>,
+    pub(crate) position: Pos,
+    pub(crate) name: Arc<str>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub alias: Option<Arc<str>>,
+    pub(crate) alias: Option<Arc<str>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub coerced_to: Option<Arc<str>>,
+    pub(crate) coerced_to: Option<Arc<str>>,
 
     #[serde(default, skip_serializing_if = "SmallVec::is_empty")]
-    pub filter: SmallVec<[FilterDirective; 1]>,
+    pub(crate) filter: SmallVec<[FilterDirective; 1]>,
 
     #[serde(default, skip_serializing_if = "SmallVec::is_empty")]
-    pub output: SmallVec<[OutputDirective; 1]>,
+    pub(crate) output: SmallVec<[OutputDirective; 1]>,
 
     #[serde(default, skip_serializing_if = "SmallVec::is_empty")]
-    pub tag: SmallVec<[TagDirective; 0]>,
+    pub(crate) tag: SmallVec<[TagDirective; 0]>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub connections: Vec<(FieldConnection, FieldNode)>,
+    pub(crate) connections: Vec<(FieldConnection, FieldNode)>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transform_group: Option<TransformGroup>,
+    pub(crate) transform_group: Option<TransformGroup>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub(crate) struct Query {
-    pub root_connection: FieldConnection,
+pub struct Query {
+    pub(crate) root_connection: FieldConnection,
 
-    pub root_field: FieldNode,
+    pub(crate) root_field: FieldNode,
 }
 
 #[derive(Debug, Clone)]
@@ -511,8 +511,8 @@ fn make_transform_group(
     })
 }
 
-/// Parses a query document. May fail if a query root is missing (see [try_get_query_root](try_get_query_root))
-pub(crate) fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError> {
+/// Parses a query document. May fail if there is no query root.
+pub fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError> {
     let query_root = try_get_query_root(document)?;
 
     if let Some(dir) = query_root.node.directives.first() {
@@ -546,9 +546,10 @@ mod tests {
 
     use trustfall_filetests_macros::parameterize;
 
-    use crate::util::{TestGraphQLQuery, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult};
-
     use super::*;
+    use crate::test_types::{
+        TestGraphQLQuery, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult,
+    };
 
     fn parameterizable_tester(base: &Path, stem: &str, check_file_suffix: &str) {
         let mut input_path = PathBuf::from(base);

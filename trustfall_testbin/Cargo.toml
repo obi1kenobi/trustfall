@@ -1,0 +1,17 @@
+[package]
+publish = false
+name = "trustfall_testbin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.69"
+async-graphql-parser = "^2.11.3"
+itertools = "0.10.5"
+lazy_static = "1.4.0"
+maplit = "1.0.2"
+ron = "0.8.0"
+serde = { version = "1.0.163", features = ["derive"] }
+trustfall_core = { path = "../trustfall_core", features = ["__private"] }

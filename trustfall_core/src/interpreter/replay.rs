@@ -584,7 +584,7 @@ mod tests {
         filesystem_interpreter::FilesystemVertex,
         interpreter::replay::assert_interpreted_results,
         numbers_interpreter::NumbersVertex,
-        util::{
+        test_types::{
             TestIRQuery, TestIRQueryResult, TestInterpreterOutputData, TestInterpreterOutputTrace,
         },
     };

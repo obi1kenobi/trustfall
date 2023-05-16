@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Move relative to the top of the repo, so this script can be run from anywhere.
-cd "$(git rev-parse --show-toplevel)/trustfall_core"
+cd "$(git rev-parse --show-toplevel)/trustfall_testbin"
 
 target_dir="$1"
 schema_name="$2"
@@ -14,6 +14,6 @@ schema_name="$2"
 cargo_cmd="(cargo run --release corpus_graphql \$0 $2 >\$0.tmp)"
 mv_cmd="mv \$0.tmp $target_dir/\$(basename \$0 | cut -d'.' -f1).graphql"
 
-find ./test_data/tests -name '*.graphql.ron' | \
+find ../trustfall_core/test_data/tests -name '*.graphql.ron' | \
     xargs -n 1 \
     sh -c "$cargo_cmd && $mv_cmd"
