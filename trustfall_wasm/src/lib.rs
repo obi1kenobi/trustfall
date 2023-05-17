@@ -74,7 +74,7 @@ pub fn execute_query(
     // TODO: add a proper error type
     let args = from_js_args(args)?;
 
-    let query = trustfall_core::frontend::parse(schema, query).map_err(|e| format!("{e}"))?;
+    let query = trustfall_core::frontend::parse(schema, query).map_err(|e| format!("{e:?}"))?;
 
     let wrapped_adapter = Arc::new(AdapterShim::new(adapter));
 
