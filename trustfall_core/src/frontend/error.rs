@@ -7,10 +7,10 @@ use crate::{ir::FieldValue, util::DisplayVec};
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FrontendError {
-    #[error("Multiple errors: {0}")]
+    #[error("{0}")]
     MultipleErrors(DisplayVec<FrontendError>),
 
-    #[error("Query failed to parse.")]
+    #[error("{0}")]
     ParseError(#[from] crate::graphql_query::error::ParseError),
 
     #[error("Filter on property name \"{0}\" uses undefined tag: %{1}")]
@@ -103,7 +103,7 @@ pub enum FrontendError {
     #[error("Meta field \"{0}\" is a property but the query uses it as an edge.")]
     PropertyMetaFieldUsedAsEdge(String),
 
-    #[error("The query failed to validate against the schema.")]
+    #[error("The query failed to validate against the schema: {0}")]
     ValidationError(#[from] ValidationError),
 
     #[error("Unexpected error: {0}")]

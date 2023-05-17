@@ -6,10 +6,10 @@ use serde::{ser::Error as SerError, Deserialize, Serialize, Serializer};
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum ParseError {
-    #[error("Found unrecognized directive {0}")]
+    #[error("Unrecognized directive {0}")]
     UnrecognizedDirective(String, Pos),
 
-    #[error("Found directive in unsupported position {0}: {1}")]
+    #[error("Directive in unsupported position {0}: {1}")]
     UnsupportedDirectivePosition(String, String, Pos),
 
     #[error("Directive {0} missing required argument {1}")]
@@ -54,17 +54,17 @@ pub enum ParseError {
     #[error("Unrecognized transform operator: {0}")]
     UnsupportedTransformOperator(String, Pos),
 
-    #[error("Specified output name \"{0}\" contains invalid characters: {1:?}")]
+    #[error("Output name \"{0}\" contains invalid characters: {1:?}")]
     InvalidOutputName(String, Vec<char>, Pos),
 
-    #[error("Specified tag name \"{0}\" contains invalid characters: {1:?}")]
+    #[error("Tag name \"{0}\" contains invalid characters: {1:?}")]
     InvalidTagName(String, Vec<char>, Pos),
 
     #[serde(
         skip_deserializing,
         serialize_with = "fail_serialize_invalid_graphql_error"
     )]
-    #[error("Input is not valid GraphQL: {0}")]
+    #[error("{0}")]
     InvalidGraphQL(async_graphql_parser::Error),
 
     #[error("Unsupported syntax feature found: {0}")]
