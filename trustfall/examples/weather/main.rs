@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::rc::Rc;
 use std::sync::Arc;
 use std::{env, process};
 
@@ -93,7 +92,7 @@ fn run_query(path: &str) {
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let data = read_metar_data();
-    let adapter = Rc::new(MetarAdapter::new(&data));
+    let adapter = Arc::new(MetarAdapter::new(&data));
 
     let query = input_query.query;
     let arguments = input_query.args;

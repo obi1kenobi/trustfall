@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::{env, process};
 
@@ -31,7 +30,7 @@ fn run_query(path: &str, max_results: Option<usize>) {
     let content = util::read_file(path);
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
-    let adapter = Rc::new(HackerNewsAdapter::new());
+    let adapter = Arc::new(HackerNewsAdapter::new());
 
     let query = input_query.query;
     let arguments = input_query.args;

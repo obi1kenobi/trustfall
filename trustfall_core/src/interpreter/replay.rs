@@ -521,7 +521,7 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
     'trace: 'query,
 {
     let next_op = Rc::new(RefCell::new(trace.ops.iter()));
-    let trace_reader_adapter = Rc::new(TraceReaderAdapter {
+    let trace_reader_adapter = Arc::new(TraceReaderAdapter {
         next_op: next_op.clone(),
     });
 

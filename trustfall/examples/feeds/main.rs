@@ -4,7 +4,6 @@ use std::{
     fs::{self, File},
     io::{BufWriter, Write},
     process,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -65,7 +64,7 @@ fn run_query(path: &str) {
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let data = read_feed_data();
-    let adapter = Rc::new(FeedAdapter::new(&data));
+    let adapter = Arc::new(FeedAdapter::new(&data));
 
     let query = input_query.query;
     let arguments = input_query.args;
