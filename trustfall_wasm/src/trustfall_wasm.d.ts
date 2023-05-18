@@ -59,6 +59,7 @@ export class Schema {
      * to the specified type.
      * @param {string} type_name
      * @returns {Set<string>}
+     * @throws if `type_name` is not an interface or object type in this schema.
      */
     subtypes(type_name: string): Set<string>;
 
