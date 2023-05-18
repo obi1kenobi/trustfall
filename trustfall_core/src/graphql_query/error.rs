@@ -73,7 +73,7 @@ pub enum ParseError {
     #[error("Nested type coercion found. Please merge the type coercion blocks so that coercion is only performed once.")]
     NestedTypeCoercion(Pos),
 
-    #[error("Found a type coercion with sibling fields. Please move those fields inside the type coercion.")]
+    #[error("Properties and edges side-by-side with a coercion (`... on X`) are not supported. Please move them inside the type coercion instead.")]
     TypeCoercionWithSiblingFields(Pos),
 
     #[error("Directive \"{0}\" is applied more than once, this is not supported.")]
