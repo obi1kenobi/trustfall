@@ -53,12 +53,10 @@ export class Schema {
     free(): void;
 
     /**
-     * Returns a Set<string> which contains every subtype of type_name
-     * in the schema and itself. This allows you to get the subtypes using
-     * this function, then in resolveCoercion return whether the set returned
-     * by this function has the typename string of the vertex from the iterator,
-     * which would mean coercible from it's current form to the form wanted by
-     * resolveCoercion.
+     * Returns a `Set<string>` naming all subtypes (plus itself) of `type_name` in the schema.
+     *
+     * May be used in `Adapter.resolveCoercion` to determine if vertices can be coerced
+     * to the specified type.
      * @param {string} type_name
      * @returns {Set<string>}
      */
