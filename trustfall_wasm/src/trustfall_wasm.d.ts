@@ -51,6 +51,7 @@ export interface Adapter<T> {
 
 export class Schema {
     free(): void;
+
     /**
      * Returns a Set<string> which contains every subtype of type_name
      * in the schema and itself. This allows you to get the subtypes using
