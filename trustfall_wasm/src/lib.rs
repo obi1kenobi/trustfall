@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use gloo_utils::format::JsValueSerdeExt;
+use js_sys::Set;
 use trustfall_core::ir::FieldValue;
 use wasm_bindgen::prelude::*;
 
@@ -49,6 +50,21 @@ impl Schema {
         trustfall_core::schema::Schema::parse(input)
             .map(Schema::new)
             .map_err(crate::InvalidSchemaError::new)
+    }
+
+    pub fn subtypes(&self, type_name: &str) -> Set {
+        let subtypes_iter = match self.0.subtypes(type_name) {
+            Some(iter) => iter,
+            None => panic!("type {type_name} is not part of this schema"),
+        };
+
+        let set: Set = Default::default();
+
+        subtypes_iter.for_each(|e| {
+            set.add(&e.to_owned().into());
+        });
+
+        set
     }
 }
 
