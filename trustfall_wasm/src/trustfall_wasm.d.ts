@@ -61,7 +61,7 @@ export class Schema {
      * @param {string} type_name
      * @returns {Set<string>}
      */
-    subtypes(type_name: string): Set<string>
+    subtypes(type_name: string): Set<string>;
 
     /**
     * @param {string} input
