@@ -51,6 +51,7 @@ export interface Adapter<T> {
 
 export class Schema {
     free(): void;
+    subtypes(type_name: string): Set<string>
 
     /**
     * @param {string} input
