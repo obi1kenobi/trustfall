@@ -53,16 +53,16 @@ impl Schema {
     }
 
     pub fn subtypes(&self, type_name: &str) -> Set {
-        let subtypes_iter = match self.0.subtypes(type_name) {
-            Some(iter) => iter,
-            None => panic!("type {type_name} is not part of this schema"),
-        };
+        let subtypes_iter = self
+            .0
+            .subtypes(type_name)
+            .unwrap_or_else(|| panic!("type {type_name} is not part of this schema"));
 
         let set: Set = Default::default();
 
-        subtypes_iter.for_each(|e| {
-            set.add(&e.to_owned().into());
-        });
+        for subtype in subtypes_iter {
+            set.add(&subtype.to_owned().into());
+        }
 
         set
     }
