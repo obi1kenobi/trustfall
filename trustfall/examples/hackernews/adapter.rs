@@ -119,7 +119,7 @@ macro_rules! item_property_resolver {
     };
 }
 
-impl BasicAdapter<'static> for HackerNewsAdapter {
+impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
     type Vertex = Vertex;
 
     fn resolve_starting_vertices(
@@ -147,10 +147,10 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
     fn resolve_property(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match (type_name, property_name) {
             // properties on Item and its implementers
             (type_name, "id") if self.item_subtypes.contains(type_name) => {
@@ -205,11 +205,11 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
     fn resolve_neighbors(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
         _parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
                 let edge_resolver =
@@ -358,10 +358,12 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
     fn resolve_coercion(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         _type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
     }
 }
+
+
