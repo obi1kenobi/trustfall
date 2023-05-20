@@ -365,5 +365,3 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
     }
 }
-
-
