@@ -35,11 +35,11 @@ impl HackerNewsAdapter {
         }
     }
 
-    fn front_page(&self) -> VertexIterator<'static, Vertex> {
+    fn front_page<'a>(&self) -> VertexIterator<'a, Vertex> {
         self.top(Some(30))
     }
 
-    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
+    fn top<'a>(&self, max: Option<usize>) -> VertexIterator<'a, Vertex> {
         let iterator = CLIENT
             .get_top_stories()
             .unwrap()
@@ -56,7 +56,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
+    fn latest_stories<'a>(&self, max: Option<usize>) -> VertexIterator<'a, Vertex> {
         // Unfortunately, the HN crate we're using doesn't support getting the new stories,
         // so we're doing it manually here.
         let story_ids: Vec<u32> =
@@ -80,7 +80,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn user(&self, username: &str) -> VertexIterator<'static, Vertex> {
+    fn user<'a>(&self, username: &str) -> VertexIterator<'a, Vertex> {
         match CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
@@ -126,7 +126,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         &self,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> VertexIterator<'static, Self::Vertex> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name {
             "FrontPage" => self.front_page(),
             "Top" => {
@@ -213,7 +213,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
                 let edge_resolver =
-                    |vertex: &Self::Vertex| -> VertexIterator<'static, Self::Vertex> {
+                    |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
                         let story = vertex.as_story().unwrap();
                         let author = story.by.as_str();
                         match CLIENT.get_user(author) {
@@ -236,7 +236,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                     let comment_ids = story.kids.clone().unwrap_or_default();
                     let story_id = story.id;
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> =
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
                         Box::new(comment_ids.into_iter().filter_map(move |comment_id| {
                             match CLIENT.get_item(comment_id) {
                                 Ok(None) => None,
@@ -264,7 +264,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let edge_resolver = |vertex: &Self::Vertex| {
                     let comment = vertex.as_comment().unwrap();
                     let author = comment.by.as_str();
-                    let neighbors: VertexIterator<'static, Self::Vertex> =
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
                         match CLIENT.get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
                             Ok(Some(user)) => Box::new(std::iter::once(user.into())),
@@ -286,7 +286,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                     let comment_id = comment.id;
                     let parent_id = comment.parent;
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> = match CLIENT
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match CLIENT
                         .get_item(parent_id)
                     {
                         Ok(None) => Box::new(std::iter::empty()),
@@ -308,7 +308,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                     let comment_id = comment.id;
                     let reply_ids = comment.kids.clone().unwrap_or_default();
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> = Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
                         match CLIENT.get_item(reply_id) {
                             Ok(None) => None,
                             Ok(Some(item)) => {
@@ -335,7 +335,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                     let user = vertex.as_user().unwrap();
                     let submitted_ids = user.submitted.clone();
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> =
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
                             match CLIENT.get_item(submission_id) {
                                 Ok(None) => None,
