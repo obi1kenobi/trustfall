@@ -212,22 +212,21 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
-                let edge_resolver =
-                    |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
-                        let story = vertex.as_story().unwrap();
-                        let author = story.by.as_str();
-                        match CLIENT.get_user(author) {
-                            Ok(None) => Box::new(std::iter::empty()), // no known author
-                            Ok(Some(user)) => Box::new(std::iter::once(user.into())),
-                            Err(e) => {
-                                eprintln!(
-                                    "API error while fetching story {} author \"{}\": {}",
-                                    story.id, author, e
-                                );
-                                Box::new(std::iter::empty())
-                            }
+                let edge_resolver = |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
+                    let story = vertex.as_story().unwrap();
+                    let author = story.by.as_str();
+                    match CLIENT.get_user(author) {
+                        Ok(None) => Box::new(std::iter::empty()), // no known author
+                        Ok(Some(user)) => Box::new(std::iter::once(user.into())),
+                        Err(e) => {
+                            eprintln!(
+                                "API error while fetching story {} author \"{}\": {}",
+                                story.id, author, e
+                            );
+                            Box::new(std::iter::empty())
                         }
-                    };
+                    }
+                };
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Story", "comment") => {
@@ -264,18 +263,18 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let edge_resolver = |vertex: &Self::Vertex| {
                     let comment = vertex.as_comment().unwrap();
                     let author = comment.by.as_str();
-                    let neighbors: VertexIterator<'a, Self::Vertex> =
-                        match CLIENT.get_user(author) {
-                            Ok(None) => Box::new(std::iter::empty()), // no known author
-                            Ok(Some(user)) => Box::new(std::iter::once(user.into())),
-                            Err(e) => {
-                                eprintln!(
-                                    "API error while fetching comment {} author \"{}\": {}",
-                                    comment.id, author, e
-                                );
-                                Box::new(std::iter::empty())
-                            }
-                        };
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match CLIENT.get_user(author)
+                    {
+                        Ok(None) => Box::new(std::iter::empty()), // no known author
+                        Ok(Some(user)) => Box::new(std::iter::once(user.into())),
+                        Err(e) => {
+                            eprintln!(
+                                "API error while fetching comment {} author \"{}\": {}",
+                                comment.id, author, e
+                            );
+                            Box::new(std::iter::empty())
+                        }
+                    };
                     neighbors
                 };
                 resolve_neighbors_with(contexts, edge_resolver)
