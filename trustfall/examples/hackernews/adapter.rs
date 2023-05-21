@@ -35,11 +35,11 @@ impl HackerNewsAdapter {
         }
     }
 
-    fn front_page(&self) -> VertexIterator<'static, Vertex> {
+    fn front_page<'a>(&self) -> VertexIterator<'a, Vertex> {
         self.top(Some(30))
     }
 
-    fn top(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
+    fn top<'a>(&self, max: Option<usize>) -> VertexIterator<'a, Vertex> {
         let iterator = CLIENT
             .get_top_stories()
             .unwrap()
@@ -56,7 +56,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn latest_stories(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
+    fn latest_stories<'a>(&self, max: Option<usize>) -> VertexIterator<'a, Vertex> {
         // Unfortunately, the HN crate we're using doesn't support getting the new stories,
         // so we're doing it manually here.
         let story_ids: Vec<u32> =
@@ -80,7 +80,7 @@ impl HackerNewsAdapter {
         Box::new(iterator)
     }
 
-    fn user(&self, username: &str) -> VertexIterator<'static, Vertex> {
+    fn user<'a>(&self, username: &str) -> VertexIterator<'a, Vertex> {
         match CLIENT.get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
@@ -119,14 +119,14 @@ macro_rules! item_property_resolver {
     };
 }
 
-impl BasicAdapter<'static> for HackerNewsAdapter {
+impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
     type Vertex = Vertex;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> VertexIterator<'static, Self::Vertex> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name {
             "FrontPage" => self.front_page(),
             "Top" => {
@@ -147,10 +147,10 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
     fn resolve_property(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match (type_name, property_name) {
             // properties on Item and its implementers
             (type_name, "id") if self.item_subtypes.contains(type_name) => {
@@ -205,29 +205,28 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
     fn resolve_neighbors(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &str,
         edge_name: &str,
         _parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
-                let edge_resolver =
-                    |vertex: &Self::Vertex| -> VertexIterator<'static, Self::Vertex> {
-                        let story = vertex.as_story().unwrap();
-                        let author = story.by.as_str();
-                        match CLIENT.get_user(author) {
-                            Ok(None) => Box::new(std::iter::empty()), // no known author
-                            Ok(Some(user)) => Box::new(std::iter::once(user.into())),
-                            Err(e) => {
-                                eprintln!(
-                                    "API error while fetching story {} author \"{}\": {}",
-                                    story.id, author, e
-                                );
-                                Box::new(std::iter::empty())
-                            }
+                let edge_resolver = |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
+                    let story = vertex.as_story().unwrap();
+                    let author = story.by.as_str();
+                    match CLIENT.get_user(author) {
+                        Ok(None) => Box::new(std::iter::empty()), // no known author
+                        Ok(Some(user)) => Box::new(std::iter::once(user.into())),
+                        Err(e) => {
+                            eprintln!(
+                                "API error while fetching story {} author \"{}\": {}",
+                                story.id, author, e
+                            );
+                            Box::new(std::iter::empty())
                         }
-                    };
+                    }
+                };
                 resolve_neighbors_with(contexts, edge_resolver)
             }
             ("Story", "comment") => {
@@ -236,7 +235,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                     let comment_ids = story.kids.clone().unwrap_or_default();
                     let story_id = story.id;
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> =
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
                         Box::new(comment_ids.into_iter().filter_map(move |comment_id| {
                             match CLIENT.get_item(comment_id) {
                                 Ok(None) => None,
@@ -264,18 +263,18 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                 let edge_resolver = |vertex: &Self::Vertex| {
                     let comment = vertex.as_comment().unwrap();
                     let author = comment.by.as_str();
-                    let neighbors: VertexIterator<'static, Self::Vertex> =
-                        match CLIENT.get_user(author) {
-                            Ok(None) => Box::new(std::iter::empty()), // no known author
-                            Ok(Some(user)) => Box::new(std::iter::once(user.into())),
-                            Err(e) => {
-                                eprintln!(
-                                    "API error while fetching comment {} author \"{}\": {}",
-                                    comment.id, author, e
-                                );
-                                Box::new(std::iter::empty())
-                            }
-                        };
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match CLIENT.get_user(author)
+                    {
+                        Ok(None) => Box::new(std::iter::empty()), // no known author
+                        Ok(Some(user)) => Box::new(std::iter::once(user.into())),
+                        Err(e) => {
+                            eprintln!(
+                                "API error while fetching comment {} author \"{}\": {}",
+                                comment.id, author, e
+                            );
+                            Box::new(std::iter::empty())
+                        }
+                    };
                     neighbors
                 };
                 resolve_neighbors_with(contexts, edge_resolver)
@@ -286,7 +285,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                     let comment_id = comment.id;
                     let parent_id = comment.parent;
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> = match CLIENT
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match CLIENT
                         .get_item(parent_id)
                     {
                         Ok(None) => Box::new(std::iter::empty()),
@@ -308,7 +307,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                     let comment_id = comment.id;
                     let reply_ids = comment.kids.clone().unwrap_or_default();
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> = Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
+                    let neighbors: VertexIterator<'a, Self::Vertex> = Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
                         match CLIENT.get_item(reply_id) {
                             Ok(None) => None,
                             Ok(Some(item)) => {
@@ -335,7 +334,7 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
                     let user = vertex.as_user().unwrap();
                     let submitted_ids = user.submitted.clone();
 
-                    let neighbors: VertexIterator<'static, Self::Vertex> =
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
                             match CLIENT.get_item(submission_id) {
                                 Ok(None) => None,
@@ -358,10 +357,10 @@ impl BasicAdapter<'static> for HackerNewsAdapter {
 
     fn resolve_coercion(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         _type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
     }
 }
