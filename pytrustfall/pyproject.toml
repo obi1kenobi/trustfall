@@ -1,6 +1,6 @@
 [project]
 name = "trustfall"
-description = "If GraphQL were more like SQL: a query language for any combination of data sources."
+description = "A query engine for any combination of data sources. Query your files and APIs as if they were databases!"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
