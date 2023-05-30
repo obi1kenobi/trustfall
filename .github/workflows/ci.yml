@@ -442,5 +442,3 @@ jobs:
       - pre-publish-checks
       - attempt-publish-trustfall-core
     uses: ./.github/workflows/publish-python.yml
-    secrets:
-      PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
