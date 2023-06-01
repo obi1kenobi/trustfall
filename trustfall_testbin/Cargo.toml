@@ -10,7 +10,7 @@ edition = "2021"
 anyhow = "1.0.69"
 async-graphql-parser = "^2.11.3"
 itertools = "0.10.5"
-lazy_static = "1.4.0"
+once_cell = "1.17"
 maplit = "1.0.2"
 ron = "0.8.0"
 serde = { version = "1.0.163", features = ["derive"] }

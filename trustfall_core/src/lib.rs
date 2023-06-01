@@ -6,9 +6,6 @@
 #[macro_use]
 extern crate maplit;
 
-#[macro_use]
-extern crate lazy_static;
-
 pub mod frontend;
 pub mod graphql_query;
 pub mod interpreter;

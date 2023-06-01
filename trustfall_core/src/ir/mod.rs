@@ -12,6 +12,7 @@ use std::{
 
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::error::FilterTypeError;
@@ -24,11 +25,14 @@ pub use self::value::{FieldValue, TransparentValue};
 
 pub(crate) const TYPENAME_META_FIELD: &str = "__typename";
 
-lazy_static! {
-    pub(crate) static ref TYPENAME_META_FIELD_NAME: Name = Name::new(TYPENAME_META_FIELD);
-    pub(crate) static ref TYPENAME_META_FIELD_TYPE: Type = Type::new("String!").unwrap();
-    pub(crate) static ref TYPENAME_META_FIELD_ARC: Arc<str> = Arc::from(TYPENAME_META_FIELD);
-}
+pub(crate) static TYPENAME_META_FIELD_NAME: Lazy<Name> =
+    Lazy::new(|| Name::new(TYPENAME_META_FIELD));
+
+pub(crate) static TYPENAME_META_FIELD_TYPE: Lazy<Type> =
+    Lazy::new(|| Type::new("String!").unwrap());
+
+pub(crate) static TYPENAME_META_FIELD_ARC: Lazy<Arc<str>> =
+    Lazy::new(|| Arc::from(TYPENAME_META_FIELD));
 
 /// Unique vertex ID identifying a specific vertex in a Trustfall query
 #[doc(alias("vertex", "node"))]
@@ -229,12 +233,10 @@ pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
 }
 
-lazy_static! {
-    static ref NON_NULL_INT_TYPE: Type = Type {
-        base: BaseType::Named(Name::new("Int")),
-        nullable: false,
-    };
-}
+static NON_NULL_INT_TYPE: Lazy<Type> = Lazy::new(|| Type {
+    base: BaseType::Named(Name::new("Int")),
+    nullable: false,
+});
 
 impl FoldSpecificFieldKind {
     pub fn field_type(&self) -> &Type {

@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use hn_api::{types::Item, HnClient};
+use once_cell::sync::Lazy;
 use trustfall::{
     provider::{
         field_property, resolve_coercion_using_schema, resolve_neighbors_with,
@@ -14,9 +15,7 @@ use trustfall::{
 
 use crate::{vertex::Vertex, SCHEMA};
 
-lazy_static! {
-    static ref CLIENT: HnClient = HnClient::init().expect("HnClient instantiated");
-}
+static CLIENT: Lazy<HnClient> = Lazy::new(|| HnClient::init().expect("HnClient instantiated"));
 
 #[derive(Debug, Clone, Default)]
 pub struct HackerNewsAdapter {

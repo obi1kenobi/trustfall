@@ -7,7 +7,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use async_graphql_parser::{parse_query, parse_schema, types::ServiceDocument};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use trustfall_core::{
     frontend::{error::FrontendError, parse_doc},
     graphql_query::error::ParseError,
@@ -22,9 +22,7 @@ fn get_service_doc() -> ServiceDocument {
     parse_schema(fs::read_to_string(schema_path).unwrap()).unwrap()
 }
 
-lazy_static! {
-    static ref SCHEMA: Schema = Schema::new(get_service_doc()).unwrap();
-}
+static SCHEMA: Lazy<Schema> = Lazy::new(|| Schema::new(get_service_doc()).unwrap());
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(query_string) = std::str::from_utf8(data) {

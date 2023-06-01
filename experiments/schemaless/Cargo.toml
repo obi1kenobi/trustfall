@@ -9,6 +9,6 @@ edition = "2021"
 async-graphql-parser = "2.11.3"
 async-graphql-value = "2.11.3"
 derive-new = "0.5.9"
-lazy_static = "1.4.0"
+once_cell = "1.17"
 maplit = "1.0.2"
 trustfall_core = { path = "../../trustfall_core" }

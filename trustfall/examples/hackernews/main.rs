@@ -2,22 +2,19 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::{env, process};
 
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
 use crate::adapter::HackerNewsAdapter;
 
-#[macro_use]
-extern crate lazy_static;
-
 pub mod adapter;
 mod util;
 pub mod vertex;
 
-lazy_static! {
-    static ref SCHEMA: Schema =
-        Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql")).unwrap();
-}
+static SCHEMA: Lazy<Schema> = Lazy::new(|| {
+    Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql")).unwrap()
+});
 
 #[derive(Debug, Clone, Deserialize)]
 struct InputQuery<'a> {
