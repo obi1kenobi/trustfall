@@ -17,6 +17,7 @@ use async_graphql_parser::{
 pub use ::async_graphql_parser::Error;
 use async_graphql_value::Name;
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::types::{get_base_named_type, is_argument_type_valid, is_scalar_only_subtype};
@@ -70,15 +71,15 @@ impl Add for &FieldOrigin {
     }
 }
 
-lazy_static! {
-    pub(crate) static ref BUILTIN_SCALARS: HashSet<&'static str> = hashset! {
+pub(crate) static BUILTIN_SCALARS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    hashset! {
         "Int",
         "Float",
         "String",
         "Boolean",
         "ID",
-    };
-}
+    }
+});
 
 const RESERVED_PREFIX: &str = "__";
 

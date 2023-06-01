@@ -1411,6 +1411,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
+    use once_cell::sync::Lazy;
     use trustfall_filetests_macros::parameterize;
 
     use crate::{
@@ -1419,20 +1420,21 @@ mod tests {
         test_types::{TestIRQuery, TestIRQueryResult, TestParsedGraphQLQueryResult},
     };
 
-    lazy_static! {
-        static ref FILESYSTEM_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("test_data/schemas/filesystem.graphql").unwrap())
-                .unwrap();
-        static ref NUMBERS_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("test_data/schemas/numbers.graphql").unwrap())
-                .unwrap();
-        static ref NULLABLES_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("test_data/schemas/nullables.graphql").unwrap())
-                .unwrap();
-        static ref RECURSES_SCHEMA: Schema =
-            Schema::parse(fs::read_to_string("test_data/schemas/recurses.graphql").unwrap())
-                .unwrap();
-    }
+    static FILESYSTEM_SCHEMA: Lazy<Schema> = Lazy::new(|| {
+        Schema::parse(fs::read_to_string("test_data/schemas/filesystem.graphql").unwrap()).unwrap()
+    });
+
+    static NUMBERS_SCHEMA: Lazy<Schema> = Lazy::new(|| {
+        Schema::parse(fs::read_to_string("test_data/schemas/numbers.graphql").unwrap()).unwrap()
+    });
+
+    static NULLABLES_SCHEMA: Lazy<Schema> = Lazy::new(|| {
+        Schema::parse(fs::read_to_string("test_data/schemas/nullables.graphql").unwrap()).unwrap()
+    });
+
+    static RECURSES_SCHEMA: Lazy<Schema> = Lazy::new(|| {
+        Schema::parse(fs::read_to_string("test_data/schemas/recurses.graphql").unwrap()).unwrap()
+    });
 
     #[test]
     fn test_schemas_load_correctly() {

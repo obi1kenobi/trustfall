@@ -8,11 +8,9 @@ use std::{
 };
 
 use feed_rs::{model::Feed, parser};
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
-
-#[macro_use]
-extern crate lazy_static;
 
 use crate::adapter::FeedAdapter;
 
@@ -25,10 +23,8 @@ const WIRED_FEED_URI: &str = "https://www.wired.com/feed";
 const PCGAMER_FEED_LOCATION: &str = "/tmp/feeds-pcgamer.xml";
 const WIRED_FEED_LOCATION: &str = "/tmp/feeds-wired.xml";
 
-lazy_static! {
-    static ref SCHEMA: Schema =
-        Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).unwrap();
-}
+static SCHEMA: Lazy<Schema> =
+    Lazy::new(|| Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).unwrap());
 
 #[derive(Debug, Clone, Deserialize)]
 struct InputQuery<'a> {

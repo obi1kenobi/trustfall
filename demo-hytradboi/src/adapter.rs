@@ -4,8 +4,8 @@ use std::{fs, rc::Rc, sync::Arc};
 
 use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
-use lazy_static::__Deref;
 use octorust::types::{ContentFile, FullRepository};
+use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 use trustfall_core::{
     interpreter::{
@@ -24,10 +24,13 @@ use crate::{
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
 
-lazy_static! {
-    static ref HN_CLIENT: HnClient = HnClient::init().unwrap();
-    static ref CRATES_CLIENT: consecrates::Client = consecrates::Client::new(USER_AGENT);
-    static ref GITHUB_CLIENT: octorust::Client = octorust::Client::new(
+static HN_CLIENT: Lazy<HnClient> = Lazy::new(|| HnClient::init().unwrap());
+
+static CRATES_CLIENT: Lazy<consecrates::Client> =
+    Lazy::new(|| consecrates::Client::new(USER_AGENT));
+
+static GITHUB_CLIENT: Lazy<octorust::Client> = Lazy::new(|| {
+    octorust::Client::new(
         USER_AGENT,
         Some(octorust::auth::Credentials::Token(
             std::env::var("GITHUB_TOKEN").unwrap_or_else(|_| {
@@ -35,17 +38,21 @@ lazy_static! {
                     .expect("could not find creds file")
                     .trim()
                     .to_string()
-            })
+            }),
         )),
     )
-    .unwrap();
-    static ref REPOS_CLIENT: octorust::repos::Repos =
-        octorust::repos::Repos::new(GITHUB_CLIENT.clone());
-    static ref RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
+    .unwrap()
+});
+
+static REPOS_CLIENT: Lazy<octorust::repos::Repos> =
+    Lazy::new(|| octorust::repos::Repos::new(GITHUB_CLIENT.clone()));
+
+static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .unwrap();
-}
+        .unwrap()
+});
 
 pub struct DemoAdapter;
 
@@ -119,7 +126,7 @@ impl DemoAdapter {
 
     fn most_downloaded_crates(&self) -> VertexIterator<'static, Vertex> {
         Box::new(
-            CratesPager::new(CRATES_CLIENT.deref())
+            CratesPager::new(&CRATES_CLIENT)
                 .into_iter()
                 .map(|x| x.into()),
         )
@@ -596,7 +603,7 @@ impl Adapter<'static> for DemoAdapter {
                 let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => Box::new(
-                        WorkflowsPager::new(GITHUB_CLIENT.clone(), vertex, RUNTIME.deref())
+                        WorkflowsPager::new(GITHUB_CLIENT.clone(), vertex, &RUNTIME)
                             .into_iter()
                             .map(|x| x.into()),
                     ),

@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use globset::GlobBuilder;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use walkdir::WalkDir;
 
@@ -194,11 +194,7 @@ pub(crate) struct TestIRQuery {
 
 type QueryAndArgs = (Arc<IndexedQuery>, Arc<BTreeMap<Arc<str>, FieldValue>>);
 
-lazy_static! {
-    static ref QUERY_DATA: Vec<QueryAndArgs> = load_queries();
-}
-
-fn load_queries() -> Vec<QueryAndArgs> {
+static QUERY_DATA: Lazy<Vec<QueryAndArgs>> = Lazy::new(|| {
     let mut buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     buf.pop();
     buf.push("test_data/tests/valid_queries");
@@ -245,7 +241,7 @@ fn load_queries() -> Vec<QueryAndArgs> {
     }
 
     outputs
-}
+});
 
 impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
     type Error = ();

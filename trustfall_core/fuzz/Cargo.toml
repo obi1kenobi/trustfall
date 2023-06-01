@@ -12,7 +12,7 @@ cargo-fuzz = true
 async-graphql-parser = "^2.11.3"
 async-graphql-value = "^2.11.3"
 byteorder = "1"
-lazy_static = "1.4.0"
+once_cell = "1.17"
 ron = "0.7.0"
 serde = { version = "^1.0", features = ["derive"] }
 libfuzzer-sys = "0.4"

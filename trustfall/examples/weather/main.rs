@@ -5,6 +5,7 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::sync::Arc;
 use std::{env, process};
 
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
@@ -13,18 +14,14 @@ use crate::{
     metar::{CsvMetarReport, MetarReport},
 };
 
-#[macro_use]
-extern crate lazy_static;
-
 mod adapter;
 mod metar;
 mod util;
 
-lazy_static! {
-    static ref SCHEMA: Schema =
-        Schema::parse(util::read_file("./examples/weather/metar_weather.graphql"))
-            .expect("failed to parse schema");
-}
+static SCHEMA: Lazy<Schema> = Lazy::new(|| {
+    Schema::parse(util::read_file("./examples/weather/metar_weather.graphql"))
+        .expect("failed to parse schema")
+});
 
 const METAR_DOC_URL: &str =
     "https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv";

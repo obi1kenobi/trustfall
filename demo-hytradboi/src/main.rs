@@ -5,14 +5,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use adapter::DemoAdapter;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall_core::ir::TransparentValue;
 use trustfall_core::{
     frontend::parse, interpreter::execution::interpret_ir, ir::FieldValue, schema::Schema,
 };
-
-#[macro_use]
-extern crate lazy_static;
 
 mod actions_parser;
 mod adapter;
@@ -20,10 +18,8 @@ mod pagers;
 mod util;
 mod vertex;
 
-lazy_static! {
-    static ref SCHEMA: Schema =
-        Schema::parse(fs::read_to_string("./schema.graphql").unwrap()).unwrap();
-}
+static SCHEMA: Lazy<Schema> =
+    Lazy::new(|| Schema::parse(fs::read_to_string("./schema.graphql").unwrap()).unwrap());
 
 #[derive(Debug, Clone, Deserialize)]
 struct InputQuery<'a> {

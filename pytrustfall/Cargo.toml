@@ -24,6 +24,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 async-graphql-parser = "2.11.3"
 async-graphql-value = "2.11.3"
-lazy_static = "1.4.0"
+once_cell = "1.17"
 pyo3 = { version = "0.17.2", features = ["extension-module"] }
 trustfall_core = { path = "../trustfall_core" }
