@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt, sync::Arc};
 
 use async_graphql_parser::types::Type;
-use serde::{self, de::Visitor, Deserializer, Serialize, Serializer};
+use serde::{self, de::Visitor, ser::SerializeMap, Deserializer, Serialize, Serializer};
 
 pub fn serde_type_serializer<S>(value: &Type, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -43,11 +43,13 @@ pub fn serde_variables_serializer<S>(
 where
     S: Serializer,
 {
-    let converted: BTreeMap<&str, String> = value
+    let mut serializer = serializer.serialize_map(Some(value.len()))?;
+
+    value
         .iter()
-        .map(|(k, v)| (k.as_ref(), v.to_string()))
-        .collect();
-    converted.serialize(serializer)
+        .try_for_each(|(k, v)| serializer.serialize_entry(k, &v.to_string()))?;
+
+    serializer.end()
 }
 
 pub fn serde_variables_deserializer<'de, D>(
