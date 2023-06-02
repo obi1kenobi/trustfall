@@ -12,3 +12,4 @@ members = [
     "experiments/schemaless_wasm",
     "experiments/trustfall_rustdoc",
 ]
+resolver = "2"
