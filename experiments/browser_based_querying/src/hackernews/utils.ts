@@ -14,7 +14,9 @@ interface User {
   submitted: number[] | null;
 }
 
-export function materializeItem(fetchPort: MessagePort, itemId: number): Item | null {
+declare const fetchPort: MessagePort;
+
+export function materializeItem(itemId: number): Item | null {
   const sync = SyncContext.makeDefault();
 
   const url = `https://hacker-news.firebaseio.com/v0/item/${itemId}.json`;
@@ -55,7 +57,7 @@ export function materializeItem(fetchPort: MessagePort, itemId: number): Item | 
   return item;
 }
 
-export function materializeUser(fetchPort: MessagePort, username: string): User | null {
+export function materializeUser(username: string): User | null {
   const sync = SyncContext.makeDefault();
 
   const url = `https://hacker-news.firebaseio.com/v0/user/${username}.json`;
@@ -80,9 +82,9 @@ export function materializeUser(fetchPort: MessagePort, username: string): User 
   return user;
 }
 
-function* yieldMaterializedItems(fetchPort: MessagePort, itemIds: number[]): Generator<Item> {
+function* yieldMaterializedItems(itemIds: number[]): Generator<Item> {
   for (const id of itemIds) {
-    const item = materializeItem(fetchPort, id);
+    const item = materializeItem(id);
     const itemType = item?.['type'];
 
     // Ignore polls. They are very rarely made on HackerNews,
@@ -93,7 +95,7 @@ function* yieldMaterializedItems(fetchPort: MessagePort, itemIds: number[]): Gen
   }
 }
 
-function* resolveListOfItems(fetchPort: MessagePort, url: string): Generator<Item> {
+function* resolveListOfItems(url: string): Generator<Item> {
   const sync = SyncContext.makeDefault();
   const fetchOptions = {
     method: 'GET',
@@ -109,40 +111,40 @@ function* resolveListOfItems(fetchPort: MessagePort, url: string): Generator<Ite
   const result = new TextDecoder().decode(sync.receive());
   const itemIds = JSON.parse(result);
 
-  yield* yieldMaterializedItems(fetchPort, itemIds);
+  yield* yieldMaterializedItems(itemIds);
 }
 
-export function* getTopItems(fetchPort: MessagePort): Generator<Item> {
+export function* getTopItems(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/topstories.json';
-  yield* resolveListOfItems(fetchPort, url);
+  yield* resolveListOfItems(url);
 }
 
-export function* getLatestItems(fetchPort: MessagePort): Generator<Item> {
+export function* getLatestItems(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/newstories.json';
-  yield* resolveListOfItems(fetchPort, url);
+  yield* resolveListOfItems(url);
 }
 
-export function* getBestItems(fetchPort: MessagePort): Generator<Item> {
+export function* getBestItems(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/beststories.json';
-  yield* resolveListOfItems(fetchPort, url);
+  yield* resolveListOfItems(url);
 }
 
-export function* getAskStories(fetchPort: MessagePort): Generator<Item> {
+export function* getAskStories(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/askstories.json';
-  yield* resolveListOfItems(fetchPort, url);
+  yield* resolveListOfItems(url);
 }
 
-export function* getShowStories(fetchPort: MessagePort): Generator<Item> {
+export function* getShowStories(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/showstories.json';
-  yield* resolveListOfItems(fetchPort, url);
+  yield* resolveListOfItems(url);
 }
 
-export function* getJobItems(fetchPort: MessagePort): Generator<Item> {
+export function* getJobItems(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/jobstories.json';
-  yield* resolveListOfItems(fetchPort, url);
+  yield* resolveListOfItems(url);
 }
 
-export function* getUpdatedItems(fetchPort: MessagePort): Generator<Item> {
+export function* getUpdatedItems(): Generator<Item> {
   const url = 'https://hacker-news.firebaseio.com/v0/updates.json';
   const sync = SyncContext.makeDefault();
   const fetchOptions = {
@@ -159,10 +161,10 @@ export function* getUpdatedItems(fetchPort: MessagePort): Generator<Item> {
   const result = new TextDecoder().decode(sync.receive());
   const itemIds = JSON.parse(result)?.items;
 
-  yield* yieldMaterializedItems(fetchPort, itemIds);
+  yield* yieldMaterializedItems(itemIds);
 }
 
-export function* getUpdatedUserProfiles(fetchPort: MessagePort): Generator<User> {
+export function* getUpdatedUserProfiles(): Generator<User> {
   const url = 'https://hacker-news.firebaseio.com/v0/updates.json';
   const sync = SyncContext.makeDefault();
   const fetchOptions = {
@@ -180,18 +182,14 @@ export function* getUpdatedUserProfiles(fetchPort: MessagePort): Generator<User>
   const userIds = JSON.parse(result)?.profiles;
 
   for (const username of userIds) {
-    const user = materializeUser(fetchPort, username);
+    const user = materializeUser(username);
     if (user) {
       yield user;
     }
   }
 }
 
-function* getSearchResults(
-  fetchPort: MessagePort,
-  endpoint: string,
-  query: string
-): Generator<Item> {
+function* getSearchResults(endpoint: string, query: string): Generator<Item> {
   const hitsPerPage = '50';
   let nextPage = 0;
 
@@ -223,7 +221,7 @@ function* getSearchResults(
       for (const hit of hits) {
         const itemId = hit.objectID;
         if (itemId) {
-          const item = materializeItem(fetchPort, itemId);
+          const item = materializeItem(itemId);
           if (item) {
             yield item;
           }
@@ -235,10 +233,10 @@ function* getSearchResults(
   }
 }
 
-export function* getRelevanceSearchResults(fetchPort: MessagePort, query: string): Generator<Item> {
-  yield* getSearchResults(fetchPort, 'search', query);
+export function* getRelevanceSearchResults(query: string): Generator<Item> {
+  yield* getSearchResults('search', query);
 }
 
-export function* getDateSearchResults(fetchPort: MessagePort, query: string): Generator<Item> {
-  yield* getSearchResults(fetchPort, 'search_by_date', query);
+export function* getDateSearchResults(query: string): Generator<Item> {
+  yield* getSearchResults('search_by_date', query);
 }

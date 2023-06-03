@@ -70,18 +70,18 @@ function* limitIterator<T>(iter: IterableIterator<T>, limit: number): IterableIt
 const _itemPattern = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
 const _userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
 
-function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null {
+function materializeWebsite(url: string): Vertex | null {
   let matcher: RegExpMatchArray | null = null;
   let ret: { url: string; __typename: string } | null = null;
   if ((matcher = url.match(_itemPattern))) {
     // This is an item.
-    const item = materializeItem(fetchPort, parseInt(matcher[1]));
+    const item = materializeItem(parseInt(matcher[1]));
     if (item != null) {
       ret = { url, ...item };
     }
   } else if ((matcher = url.match(_userPattern))) {
     // This is a user.
-    const user = materializeUser(fetchPort, matcher[1]);
+    const user = materializeUser(matcher[1]);
     if (user != null) {
       ret = { url, ...user };
     }
@@ -92,13 +92,13 @@ function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null 
   return ret;
 }
 
-function* linksInHnMarkup(fetchPort: MessagePort, hnText: string | null): IterableIterator<Vertex> {
+function* linksInHnMarkup(hnText: string | null): IterableIterator<Vertex> {
   if (hnText) {
     const matches = hnText.matchAll(/<a [^>]*href="([^"]+)"[^>]*>/g);
     for (const match of matches) {
       // We matched the HTML-escaped URL. Decode the HTML entities.
       const url = decode(match[1]);
-      const vertex = materializeWebsite(fetchPort, url);
+      const vertex = materializeWebsite(url);
       if (vertex) {
         yield vertex;
       }
@@ -106,10 +106,7 @@ function* linksInHnMarkup(fetchPort: MessagePort, hnText: string | null): Iterab
   }
 }
 
-function* linksInAboutPage(
-  fetchPort: MessagePort,
-  aboutHtml: string | null
-): IterableIterator<Vertex> {
+function* linksInAboutPage(aboutHtml: string | null): IterableIterator<Vertex> {
   if (aboutHtml) {
     const processedLinks: Record<string, boolean> = {};
 
@@ -120,7 +117,7 @@ function* linksInAboutPage(
 
       if (!processedLinks[url]) {
         processedLinks[url] = true;
-        const vertex = materializeWebsite(fetchPort, url);
+        const vertex = materializeWebsite(url);
         if (vertex) {
           yield vertex;
         }
@@ -135,7 +132,7 @@ function* linksInAboutPage(
 
       if (!processedLinks[url]) {
         processedLinks[url] = true;
-        const vertex = materializeWebsite(fetchPort, url);
+        const vertex = materializeWebsite(url);
         if (vertex) {
           yield vertex;
         }
@@ -175,15 +172,9 @@ function* resolvePossiblyLimitedIterator(
 }
 
 export class MyAdapter implements Adapter<Vertex> {
-  fetchPort: MessagePort;
-
-  constructor(fetchPort: MessagePort) {
-    this.fetchPort = fetchPort;
-  }
-
   *resolveStartingVertices(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
     if (edge === 'FrontPage') {
-      return limitIterator(getTopItems(this.fetchPort), 30);
+      return limitIterator(getTopItems(), 30);
     } else if (
       edge === 'Top' ||
       edge === 'Latest' ||
@@ -195,7 +186,7 @@ export class MyAdapter implements Adapter<Vertex> {
       edge === 'UpdatedUserProfile'
     ) {
       const limit = parameters['max'] as number | undefined;
-      let fetcher: (fetchPort: MessagePort) => IterableIterator<Vertex>;
+      let fetcher: () => IterableIterator<Vertex>;
       switch (edge) {
         case 'Top': {
           fetcher = getTopItems;
@@ -230,16 +221,16 @@ export class MyAdapter implements Adapter<Vertex> {
           break;
         }
       }
-      yield* resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
+      yield* resolvePossiblyLimitedIterator(fetcher(), limit);
     } else if (edge === 'User') {
       const username = parameters['name'] as string;
-      const user = materializeUser(this.fetchPort, username);
+      const user = materializeUser(username);
       if (user != null) {
         yield user;
       }
     } else if (edge === 'Item') {
       const id = parameters['id'] as number;
-      const item = materializeItem(this.fetchPort, id);
+      const item = materializeItem(id);
       if (item != null) {
         yield item;
       }
@@ -247,11 +238,11 @@ export class MyAdapter implements Adapter<Vertex> {
       const query = parameters['query'] as string;
       switch (edge) {
         case 'SearchByRelevance': {
-          yield* getRelevanceSearchResults(this.fetchPort, query);
+          yield* getRelevanceSearchResults(query);
           break;
         }
         case 'SearchByDate': {
-          yield* getDateSearchResults(this.fetchPort, query);
+          yield* getDateSearchResults(query);
           break;
         }
       }
@@ -417,7 +408,7 @@ export class MyAdapter implements Adapter<Vertex> {
             if (vertex) {
               if (vertex.url) {
                 // link submission
-                const neighbor = materializeWebsite(this.fetchPort, vertex.url);
+                const neighbor = materializeWebsite(vertex.url);
                 if (neighbor) {
                   neighbors = [neighbor][Symbol.iterator]();
                 } else {
@@ -425,7 +416,7 @@ export class MyAdapter implements Adapter<Vertex> {
                 }
               } else {
                 // text submission
-                neighbors = linksInHnMarkup(this.fetchPort, vertex.text);
+                neighbors = linksInHnMarkup(vertex.text);
               }
             } else {
               neighbors = [][Symbol.iterator]();
@@ -441,7 +432,7 @@ export class MyAdapter implements Adapter<Vertex> {
             const vertex = ctx.activeVertex;
             let neighbors: IterableIterator<Vertex>;
             if (vertex) {
-              neighbors = linksInHnMarkup(this.fetchPort, vertex.text);
+              neighbors = linksInHnMarkup(vertex.text);
             } else {
               neighbors = [][Symbol.iterator]();
             }
@@ -456,7 +447,7 @@ export class MyAdapter implements Adapter<Vertex> {
             const vertex = ctx.activeVertex;
             let neighbors: IterableIterator<Vertex> = [][Symbol.iterator]();
             if (vertex) {
-              const neighbor = materializeWebsite(this.fetchPort, vertex.url);
+              const neighbor = materializeWebsite(vertex.url);
               if (neighbor) {
                 neighbors = [neighbor][Symbol.iterator]();
               }
@@ -475,7 +466,7 @@ export class MyAdapter implements Adapter<Vertex> {
           if (vertex) {
             yield {
               localId: ctx.localId,
-              neighbors: lazyFetchMap(this.fetchPort, [vertex.by], materializeUser),
+              neighbors: lazyFetchMap([vertex.by], materializeUser),
             };
           } else {
             yield {
@@ -489,7 +480,7 @@ export class MyAdapter implements Adapter<Vertex> {
           const vertex = ctx.activeVertex;
           yield {
             localId: ctx.localId,
-            neighbors: lazyFetchMap(this.fetchPort, vertex?.kids, materializeItem),
+            neighbors: lazyFetchMap(vertex?.kids, materializeItem),
           };
         }
       } else if (edge_name === 'parent') {
@@ -499,7 +490,7 @@ export class MyAdapter implements Adapter<Vertex> {
           if (parent) {
             yield {
               localId: ctx.localId,
-              neighbors: lazyFetchMap(this.fetchPort, [parent], materializeItem),
+              neighbors: lazyFetchMap([parent], materializeItem),
             };
           } else {
             yield {
@@ -518,7 +509,7 @@ export class MyAdapter implements Adapter<Vertex> {
           const submitted = vertex?.submitted;
           yield {
             localId: ctx.localId,
-            neighbors: lazyFetchMap(this.fetchPort, submitted, materializeItem),
+            neighbors: lazyFetchMap(submitted, materializeItem),
           };
         }
       } else if (edge_name === 'link') {
@@ -527,7 +518,7 @@ export class MyAdapter implements Adapter<Vertex> {
           let neighbors: IterableIterator<Vertex> = [][Symbol.iterator]();
           const aboutHtml = vertex?.about;
           if (aboutHtml) {
-            neighbors = linksInAboutPage(this.fetchPort, aboutHtml);
+            neighbors = linksInAboutPage(aboutHtml);
           }
           yield {
             localId: ctx.localId,
@@ -574,13 +565,12 @@ export class MyAdapter implements Adapter<Vertex> {
 }
 
 function* lazyFetchMap<InT, OutT>(
-  fetchPort: MessagePort,
   inputs: Array<InT> | null,
-  func: (port: MessagePort, arg: InT) => OutT
+  func: (arg: InT) => OutT
 ): IterableIterator<OutT> {
   if (inputs) {
     for (const input of inputs) {
-      const result = func(fetchPort, input);
+      const result = func(input);
       if (result != null) {
         yield result;
       }
@@ -634,6 +624,7 @@ function dispatch(e: MessageEvent<AdapterMessage>): void {
 
   if (payload.op === 'channel') {
     _adapterFetchChannel = payload.data.port;
+    (globalThis as any).fetchPort = payload.data.port;
     return;
   }
 
