@@ -72,15 +72,23 @@ const _userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
 
 function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null {
   let matcher: RegExpMatchArray | null = null;
-  let ret: any | null = { __typename: 'Website' };
+  let ret: { url: string; __typename: string } | null = null;
   if ((matcher = url.match(_itemPattern))) {
     // This is an item.
-    ret = materializeItem(fetchPort, parseInt(matcher[1]));
+    const item = materializeItem(fetchPort, parseInt(matcher[1]));
+    if (item != null) {
+      ret = { url, ...item };
+    }
   } else if ((matcher = url.match(_userPattern))) {
     // This is a user.
-    ret = materializeUser(fetchPort, matcher[1]);
+    const user = materializeUser(fetchPort, matcher[1]);
+    if (user != null) {
+      ret = { url, ...user };
+    }
+  } else {
+    ret = { url, __typename: 'Website' };
   }
-  ret.url = url;
+
   return ret;
 }
 
