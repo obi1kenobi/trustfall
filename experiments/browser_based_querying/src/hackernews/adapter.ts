@@ -10,7 +10,7 @@ import {
   initialize,
   executeQuery,
 } from '../../www2/trustfall_wasm';
-import debug from "../utils/debug";
+import debug from '../utils/debug';
 import {
   getAskStories,
   getBestItems,
@@ -71,25 +71,17 @@ const _itemPattern = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
 const _userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
 
 function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null {
-  const itemMatch = url.match(_itemPattern);
-  let ret: any
-  if (itemMatch) {
+  let matcher: RegExpMatchArray | null = null;
+  let ret: any | null = { __typename: 'Website' };
+  if ((matcher = url.match(_itemPattern))) {
     // This is an item.
-    ret = materializeItem(fetchPort, parseInt(itemMatch[1]));
-  } else {
-    const userMatch = url.match(_userPattern);
-    if (userMatch) {
-      // This is a user.
-      ret = materializeUser(fetchPort, userMatch[1]);
-    } else {
-      // This is some other type of webpage that we don't have a more specific type for.
-      ret = {
-        __typename: 'Website'
-      };
-    }
+    ret = materializeItem(fetchPort, parseInt(matcher[1]));
+  } else if ((matcher = url.match(_userPattern))) {
+    // This is a user.
+    ret = materializeUser(fetchPort, matcher[1]);
   }
-  ret.url = url
-  return ret
+  ret.url = url;
+  return ret;
 }
 
 function* linksInHnMarkup(fetchPort: MessagePort, hnText: string | null): IterableIterator<Vertex> {
@@ -230,7 +222,7 @@ export class MyAdapter implements Adapter<Vertex> {
           break;
         }
       }
-      yield * resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
+      yield* resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
     } else if (edge === 'User') {
       const username = parameters['name'] as string;
       const user = materializeUser(this.fetchPort, username);
@@ -406,11 +398,7 @@ export class MyAdapter implements Adapter<Vertex> {
     edge_name: string,
     parameters: JsEdgeParameters
   ): IterableIterator<ContextAndNeighborsIterator<Vertex>> {
-    if (
-      type_name === 'Story' ||
-      type_name === 'Job' ||
-      type_name === 'Comment'
-    ) {
+    if (type_name === 'Story' || type_name === 'Job' || type_name === 'Comment') {
       if (edge_name === 'link') {
         if (type_name === 'Story') {
           // Link submission stories have the submitted URL as a link.
