@@ -1,5 +1,5 @@
 # Structs whose names end in "Iter": not all crates have them,
-# so try one of these crates: aho_corasick, arrayvec, indexmap, itertools
+# so try one of these crates: arrayvec, indexmap, itertools
 query {
   Crate {
     item {

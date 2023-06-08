@@ -151,9 +151,6 @@ type StructField implements Item {
   # edges from Item
   span: Span
   attribute: [Attribute!]
-
-  # own edges
-  raw_type: RawType
 }
 
 """
@@ -226,6 +223,9 @@ interface Variant implements Item {
   # edges from Item
   span: Span
   attribute: [Attribute!]
+
+  # own edges
+  field: [StructField!]
 }
 
 """
@@ -245,6 +245,9 @@ type PlainVariant implements Item & Variant {
   # edges from Item
   span: Span
   attribute: [Attribute!]
+
+  # edges from Variant
+  field: [StructField!]
 }
 
 """
@@ -264,6 +267,9 @@ type TupleVariant implements Item & Variant {
   # edges from Item
   span: Span
   attribute: [Attribute!]
+
+  # edges from Variant
+  field: [StructField!]
 }
 
 """
@@ -283,6 +289,9 @@ type StructVariant implements Item & Variant {
   # edges from Item
   span: Span
   attribute: [Attribute!]
+
+  # edges from Variant
+  field: [StructField!]
 }
 
 """
@@ -411,7 +420,7 @@ type Trait implements Item & Importable {
   visibility_limit: String!
 
   # own properties
-  variants_stripped: Boolean!
+  unsafe: Boolean!
 
   # edges from Item
   span: Span
@@ -420,6 +429,12 @@ type Trait implements Item & Importable {
   # edges from Importable
   importable_path: [ImportablePath!]
   canonical_path: Path
+
+  # own edges
+  """
+  Methods defined in this trait.
+  """
+  method: [Method!]
 }
 
 """
@@ -463,6 +478,17 @@ interface FunctionLike {
   const: Boolean!
   unsafe: Boolean!
   async: Boolean!
+
+  # own edges
+  parameter: [FunctionParameter!]
+}
+
+"""
+A function parameter.
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.FnDecl.html
+"""
+type FunctionParameter {
+  name: String!
 }
 
 """
@@ -487,6 +513,9 @@ type Function implements Item & FunctionLike & Importable {
   # edges from Item
   span: Span
   attribute: [Attribute!]
+
+  # edges from FunctionLike
+  parameter: [FunctionParameter!]
 
   # edges from Importable
   importable_path: [ImportablePath!]
@@ -515,6 +544,9 @@ type Method implements Item & FunctionLike {
   # edge from Item
   span: Span
   attribute: [Attribute!]
+
+  # edges from FunctionLike
+  parameter: [FunctionParameter!]
 }
 
 """
@@ -522,41 +554,62 @@ A specific attribute applied to an Item.
 """
 type Attribute {
   """
-  The textual representation of the attribute.
+  String representation of the attribute as it is found in the code.
 
-  For example: "#[repr(C)]"
+  For example: `#[non_exhaustive]`
   """
-  value: String!
+  raw_attribute: String!
+
+  """
+  True for an inner attribute (starting with `#![`), and false for an
+  outer one (starting with `#[`).
+
+  For example: false for `#[non_exhaustive]`
+  """
+  is_inner: Boolean!
+
+  # edges
+
+  # Edge to parsed content of the attribute
+  content: AttributeMetaItem!
 }
 
 """
-A type represented in the "raw" rustdoc JSON representation.
-
-Copiously detailed, but not the easiest to use due to its complexity.
-
-This interface is a temporary, perma-unstable type intended to be used
-only until the rustdoc JSON format is stabilized and until subsequently
-we are able to design a better, more permanent representation for
-Rust types in this schema.
-
-https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Type.html
+A single meta item used by a specific attribute
+(see https://doc.rust-lang.org/reference/attributes.html#meta-item-attribute-syntax).
 """
-interface RawType {
-  name: String!
-}
-
-"""
-Represents a struct, enum, or trait.
-
-https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Type.html#variant.ResolvedPath
-"""
-interface ResolvedPathType implements RawType {
+type AttributeMetaItem {
   """
-  The fully-qualified canonical name of the type.
+  The entire meta item represented as a string as it is found in the code.
 
-  For example: "core::marker::PhantomData" or "std::marker::PhantomData"
+  For example: `"derive(Debug, Clone)"`
   """
-  name: String!
+  raw_item: String!
+
+  """
+  SimplePath of the meta item.
+
+  For example: `"derive"` for `derive(Debug, Clone)`,
+               `"must_use"` for `must_use = "example_message"`
+  """
+  base: String!
+
+  """
+  Assigned item if the meta item is in the form `SimplePath = AssignedItem`.
+
+  For example: `"\"example_message\""` for `must_use = "example_message"`
+  """
+  assigned_item: String
+
+  # edges
+
+  """
+  Inner meta items if the meta item is in the form `SimplePath(MetaSeq)`.
+
+  For example: `[AttributeMetaItem::new("Debug"), AttributeMetaItem::new("Clone")]`
+  for `derive(Debug, Clone)`
+  """
+  argument: [AttributeMetaItem!]
 }
 
 """
@@ -571,36 +624,5 @@ type ImplementedTrait {
   """
   In `impl Foo<u64> for Bar`, this refers to `trait Foo<T>`.
   """
-  trait: Trait!
-}
-
-"""
-Represents a primitive type:
-fixed-size numeric types (plus int/usize/float), char, arrays, slices, and tuples.
-
-https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Type.html#variant.Primitive
-"""
-type PrimitiveType implements RawType {
-  """
-  The name of the primitive type.
-
-  For example: "usize"
-  """
-  name: String!
-}
-
-"""
-Any other type that isn't currently captured by another kind of RawType.
-
-This type is a hack, so I can get useful queries running before implementing
-the entire spectrum of possible types.
-
-No query should write "... on OtherType" because there's nothing you can do with it.
-It will eventually be removed without a major version bump.
-"""
-type OtherType implements RawType {
-  """
-  As best we can define the name of this type.
-  """
-  name: String!
+  trait: Trait
 }

@@ -3,7 +3,7 @@ import { RustdocWorkerMessage, RustdocWorkerResponse } from './types';
 
 function fetchCrateJson(filename: string): Promise<string> {
   return fetch(
-    `https://raw.githubusercontent.com/obi1kenobi/crates-rustdoc/main/max_version/${filename}.json`
+    `https://raw.githubusercontent.com/obi1kenobi/crates-rustdoc/main/rustdoc-v26/max-version/${filename}.json`
   ).then((response) => response.text());
 }
 

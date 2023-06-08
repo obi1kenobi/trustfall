@@ -53,7 +53,7 @@ interface CrateOption {
 
 const CRATE_OPTIONS = crateNames.map((name) => ({ label: fmtCrateName(name), value: name }));
 
-const CrateParam = withDefault(StringParam, 'itertools-0.10.3')
+const CrateParam = withDefault(StringParam, 'itertools-0.10.4')
 
 interface PlaygroundProps {
   queryWorker: Worker;
@@ -148,6 +148,7 @@ export default function Rustdoc(): JSX.Element {
         setAsyncLoadedCrate({ status: 'ready', value: msg.name });
         break;
       case 'load-crate-error':
+        console.error(msg.message);
         setAsyncLoadedCrate({ status: 'error', error: msg.message });
         break;
       case 'ready':

@@ -1,13 +1,16 @@
 # Items where lints were allowed. Not all crates have these,
-# try one of: anyhow, clap, http, httparse, hyper, itertools.
+# try one of: anyhow, httparse, hyper, itertools.
 query {
   Crate {
     item {
       name @output
 
       attribute {
-        attr: value @output
-                    @filter(op: "regex", value: ["$pattern"])
+        raw_attribute @output
+
+        content {
+          base @filter(op: "=", value: ["$allow_lint"])
+        }
       }
 
       span {
@@ -20,5 +23,5 @@ query {
 
 vars:
 {
-  "pattern": "#\\[allow\\(.+\\)\\]"
+  "allow_lint": "allow"
 }
