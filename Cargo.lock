@@ -2500,9 +2500,9 @@ dependencies = [
 
 [[package]]
 name = "rustdoc-types"
-version = "0.14.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb8ae6df9a4006b7968781abb9a2ea2983b5f3cad2ca9294d195781618194c28"
+checksum = "5c7a12c7506980eaac5c9851a04e90e0062eb4417aa188a512bf7a64a1ef290f"
 dependencies = [
  "serde",
 ]
@@ -3342,6 +3342,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "trustfall-rustdoc-adapter"
+version = "26.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ebef3d4d48966c04ad6c7ba62a2199acee6bf82517dea21cbf1283f48b51c1a"
+dependencies = [
+ "rustdoc-types",
+ "trustfall",
+]
+
+[[package]]
 name = "trustfall_core"
 version = "0.5.0"
 dependencies = [
@@ -3392,8 +3402,8 @@ dependencies = [
  "gloo-utils",
  "js-sys",
  "ouroboros",
- "rustdoc-types",
  "serde_json",
+ "trustfall-rustdoc-adapter",
  "trustfall_core",
  "trustfall_wasm",
  "wasm-bindgen",
