@@ -183,7 +183,7 @@ jobs:
       - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo test
-        run: cargo test
+        run: cargo test --workspace --all-targets --all-features
 
   rust-fuzz:
     name: Check fuzz targets
@@ -246,7 +246,6 @@ jobs:
       - name: Run cargo test and wasm-pack tests
         run: |
           cd trustfall_wasm
-          cargo test
           wasm-pack test --headless --firefox
           wasm-pack test --headless --chrome
 
