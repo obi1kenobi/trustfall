@@ -1,18 +1,9 @@
 import { SyncContext } from '../sync';
-
-interface Item {
-  __typename: string;
-  type: string;
-}
-
-interface User {
-  __typename: string;
-  id: string;
-  created: number;
-  karma: number;
-  about: string | null; // HTML content
-  submitted: number[] | null;
-}
+import { Comment } from './data/Comment';
+import { Item } from './data/Item';
+import { Job } from './data/Job';
+import { Story } from './data/Story';
+import { User } from './data/User';
 
 export function materializeItem(fetchPort: MessagePort, itemId: number): Item | null {
   const sync = SyncContext.makeDefault();
@@ -34,25 +25,18 @@ export function materializeItem(fetchPort: MessagePort, itemId: number): Item | 
 
   if (item) {
     switch (item.type) {
-      case 'comment': {
-        item.__typename = 'Comment';
-        break;
-      }
-      case 'story': {
-        item.__typename = 'Story';
-        break;
-      }
-      case 'job': {
-        item.__typename = 'Job';
-        break;
-      }
-      default: {
-        item.__typename = 'Item';
-      }
+      case 'comment':
+        return new Comment(fetchPort, item);
+      case 'story':
+        return new Story(fetchPort, item);
+      case 'job':
+        return new Job(fetchPort, item);
+      default:
+        return new Item(fetchPort, item);
     }
   }
 
-  return item;
+  return null;
 }
 
 export function materializeUser(fetchPort: MessagePort, username: string): User | null {
@@ -74,16 +58,16 @@ export function materializeUser(fetchPort: MessagePort, username: string): User 
   const user = JSON.parse(result);
 
   if (user) {
-    user.__typename = 'User';
+    return new User(fetchPort, username, user);
   }
 
-  return user;
+  return null;
 }
 
 function* yieldMaterializedItems(fetchPort: MessagePort, itemIds: number[]): Generator<Item> {
   for (const id of itemIds) {
     const item = materializeItem(fetchPort, id);
-    const itemType = item?.['type'];
+    const itemType = item?.type();
 
     // Ignore polls. They are very rarely made on HackerNews,
     // and they are not supported in our query schema.

@@ -26,6 +26,7 @@ import {
   materializeUser,
 } from './utils';
 import HN_SCHEMA from './schema.graphql';
+import { Webpage } from './data/Webpage';
 
 initialize(); // Trustfall query system init.
 
@@ -72,21 +73,21 @@ const _userPattern = /^https:\/\/news\.ycombinator\.com\/user\?id=(.+)$/;
 
 function materializeWebsite(fetchPort: MessagePort, url: string): Vertex | null {
   let matcher: RegExpMatchArray | null = null;
-  let ret: { url: string; __typename: string } | null = null;
+  let ret: Webpage | null = null;
   if ((matcher = url.match(_itemPattern))) {
     // This is an item.
     const item = materializeItem(fetchPort, parseInt(matcher[1]));
     if (item != null) {
-      ret = { url, ...item };
+      ret = item;
     }
   } else if ((matcher = url.match(_userPattern))) {
     // This is a user.
     const user = materializeUser(fetchPort, matcher[1]);
     if (user != null) {
-      ret = { url, ...user };
+      ret = user;
     }
   } else {
-    ret = { url, __typename: 'Website' };
+    ret = new Webpage(fetchPort, url);
   }
 
   return ret;
@@ -128,7 +129,7 @@ function* linksInAboutPage(
     }
 
     const aboutPlain = extractPlainTextFromHnMarkup(aboutHtml);
-    const matches2 = aboutPlain.matchAll(/http[s]?:\/\/[^ \n\t]*[^ \n\t\.);,\]}]/g);
+    const matches2 = aboutPlain.matchAll(/http[s]?:\/\/[^ \n\t]*[^ \n\t.);,\]}]/g);
     for (const match of matches2) {
       // We matched the unescaped URL.
       const url = match[0];
@@ -265,138 +266,29 @@ export class MyAdapter implements Adapter<Vertex> {
     type_name: string,
     field_name: string
   ): IterableIterator<ContextAndValue> {
-    if (field_name === '__typename') {
-      for (const ctx of contexts) {
+    for (const ctx of contexts) {
+      const vertex = ctx.activeVertex;
+
+      if (vertex === null) {
+        yield { localId: ctx.localId, value: null };
+        continue;
+      }
+
+      if (!(field_name in vertex)) {
+        throw new Error(
+          `[Property] Can't call vertex.${field_name}() on "${JSON.stringify(vertex)}"`
+        );
+      }
+
+      try {
         yield {
           localId: ctx.localId,
-          value: ctx.activeVertex?.__typename || null,
+          value: (vertex as any)[field_name](),
         };
+      } catch (e) {
+        console.trace({ resolveProperty: true, type_name, field_name, vertex });
+        throw e;
       }
-      return;
-    }
-
-    if (
-      type_name === 'Item' ||
-      type_name === 'Story' ||
-      type_name === 'Job' ||
-      type_name === 'Comment'
-    ) {
-      switch (field_name) {
-        case 'url': {
-          for (const ctx of contexts) {
-            const vertex = ctx.activeVertex;
-
-            let value = null;
-            if (vertex) {
-              value = `https://news.ycombinator.com/item?id=${vertex.id}`;
-            }
-
-            yield {
-              localId: ctx.localId,
-              value: value,
-            };
-          }
-          break;
-        }
-        case 'textPlain': {
-          const fieldKey = HNItemFieldMappings.textHtml;
-
-          for (const ctx of contexts) {
-            const vertex = ctx.activeVertex;
-
-            let value = null;
-            if (vertex) {
-              value = extractPlainTextFromHnMarkup(vertex[fieldKey]);
-            }
-
-            yield {
-              localId: ctx.localId,
-              value: value,
-            };
-          }
-          break;
-        }
-        default: {
-          const fieldKey = HNItemFieldMappings[field_name];
-          if (fieldKey == undefined) {
-            throw new Error(`Unexpected property for type ${type_name}: ${field_name}`);
-          }
-
-          for (const ctx of contexts) {
-            const vertex = ctx.activeVertex;
-
-            yield {
-              localId: ctx.localId,
-              value: vertex?.[fieldKey] || null,
-            };
-          }
-        }
-      }
-    } else if (type_name === 'User') {
-      switch (field_name) {
-        case 'url': {
-          for (const ctx of contexts) {
-            const vertex = ctx.activeVertex;
-
-            let value = null;
-            if (vertex) {
-              value = `https://news.ycombinator.com/user?id=${vertex.id}`;
-            }
-
-            yield {
-              localId: ctx.localId,
-              value: value,
-            };
-          }
-          break;
-        }
-        case 'aboutPlain': {
-          const fieldKey = HNUserFieldMappings.aboutHtml;
-
-          for (const ctx of contexts) {
-            const vertex = ctx.activeVertex;
-
-            let value = null;
-            if (vertex) {
-              value = extractPlainTextFromHnMarkup(vertex[fieldKey]);
-            }
-
-            yield {
-              localId: ctx.localId,
-              value: value,
-            };
-          }
-          break;
-        }
-        default: {
-          const fieldKey = HNUserFieldMappings[field_name];
-          if (fieldKey == undefined) {
-            throw new Error(`Unexpected property for type ${type_name}: ${field_name}`);
-          }
-
-          for (const ctx of contexts) {
-            const vertex = ctx.activeVertex;
-            yield {
-              localId: ctx.localId,
-              value: vertex?.[fieldKey] || null,
-            };
-          }
-        }
-      }
-    } else if (type_name === 'Webpage') {
-      if (field_name === 'url') {
-        for (const ctx of contexts) {
-          const vertex = ctx.activeVertex;
-          yield {
-            localId: ctx.localId,
-            value: vertex?.url || null,
-          };
-        }
-      } else {
-        throw new Error(`Unexpected property: ${type_name} ${field_name}`);
-      }
-    } else {
-      throw new Error(`Unexpected type+property for type ${type_name}: ${field_name}`);
     }
   }
 
