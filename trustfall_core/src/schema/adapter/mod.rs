@@ -182,7 +182,8 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
                 Box::new(self.schema.vertex_types.values().filter_map(move |v| {
-                    (v.name.node != root_query_type).then(|| SchemaVertex::VertexType(VertexType::new(v)))
+                    (v.name.node != root_query_type)
+                        .then(|| SchemaVertex::VertexType(VertexType::new(v)))
                 }))
             }
             "Entrypoint" => Box::new(Box::new(
