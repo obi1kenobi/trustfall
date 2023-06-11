@@ -39,15 +39,14 @@ impl<'a> SchemaAdapter<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub enum Vertex<'a> {
-    #[allow(clippy::enum_variant_names)]
+pub enum SchemaVertex<'a> {
     VertexType(VertexType<'a>),
     Property(Property<'a>),
     Edge(Edge<'a>),
     EdgeParameter(EdgeParameter<'a>),
 }
 
-impl<'a> Vertex<'a> {
+impl<'a> SchemaVertex<'a> {
     #[inline(always)]
     fn as_vertex_type(&self) -> Option<&VertexType<'a>> {
         match self {
@@ -171,7 +170,7 @@ impl<'a> EdgeParameter<'a> {
 }
 
 impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
-    type Vertex = Vertex<'a>;
+    type Vertex = SchemaVertex<'a>;
 
     fn resolve_starting_vertices(
         &self,
@@ -183,7 +182,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
                 Box::new(self.schema.vertex_types.values().filter_map(move |v| {
-                    (v.name.node != root_query_type).then(|| Vertex::VertexType(VertexType::new(v)))
+                    (v.name.node != root_query_type).then(|| SchemaVertex::VertexType(VertexType::new(v)))
                 }))
             }
             "Entrypoint" => Box::new(Box::new(
@@ -191,7 +190,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     .query_type
                     .fields
                     .iter()
-                    .map(|field| Vertex::Edge(Edge::new(&field.node))),
+                    .map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
             )),
             _ => unreachable!("unexpected starting edge: {edge_name}"),
         }
@@ -275,7 +274,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                         schema
                             .vertex_types
                             .get(target_type)
-                            .map(|defn| Vertex::VertexType(VertexType::new(defn)))
+                            .map(|defn| SchemaVertex::VertexType(VertexType::new(defn)))
                             .into_iter(),
                     )
                 }),
@@ -286,7 +285,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     Box::new(
                         parameters
                             .iter()
-                            .map(|inp| Vertex::EdgeParameter(EdgeParameter::new(&inp.node))),
+                            .map(|inp| SchemaVertex::EdgeParameter(EdgeParameter::new(&inp.node))),
                     )
                 }),
                 _ => unreachable!("unexpected edge name on type {type_name}: {edge_name}"),
@@ -310,8 +309,8 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
 #[inline(always)]
 fn resolve_vertex_type_implements_edge<'a>(
     schema: &'a Schema,
-    vertex: &Vertex<'a>,
-) -> Box<dyn Iterator<Item = Vertex<'a>> + 'a> {
+    vertex: &SchemaVertex<'a>,
+) -> Box<dyn Iterator<Item = SchemaVertex<'a>> + 'a> {
     let vertex = vertex.as_vertex_type().expect("not a VertexType");
     let implements = super::get_vertex_type_implements(vertex.defn);
 
@@ -320,15 +319,15 @@ fn resolve_vertex_type_implements_edge<'a>(
         schema
             .vertex_types
             .get(implements_type)
-            .map(|defn| Vertex::VertexType(VertexType::new(defn)))
+            .map(|defn| SchemaVertex::VertexType(VertexType::new(defn)))
     }))
 }
 
 #[inline(always)]
 fn resolve_vertex_type_implementer_edge<'a>(
     schema: &'a Schema,
-    vertex: &Vertex<'a>,
-) -> Box<dyn Iterator<Item = Vertex<'a>> + 'a> {
+    vertex: &SchemaVertex<'a>,
+) -> Box<dyn Iterator<Item = SchemaVertex<'a>> + 'a> {
     let vertex = vertex.as_vertex_type().expect("not a VertexType");
     Box::new(
         schema
@@ -338,7 +337,7 @@ fn resolve_vertex_type_implementer_edge<'a>(
                 schema
                     .vertex_types
                     .get(implementer_type)
-                    .map(|x| Vertex::VertexType(VertexType::new(x)))
+                    .map(|x| SchemaVertex::VertexType(VertexType::new(x)))
             }),
     )
 }
@@ -346,8 +345,8 @@ fn resolve_vertex_type_implementer_edge<'a>(
 #[inline(always)]
 fn resolve_vertex_type_property_edge<'a>(
     schema: &'a Schema,
-    vertex: &Vertex<'a>,
-) -> Box<dyn Iterator<Item = Vertex<'a>> + 'a> {
+    vertex: &SchemaVertex<'a>,
+) -> Box<dyn Iterator<Item = SchemaVertex<'a>> + 'a> {
     let vertex = vertex.as_vertex_type().expect("not a VertexType");
     let fields = super::get_vertex_type_fields(vertex.defn);
 
@@ -358,7 +357,7 @@ fn resolve_vertex_type_property_edge<'a>(
         let base_ty = get_base_named_type(field_ty);
 
         if !schema.vertex_types.contains_key(base_ty) {
-            Some(Vertex::Property(Property::new(
+            Some(SchemaVertex::Property(Property::new(
                 parent_defn,
                 field.name.node.as_str(),
                 field_ty,
@@ -372,8 +371,8 @@ fn resolve_vertex_type_property_edge<'a>(
 #[inline(always)]
 fn resolve_vertex_type_edge_edge<'a>(
     schema: &'a Schema,
-    vertex: &Vertex<'a>,
-) -> Box<dyn Iterator<Item = Vertex<'a>> + 'a> {
+    vertex: &SchemaVertex<'a>,
+) -> Box<dyn Iterator<Item = SchemaVertex<'a>> + 'a> {
     let vertex = vertex.as_vertex_type().expect("not a VertexType");
     let fields = super::get_vertex_type_fields(vertex.defn);
 
@@ -383,7 +382,7 @@ fn resolve_vertex_type_edge_edge<'a>(
         let base_ty = get_base_named_type(field_ty);
 
         if schema.vertex_types.contains_key(base_ty) {
-            Some(Vertex::Edge(Edge::new(field)))
+            Some(SchemaVertex::Edge(Edge::new(field)))
         } else {
             None
         }
