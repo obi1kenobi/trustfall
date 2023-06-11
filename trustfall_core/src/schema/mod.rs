@@ -251,6 +251,54 @@ directive @transform(op: String!) on FIELD
         }))
     }
 
+    fn fields(vertex: &TypeDefinition) -> Box<dyn Iterator<Item = &str> + '_> {
+        match &vertex.kind {
+            TypeKind::Object(o) => Box::new(o.fields.iter().map(|x| x.node.name.node.as_str())),
+            TypeKind::Interface(i) => Box::new(i.fields.iter().map(|x| x.node.name.node.as_str())),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn lowest_common_denom(&self, type_name: &str, property_name: &str) -> String {
+        let first_implemented_with_matching_property = get_vertex_type_implements(
+            self.vertex_types
+                .get(type_name)
+                .expect("type_name not a valid vertex type"),
+        )
+        .iter()
+        .filter_map(|implemented_type_name| {
+            // convert to typedef from string
+            self.vertex_types.get(implemented_type_name.node.as_str())
+        })
+        .find(|implemented_typedef| Self::fields(&implemented_typedef).contains(&property_name));
+
+        if let Some(typedef) = first_implemented_with_matching_property {
+            let mut type_with_matching_properties = typedef;
+
+            loop {
+                let implemented_by_this_type_by_name =
+                    get_vertex_type_implements(&type_with_matching_properties);
+
+                let first_type_with_needed_field = implemented_by_this_type_by_name
+                    .iter()
+                    .filter_map(|implemented_type_name| {
+                        // convert to typedef from string
+                        self.vertex_types.get(implemented_type_name.node.as_str())
+                    })
+                    .find(|implemented_typedef| {
+                        Self::fields(&implemented_typedef).contains(&property_name)
+                    });
+                if let Some(vertex_with_matching_prop) = first_type_with_needed_field {
+                    type_with_matching_properties = vertex_with_matching_prop;
+                } else {
+                    return typedef.name.node.as_str().to_owned();
+                }
+            }
+        } else {
+            return type_name.to_owned();
+        }
+    }
+
     pub(crate) fn query_type_name(&self) -> &str {
         self.schema.query.as_ref().unwrap().node.as_ref()
     }
