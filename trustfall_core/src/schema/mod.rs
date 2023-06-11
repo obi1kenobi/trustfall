@@ -25,7 +25,10 @@ use crate::util::{BTreeMapTryInsertExt, HashMapTryInsertExt};
 
 use self::error::InvalidSchemaError;
 
+mod adapter;
 pub mod error;
+
+pub use adapter::SchemaAdapter;
 
 #[derive(Debug, Clone)]
 pub struct Schema {

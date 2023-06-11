@@ -61,7 +61,7 @@ pub mod provider {
 pub use trustfall_core::ir::{FieldValue, TransparentValue};
 
 /// Trustfall query schema.
-pub use trustfall_core::schema::Schema;
+pub use trustfall_core::schema::{Schema, SchemaAdapter};
 
 // Trait for converting query results into structs.
 pub use trustfall_core::TryIntoStruct;
