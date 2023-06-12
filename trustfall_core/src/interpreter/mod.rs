@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
 use async_graphql_parser::types::Type;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     ir::{
@@ -125,11 +125,10 @@ impl From<ValueOrVec> for FieldValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
 struct SerializableContext<Vertex>
 where
-    Vertex: Clone + Debug + Serialize,
-    for<'d> Vertex: Deserialize<'d>,
+    Vertex: Clone + Debug + Serialize + DeserializeOwned,
 {
     active_vertex: Option<Vertex>,
     vertices: BTreeMap<Vid, Option<Vertex>>,
@@ -156,8 +155,7 @@ where
 
 impl<Vertex> From<SerializableContext<Vertex>> for DataContext<Vertex>
 where
-    Vertex: Clone + Debug + Serialize,
-    for<'d> Vertex: Deserialize<'d>,
+    Vertex: Clone + Debug + Serialize + DeserializeOwned,
 {
     fn from(context: SerializableContext<Vertex>) -> Self {
         Self {
@@ -175,8 +173,7 @@ where
 
 impl<Vertex> From<DataContext<Vertex>> for SerializableContext<Vertex>
 where
-    Vertex: Clone + Debug + Serialize,
-    for<'d> Vertex: Deserialize<'d>,
+    Vertex: Clone + Debug + Serialize + DeserializeOwned,
 {
     fn from(context: DataContext<Vertex>) -> Self {
         Self {
@@ -305,8 +302,7 @@ impl<Vertex: Debug + Clone + PartialEq + Eq> Eq for DataContext<Vertex> {}
 
 impl<Vertex> Serialize for DataContext<Vertex>
 where
-    Vertex: Debug + Clone + Serialize,
-    for<'d> Vertex: Deserialize<'d>,
+    Vertex: Debug + Clone + Serialize + DeserializeOwned,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -319,8 +315,7 @@ where
 
 impl<'de, Vertex> Deserialize<'de> for DataContext<Vertex>
 where
-    Vertex: Debug + Clone + Serialize,
-    for<'d> Vertex: Deserialize<'d>,
+    Vertex: Debug + Clone + Serialize + DeserializeOwned,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

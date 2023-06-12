@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     frontend::error::FrontendError,
@@ -44,11 +44,10 @@ pub struct TestIRQuery {
 pub type TestIRQueryResult = Result<TestIRQuery, FrontendError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
 pub struct TestInterpreterOutputTrace<Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     pub schema_name: String,
 

@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use serde::de;
+use serde::de::DeserializeOwned;
 
 use crate::ir::FieldValue;
 
@@ -51,13 +51,13 @@ mod tests;
 pub trait TryIntoStruct {
     type Error;
 
-    fn try_into_struct<S: for<'de> de::Deserialize<'de>>(self) -> Result<S, Self::Error>;
+    fn try_into_struct<S: DeserializeOwned>(self) -> Result<S, Self::Error>;
 }
 
 impl TryIntoStruct for BTreeMap<Arc<str>, FieldValue> {
     type Error = deserializers::Error;
 
-    fn try_into_struct<S: for<'de> de::Deserialize<'de>>(self) -> Result<S, deserializers::Error> {
+    fn try_into_struct<S: DeserializeOwned>(self) -> Result<S, deserializers::Error> {
         let deserializer = deserializers::QueryResultDeserializer::new(self);
         S::deserialize(deserializer)
     }
