@@ -72,7 +72,7 @@ pub(crate) enum TaggedValue {
 
 /// A partial result of a Trustfall query within the interpreter defined in this module.
 #[derive(Debug, Clone)]
-pub struct DataContext<Vertex: Clone + Debug> {
+pub struct DataContext<Vertex> {
     active_vertex: Option<Vertex>,
     vertices: BTreeMap<Vid, Option<Vertex>>,
     values: Vec<FieldValue>,
@@ -83,7 +83,7 @@ pub struct DataContext<Vertex: Clone + Debug> {
     imported_tags: BTreeMap<FieldRef, TaggedValue>,
 }
 
-impl<Vertex: Clone + Debug> DataContext<Vertex> {
+impl<Vertex> DataContext<Vertex> {
     /// The vertex currently being processed.
     ///
     /// For contexts passed to an [`Adapter`] resolver method,
@@ -125,11 +125,8 @@ impl From<ValueOrVec> for FieldValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
-struct SerializableContext<Vertex>
-where
-    Vertex: Clone + Debug + Serialize + DeserializeOwned,
-{
+#[serde(bound = "Vertex: Debug + Clone + Serialize + DeserializeOwned")]
+struct SerializableContext<Vertex> {
     active_vertex: Option<Vertex>,
     vertices: BTreeMap<Vid, Option<Vertex>>,
 
@@ -153,10 +150,7 @@ where
     imported_tags: BTreeMap<FieldRef, TaggedValue>,
 }
 
-impl<Vertex> From<SerializableContext<Vertex>> for DataContext<Vertex>
-where
-    Vertex: Clone + Debug + Serialize + DeserializeOwned,
-{
+impl<Vertex> From<SerializableContext<Vertex>> for DataContext<Vertex> {
     fn from(context: SerializableContext<Vertex>) -> Self {
         Self {
             active_vertex: context.active_vertex,
@@ -171,10 +165,7 @@ where
     }
 }
 
-impl<Vertex> From<DataContext<Vertex>> for SerializableContext<Vertex>
-where
-    Vertex: Clone + Debug + Serialize + DeserializeOwned,
-{
+impl<Vertex> From<DataContext<Vertex>> for SerializableContext<Vertex> {
     fn from(context: DataContext<Vertex>) -> Self {
         Self {
             active_vertex: context.active_vertex,
@@ -286,7 +277,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     }
 }
 
-impl<Vertex: Debug + Clone + PartialEq> PartialEq for DataContext<Vertex> {
+impl<Vertex: PartialEq> PartialEq for DataContext<Vertex> {
     fn eq(&self, other: &Self) -> bool {
         self.active_vertex == other.active_vertex
             && self.vertices == other.vertices
@@ -298,7 +289,7 @@ impl<Vertex: Debug + Clone + PartialEq> PartialEq for DataContext<Vertex> {
     }
 }
 
-impl<Vertex: Debug + Clone + PartialEq + Eq> Eq for DataContext<Vertex> {}
+impl<Vertex: Eq> Eq for DataContext<Vertex> {}
 
 impl<Vertex> Serialize for DataContext<Vertex>
 where
