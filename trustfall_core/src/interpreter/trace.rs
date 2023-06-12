@@ -20,11 +20,8 @@ use super::{
 pub struct Opid(pub NonZeroUsize); // operation ID
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
-pub struct Trace<Vertex>
-where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
-{
+#[serde(bound = "Vertex: Debug + Clone + Serialize + DeserializeOwned")]
+pub struct Trace<Vertex> {
     pub ops: BTreeMap<Opid, TraceOp<Vertex>>,
 
     pub ir_query: IRQuery,
@@ -60,11 +57,8 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
-pub struct TraceOp<Vertex>
-where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
-{
+#[serde(bound = "Vertex: Debug + Clone + Serialize + DeserializeOwned")]
+pub struct TraceOp<Vertex> {
     pub opid: Opid,
     pub parent_opid: Option<Opid>, // None parent_opid means this is a top-level operation
 
@@ -72,11 +66,8 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
-pub enum TraceOpContent<Vertex>
-where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
-{
+#[serde(bound = "Vertex: Debug + Clone + Serialize + DeserializeOwned")]
+pub enum TraceOpContent<Vertex> {
     // TODO: make a way to differentiate between different queries recorded in the same trace
     Call(FunctionCall),
 
@@ -101,11 +92,8 @@ pub enum FunctionCall {
 
 #[allow(clippy::enum_variant_names)] // the variant names match the functions they represent
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
-pub enum YieldValue<Vertex>
-where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
-{
+#[serde(bound = "Vertex: Debug + Clone + Serialize + DeserializeOwned")]
+pub enum YieldValue<Vertex> {
     ResolveStartingVertices(Vertex),
     ResolveProperty(DataContext<Vertex>, FieldValue),
     ResolveNeighborsOuter(DataContext<Vertex>),

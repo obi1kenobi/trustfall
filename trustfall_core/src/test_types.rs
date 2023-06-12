@@ -44,11 +44,8 @@ pub struct TestIRQuery {
 pub type TestIRQueryResult = Result<TestIRQuery, FrontendError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
-pub struct TestInterpreterOutputTrace<Vertex>
-where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
-{
+#[serde(bound = "Vertex: Debug + Clone + Serialize + DeserializeOwned")]
+pub struct TestInterpreterOutputTrace<Vertex> {
     pub schema_name: String,
 
     pub trace: Trace<Vertex>,
