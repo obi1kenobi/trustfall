@@ -16,7 +16,7 @@ use std::{
 
 use async_graphql_parser::{parse_query, parse_schema};
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 use trustfall_core::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemVertex},
@@ -112,8 +112,7 @@ fn check_fuzzed(path: &str, schema_name: &str) {
 fn outputs_with_adapter<'a, AdapterT>(adapter: AdapterT, test_query: TestIRQuery)
 where
     AdapterT: Adapter<'a> + Clone + 'a,
-    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de> AdapterT::Vertex: Deserialize<'de>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     let query: Arc<IndexedQuery> = Arc::new(test_query.ir_query.clone().try_into().unwrap());
     let arguments: Arc<BTreeMap<_, _>> = Arc::new(
@@ -178,8 +177,7 @@ fn trace_with_adapter<'a, AdapterT>(
     expected_results: &Vec<BTreeMap<Arc<str>, FieldValue>>,
 ) where
     AdapterT: Adapter<'a> + Clone + 'a,
-    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de> AdapterT::Vertex: Deserialize<'de>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     let query = Arc::new(test_query.ir_query.clone().try_into().unwrap());
     let arguments: Arc<BTreeMap<_, _>> = Arc::new(

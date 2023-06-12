@@ -3,7 +3,7 @@ use std::{
     rc::Rc, sync::Arc,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     interpreter::{Adapter, DataContext},
@@ -20,11 +20,10 @@ use super::{
 pub struct Opid(pub NonZeroUsize); // operation ID
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
 pub struct Trace<Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     pub ops: BTreeMap<Opid, TraceOp<Vertex>>,
 
@@ -36,8 +35,7 @@ where
 
 impl<Vertex> Trace<Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     #[allow(dead_code)]
     pub fn new(ir_query: IRQuery, arguments: BTreeMap<String, FieldValue>) -> Self {
@@ -62,11 +60,10 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
 pub struct TraceOp<Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     pub opid: Opid,
     pub parent_opid: Option<Opid>, // None parent_opid means this is a top-level operation
@@ -75,11 +72,10 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
 pub enum TraceOpContent<Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     // TODO: make a way to differentiate between different queries recorded in the same trace
     Call(FunctionCall),
@@ -105,11 +101,10 @@ pub enum FunctionCall {
 
 #[allow(clippy::enum_variant_names)] // the variant names match the functions they represent
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(bound = "Vertex: Serialize, for<'de2> Vertex: Deserialize<'de2>")]
+#[serde(bound = "Vertex: Serialize + DeserializeOwned")]
 pub enum YieldValue<Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 {
     ResolveStartingVertices(Vertex),
     ResolveProperty(DataContext<Vertex>, FieldValue),
@@ -181,8 +176,7 @@ fn make_iter_with_pre_action<T, I: Iterator<Item = T>, F: Fn()>(
 pub struct AdapterTap<'vertex, AdapterT>
 where
     AdapterT: Adapter<'vertex>,
-    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>,
     inner: AdapterT,
@@ -192,8 +186,7 @@ where
 impl<'vertex, AdapterT> AdapterTap<'vertex, AdapterT>
 where
     AdapterT: Adapter<'vertex>,
-    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>) -> Self {
         Self {
@@ -218,8 +211,7 @@ pub fn tap_results<'vertex, AdapterT>(
 ) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex
 where
     AdapterT: Adapter<'vertex> + 'vertex,
-    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     result_iter.map(move |result| {
         adapter_tap
@@ -234,8 +226,7 @@ where
 impl<'vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, AdapterT>
 where
     AdapterT: Adapter<'vertex>,
-    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'vertex,
-    for<'de2> AdapterT::Vertex: Deserialize<'de2>,
+    AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     type Vertex = AdapterT::Vertex;
 

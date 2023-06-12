@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     interpreter::VertexInfo,
@@ -25,8 +25,7 @@ use super::{
 #[derive(Clone, Debug)]
 struct TraceReaderAdapter<'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     next_op: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
@@ -40,8 +39,7 @@ fn advance_ref_iter<T, Iter: Iterator<Item = T>>(iter: &RefCell<Iter>) -> Option
 #[derive(Debug)]
 struct TraceReaderStartingVerticesIter<'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     exhausted: bool,
     parent_opid: Opid,
@@ -51,8 +49,7 @@ where
 #[allow(unused_variables)]
 impl<'trace, Vertex> Iterator for TraceReaderStartingVerticesIter<'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     type Item = Vertex;
 
@@ -86,8 +83,7 @@ where
 
 struct TraceReaderResolvePropertiesIter<'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     exhausted: bool,
     parent_opid: Opid,
@@ -99,8 +95,7 @@ where
 #[allow(unused_variables)]
 impl<'trace, Vertex> Iterator for TraceReaderResolvePropertiesIter<'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     type Item = (DataContext<Vertex>, FieldValue);
 
@@ -166,8 +161,7 @@ where
 
 struct TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     exhausted: bool,
@@ -180,8 +174,7 @@ where
 #[allow(unused_variables)]
 impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     type Item = (DataContext<Vertex>, bool);
@@ -249,8 +242,7 @@ where
 
 struct TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     exhausted: bool,
@@ -262,8 +254,7 @@ where
 
 impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     type Item = (DataContext<Vertex>, VertexIterator<'query, Vertex>);
@@ -339,8 +330,7 @@ where
 
 struct TraceReaderNeighborIter<'query, 'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     exhausted: bool,
@@ -352,8 +342,7 @@ where
 
 impl<'query, 'trace, Vertex> Iterator for TraceReaderNeighborIter<'query, 'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     type Item = Vertex;
@@ -390,8 +379,7 @@ where
 #[allow(unused_variables)]
 impl<'trace, Vertex> Adapter<'trace> for TraceReaderAdapter<'trace, Vertex>
 where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'trace,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     type Vertex = Vertex;
 
@@ -516,8 +504,7 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
     expected_results: &[BTreeMap<Arc<str>, FieldValue>],
     complete: bool,
 ) where
-    Vertex: Clone + Debug + PartialEq + Eq + Serialize + 'query,
-    for<'de2> Vertex: Deserialize<'de2>,
+    Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     'trace: 'query,
 {
     let next_op = Rc::new(RefCell::new(trace.ops.iter()));
@@ -577,7 +564,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use serde::{Deserialize, Serialize};
+    use serde::{de::DeserializeOwned, Serialize};
     use trustfall_filetests_macros::parameterize;
 
     use crate::{
@@ -594,8 +581,7 @@ mod tests {
         test_data: TestInterpreterOutputTrace<Vertex>,
         test_outputs: TestInterpreterOutputData,
     ) where
-        Vertex: Debug + Clone + PartialEq + Eq + Serialize,
-        for<'de> Vertex: Deserialize<'de>,
+        Vertex: Debug + Clone + PartialEq + Eq + Serialize + DeserializeOwned,
     {
         // Ensure that the trace file's IR hasn't drifted away from the IR file of the same name.
         assert_eq!(expected_ir.ir_query, test_data.trace.ir_query);
