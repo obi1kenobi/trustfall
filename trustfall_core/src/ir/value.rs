@@ -157,6 +157,13 @@ impl FieldValue {
         }
     }
 
+    pub fn as_f64(&self) -> Option<f64> {
+        match self {
+            FieldValue::Float64(f) => Some(*f),
+            _ => None,
+        }
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             FieldValue::String(s) => Some(s.as_str()),
