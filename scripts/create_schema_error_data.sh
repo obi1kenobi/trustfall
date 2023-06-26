@@ -16,5 +16,5 @@ for INPUT_FILE in "$@"; do
 
     MANIFEST_PATH="$REPO/trustfall_testbin/Cargo.toml"
 
-    cargo --manifest-path "$MANIFEST_PATH" run schema_error "$INPUT_FILE" >"$SCHEMA_ERROR_FILE"
+    cargo run --manifest-path "$MANIFEST_PATH" schema_error "$INPUT_FILE" >"$SCHEMA_ERROR_FILE"
 done
