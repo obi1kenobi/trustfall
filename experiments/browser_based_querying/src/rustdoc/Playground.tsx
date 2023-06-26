@@ -13,6 +13,8 @@ import iterStructs from '../../example_queries/rustdoc/iter_structs.example';
 import structsAndFields from '../../example_queries/rustdoc/structs_and_fields.example';
 import enumsWithTupleVariants from '../../example_queries/rustdoc/enums_with_tuple_variants.example';
 import itemsWithAllowedLints from '../../example_queries/rustdoc/items_with_allowed_lints.example';
+import structsImportableByMultiplePaths from '../../example_queries/rustdoc/structs_importable_by_multiple_paths.example';
+import traitsWithSupertraits from '../../example_queries/rustdoc/traits_with_supertraits.example';
 
 const RUSTDOC_SCHEMA = buildSchema(rustdocSchema);
 
@@ -36,6 +38,14 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
     name: 'Items With Allowed Lints',
     value: parseExample(itemsWithAllowedLints),
+  },
+  {
+    name: 'Structs Importable By Multiple Paths',
+    value: parseExample(structsImportableByMultiplePaths),
+  },
+  {
+    name: 'Traits With Supertraits',
+    value: parseExample(traitsWithSupertraits),
   },
 ];
 
