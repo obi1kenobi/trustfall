@@ -1,0 +1,27 @@
+# Structs importable from the crate via multiple paths
+query {
+  Crate {
+    item {
+      ... on Struct {
+        name @output
+
+        importable_path @fold
+                        @transform(op: "count")
+                        @filter(op: ">=", value: ["$path_count"])
+        {
+          path @output
+        }
+
+        span {
+          filename @output
+          first_line: begin_line @output
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+  "path_count": 2
+}

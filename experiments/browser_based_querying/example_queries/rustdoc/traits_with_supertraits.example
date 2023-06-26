@@ -1,0 +1,33 @@
+# Traits with supertraits + where each of them is defined
+query {
+  Crate {
+    item {
+      ... on Trait {
+        name @output
+
+        # Get the info where this trait is defined.
+        span {
+          filename @output
+          first_line: begin_line @output
+        }
+
+        supertrait {
+          trait {
+            supertrait: name @output
+
+            # Get the info where this supertrait is defined.
+            supertrait_: span {
+              filename @output
+              first_line: begin_line @output
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}
