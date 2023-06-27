@@ -310,7 +310,7 @@ fn schema_error(path: &str) {
         Err(e) => {
             println!("{}", serialize_to_ron(&e))
         }
-        Ok(_) => unreachable!("{}", path),
+        Ok(_) => unreachable!("expected schema error but got valid schema: {}", path),
     }
 }
 

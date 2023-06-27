@@ -18,7 +18,7 @@ for INPUT_FILE in "$@"; do
 
     MANIFEST_PATH="$REPO/trustfall_testbin/Cargo.toml"
 
-    cargo --manifest-path "$MANIFEST_PATH" run parse "$INPUT_FILE" >"$PARSED_FILE"
-    cargo --manifest-path "$MANIFEST_PATH" run frontend "$PARSED_FILE" >"$IR_FILE"
-    cargo --manifest-path "$MANIFEST_PATH" run trace "$IR_FILE" >"$EXECUTION_ERROR_FILE"
+    cargo run --manifest-path "$MANIFEST_PATH" parse "$INPUT_FILE" >"$PARSED_FILE"
+    cargo run --manifest-path "$MANIFEST_PATH" frontend "$PARSED_FILE" >"$IR_FILE"
+    cargo run --manifest-path "$MANIFEST_PATH" trace "$IR_FILE" >"$EXECUTION_ERROR_FILE"
 done
