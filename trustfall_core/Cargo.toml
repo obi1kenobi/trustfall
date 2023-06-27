@@ -1,12 +1,13 @@
 [package]
 name = "trustfall_core"
 version = "0.5.0"
-authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
-edition = "2021"
 license = "Apache-2.0"
 description = "The trustfall query engine, empowering you to query everything."
 repository = "https://github.com/obi1kenobi/trustfall"
 readme = "../README.md"
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
