@@ -191,8 +191,6 @@ directive @transform(op: String!) on FIELD
             _ => unreachable!(),
         };
 
-        let field_origins = get_field_origins(&vertex_types)?;
-
         let mut errors = vec![];
         if let Err(e) = check_required_transitive_implementations(&vertex_types) {
             errors.extend(e.into_iter());
@@ -201,9 +199,6 @@ directive @transform(op: String!) on FIELD
             errors.extend(e.into_iter());
         }
         if let Err(e) = check_fields_required_by_interface_implementations(&vertex_types, &fields) {
-            errors.extend(e.into_iter());
-        }
-        if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
             errors.extend(e.into_iter());
         }
         if let Err(e) =
@@ -216,6 +211,20 @@ directive @transform(op: String!) on FIELD
         {
             errors.extend(e.into_iter());
         }
+
+        let field_origins = match get_field_origins(&vertex_types) {
+            Ok(field_origins) => {
+                if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
+                    errors.extend(e.into_iter());
+                }
+                Some(field_origins)
+            }
+            Err(e) => {
+                errors.push(e);
+                None
+            }
+        };
+
         if errors.is_empty() {
             Ok(Self {
                 schema,
@@ -224,7 +233,7 @@ directive @transform(op: String!) on FIELD
                 scalars,
                 vertex_types,
                 fields,
-                field_origins,
+                field_origins: field_origins.expect("no field origins but also no errors"),
             })
         } else {
             Err(errors.into())
@@ -497,8 +506,13 @@ fn check_ambiguous_field_origins(
     }
 }
 
-/// If type X implements interface A, and A implements interface B,
-/// then X must also implement B by transitivity.
+/// Check the `implements` portion of the type definitions.
+///
+/// Checked invariants:
+/// - Implemented types must be defined in the schema.
+/// - Implemented types must be interfaces.
+/// - If type X implements interface A, and A implements interface B,
+///   then X must also implement B by transitivity.
 fn check_required_transitive_implementations(
     vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<(), Vec<InvalidSchemaError>> {
@@ -510,20 +524,41 @@ fn check_required_transitive_implementations(
             .map(|x| x.node.as_ref())
             .collect();
 
-        for impl_name in implementations.iter().copied() {
-            let implementation_defn = vertex_types.get(impl_name).expect("implemented interface was not defined in schema; bug since it should have been caught earlier");
-
-            for expected_impl in get_vertex_type_implements(implementation_defn) {
-                let expected_impl_name = expected_impl.node.as_ref();
-
-                if implementations.get(expected_impl_name).is_none() {
-                    errors.push(
-                        InvalidSchemaError::MissingTransitiveInterfaceImplementation(
+        // Check the `implements` portion of the type definition.
+        for implements_type in implementations.iter().copied() {
+            match vertex_types.get(implements_type) {
+                Some(implementation_defn) => {
+                    if !matches!(implementation_defn.kind, TypeKind::Interface(..)) {
+                        errors.push(InvalidSchemaError::ImplementingNonInterface(
                             type_name.to_string(),
-                            impl_name.to_string(),
-                            expected_impl_name.to_string(),
-                        ),
-                    );
+                            implements_type.to_string(),
+                        ));
+                    } else {
+                        for expected_impl in get_vertex_type_implements(implementation_defn) {
+                            let expected_impl_name = expected_impl.node.as_ref();
+
+                            // Ignore situations with an immediate cycle here
+                            // (`expected_impl_name != type_name`) since we have a dedicated
+                            // check for those elsewhere.
+                            if expected_impl_name != type_name.as_ref()
+                                && implementations.get(expected_impl_name).is_none()
+                            {
+                                errors.push(
+                                    InvalidSchemaError::MissingTransitiveInterfaceImplementation(
+                                        type_name.to_string(),
+                                        implements_type.to_string(),
+                                        expected_impl_name.to_string(),
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+                None => {
+                    errors.push(InvalidSchemaError::ImplementingNonExistentType(
+                        type_name.to_string(),
+                        implements_type.to_string(),
+                    ));
                 }
             }
         }
@@ -547,9 +582,9 @@ fn check_fields_required_by_interface_implementations(
 
         for implementation in implementations {
             let implementation = implementation.node.as_ref();
+            let Some(impl_defn) = vertex_types.get(implementation) else { continue; };
 
-            let implementation_fields = get_vertex_type_fields(&vertex_types[implementation]);
-            for field in implementation_fields {
+            for field in get_vertex_type_fields(impl_defn) {
                 let field_name = field.node.name.node.as_ref();
 
                 // If the current type does not contain the implemented interface's field,
@@ -717,6 +752,7 @@ fn get_field_origins(
             let resolutions: BTreeSet<&str> = get_vertex_type_implements(defn)
                 .iter()
                 .map(|x| x.node.as_ref())
+                .filter(|name| vertex_types.contains_key(*name)) // ignore undefined types
                 .collect();
             if resolutions.is_empty() {
                 queue.push_back(name);
@@ -753,7 +789,8 @@ fn get_field_origins(
         let mut implemented_fields: BTreeMap<&str, FieldOrigin> = Default::default();
         for implemented_interface in implements {
             let implemented_interface = implemented_interface.node.as_ref();
-            let parent_fields = get_vertex_type_fields(&vertex_types[implemented_interface]);
+            let Some(implemented_defn) = vertex_types.get(implemented_interface) else { continue; };
+            let parent_fields = get_vertex_type_fields(implemented_defn);
             for field in parent_fields {
                 let parent_field_origin = &field_origins[&(
                     Arc::from(implemented_interface),
