@@ -116,6 +116,15 @@ pub enum InvalidSchemaError {
         for internal use and cannot be used in schemas."
     )]
     ReservedTypeName(String),
+
+    #[error("Type \"{0}\" claims to implement type \"{1}\" which is not defined in this schema.")]
+    ImplementingNonExistentType(String, String),
+
+    #[error(
+        "Type \"{0}\" attempts to implement non-interface type \"{1}\". \
+        Only interfaces can be implemented by other types."
+    )]
+    ImplementingNonInterface(String, String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {
