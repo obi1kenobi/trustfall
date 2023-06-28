@@ -5,6 +5,7 @@ members = [
     "trustfall_testbin",
     "trustfall_filetests_macros",
     "trustfall_derive",
+    "trustfall_stubgen",
     "trustfall_wasm",
     "pytrustfall",
     "demo-hytradboi",
