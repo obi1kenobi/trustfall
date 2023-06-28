@@ -1,0 +1,415 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(
+    """
+    Name of the filter operation to perform.
+    """
+    op: String!
+    """
+    List of string operands for the operator.
+    """
+    value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """
+    Name to apply to the given property field.
+    """
+    name: String
+) on FIELD
+directive @output(
+    """
+    What to designate the output field generated from this property field.
+    """
+    name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
+directive @fold on FIELD
+directive @transform(
+    """
+    Name of the transformation operation to perform.
+    """
+    op: String!
+) on FIELD
+
+"""
+All the possible data types where querying can begin in this API.
+"""
+type RootSchemaQuery {
+    """
+    Items on the front page of HackerNews. Equivalent to Top(max: 30).
+    """
+    FrontPage: [Item!]!
+
+    """
+    The top items on HackerNews. Items on the front page are the top 30.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of topmost items. Otherwise, queries will continue fetching top items
+    as deep as the HackerNews API allows.
+    """
+    Top(max: Int): [Item!]!
+
+    """
+    Latest story submissions on HackerNews.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching latest stories
+    as deep as the HackerNews API allows.
+    """
+    Latest(max: Int): [Story!]!
+
+    """
+    Best (recent & most highly-rated) story submissions on HackerNews.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching stories
+    as deep as the HackerNews API allows.
+    """
+    Best(max: Int): [Story!]!
+
+    """
+    Most recent "Ask HN" story submissions.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching stories
+    as deep as the HackerNews API allows.
+    """
+    AskHN(max: Int): [Story!]!
+
+    """
+    Most recent "Show HN" story submissions.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching stories
+    as deep as the HackerNews API allows.
+    """
+    ShowHN(max: Int): [Story!]!
+
+    """
+    Most recent Job submissions.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching jobs
+    as deep as the HackerNews API allows.
+    """
+    RecentJob(max: Int): [Story!]!
+
+    """
+    Look up a user by their username.
+    """
+    User(name: String!): User
+
+    """
+    Look up an item by its ID number.
+    """
+    Item(id: Int!): Item
+
+    """
+    Most-recently updated items, such as stories or job postings.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching items
+    as deep as the HackerNews API allows.
+    """
+    UpdatedItem(max: Int): [Item!]!
+
+    """
+    Most-recently updated user profiles.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching items
+    as deep as the HackerNews API allows.
+    """
+    UpdatedUserProfile(max: Int): [User!]!
+
+    """
+    Use HackerNews search to find items (stories, comments, etc.) based on the given query string.
+
+    Items are returned sorted by relevance, then points, then number of comments.
+
+    Search API docs: https://hn.algolia.com/api
+    """
+    SearchByRelevance(query: String!): [Item!]
+
+    """
+    Use HackerNews search to find items (stories, comments, etc.) based on the given query string.
+
+    Items are returned sorted by date, more recent first.
+
+    Search API docs: https://hn.algolia.com/api
+    """
+    SearchByDate(query: String!): [Item!]
+}
+
+"""
+One of the kinds of items on HackerNews: a story, job, comment, etc.
+"""
+interface Item implements Webpage {
+    """
+    The item's unique identifier.
+    """
+    id: Int!
+
+    """
+    The item's timestamp, as a number in Unix time.
+    """
+    unixTime: Int!
+
+    """
+    The item's URL on HackerNews.
+    """
+    url: String!
+}
+
+"""
+A HackerNews job posting linking to the job opening site.
+"""
+type Job implements Item & Webpage {
+    # properties from Item
+    """
+    The item's unique identifier.
+    """
+    id: Int!
+
+    """
+    The item's timestamp, as a number in Unix time.
+    """
+    unixTime: Int!
+
+    """
+    The item's URL on HackerNews.
+    """
+    url: String!
+
+    # own properties
+    """
+    The job posting's title: the one-liner seen on the front page, for example.
+    """
+    title: String!
+
+    """
+    The total number of points this submission has received.
+    """
+    score: Int!
+
+    """
+    The URL this job posting points to.
+    """
+    submittedUrl: String!
+
+    # edges
+    """
+    The web page this job posting links to.
+    """
+    link: Webpage!
+}
+
+"""
+A story submitted to HackerNews: either a link, or a text submission like Show HN.
+"""
+type Story implements Item & Webpage {
+    # properties from Item
+    """
+    The item's unique identifier.
+    """
+    id: Int!
+
+    """
+    The item's timestamp, as a number in Unix time.
+    """
+    unixTime: Int!
+
+    """
+    The item's URL on HackerNews.
+    """
+    url: String!
+
+    # own properties
+    """
+    The display name of the user that submitted this story.
+    """
+    byUsername: String!
+
+    """
+    The current score of this story submission.
+    """
+    score: Int!
+
+    """
+    For text submissions, contains the submitted text as HTML.
+    For link submissions, this field is null.
+    """
+    textHtml: String
+
+    """
+    For text submissions, contains the submitted text as plain text,
+    stripped of any HTML tags. For link submissions, this field is null.
+    """
+    textPlain: String
+
+    """
+    The story's title: the one-liner seen on the front page, for example.
+    """
+    title: String!
+
+    """
+    For link submissions, contains the submitted link.
+    For text submissions, this field is null.
+    """
+    submittedUrl: String
+
+    # edges
+    """
+    The profile of the user that submitted this story.
+    """
+    byUser: User!
+
+    """
+    The top-level comments on this story.
+    """
+    comment: [Comment!]
+
+    """
+    The web pages this story links to, if any.
+    For link submissions, this is the submitted link.
+    For text submissions, this includes all links in the text.
+    """
+    link: [Webpage!]
+}
+
+"""
+A comment submitted, for example, on a HackerNews story or job submission.
+"""
+type Comment implements Item & Webpage {
+    # properties from Item
+    """
+    The item's unique identifier.
+    """
+    id: Int!
+
+    """
+    The item's timestamp, as a number in Unix time.
+    """
+    unixTime: Int!
+
+    """
+    The item's URL on HackerNews.
+    """
+    url: String!
+
+    # own properties
+    """
+    The text contained in the comment, represented as HTML.
+    """
+    textHtml: String!
+
+    """
+    The text contained in the comment, as plain text with HTML tags removed.
+    """
+    textPlain: String!
+
+    """
+    The name of the user that submitted this comment.
+    """
+    byUsername: String!
+
+    # edges
+    """
+    The profile of the user that submitted this comment.
+    """
+    byUser: User!
+
+    """
+    The replies to this comment, if any.
+    """
+    reply: [Comment!]
+
+    """
+    Links contained within the comment, if any.
+    """
+    link: [Webpage!]
+
+    """
+    The parent item: for top-level comments, this is the story or job
+    where the comment was submitted, and for replies it's the comment
+    which is being replied to.
+    """
+    parent: Item! # either a parent comment or the story being commented on
+}
+
+"""
+The profile of a HackerNews user.
+"""
+type User implements Webpage {
+    """
+    The username of this user.
+    """
+    id: String!
+
+    """
+    The user's accumulated karma points.
+    """
+    karma: Int!
+
+    """
+    The HTML text the user has set in their "About" section, if any.
+    """
+    aboutHtml: String
+
+    """
+    The text the user has set in their "About" section, if any,
+    as plain text with HTML tags removed.
+    """
+    aboutPlain: String
+
+    """
+    The timestamp when the user account was created, as a number in Unix time.
+    """
+    unixCreatedAt: Int!
+
+    """
+    The URL of the user's HackerNews profile page.
+    """
+    url: String!
+
+    # The HackerNews API treats submissions of comments and stories the same way.
+    # The way to get only a user's submitted stories is to use this edge then
+    # apply a type coercion on the `Item` vertex on edge endpoint:
+    # `... on Story`
+    """
+    All submissions of this user, including all their stories and comments.
+
+    To get a user's submitted stories, apply a type coercion to the edge:
+    ```
+    submitted {
+      ... on Story {
+        < query submitted stories here >
+      }
+    }
+    ```
+    """
+    submitted: [Item!]
+
+    """
+    The web pages this user's "about" profile section links to, if any.
+    """
+    link: [Webpage!]
+}
+
+"""
+A web page.
+"""
+interface Webpage {
+    """
+    The URL of the web page.
+    """
+    url: String!
+}
