@@ -182,8 +182,10 @@ jobs:
 
       - uses: r7kamura/rust-problem-matchers@v1
 
+      # Test everything except trustfall_stubgen,
+      # which is only tested at release time since its tests are a bit long.
       - name: cargo test
-        run: cargo test --workspace --all-targets --all-features
+        run: cargo test --workspace --all-targets --all-features --exclude trustfall_stubgen
 
   rust-fuzz:
     name: Check fuzz targets
@@ -319,12 +321,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs:
       - ci-everything
-      - check-trustfall-examples
+      - check-trustfall-examples-and-expensive-tests
     runs-on: ubuntu-latest
     steps:
       - run: exit 0
 
-  check-trustfall-examples:
+  check-trustfall-examples-and-expensive-tests:
     name: pre-publish checks
     if: github.ref == 'refs/heads/main'
     needs:
@@ -386,6 +388,12 @@ jobs:
           cargo run --example weather query ./examples/weather/example_queries/boston_weather.ron
           cargo run --example weather query ./examples/weather/example_queries/high_winds.ron
 
+      - name: trustfall_stubgen tests
+        if: steps.version.outputs.is_new_version == 'yes'
+        run: |
+          cd trustfall_stubgen
+          cargo test --all-features --all-targets
+
   attempt-publish-trustfall-filetests-macros:
     name: publish trustfall_filetests_macros
     if: github.ref == 'refs/heads/main'
@@ -431,6 +439,18 @@ jobs:
     uses: ./.github/workflows/publish-rust.yml
     with:
       crate-name: trustfall
+    secrets:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  attempt-publish-trustfall-stubgen:
+    name: publish trustfall_stubgen
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - pre-publish-checks
+      - attempt-publish-trustfall
+    uses: ./.github/workflows/publish-rust.yml
+    with:
+      crate-name: trustfall_stubgen
     secrets:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
