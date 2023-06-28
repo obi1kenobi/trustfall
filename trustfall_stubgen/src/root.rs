@@ -28,9 +28,13 @@ use super::{
 ///
 /// # Example
 /// ```no_run
+/// # use std::path::Path;
+/// #
+/// # use trustfall_stubgen::generate_rust_stub;
+/// #
 /// # fn main() {
-/// let schema_text = include_str!("./schema.graphql");
-/// generate_rust_stub(schema_text, Path::new("crate/with/generated/stubs/src"))
+/// let schema_text = std::fs::read_to_string("./schema.graphql").expect("failed to read schema");
+/// generate_rust_stub(&schema_text, Path::new("crate/with/generated/stubs/src"))
 ///     .expect("stub generation failed");
 /// # }
 /// ```
@@ -341,18 +345,20 @@ fn make_vertex_file(
 }"#;
     let variables: BTreeMap<String, String> = Default::default();
 
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct ResultRow {
         name: String,
     }
 
     let mut variants = proc_macro2::TokenStream::new();
-    let rows = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
-        });
+        })
+        .collect();
+    rows.sort_unstable();
     for row in rows {
         let name = &row.name;
         let ident = syn::Ident::new(name.as_str(), proc_macro2::Span::call_site());

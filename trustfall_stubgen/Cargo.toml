@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_stubgen"
-version = "0.1.0"
+version = "0.2.0"
 rust-version = "1.70"
 license = "Apache-2.0"
 description = "Generate a Trustfall adapter stub for a given schema."
@@ -10,6 +10,14 @@ edition.workspace = true
 authors.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "trustfall_stubgen"
+required-features = ["cli"]
+
+[features]
+default = []
+cli = ["dep:clap"]
 
 [dependencies]
 quote = "1.0"
@@ -23,6 +31,7 @@ anyhow = "1.0.71"
 serde = { version = "1.0.164", features = ["derive"] }
 prettyplease = "0.2.6"
 regex = "1.8.4"
+clap = { version = "4.0.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
 glob = "0.3.1"

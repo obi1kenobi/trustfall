@@ -28,18 +28,24 @@ pub(super) fn make_properties_file(
         "zero".into() => 0,
     };
 
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct ResultRow {
         name: String,
         properties: Vec<String>,
     }
 
-    let rows = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
+                .map(|mut value| {
+                    value.properties.sort_unstable();
+                    value
+                })
                 .expect("invalid conversion")
-        });
+        })
+        .collect();
+    rows.sort_unstable();
     for row in rows {
         let resolver = make_resolver_fn(&row.name, &row.properties);
         properties_file.top_level_items.push(resolver);
