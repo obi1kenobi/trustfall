@@ -1,9 +1,9 @@
 #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
 pub enum Vertex {
-    Webpage(()),
-    Story(()),
+    Comment(()),
     Item(()),
     Job(()),
-    Comment(()),
+    Story(()),
     User(()),
+    Webpage(()),
 }

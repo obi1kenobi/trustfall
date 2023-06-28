@@ -32,19 +32,21 @@ pub(super) fn make_entrypoints_file(
 }"#;
     let variables: BTreeMap<Arc<str>, String> = btreemap! {};
 
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct ResultRow {
         name: String,
         parameter_name: Vec<String>,
         parameter_type: Vec<String>,
     }
 
-    let rows = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
-        });
+        })
+        .collect();
+    rows.sort_unstable();
     for row in rows {
         let parameters: Vec<_> = row
             .parameter_name

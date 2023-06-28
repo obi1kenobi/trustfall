@@ -36,7 +36,7 @@ pub(super) fn make_edges_file(
         "zero".into() => 0,
     };
 
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct ResultRow {
         name: String,
         edge_name: Vec<String>,
@@ -44,14 +44,16 @@ pub(super) fn make_edges_file(
         parameter_type: Vec<Vec<String>>,
     }
 
-    let rows = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
-        });
+        })
+        .collect();
+    rows.sort_unstable();
     for row in rows {
-        let edges: Vec<(String, Vec<(String, String)>)> = row
+        let mut edges: Vec<(String, Vec<(String, String)>)> = row
             .edge_name
             .into_iter()
             .zip(
@@ -61,6 +63,7 @@ pub(super) fn make_edges_file(
             )
             .map(|(edge, (param, ty))| (edge, param.into_iter().zip(ty.into_iter()).collect()))
             .collect();
+        edges.sort_unstable();
 
         let (type_edge_resolver_fn, type_edge_mod) = make_type_edge_resolver(&row.name, edges);
         edges_file.top_level_items.push(type_edge_resolver_fn);

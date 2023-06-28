@@ -135,18 +135,20 @@ fn emit_property_handling(
         "zero".into() => 0,
     };
 
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct ResultRow {
         name: String,
     }
 
     let mut arms = proc_macro2::TokenStream::new();
-    let rows = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
-        });
+        })
+        .collect();
+    rows.sort_unstable();
     for row in rows {
         let name = &row.name;
         let ident = syn::Ident::new(
@@ -198,18 +200,20 @@ fn emit_edge_handling(
         "zero".into() => 0,
     };
 
-    #[derive(Debug, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct ResultRow {
         name: String,
     }
 
     let mut arms = proc_macro2::TokenStream::new();
-    let rows = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
-        });
+        })
+        .collect();
+    rows.sort_unstable();
     for row in rows {
         let name = &row.name;
         let ident = syn::Ident::new(
