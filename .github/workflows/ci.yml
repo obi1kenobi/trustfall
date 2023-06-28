@@ -357,7 +357,7 @@ jobs:
             echo 'is_new_version=yes' >> $GITHUB_OUTPUT
           else
             # Unexpected outcome, indicates a bug.
-            exit "$EXIT_CODE"
+            exit 1
           fi
 
       - uses: Swatinem/rust-cache@v2

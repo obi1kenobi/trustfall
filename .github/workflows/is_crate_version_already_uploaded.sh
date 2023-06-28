@@ -19,7 +19,7 @@ CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh "$CRATE_NAME")
     (echo >&2 "No crate named $CRATE_NAME found in workspace."; exit 1)
 echo >&2 "Crate $CRATE_NAME current version: $CURRENT_VERSION"
 
-CRATES_IO_RESPONSE="$(curl 2>/dev/null "https://crates.io/api/v1/crates/$CRATE_NAME)"
+CRATES_IO_RESPONSE="$(curl 2>/dev/null "https://crates.io/api/v1/crates/$CRATE_NAME")"
 if [[ "$CRATES_IO_RESPONSE" == '{"errors":[{"detail":"Not Found"}]}' ]]; then
     echo >&2 "This crate was not previously published on crates.io"
     exit 0
