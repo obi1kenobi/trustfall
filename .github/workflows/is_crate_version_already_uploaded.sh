@@ -19,12 +19,18 @@ CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh "$CRATE_NAME")
     (echo >&2 "No crate named $CRATE_NAME found in workspace."; exit 1)
 echo >&2 "Crate $CRATE_NAME current version: $CURRENT_VERSION"
 
+CRATES_IO_RESPONSE="$(curl 2>/dev/null "https://crates.io/api/v1/crates/$CRATE_NAME)"
+if [[ "$CRATES_IO_RESPONSE" == '{"errors":[{"detail":"Not Found"}]}' ]]; then
+    echo >&2 "This crate was not previously published on crates.io"
+    exit 0
+fi
+
 # The leading whitespace is important! With it, we know that every version is both
 # preceded by and followed by whitespace. We use this fact to avoid matching
 # on substrings of versions.
 EXISTING_VERSIONS="
 $( \
-    curl 2>/dev/null "https://crates.io/api/v1/crates/$CRATE_NAME" | \
+    echo "$CRATES_IO_RESPONSE" | \
     jq --exit-status -r .versions[].num \
 )"
 echo >&2 -e "Versions on crates.io:$EXISTING_VERSIONS\n"
