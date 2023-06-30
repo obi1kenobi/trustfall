@@ -20,7 +20,7 @@ labels:
   - name: A-syntax
     color: '#f7e101'
     description: "Area: query or schema syntax"
-  - name: A-frontend
+  - name: A-compiler-frontend
     color: '#f7e101'
     description: "Area: turning queries into IR"
   - name: A-ir
@@ -41,15 +41,15 @@ labels:
   - name: A-docs
     color: '#f7e101'
     description: "Area: documentation for the query language or library APIs"
-    oldname: documentation
+  - name: A-playground
+    color: '#f7e101'
+    description: "Area: the query playground at play.predr.ag"
   - name: C-bug
     color: '#b60205'
     description: "Category: doesn't meet expectations"
-    oldname: bug
   - name: C-enhancement
     color: '#1d76db'
     description: "Category: raise the bar on expectations"
-    oldname: enhancement
   - name: C-maintainability
     color: '#1d76db'
     description: "Category: reduce maintenance burden, e.g. by clearing tech debt or improving test infra"
