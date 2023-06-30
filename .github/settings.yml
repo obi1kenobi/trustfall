@@ -1,7 +1,7 @@
 # These settings are synced to GitHub by https://probot.github.io/apps/settings/
 
 repository:
-  description: A query engine for any combination of data sources. Query your files and APIs as if they were databases!
+  description: "A query engine for any combination of data sources. Query your files and APIs as if they were databases!"
   topics: rust python wasm javascript query-language
   has_issues: true
   has_projects: true
@@ -72,37 +72,37 @@ labels:
     color: '#02e10c'
     description: "Call for participation: experience needed to fix: hard / a lot."
   - name: L-rust
-    color: "#fb4c8e"
+    color: '#fb4c8e'
     description: "Language: affects use cases in the Rust programming language"
   - name: L-python
-    color: "#fb4c8e"
+    color: '#fb4c8e'
     description: "Language: affects use cases in the Python programming language"
   - name: L-nodejs
-    color: "#fb4c8e"
+    color: '#fb4c8e'
     description: "Language: affects use cases in Node.js"
   - name: L-browser
-    color: "#fb4c8e"
+    color: '#fb4c8e'
     description: "Language: affects use cases in web browsers"
   - name: S-waiting-on-author
-    color: "#f027a1"
+    color: '#f027a1'
     description: "Status: awaiting some action (such as code changes or more information) from the author."
   - name: S-blocked
-    color: "#f027a1"
+    color: '#f027a1'
     description: "Status: marked as blocked ❌ on something else such as an RFC or other implementation work."
   - name: S-experimental
-    color: "#f027a1"
-    description: ""
+    color: '#f027a1'
+    description: "Status: ongoing experiment that does not require reviewing and won't be merged in its current state."
   - name: S-needs-review
-    color: "#f027a1"
+    color: '#f027a1'
     description: "Status: awaiting review from maintainers but also interested parties."
   - name: S-needs-funding
-    color: "#f027a1"
+    color: '#f027a1'
     description: "Status: this feature has a maintainability risk or other risks, and is blocked on having a source of funding in order to not be disruptive to the project."
   - name: R-breaking-change
-    color: "#2e00c0"
+    color: '#2e00c0'
     description: "Release: implementing or merging this will introduce a breaking change."
   - name: R-relnotes
-    color: "#2e00c0"
+    color: '#2e00c0'
     description: "Release: document this in the release notes of the next release"
 
 branches:
@@ -112,6 +112,9 @@ branches:
     protection:
       # Required. Require at least one approving review on a pull request, before merging. Set to null to disable.
       required_pull_request_reviews:
+        # The number of approvals required. (1-6)
+        required_approving_review_count: 1
+        # Blocks merge until code owners have reviewed.
         require_code_owner_reviews: true
       # Required. Require that conversations are resolved before merging.
       # We disable this.
@@ -122,9 +125,8 @@ branches:
         # We disable this.
         strict: null
         # Required. The list of status checks to require in order to merge into this branch
-        contexts: [
-          "All CI stages"
-        ]
+        contexts:
+          - "All CI stages"
       # Required. Enforce all configured restrictions for administrators. Set to true to enforce required status checks for repository administrators. Set to null to disable.
       # We disable this.
       enforce_admins: false
