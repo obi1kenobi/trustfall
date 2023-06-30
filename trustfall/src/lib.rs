@@ -60,7 +60,7 @@ pub mod provider {
 // Useful both for querying and for implementing data providers.
 pub use trustfall_core::ir::{FieldValue, TransparentValue};
 
-/// Trustfall query schema.
+// Trustfall query schema.
 pub use trustfall_core::schema::{Schema, SchemaAdapter};
 
 // Trait for converting query results into structs.
