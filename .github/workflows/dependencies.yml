@@ -1,0 +1,137 @@
+# Automatically run `cargo update` periodically.
+#
+# Originally based on
+# [Rust's own dependency-upgrading workflow](https://github.com/rust-lang/rust/blob/master/.github/workflows/dependencies.yml)
+# and subsequently adapted to the needs of this project.
+# Rust source code may be used under the terms of the MIT or Apache 2.0 licenses,
+# which we do here.
+
+---
+name: Bump dependencies in Cargo.lock
+on:
+  schedule:
+    # Run weekly early in the morning on Mondays.
+    - cron: '37 03 * * MON'
+  workflow_dispatch:
+    # Needed so we can run it manually
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+env:
+  PR_TITLE: Weekly `cargo update`
+  PR_MESSAGE: |
+    Automation to keep dependencies in `Cargo.lock` current.
+
+    The following is the output from `cargo update`:
+  COMMIT_MESSAGE: "cargo update \n\n"
+
+jobs:
+  update:
+    if: github.repository_owner == 'obi1kenobi'
+    name: update dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo update
+        # Remove first line that always just says "Updating crates.io index"
+        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+
+      - name: upload Cargo.lock artifact for use in PR
+        uses: actions/upload-artifact@v3
+        with:
+          name: Cargo-lock
+          path: Cargo.lock
+          retention-days: 1
+
+      - name: upload cargo-update log artifact for use in PR
+        uses: actions/upload-artifact@v3
+        with:
+          name: cargo-updates
+          path: cargo_update.log
+          retention-days: 1
+
+  pr:
+    if: github.repository_owner == 'obi1kenobi'
+    name: amend PR
+    needs: update
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      - name: download Cargo.lock from update job
+        uses: actions/download-artifact@v3
+        with:
+          name: Cargo-lock
+      - name: download cargo-update log from update job
+        uses: actions/download-artifact@v3
+        with:
+          name: cargo-updates
+
+      - name: craft PR body and commit message
+        run: |
+          set -euo pipefail
+
+          echo "${COMMIT_MESSAGE}" > commit.txt
+          cat cargo_update.log >> commit.txt
+
+          echo "${PR_MESSAGE}" > body.md
+          echo '```txt' >> body.md
+          cat cargo_update.log >> body.md
+          echo '```' >> body.md
+
+      - name: commit
+        run: |
+          set -euo pipefail
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --force-create cargo_update
+          git add ./Cargo.lock
+          git commit --no-verify --file=commit.txt
+
+      - name: push
+        run: |
+          set -euo pipefail
+          git push --no-verify --force --set-upstream origin cargo_update
+
+      - name: edit existing open pull request
+        id: edit
+        # Don't fail job if we need to open new PR
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Exit with error if PR is closed
+          STATE="$(gh pr view cargo_update --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+          if [[ "$STATE" != "OPEN" ]]; then
+            exit 1
+          fi
+
+          gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY"
+
+      - name: open new pull request
+        # Only run if there wasn't an existing PR
+        if: steps.edit.outcome != 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run:
+          set -euo pipefail
+          gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
+          gh pr merge --squash --auto --delete-branch
