@@ -104,6 +104,9 @@ labels:
   - name: R-relnotes
     color: '#2e00c0'
     description: "Release: document this in the release notes of the next release"
+  - name: R-automated
+    color: '#2e00c0'
+    description: "Release: these changes were created automatically by a bot"
 
 branches:
   - name: main
