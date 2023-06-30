@@ -16,6 +16,44 @@ use crate::{
 use super::Schema;
 
 /// A Trustfall adapter for querying Trustfall schemas.
+///
+/// The schema matching this adapter is in the adjacent
+/// [`schema.graphql` file](https://github.com/obi1kenobi/trustfall/blob/main/trustfall_core/src/schema/adapter/schema.graphql),
+/// and is also available via the [`SchemaAdapter::schema_text()`] function.
+///
+/// ## Example
+///
+/// Create the adapter for querying a given schema like so:
+/// ```rust
+/// # use trustfall_core::schema::{Schema, SchemaAdapter};
+/// #
+/// # fn main() {
+/// let schema_text = include_str!("./schema.graphql");
+/// let schema = Schema::parse(schema_text).expect("not a valid schema");
+///
+/// // Create an adapter that queries
+/// // the schema in the local `schema.graphql` file.
+/// # [allow(unused_variables)]
+/// let adapter = SchemaAdapter::new(&schema);
+///
+/// // Run queries using the adapter, etc.
+/// # }
+/// ```
+///
+/// Then you can query the contents of that schema.
+/// For example, the following query asks for all vertex properties and their types:
+/// ```graphql
+/// query {
+///     VertexType {
+///         name @output
+///
+///         property {
+///             property_name: name @output
+///             property_type: type @output
+///         }
+///     }
+/// }
+/// ```
 #[derive(Debug)]
 pub struct SchemaAdapter<'a> {
     schema: &'a Schema,
