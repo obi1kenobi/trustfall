@@ -21,7 +21,7 @@ use super::Schema;
 /// [`schema.graphql` file](https://github.com/obi1kenobi/trustfall/blob/main/trustfall_core/src/schema/adapter/schema.graphql),
 /// and is also available via the [`SchemaAdapter::schema_text()`] function.
 ///
-/// ## Example
+/// # Example
 ///
 /// Create the adapter for querying a given schema like so:
 /// ```rust

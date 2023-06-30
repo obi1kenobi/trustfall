@@ -25,7 +25,7 @@ use super::CandidateValue;
 /// in different query results, but the way in which it varies can be determined programmatically
 /// and can be resolved to a [`CandidateValue`] for each query result.
 ///
-/// ## Example
+/// # Example
 ///
 /// Consider the following query, which fetches emails where the sender also included
 /// their own address in the receipients:

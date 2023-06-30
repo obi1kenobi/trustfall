@@ -13,6 +13,7 @@
 //! your own code without going through the CLI.
 //!
 //! The generated Trustfall adapter stub has the following structure:
+//!
 //! | file name              | purpose                                                |
 //! | ---------------------- | ------------------------------------------------------ |
 //! | adapter/mod.rs         | connects everything together                           |

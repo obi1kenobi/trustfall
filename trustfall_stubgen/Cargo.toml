@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_stubgen"
-version = "0.2.1"
+version = "0.2.2"
 rust-version = "1.70"
 license = "Apache-2.0"
 description = "Generate a Trustfall adapter stub for a given schema."
