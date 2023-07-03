@@ -225,7 +225,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     name_wanted,
                 ))) = resolve_info.statically_required_property("name")
                 {
-                    let name_wanted = str.as_str();
+                    let name_wanted = name_wanted.as_str();
                     if let Some(exact_wanted) = self
                         .schema
                         .vertex_types
