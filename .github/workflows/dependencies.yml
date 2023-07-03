@@ -61,7 +61,7 @@ jobs:
 
   pr:
     if: github.repository_owner == 'obi1kenobi'
-    name: amend PR
+    name: open or amend PR
     needs: update
     runs-on: ubuntu-latest
     permissions:
@@ -131,7 +131,7 @@ jobs:
         if: steps.edit.outcome != 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
+        run: |
           set -euo pipefail
           gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
           gh pr merge --squash --auto --delete-branch
