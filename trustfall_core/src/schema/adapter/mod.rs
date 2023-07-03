@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputValueDefinition, Type, TypeDefinition, TypeKind,
@@ -8,7 +8,8 @@ use crate::{
     accessor_property, field_property,
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
+        VertexIterator,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue},
 };
@@ -214,15 +215,34 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         &self,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
-        _resolve_info: &ResolveInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
-                Box::new(self.schema.vertex_types.values().filter_map(move |v| {
-                    (v.name.node != root_query_type)
-                        .then(|| SchemaVertex::VertexType(VertexType::new(v)))
-                }))
+
+                if let Some(crate::interpreter::CandidateValue::Single(FieldValue::String(str))) =
+                    resolve_info.statically_required_property("name")
+                {
+                    let str: Rc<str> = str.as_str().into();
+                    if let Some(exact_wanted) = self
+                        .schema
+                        .vertex_types
+                        .get(str.as_ref())
+                        .filter(move |v| v.name.node != root_query_type)
+                    {
+                        Box::new(std::iter::once(SchemaVertex::VertexType(VertexType::new(
+                            exact_wanted,
+                        ))))
+                    } else {
+                        Box::new(std::iter::empty())
+                    }
+                } else {
+                    Box::new(self.schema.vertex_types.values().filter_map(move |v| {
+                        (v.name.node != root_query_type)
+                            .then(|| SchemaVertex::VertexType(VertexType::new(v)))
+                    }))
+                }
             }
             "Entrypoint" => Box::new(Box::new(
                 self.schema
