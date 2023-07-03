@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputValueDefinition, Type, TypeDefinition, TypeKind,
@@ -221,14 +221,15 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
 
-                if let Some(crate::interpreter::CandidateValue::Single(FieldValue::String(str))) =
-                    resolve_info.statically_required_property("name")
+                if let Some(crate::interpreter::CandidateValue::Single(FieldValue::String(
+                    name_wanted,
+                ))) = resolve_info.statically_required_property("name")
                 {
-                    let str: Rc<str> = str.as_str().into();
+                    let name_wanted = str.as_str();
                     if let Some(exact_wanted) = self
                         .schema
                         .vertex_types
-                        .get(str.as_ref())
+                        .get(name_wanted)
                         .filter(move |v| v.name.node != root_query_type)
                     {
                         Box::new(std::iter::once(SchemaVertex::VertexType(VertexType::new(
