@@ -238,6 +238,26 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     } else {
                         Box::new(std::iter::empty())
                     }
+                } else if let Some(crate::interpreter::CandidateValue::Multiple(possible)) =
+                    resolve_info.statically_required_property("name")
+                {
+                    Box::new(std::iter::empty())
+                    // Box::new(possible.iter().filter_map(move |wanted| {
+                    //     if let Some(exact_wanted) = self
+                    //         .schema
+                    //         .vertex_types
+                    //         .get(
+                    //             wanted
+                    //                 .as_str()
+                    //                 .expect("candidate value for name should be a string"),
+                    //         )
+                    //         .filter(move |v| v.name.node != root_query_type)
+                    //     {
+                    //         Some(SchemaVertex::VertexType(VertexType::new(exact_wanted)))
+                    //     } else {
+                    //         None
+                    //     }
+                    // }))
                 } else {
                     Box::new(self.schema.vertex_types.values().filter_map(move |v| {
                         (v.name.node != root_query_type)
