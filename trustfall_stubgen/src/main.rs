@@ -5,13 +5,6 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 
-mod adapter_creator;
-mod edges_creator;
-mod entrypoints_creator;
-mod properties_creator;
-mod root;
-mod util;
-
 /// Generate a Trustfall adapter stub implementation for a given schema.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -64,5 +57,5 @@ fn main() -> Result<(), anyhow::Error> {
     let target = &cli.target;
     std::fs::create_dir_all(target).context("failed to create target directory")?;
 
-    root::generate_rust_stub(&schema_text, target)
+    trustfall_stubgen::generate_rust_stub(&schema_text, target)
 }
