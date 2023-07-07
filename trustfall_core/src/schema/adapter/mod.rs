@@ -33,7 +33,7 @@ use super::Schema;
 ///
 /// // Create an adapter that queries
 /// // the schema in the local `schema.graphql` file.
-/// # [allow(unused_variables)]
+/// # #[allow(unused_variables)]
 /// let adapter = SchemaAdapter::new(&schema);
 ///
 /// // Run queries using the adapter, etc.

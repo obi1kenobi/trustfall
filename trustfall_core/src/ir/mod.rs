@@ -67,7 +67,7 @@ impl Eid {
 /// [`Adapter::resolve_neighbors`]: crate::interpreter::Adapter::resolve_neighbors
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EdgeParameters {
-    contents: Arc<BTreeMap<Arc<str>, FieldValue>>,
+    pub(crate) contents: Arc<BTreeMap<Arc<str>, FieldValue>>,
 }
 
 impl EdgeParameters {
