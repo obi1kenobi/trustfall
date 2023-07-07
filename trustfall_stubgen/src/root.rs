@@ -18,13 +18,13 @@ use super::{
 /// Given a schema, make a Rust adapter stub for it in the given directory.
 ///
 /// Generated code structure:
-/// - adapter/mod.rs         connects everything together
-/// - adapter/schema.graphql contains the schema for the adapter
-/// - adapter/adapter.rs     contains the adapter implementation
-/// - adapter/vertex.rs      contains the vertex type definition
-/// - adapter/entrypoints.rs contains the entry points where all queries must start
-/// - adapter/properties.rs  contains the property implementations
-/// - adapter/edges.rs       contains the edge implementations
+/// - adapter/mod.rs          connects everything together
+/// - adapter/schema.graphql  contains the schema for the adapter
+/// - adapter/adapter_impl.rs contains the adapter implementation
+/// - adapter/vertex.rs       contains the vertex type definition
+/// - adapter/entrypoints.rs  contains the entry points where all queries must start
+/// - adapter/properties.rs   contains the property implementations
+/// - adapter/edges.rs        contains the edge implementations
 ///
 /// # Example
 /// ```no_run
@@ -66,7 +66,7 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
     make_adapter_file(
         &querying_schema,
         schema_adapter.clone(),
-        &mut stub.adapter,
+        &mut stub.adapter_impl,
         entrypoint_match_arms,
     );
 
@@ -261,7 +261,7 @@ fn write_import_subtree<W: std::io::Write>(
 struct AdapterStub<'a> {
     mod_: RustFile,
     schema: &'a str,
-    adapter: RustFile,
+    adapter_impl: RustFile,
     vertex: RustFile,
     entrypoints: RustFile,
     properties: RustFile,
@@ -273,21 +273,21 @@ impl<'a> AdapterStub<'a> {
         let mut mod_ = RustFile::default();
 
         mod_.top_level_items.push(quote! {
-            mod adapter;
+            mod adapter_impl;
             mod vertex;
             mod entrypoints;
             mod properties;
             mod edges;
         });
         mod_.top_level_items.push(quote! {
-            pub use adapter::Adapter;
+            pub use adapter_impl::Adapter;
             pub use vertex::Vertex;
         });
 
         Self {
             mod_,
             schema,
-            adapter: Default::default(),
+            adapter_impl: Default::default(),
             vertex: Default::default(),
             entrypoints: Default::default(),
             properties: Default::default(),
@@ -308,8 +308,8 @@ impl<'a> AdapterStub<'a> {
         self.mod_.write_to_file(path_buf.as_path())?;
         path_buf.pop();
 
-        path_buf.push("adapter.rs");
-        self.adapter.write_to_file(path_buf.as_path())?;
+        path_buf.push("adapter_impl.rs");
+        self.adapter_impl.write_to_file(path_buf.as_path())?;
         path_buf.pop();
 
         path_buf.push("vertex.rs");
