@@ -127,7 +127,10 @@ fn make_type_edge_resolver(
 
     let type_edge_mod = quote! {
         mod #mod_name {
-            use trustfall::provider::{ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, VertexIterator};
+            use trustfall::provider::{
+                resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                VertexIterator,
+            };
 
             use super::super::vertex::Vertex;
 
@@ -154,14 +157,20 @@ fn make_edge_resolver_and_call(
 
     let resolver_fn_name = to_lower_snake_case(edge_name);
     let resolver_fn_ident = syn::Ident::new(&resolver_fn_name, proc_macro2::Span::call_site());
-    let todo_msg = format!("implement edge '{edge_name}' for type '{type_name}'");
+    let conversion_fn_name = format!("as_{}", to_lower_snake_case(type_name));
+    let conversion_fn_ident = syn::Ident::new(&conversion_fn_name, proc_macro2::Span::call_site());
+    let expect_msg = format!("conversion failed, vertex was not a {type_name}");
+    let todo_msg = format!("get neighbors along edge '{edge_name}' for type '{type_name}'");
     let resolver = quote! {
         pub(super) fn #resolver_fn_ident<'a>(
             contexts: ContextIterator<'a, Vertex>,
             #fn_params
             _resolve_info: &ResolveEdgeInfo,
         ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-            todo!(#todo_msg)
+            resolve_neighbors_with(contexts, |vertex| {
+                let vertex = vertex.#conversion_fn_ident().expect(#expect_msg);
+                todo!(#todo_msg)
+            })
         }
     };
 
