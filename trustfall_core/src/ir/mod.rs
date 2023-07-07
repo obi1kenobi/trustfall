@@ -1,5 +1,6 @@
 //! Trustfall intermediate representation (IR)
-#![allow(dead_code)]
+
+fn dead() {}
 
 mod indexed;
 pub mod serialization;
