@@ -23,7 +23,8 @@ pub(super) fn resolve_comment_edge<'a>(
 
 mod comment {
     use trustfall::provider::{
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, VertexIterator,
+        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        VertexIterator,
     };
 
     use super::super::vertex::Vertex;
@@ -32,28 +33,60 @@ mod comment {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'byUser' for type 'Comment'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_comment()
+                    .expect("conversion failed, vertex was not a Comment");
+                todo!("get neighbors along edge 'byUser' for type 'Comment'")
+            },
+        )
     }
 
     pub(super) fn link<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'link' for type 'Comment'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_comment()
+                    .expect("conversion failed, vertex was not a Comment");
+                todo!("get neighbors along edge 'link' for type 'Comment'")
+            },
+        )
     }
 
     pub(super) fn parent<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'parent' for type 'Comment'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_comment()
+                    .expect("conversion failed, vertex was not a Comment");
+                todo!("get neighbors along edge 'parent' for type 'Comment'")
+            },
+        )
     }
 
     pub(super) fn reply<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'reply' for type 'Comment'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_comment()
+                    .expect("conversion failed, vertex was not a Comment");
+                todo!("get neighbors along edge 'reply' for type 'Comment'")
+            },
+        )
     }
 }
 
@@ -75,7 +108,8 @@ pub(super) fn resolve_job_edge<'a>(
 
 mod job {
     use trustfall::provider::{
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, VertexIterator,
+        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        VertexIterator,
     };
 
     use super::super::vertex::Vertex;
@@ -84,7 +118,15 @@ mod job {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'link' for type 'Job'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_job()
+                    .expect("conversion failed, vertex was not a Job");
+                todo!("get neighbors along edge 'link' for type 'Job'")
+            },
+        )
     }
 }
 
@@ -108,7 +150,8 @@ pub(super) fn resolve_story_edge<'a>(
 
 mod story {
     use trustfall::provider::{
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, VertexIterator,
+        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        VertexIterator,
     };
 
     use super::super::vertex::Vertex;
@@ -117,21 +160,45 @@ mod story {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'byUser' for type 'Story'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_story()
+                    .expect("conversion failed, vertex was not a Story");
+                todo!("get neighbors along edge 'byUser' for type 'Story'")
+            },
+        )
     }
 
     pub(super) fn comment<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'comment' for type 'Story'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_story()
+                    .expect("conversion failed, vertex was not a Story");
+                todo!("get neighbors along edge 'comment' for type 'Story'")
+            },
+        )
     }
 
     pub(super) fn link<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'link' for type 'Story'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_story()
+                    .expect("conversion failed, vertex was not a Story");
+                todo!("get neighbors along edge 'link' for type 'Story'")
+            },
+        )
     }
 }
 
@@ -154,7 +221,8 @@ pub(super) fn resolve_user_edge<'a>(
 
 mod user {
     use trustfall::provider::{
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, VertexIterator,
+        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        VertexIterator,
     };
 
     use super::super::vertex::Vertex;
@@ -163,13 +231,29 @@ mod user {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'link' for type 'User'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_user()
+                    .expect("conversion failed, vertex was not a User");
+                todo!("get neighbors along edge 'link' for type 'User'")
+            },
+        )
     }
 
     pub(super) fn submitted<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'submitted' for type 'User'")
+        resolve_neighbors_with(
+            contexts,
+            |vertex| {
+                let vertex = vertex
+                    .as_user()
+                    .expect("conversion failed, vertex was not a User");
+                todo!("get neighbors along edge 'submitted' for type 'User'")
+            },
+        )
     }
 }
