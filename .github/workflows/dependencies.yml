@@ -74,6 +74,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - name: checkout the source code
         uses: actions/checkout@v3
@@ -143,6 +144,10 @@ jobs:
           gh pr create --title "${MAIN_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
           gh pr merge --squash --auto --delete-branch
 
+      - name: start CI workflow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           # Pushes from a workflow using `GITHUB_TOKEN` do not automatically trigger more workflows:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
           #
