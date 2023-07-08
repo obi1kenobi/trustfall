@@ -109,6 +109,11 @@ jobs:
           git config user.email github-actions@github.com
           git switch --force-create "$BRANCH_NAME"
           git add ./Cargo.lock
+          DIFF="$(git diff --staged)"
+          if [[ "$DIFF" == "" ]]; then
+            echo >2 "Cargo.lock was not changed, bailing out and not making a PR"
+            exit 1
+          fi
           git commit --no-verify --file=commit.txt
 
       - name: push
@@ -234,6 +239,11 @@ jobs:
           git config user.email github-actions@github.com
           git switch --force-create "$BRANCH_NAME"
           git add ./trustfall_core/fuzz/Cargo.lock
+          DIFF="$(git diff --staged)"
+          if [[ "$DIFF" == "" ]]; then
+            echo >2 "Cargo.lock was not changed, bailing out and not making a PR"
+            exit 1
+          fi
           git commit --no-verify --file=commit.txt
 
       - name: push
@@ -274,7 +284,6 @@ jobs:
         run: |
           set -euo pipefail
           gh pr create --title "${FUZZ_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
-          gh pr merge --squash --auto --delete-branch
 
       - name: set PR to auto-merge
         env:
