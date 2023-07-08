@@ -149,7 +149,11 @@ jobs:
         run: |
           set -euo pipefail
           gh pr create --title "${MAIN_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
-          gh pr merge --squash --auto --delete-branch
+
+      - name: set PR to auto-merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --auto --delete-branch
 
   update-fuzz-cargo:
     if: github.repository_owner == 'obi1kenobi'
@@ -184,7 +188,7 @@ jobs:
           path: trustfall_core/fuzz/cargo_update.log
           retention-days: 1
 
-  pr-main-fuzz:
+  pr-fuzz-cargo:
     if: github.repository_owner == 'obi1kenobi'
     name: open or amend PR
     needs: update-fuzz-cargo
@@ -271,3 +275,8 @@ jobs:
           set -euo pipefail
           gh pr create --title "${FUZZ_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
           gh pr merge --squash --auto --delete-branch
+
+      - name: set PR to auto-merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --auto --delete-branch
