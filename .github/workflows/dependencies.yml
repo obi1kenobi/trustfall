@@ -111,7 +111,7 @@ jobs:
           git add ./Cargo.lock
           DIFF="$(git diff --staged)"
           if [[ "$DIFF" == "" ]]; then
-            echo >2 "Cargo.lock was not changed, bailing out and not making a PR"
+            echo "Cargo.lock was not changed, bailing out and not making a PR"
             exit 1
           fi
           git commit --no-verify --file=commit.txt
@@ -241,7 +241,7 @@ jobs:
           git add ./trustfall_core/fuzz/Cargo.lock
           DIFF="$(git diff --staged)"
           if [[ "$DIFF" == "" ]]; then
-            echo >2 "Cargo.lock was not changed, bailing out and not making a PR"
+            echo "Cargo.lock was not changed, bailing out and not making a PR"
             exit 1
           fi
           git commit --no-verify --file=commit.txt
