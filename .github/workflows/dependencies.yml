@@ -35,7 +35,7 @@ env:
 jobs:
   update-main-cargo:
     if: github.repository_owner == 'obi1kenobi'
-    name: update dependencies
+    name: update main dependencies
     runs-on: ubuntu-latest
     steps:
       - name: checkout the source code
@@ -66,7 +66,7 @@ jobs:
 
   pr-main-cargo:
     if: github.repository_owner == 'obi1kenobi'
-    name: open or amend PR
+    name: open or amend PR (main)
     needs: update-main-cargo
     runs-on: ubuntu-latest
     env:
@@ -157,7 +157,7 @@ jobs:
 
   update-fuzz-cargo:
     if: github.repository_owner == 'obi1kenobi'
-    name: update dependencies
+    name: update fuzz dependencies
     runs-on: ubuntu-latest
     steps:
       - name: checkout the source code
@@ -190,7 +190,7 @@ jobs:
 
   pr-fuzz-cargo:
     if: github.repository_owner == 'obi1kenobi'
-    name: open or amend PR
+    name: open or amend PR (fuzz)
     needs: update-fuzz-cargo
     runs-on: ubuntu-latest
     env:
