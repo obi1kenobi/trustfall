@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    # Needed so we can run it manually
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
