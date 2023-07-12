@@ -128,6 +128,9 @@ pub enum InvalidSchemaError {
 
     #[error("Type \"{0}\" defines the field \"{1}\" multiple times.")]
     DuplicateFieldDefinition(String, String),
+
+    #[error("Multiple types or intefaces with the name \"{0}\".")]
+    DuplicateTypeOrInterfaceDefinition(String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {
