@@ -67,10 +67,19 @@ fn check_vertex_type_properties_using_one_of() {
 
     rows.sort_by(|a, b| {
         a.get("property")
-            .unwrap()
+            .expect("for btree to have key called property (since that's what we @output'ed)")
             .as_str()
-            .unwrap()
-            .cmp(b.get("property").unwrap().as_str().unwrap())
+            .expect("for property value to be a string, since the property names are strings")
+            .cmp(
+                b.get("property")
+                    .expect(
+                        "for btree to have key called property (since that's what we @output'ed)",
+                    )
+                    .as_str()
+                    .expect(
+                        "for property value to be a string, since the property names are strings",
+                    ),
+            )
     });
 
     let expected_rows = vec![
