@@ -147,9 +147,17 @@ directive @transform(op: String!) on FIELD
                                 .unwrap();
                         }
                         TypeKind::Object(_) | TypeKind::Interface(_) => {
-                            vertex_types
-                                .insert_or_error(type_name.clone(), node.clone())
-                                .unwrap();
+                            match vertex_types.insert_or_error(type_name.clone(), node.clone()) {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    let type_or_interface_name = err.entry.key();
+                                    return Err(
+                                        InvalidSchemaError::DuplicateTypeOrInterfaceDefinition(
+                                            type_or_interface_name.to_string(),
+                                        ),
+                                    );
+                                }
+                            }
                         }
                         TypeKind::Enum(_) => unimplemented!(),
                         TypeKind::Union(_) => unimplemented!(),
