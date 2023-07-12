@@ -125,6 +125,9 @@ pub enum InvalidSchemaError {
         Only interfaces can be implemented by other types."
     )]
     ImplementingNonInterface(String, String),
+
+    #[error("Type \"{0}\" defines the field \"{1}\" multiple times.")]
+    DuplicateFieldDefinition(String, String),
 }
 
 impl From<Vec<InvalidSchemaError>> for InvalidSchemaError {
