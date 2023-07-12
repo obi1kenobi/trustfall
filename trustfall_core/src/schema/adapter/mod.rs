@@ -246,7 +246,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                         .iter()
                         .map(|el| {
                             el.as_str()
-                                .expect("for possibilities of names to be strings")
+                                .expect("for name possibility to be a string")
                                 .to_string()
                         })
                         .collect::<Vec<_>>();
