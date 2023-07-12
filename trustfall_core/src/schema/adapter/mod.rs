@@ -254,12 +254,15 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                         possibilities_as_owned_strings
                             .into_iter()
                             .filter_map(move |wanted| {
-                                vertex_types
-                                    .get(wanted.as_str())
-                                    .filter(move |v| v.name.node != root_query_type)
-                                    .map(|exact_wanted| {
-                                        SchemaVertex::VertexType(VertexType::new(exact_wanted))
-                                    })
+                                vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
+                                    if exact_wanted.name.node != root_query_type {
+                                        Some(SchemaVertex::VertexType(VertexType::new(
+                                            exact_wanted,
+                                        )))
+                                    } else {
+                                        None
+                                    }
+                                })
                             }),
                     )
                 } else {
