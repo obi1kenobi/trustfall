@@ -74,15 +74,19 @@ fn check_vertex_type_properties_using_one_of() {
     let expected_rows = vec![
         btreemap! {
             "property".into() => "is_interface".into(),
+            "name".into() => "VertexType".into()
         },
         btreemap! {
             "property".into() => "name".into(),
+            "name".into() => "VertexType".into()
         },
         btreemap! {
             "property".into() => "name".into(),
+            "name".into() => "Property".into()
         },
         btreemap! {
             "property".into() => "type".into(),
+            "name".into() => "Property".into()
         },
     ];
 
