@@ -8,8 +8,8 @@ use crate::{
     accessor_property, field_property,
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
-        VertexIterator,
+        CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        VertexInfo, VertexIterator,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue},
 };
@@ -222,9 +222,8 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
 
-                if let Some(crate::interpreter::CandidateValue::Single(FieldValue::String(
-                    name_wanted,
-                ))) = candidate_value
+                if let Some(CandidateValue::Single(FieldValue::String(name_wanted))) =
+                    candidate_value
                 {
                     let name_wanted = name_wanted.as_str();
                     if let Some(exact_wanted) = self
@@ -239,9 +238,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     } else {
                         Box::new(std::iter::empty())
                     }
-                } else if let Some(crate::interpreter::CandidateValue::Multiple(possibilities)) =
-                    candidate_value
-                {
+                } else if let Some(CandidateValue::Multiple(possibilities)) = candidate_value {
                     let possibilities_as_owned_strings = possibilities
                         .iter()
                         .map(|el| {
