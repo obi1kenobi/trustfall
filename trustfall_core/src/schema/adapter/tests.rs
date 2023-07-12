@@ -47,7 +47,7 @@ fn check_vertex_type_properties_using_one_of() {
     let query = r#"
 {
     VertexType {
-        name @filter(op: "one_of", value: ["$name"])
+        name @filter(op: "one_of", value: ["$name"]) @output
 
         property {
             property: name @output
