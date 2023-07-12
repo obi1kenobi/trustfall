@@ -1,0 +1,52 @@
+schema {
+  query: RootSchemaQuery
+}
+directive @filter(
+  """
+  Name of the filter operation to perform.
+  """
+  op: String!
+  """
+  List of string operands for the operator.
+  """
+  value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+  """
+  Name to apply to the given property field.
+  """
+  name: String
+) on FIELD
+directive @output(
+  """
+  What to designate the output field generated from this property field.
+  """
+  name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+  """
+  Recurse up to this many times on this edge. A depth of 1 produces the current
+  vertex and its immediate neighbors along the given edge.
+  """
+  depth: Int!
+) on FIELD
+directive @fold on FIELD
+directive @transform(
+  """
+  Name of the transformation operation to perform.
+  """
+  op: String!
+) on FIELD
+
+"""
+All the possible data types where querying can begin in this API.
+"""
+type RootSchemaQuery {
+  Fruit: [Apple!]!
+}
+
+type Apple {
+  color: String
+  color: String
+}
