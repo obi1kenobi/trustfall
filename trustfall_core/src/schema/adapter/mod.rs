@@ -244,7 +244,11 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 {
                     let possibilities_as_owned_strings = possibilities
                         .iter()
-                        .map(|el| el.as_str().unwrap().to_string())
+                        .map(|el| {
+                            el.as_str()
+                                .expect("for possibilities of names to be strings")
+                                .to_string()
+                        })
                         .collect::<Vec<_>>();
 
                     let vertex_types = &self.schema.vertex_types;
