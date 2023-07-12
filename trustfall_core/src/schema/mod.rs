@@ -167,9 +167,18 @@ directive @transform(op: String!) on FIELD
                             let field_node = field.node;
                             let field_name = Arc::from(field_node.name.node.to_string());
 
-                            fields
+                            match fields
                                 .insert_or_error((type_name.clone(), field_name), field_node)
-                                .unwrap();
+                            {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    let (key, value) = err.entry.key();
+                                    return Err(InvalidSchemaError::DuplicateFieldDefinition(
+                                        key.to_string(),
+                                        value.to_string(),
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
