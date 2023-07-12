@@ -126,7 +126,7 @@ pub enum InvalidSchemaError {
     )]
     ImplementingNonInterface(String, String),
 
-    #[error("Type \"{0}\" defines the field \"{1}\" multiple times.")]
+    #[error("Type or Interface \"{0}\" defines the field \"{1}\" multiple times.")]
     DuplicateFieldDefinition(String, String),
 }
 
