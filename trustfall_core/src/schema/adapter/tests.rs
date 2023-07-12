@@ -43,6 +43,57 @@ fn check_vertex_type_properties() {
 }
 
 #[test]
+fn check_vertex_type_properties_using_one_of() {
+    let query = r#"
+{
+    VertexType {
+        name @filter(op: "one_of", value: ["$name"]) @output
+
+        property {
+            property: name @output
+        }
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => vec!["VertexType", "Property"].into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .collect();
+
+    rows.sort_by(|a, b| {
+        a["property"]
+            .partial_cmp(&b["property"])
+            .expect("to be comparable")
+    });
+
+    let expected_rows = vec![
+        btreemap! {
+            "property".into() => "is_interface".into(),
+            "name".into() => "VertexType".into()
+        },
+        btreemap! {
+            "property".into() => "name".into(),
+            "name".into() => "VertexType".into()
+        },
+        btreemap! {
+            "property".into() => "name".into(),
+            "name".into() => "Property".into()
+        },
+        btreemap! {
+            "property".into() => "type".into(),
+            "name".into() => "Property".into()
+        },
+    ];
+
+    assert_eq!(expected_rows, rows);
+}
+
+#[test]
 fn check_entrypoint_target_edges() {
     let query = r#"
 {

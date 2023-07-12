@@ -8,7 +8,8 @@ use crate::{
     accessor_property, field_property,
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+        CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        VertexInfo, VertexIterator,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue},
 };
@@ -214,15 +215,62 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         &self,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
-        _resolve_info: &ResolveInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
+        let candidate_value = resolve_info.statically_required_property("name").clone();
         match edge_name.as_ref() {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
-                Box::new(self.schema.vertex_types.values().filter_map(move |v| {
-                    (v.name.node != root_query_type)
-                        .then(|| SchemaVertex::VertexType(VertexType::new(v)))
-                }))
+
+                if let Some(CandidateValue::Single(FieldValue::String(name_wanted))) =
+                    candidate_value
+                {
+                    let name_wanted = name_wanted.as_str();
+                    if let Some(exact_wanted) = self
+                        .schema
+                        .vertex_types
+                        .get(name_wanted)
+                        .filter(move |v| v.name.node != root_query_type)
+                    {
+                        Box::new(std::iter::once(SchemaVertex::VertexType(VertexType::new(
+                            exact_wanted,
+                        ))))
+                    } else {
+                        Box::new(std::iter::empty())
+                    }
+                } else if let Some(CandidateValue::Multiple(possibilities)) = candidate_value {
+                    let possibilities_as_owned_strings = possibilities
+                        .iter()
+                        .map(|el| {
+                            el.as_str()
+                                .expect("for name possibility to be a string")
+                                .to_string()
+                        })
+                        .collect::<Vec<_>>();
+
+                    let vertex_types = &self.schema.vertex_types;
+
+                    Box::new(
+                        possibilities_as_owned_strings
+                            .into_iter()
+                            .filter_map(move |wanted| {
+                                vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
+                                    if exact_wanted.name.node != root_query_type {
+                                        Some(SchemaVertex::VertexType(VertexType::new(
+                                            exact_wanted,
+                                        )))
+                                    } else {
+                                        None
+                                    }
+                                })
+                            }),
+                    )
+                } else {
+                    Box::new(self.schema.vertex_types.values().filter_map(move |v| {
+                        (v.name.node != root_query_type)
+                            .then(|| SchemaVertex::VertexType(VertexType::new(v)))
+                    }))
+                }
             }
             "Entrypoint" => Box::new(Box::new(
                 self.schema
