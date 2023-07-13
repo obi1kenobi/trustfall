@@ -552,6 +552,78 @@ type Method implements Item & FunctionLike {
 }
 
 """
+Common supertype of `Constant` and `Static`.
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+"""
+interface GlobalValue implements Item & Importable {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/struct.Constant.html
+"""
+type Constant implements Item & Importable & GlobalValue {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/struct.Static.html
+"""
+type Static implements Item & Importable & GlobalValue {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # own properties
+  mutable: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
 A specific attribute applied to an Item.
 """
 type Attribute {
