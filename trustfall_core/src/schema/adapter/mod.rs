@@ -217,7 +217,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         _parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
-        let candidate_value = resolve_info.statically_required_property("name").clone();
+        let candidate_value = resolve_info.statically_required_property("name");
         match edge_name.as_ref() {
             "VertexType" => {
                 let root_query_type = self.schema.query_type_name();
