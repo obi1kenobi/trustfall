@@ -1,0 +1,26 @@
+# Traits with associated constants + their default values, if any.
+# Try these crates: bitflags, arrayvec, digest, lock_api
+query {
+  Crate {
+    item {
+      ... on Trait {
+        name @output
+
+        associated_constant {
+          const: name @output
+          const_default_value: default @output
+
+          span {
+            filename @output
+            first_line: begin_line @output
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}
