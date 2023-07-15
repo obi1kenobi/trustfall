@@ -1,0 +1,25 @@
+# Traits with associated types.
+# Try these crates: itertools, futures_core, anyhow, ansi_term
+query {
+  Crate {
+    item {
+      ... on Trait {
+        name @output
+
+        associated_type {
+          associated_type: name @output
+
+          span {
+            filename @output
+            first_line: begin_line @output
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}

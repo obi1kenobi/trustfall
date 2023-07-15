@@ -1,0 +1,32 @@
+# Types with associated constants.
+# Try these crates: memchr, crossbeam_epoch, chrono, arrayvec, getrandom, hashbrown
+query {
+  Crate {
+    item {
+      # ImplOwner in our schema is a common supertype of
+      # vertex types like Struct and Enum:
+      # ones that may own "impl" blocks.
+      ... on ImplOwner {
+        __typename @output  # Get the exact type of this vertex.
+        name @output
+
+        inherent_impl {
+          associated_constant {
+            const: name @output
+            const_value: default @output
+
+            span {
+              filename @output
+              first_line: begin_line @output
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+vars:
+{
+
+}

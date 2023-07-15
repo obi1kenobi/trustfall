@@ -15,6 +15,9 @@ import enumsWithTupleVariants from '../../example_queries/rustdoc/enums_with_tup
 import itemsWithAllowedLints from '../../example_queries/rustdoc/items_with_allowed_lints.example';
 import structsImportableByMultiplePaths from '../../example_queries/rustdoc/structs_importable_by_multiple_paths.example';
 import traitsWithSupertraits from '../../example_queries/rustdoc/traits_with_supertraits.example';
+import traitsWithAssociatedTypes from '../../example_queries/rustdoc/traits_with_associated_types.example';
+import traitAssociatedConsts from '../../example_queries/rustdoc/trait_associated_consts.example';
+import typeAssociatedConsts from '../../example_queries/rustdoc/type_associated_consts.example';
 
 const RUSTDOC_SCHEMA = buildSchema(rustdocSchema);
 
@@ -46,6 +49,18 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
   {
     name: 'Traits With Supertraits',
     value: parseExample(traitsWithSupertraits),
+  },
+  {
+    name: 'Traits With Associated Types',
+    value: parseExample(traitsWithAssociatedTypes),
+  },
+  {
+    name: 'Traits With Associated Constants',
+    value: parseExample(traitAssociatedConsts),
+  },
+  {
+    name: 'Structs And Enums With Associated Constants',
+    value: parseExample(typeAssociatedConsts),
   },
 ];
 
