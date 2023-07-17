@@ -7,6 +7,7 @@ export type RustdocWorkerMessage =
   | {
       op: 'load-crate';
       name: string;
+      source: 'crates.io' | 'rustc';
     };
 
 export type RustdocWorkerResponse =
