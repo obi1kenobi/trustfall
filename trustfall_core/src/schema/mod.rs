@@ -599,7 +599,9 @@ fn check_fields_required_by_interface_implementations(
 
         for implementation in implementations {
             let implementation = implementation.node.as_ref();
-            let Some(impl_defn) = vertex_types.get(implementation) else { continue; };
+            let Some(impl_defn) = vertex_types.get(implementation) else {
+                continue;
+            };
 
             for field in get_vertex_type_fields(impl_defn) {
                 let field_name = field.node.name.node.as_ref();
@@ -806,7 +808,9 @@ fn get_field_origins(
         let mut implemented_fields: BTreeMap<&str, FieldOrigin> = Default::default();
         for implemented_interface in implements {
             let implemented_interface = implemented_interface.node.as_ref();
-            let Some(implemented_defn) = vertex_types.get(implemented_interface) else { continue; };
+            let Some(implemented_defn) = vertex_types.get(implemented_interface) else {
+                continue;
+            };
             let parent_fields = get_vertex_type_fields(implemented_defn);
             for field in parent_fields {
                 let parent_field_origin = &field_origins[&(
