@@ -475,7 +475,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
     if let Err(duplicates) = check_for_duplicate_output_names(all_outputs) {
         let all_vertices = collect_ir_vertices(&root_component);
         let errs = make_duplicated_output_names_error(&all_vertices, duplicates);
-        errors.extend(errs.into_iter());
+        errors.extend(errs);
     }
 
     if errors.is_empty() {
@@ -551,7 +551,7 @@ fn fill_in_query_variables(
 
     for fold in component.folds.values() {
         if let Err(e) = fill_in_query_variables(variables, fold.component.as_ref()) {
-            errors.extend(e.into_iter());
+            errors.extend(e);
         }
     }
 
@@ -1328,7 +1328,7 @@ where
                 filter_directive,
             ) {
                 Ok(filter) => post_filters.push(filter),
-                Err(e) => errors.extend(e.into_iter()),
+                Err(e) => errors.extend(e),
             }
         }
         for output in &transform_group.output {
