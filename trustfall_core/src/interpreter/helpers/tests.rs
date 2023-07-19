@@ -49,3 +49,15 @@ type Vertex {
 
     assert_eq!(vec![FieldValue::from("Vertex")], outputs);
 }
+
+mod correctness {
+    use crate::numbers_interpreter::NumbersAdapter;
+
+    #[test]
+    fn correctness_checker_approves_valid_adapter() {
+        let adapter = NumbersAdapter::new();
+        let schema = adapter.schema().clone();
+
+        super::super::correctness::check_adapter_invariants(&schema, adapter)
+    }
+}

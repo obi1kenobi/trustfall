@@ -37,13 +37,13 @@ interface Number implements Named {
 }
 
 type Neither implements Number & Named {
-  name: String
-  value: Int
-  vowelsInName: [String]
+    name: String
+    value: Int
+    vowelsInName: [String]
 
-  predecessor: Number
-  successor: Number!
-  multiple(max: Int!): [Composite!]
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
 }
 
 type Prime implements Number & Named {
