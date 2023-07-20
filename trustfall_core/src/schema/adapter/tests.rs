@@ -141,3 +141,9 @@ fn check_entrypoint_target_edges() {
 
     assert_eq!(expected_rows, rows);
 }
+
+#[test]
+fn enforce_adapter_invariants() {
+    let adapter = SchemaAdapter::new(&SCHEMA);
+    crate::interpreter::helpers::check_adapter_invariants(&SCHEMA, adapter);
+}

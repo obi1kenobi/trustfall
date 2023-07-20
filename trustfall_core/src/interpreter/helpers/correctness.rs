@@ -35,7 +35,26 @@ use crate::{
 ///
 /// # Example
 ///
-/// TODO
+/// This function would normally be used in a test case so that broken adapter invariants
+/// cause test failures:
+/// ```rust
+/// # use trustfall_core::{
+/// #    interpreter::helpers::check_adapter_invariants,
+/// #    schema::{Schema, SchemaAdapter},
+/// # };
+/// #
+/// # fn get_schema_and_adapter() -> (Schema, SchemaAdapter<'static>) {
+/// #     let schema = Schema::parse(SchemaAdapter::schema_text()).expect("not a valid schema");
+/// #     let adapter = SchemaAdapter::new(Box::leak(Box::new(schema.clone())));
+/// #     (schema, adapter)
+/// # }
+/// #
+/// #[test]
+/// fn ensure_adapter_satisfies_invariants() {
+///     let (schema, adapter) = get_schema_and_adapter();
+///     check_adapter_invariants(&schema, adapter);
+/// }
+/// ```
 ///
 /// # "My adapter fails this function, now what?"
 ///
@@ -53,7 +72,11 @@ pub fn check_adapter_invariants<'a, A: Adapter<'a>>(schema: &Schema, adapter: A)
     let schema_adapter = Arc::new(SchemaAdapter::new(schema));
     let meta_schema = Schema::parse(SchemaAdapter::schema_text()).expect("invalid schema");
 
-    let sample_size = 16;
+    // How many contexts to use when testing the non-reordering invariant
+    // across the adapter methods. Too high would make the test too slow, while
+    // too low might make us lose sensitivity since reordering is more likely to manifest
+    // when there are more opportunities for it to happen.
+    let sample_size = 8;
 
     check_properties_are_implemented(&meta_schema, schema_adapter.clone(), &adapter, sample_size);
     check_edges_are_implemented(&meta_schema, schema_adapter.clone(), &adapter, sample_size);
