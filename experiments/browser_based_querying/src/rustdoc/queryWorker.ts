@@ -1,10 +1,17 @@
 import { CrateInfo, runQuery, makeCrateInfo } from '../../pkg/trustfall_rustdoc';
 import { RustdocWorkerMessage, RustdocWorkerResponse } from './types';
 
-function fetchCrateJson(filename: string): Promise<string> {
-  return fetch(
-    `https://raw.githubusercontent.com/obi1kenobi/crates-rustdoc/main/rustdoc-v26/max-version/${filename}.json`
-  ).then((response) => response.text());
+function fetchCrateJson(filename: string, source: 'crates.io' | 'rustc'): Promise<string> {
+  switch (source) {
+    case 'crates.io':
+      return fetch(
+        `https://raw.githubusercontent.com/obi1kenobi/crates-rustdoc/main/rustdoc-v26/max-version/${filename}.json`
+      ).then((response) => response.text());
+    case 'rustc':
+      return fetch(
+        `https://raw.githubusercontent.com/obi1kenobi/crates-rustdoc/main/rustdoc-v26/rust-1.73.0-nightly/${filename}.json`
+      ).then((response) => response.text());
+  }
 }
 
 const send: (message: RustdocWorkerResponse) => void = postMessage;
@@ -31,7 +38,7 @@ function dispatch(evt: MessageEvent<RustdocWorkerMessage>) {
 
     case 'load-crate':
       crateInfo = null;
-      fetchCrateJson(msg.name)
+      fetchCrateJson(msg.name, msg.source)
         .then((crateJson) => {
           try {
             crateInfo = makeCrateInfo(crateJson);
