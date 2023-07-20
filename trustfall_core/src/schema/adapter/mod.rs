@@ -9,7 +9,7 @@ use crate::{
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        VertexInfo, VertexIterator,
+        Typename, VertexInfo, VertexIterator,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue},
 };
@@ -115,6 +115,18 @@ impl<'a> SchemaVertex<'a> {
         match self {
             Self::EdgeParameter(e) => Some(e),
             _ => None,
+        }
+    }
+}
+
+impl<'a> Typename for SchemaVertex<'a> {
+    #[inline(always)]
+    fn typename(&self) -> &'static str {
+        match self {
+            SchemaVertex::VertexType(..) => "VertexType",
+            SchemaVertex::Property(..) => "Property",
+            SchemaVertex::Edge(..) => "Edge",
+            SchemaVertex::EdgeParameter(..) => "EdgeParameter",
         }
     }
 }
@@ -290,6 +302,10 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+        if property_name.as_ref() == "__typename" {
+            return resolve_property_with(contexts, |vertex| vertex.typename().into());
+        }
+
         match type_name.as_ref() {
             "VertexType" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, accessor_property!(as_vertex_type, name)),

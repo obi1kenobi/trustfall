@@ -20,6 +20,7 @@ pub enum NumbersVertex {
     Neither(NeitherNumber), // zero and one
     Prime(PrimeNumber),
     Composite(CompositeNumber),
+    Letter(Letter),
 }
 
 impl Typename for NumbersVertex {
@@ -28,7 +29,35 @@ impl Typename for NumbersVertex {
             NumbersVertex::Neither(x) => x.typename(),
             NumbersVertex::Prime(x) => x.typename(),
             NumbersVertex::Composite(x) => x.typename(),
+            NumbersVertex::Letter(..) => "Letter",
         }
+    }
+}
+
+fn number_name(number: i64) -> Option<&'static str> {
+    match number {
+        0 => Some("zero"),
+        1 => Some("one"),
+        2 => Some("two"),
+        3 => Some("three"),
+        4 => Some("four"),
+        5 => Some("five"),
+        6 => Some("six"),
+        7 => Some("seven"),
+        8 => Some("eight"),
+        9 => Some("nine"),
+        10 => Some("ten"),
+        11 => Some("eleven"),
+        12 => Some("twelve"),
+        13 => Some("thirteen"),
+        14 => Some("fourteen"),
+        15 => Some("fifteen"),
+        16 => Some("sixteen"),
+        17 => Some("seventeen"),
+        18 => Some("eighteen"),
+        19 => Some("nineteen"),
+        20 => Some("twenty"),
+        _ => None,
     }
 }
 
@@ -37,32 +66,7 @@ trait Number {
 
     fn value(&self) -> i64;
 
-    fn name(&self) -> Option<&'static str> {
-        match self.value() {
-            0 => Some("zero"),
-            1 => Some("one"),
-            2 => Some("two"),
-            3 => Some("three"),
-            4 => Some("four"),
-            5 => Some("five"),
-            6 => Some("six"),
-            7 => Some("seven"),
-            8 => Some("eight"),
-            9 => Some("nine"),
-            10 => Some("ten"),
-            11 => Some("eleven"),
-            12 => Some("twelve"),
-            13 => Some("thirteen"),
-            14 => Some("fourteen"),
-            15 => Some("fifteen"),
-            16 => Some("sixteen"),
-            17 => Some("seventeen"),
-            18 => Some("eighteen"),
-            19 => Some("nineteen"),
-            20 => Some("twenty"),
-            _ => None,
-        }
-    }
+    fn name(&self) -> Option<&str>;
 
     fn vowels_in_name(&self) -> Option<Vec<String>> {
         self.name().map(|name| {
@@ -87,6 +91,10 @@ impl Number for NeitherNumber {
     fn value(&self) -> i64 {
         self.0
     }
+
+    fn name(&self) -> Option<&str> {
+        number_name(self.value())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,6 +107,10 @@ impl Number for PrimeNumber {
 
     fn value(&self) -> i64 {
         self.0
+    }
+
+    fn name(&self) -> Option<&str> {
+        number_name(self.value())
     }
 }
 
@@ -113,6 +125,10 @@ impl Number for CompositeNumber {
     fn value(&self) -> i64 {
         self.0
     }
+
+    fn name(&self) -> Option<&str> {
+        number_name(self.value())
+    }
 }
 
 impl Number for NumbersVertex {
@@ -121,6 +137,7 @@ impl Number for NumbersVertex {
             NumbersVertex::Neither(x) => x.typename(),
             NumbersVertex::Prime(x) => x.typename(),
             NumbersVertex::Composite(x) => x.typename(),
+            _ => unreachable!(),
         }
     }
 
@@ -129,8 +146,23 @@ impl Number for NumbersVertex {
             NumbersVertex::Neither(x) => x.value(),
             NumbersVertex::Prime(x) => x.value(),
             NumbersVertex::Composite(x) => x.value(),
+            _ => unreachable!(),
         }
     }
+
+    fn name(&self) -> Option<&str> {
+        if let Self::Letter(l) = self {
+            Some(&l.name)
+        } else {
+            let number = self.value();
+            number_name(number)
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Letter {
+    name: String,
 }
 
 fn generate_primes_up_to(primes: &mut BTreeSet<i64>, max_bound: i64) {
@@ -196,6 +228,10 @@ impl NumbersAdapter {
             .expect("schema is not valid"),
         }
     }
+
+    pub fn schema(&self) -> &Schema {
+        &self.schema
+    }
 }
 
 impl Default for NumbersAdapter {
@@ -254,7 +290,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
             ("Number" | "Prime" | "Composite" | "Neither", "value") => {
                 resolve_property_with(contexts, |vertex| vertex.value().into())
             }
-            ("Number" | "Prime" | "Composite" | "Neither", "name") => {
+            ("Number" | "Prime" | "Composite" | "Neither" | "Named" | "Letter", "name") => {
                 resolve_property_with(contexts, |vertex| vertex.name().into())
             }
             ("Number" | "Prime" | "Composite" | "Neither", "vowelsInName") => {
@@ -277,12 +313,13 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
         match (type_name.as_ref(), edge_name.as_ref()) {
-            ("Number" | "Prime" | "Composite", "predecessor") => {
+            ("Number" | "Prime" | "Composite" | "Neither", "predecessor") => {
                 resolve_neighbors_with(contexts, move |vertex| {
                     let value = match &vertex {
                         NumbersVertex::Neither(inner) => inner.value(),
                         NumbersVertex::Prime(inner) => inner.value(),
                         NumbersVertex::Composite(inner) => inner.value(),
+                        _ => unreachable!("{vertex:?}"),
                     };
                     if value > 0 {
                         Box::new(std::iter::once(make_number_vertex(&mut primes, value - 1)))
@@ -291,17 +328,18 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                     }
                 })
             }
-            ("Number" | "Prime" | "Composite", "successor") => {
+            ("Number" | "Prime" | "Composite" | "Neither", "successor") => {
                 resolve_neighbors_with(contexts, move |vertex| {
                     let value = match &vertex {
                         NumbersVertex::Neither(inner) => inner.value(),
                         NumbersVertex::Prime(inner) => inner.value(),
                         NumbersVertex::Composite(inner) => inner.value(),
+                        _ => unreachable!("{vertex:?}"),
                     };
                     Box::new(std::iter::once(make_number_vertex(&mut primes, value + 1)))
                 })
             }
-            ("Number" | "Prime" | "Composite", "multiple") => {
+            ("Number" | "Prime" | "Composite" | "Neither", "multiple") => {
                 resolve_neighbors_with(contexts, move |vertex| {
                     match vertex {
                         NumbersVertex::Neither(..) => Box::new(std::iter::empty()),
@@ -330,6 +368,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                                 make_number_vertex(&mut local_primes, next_value)
                             }))
                         }
+                        _ => unreachable!("{vertex:?}"),
                     }
                 })
             }
@@ -389,11 +428,25 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
-            ("Number", "Prime") => resolve_coercion_with(contexts, |vertex| {
+            ("Number" | "Named", "Prime") => resolve_coercion_with(contexts, |vertex| {
                 matches!(vertex, NumbersVertex::Prime(..))
             }),
-            ("Number", "Composite") => resolve_coercion_with(contexts, |vertex| {
+            ("Number" | "Named", "Composite") => resolve_coercion_with(contexts, |vertex| {
                 matches!(vertex, NumbersVertex::Composite(..))
+            }),
+            ("Number" | "Named", "Neither") => resolve_coercion_with(contexts, |vertex| {
+                matches!(vertex, NumbersVertex::Composite(..))
+            }),
+            ("Named", "Letter") => resolve_coercion_with(contexts, |vertex| {
+                matches!(vertex, NumbersVertex::Letter(..))
+            }),
+            ("Named", "Number") => resolve_coercion_with(contexts, |vertex| {
+                matches!(
+                    vertex,
+                    NumbersVertex::Prime(..)
+                        | NumbersVertex::Composite(..)
+                        | NumbersVertex::Neither(..)
+                )
             }),
             _ => unimplemented!(
                 "Unexpected coercion attempted: {} {}",
