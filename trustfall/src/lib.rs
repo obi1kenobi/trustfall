@@ -47,8 +47,8 @@ pub mod provider {
 
     // Helpers for common operations when building adapters.
     pub use trustfall_core::interpreter::helpers::{
-        resolve_coercion_using_schema, resolve_coercion_with, resolve_neighbors_with,
-        resolve_property_with, resolve_typename,
+        check_adapter_invariants, resolve_coercion_using_schema, resolve_coercion_with,
+        resolve_neighbors_with, resolve_property_with, resolve_typename
     };
     pub use trustfall_core::{accessor_property, field_property};
 

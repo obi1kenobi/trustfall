@@ -77,12 +77,11 @@ fn get_relevant_files_from_dir(path: &Path) -> BTreeMap<PathBuf, PathBuf> {
     let mut dir_glob = path.to_path_buf();
     dir_glob.push("**");
     dir_glob.push("*");
-    dbg!(&dir_glob);
 
     glob::glob(dir_glob.to_str().expect("failed to convert path to &str"))
         .expect("failed to list dir")
         .filter_map(|res| {
-            let pathbuf = dbg!(res.expect("failed to check file"));
+            let pathbuf = res.expect("failed to check file");
             if !pathbuf.is_file() {
                 return None;
             }

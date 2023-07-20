@@ -23,6 +23,7 @@ pub(super) fn make_adapter_file(
     };
 
     let adapter_defn = quote! {
+        #[non_exhaustive]
         #[derive(Debug)]
         pub struct Adapter {}
     };
@@ -44,6 +45,10 @@ pub(super) fn make_adapter_file(
 
             pub fn schema() -> &'static Schema {
                 SCHEMA.get_or_init(|| Schema::parse(Self::SCHEMA_TEXT).expect("not a valid schema"))
+            }
+
+            pub fn new() -> Self {
+                Self {}
             }
         }
     };
