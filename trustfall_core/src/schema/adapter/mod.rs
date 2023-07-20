@@ -9,7 +9,7 @@ use crate::{
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        VertexInfo, VertexIterator, Typename,
+        Typename, VertexInfo, VertexIterator,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue},
 };
