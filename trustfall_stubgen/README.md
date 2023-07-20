@@ -3,7 +3,7 @@
 Given a Trustfall schema, autogenerate a high-quality Rust adapter stub
 fully wired up with all types, properties, and edges referenced in the schema.
 
-First, install the CLI with: `cargo install --locked trustfall_stubgen --features cli`
+First, install the CLI with: `cargo install --locked trustfall_stubgen`
 Then generate Trustfall adapter stubs for your schema with:
 ```
 trustfall_stubgen --schema <your_schema.graphql> --target <output_directory>

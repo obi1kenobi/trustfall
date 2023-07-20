@@ -16,7 +16,7 @@ name = "trustfall_stubgen"
 required-features = ["cli"]
 
 [features]
-default = []
+default = ["cli"]
 cli = ["dep:clap"]
 
 [dependencies]
