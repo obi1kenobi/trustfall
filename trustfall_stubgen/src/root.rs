@@ -10,6 +10,8 @@ use quote::quote;
 use regex::Regex;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
+use crate::util::parse_import;
+
 use super::{
     adapter_creator::make_adapter_file, edges_creator::make_edges_file,
     entrypoints_creator::make_entrypoints_file, properties_creator::make_properties_file,
@@ -25,6 +27,7 @@ use super::{
 /// - adapter/entrypoints.rs  contains the entry points where all queries must start
 /// - adapter/properties.rs   contains the property implementations
 /// - adapter/edges.rs        contains the edge implementations
+/// - adapter/tests.rs        contains test code
 ///
 /// # Example
 /// ```no_run
@@ -62,13 +65,13 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
         &mut stub.properties,
     );
     make_edges_file(&querying_schema, schema_adapter.clone(), &mut stub.edges);
-
     make_adapter_file(
         &querying_schema,
         schema_adapter.clone(),
         &mut stub.adapter_impl,
         entrypoint_match_arms,
     );
+    make_tests_file(&mut stub.tests);
 
     stub.write_to_directory(target)
 }
@@ -266,6 +269,7 @@ struct AdapterStub<'a> {
     entrypoints: RustFile,
     properties: RustFile,
     edges: RustFile,
+    tests: RustFile,
 }
 
 impl<'a> AdapterStub<'a> {
@@ -280,6 +284,10 @@ impl<'a> AdapterStub<'a> {
             mod edges;
         });
         mod_.top_level_items.push(quote! {
+            #[cfg(test)]
+            mod tests;
+        });
+        mod_.top_level_items.push(quote! {
             pub use adapter_impl::Adapter;
             pub use vertex::Vertex;
         });
@@ -292,6 +300,7 @@ impl<'a> AdapterStub<'a> {
             entrypoints: Default::default(),
             properties: Default::default(),
             edges: Default::default(),
+            tests: Default::default(),
         }
     }
 
@@ -328,8 +337,31 @@ impl<'a> AdapterStub<'a> {
         self.edges.write_to_file(path_buf.as_path())?;
         path_buf.pop();
 
+        path_buf.push("tests.rs");
+        self.tests.write_to_file(path_buf.as_path())?;
+        path_buf.pop();
+
         Ok(())
     }
+}
+
+fn make_tests_file(tests_file: &mut RustFile) {
+    tests_file.external_imports.insert(parse_import(
+        "trustfall::provider::check_adapter_invariants",
+    ));
+
+    tests_file
+        .internal_imports
+        .insert(parse_import("super::Adapter"));
+
+    tests_file.top_level_items.push(quote! {
+        #[test]
+        fn adapter_satisfies_trustfall_invariants() {
+            let adapter = Adapter::new();
+            let schema = Adapter::schema();
+            check_adapter_invariants(schema, adapter);
+        }
+    });
 }
 
 fn make_vertex_file(
@@ -368,6 +400,7 @@ fn make_vertex_file(
     }
 
     let vertex = quote! {
+        #[non_exhaustive]
         #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
         pub enum Vertex {
             #variants
