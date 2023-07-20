@@ -783,10 +783,7 @@ mod tests {
             }
         }
 
-        for (original, intersected) in larger_ranges
-            .into_iter()
-            .cartesian_product(smaller_ranges.into_iter())
-        {
+        for (original, intersected) in larger_ranges.into_iter().cartesian_product(smaller_ranges) {
             let mut expected = intersected.clone();
             if let Range(r) = &mut expected {
                 if let Range(r2) = &original {

@@ -1380,7 +1380,7 @@ mod dynamic_property_values {
                     Box::new(value_candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1441,7 +1441,7 @@ mod dynamic_property_values {
                     Box::new(value_candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1539,7 +1539,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1610,7 +1610,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'name' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1664,7 +1664,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1805,7 +1805,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1886,7 +1886,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1950,7 +1950,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -1974,7 +1974,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
@@ -2072,7 +2072,7 @@ mod dynamic_property_values {
                     Box::new(candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
-                        .zip_longest(expected_values.into_iter())
+                        .zip_longest(expected_values)
                         .map(move |data| {
                             if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);

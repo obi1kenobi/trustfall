@@ -620,7 +620,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
 
         let prior_folded_values_count = ctx.folded_values.len();
         let new_folded_values_count = folded_values.len();
-        ctx.folded_values.extend(folded_values.into_iter());
+        ctx.folded_values.extend(folded_values);
 
         // Ensure the merged maps had disjoint keys.
         assert_eq!(
