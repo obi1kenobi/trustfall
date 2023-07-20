@@ -18,7 +18,7 @@ fn write_new_file(path: &Path, contents: &str) {
     }
 }
 
-fn assert_generated_code_compiles(path: &Path) {
+fn assert_generated_code_compiles_and_passes_cargo_test(path: &Path) {
     let cargo_toml = r#"
 [package]
 name = "tests"
@@ -44,12 +44,26 @@ mod adapter;
     lib_rs_path.push("lib.rs");
     write_new_file(lib_rs_path.as_path(), lib_rs);
 
+    // Ensure `cargo check` passes successfully.
     let output = Command::new("cargo")
         .current_dir(path)
         .arg("check")
         .output()
         .expect("failed to execute process");
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\n\nstderr:\n{}",
+        std::str::from_utf8(&output.stdout).expect("invalid utf-8"),
+        std::str::from_utf8(&output.stderr).expect("invalid utf-8"),
+    );
 
+    // Ensure `cargo test` passes successfully.
+    // This runs the Trustfall-provided invariant checker against the generated adapter.
+    let output = Command::new("cargo")
+        .current_dir(path)
+        .arg("test")
+        .output()
+        .expect("failed to execute process");
     assert!(
         output.status.success(),
         "stdout:\n{}\n\nstderr:\n{}",
@@ -159,7 +173,7 @@ fn test_schema(name: &str) {
 
     let mut expected_dir = Path::new("./test_data/expected_outputs").to_path_buf();
     expected_dir.push(name);
-    assert_generated_code_compiles(&test_dir);
+    assert_generated_code_compiles_and_passes_cargo_test(&test_dir);
     assert_generated_code_is_unchanged(&test_src_dir, &expected_dir);
 }
 
