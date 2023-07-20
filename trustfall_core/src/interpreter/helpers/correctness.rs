@@ -56,7 +56,13 @@ use crate::{
 /// }
 /// ```
 ///
-/// # "My adapter fails this function, now what?"
+/// # Limitations
+///
+/// The current implementation is not able to check edges that take any non-nullable parameters.
+/// Edges that take parameters for which "all nulls" is a valid set of parameter values
+/// will be checked using those parameters.
+///
+/// # "My adapter fails this test, now what?"
 ///
 /// Effectively all valid Trustfall adapters should uphold these invariants and pass these checks.
 /// In _extremely rare_ cases, it's possible that an adapter might work properly even if
