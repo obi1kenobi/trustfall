@@ -3,6 +3,7 @@
 query {
   Crate {
     item {
+      __typename @output
       name @output
 
       attribute {
