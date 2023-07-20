@@ -1477,6 +1477,7 @@ mod tests {
                     .map(|(k, v)| (k.into(), v))
                     .collect(),
             );
+            #[allow(clippy::arc_with_non_send_sync)] // running queries needs Arc<impl Adapter>
             let adapter = Arc::new(VariableBatchingAdapter::new(
                 NumbersAdapter::new(),
                 batch_sequences,

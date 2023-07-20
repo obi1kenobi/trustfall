@@ -508,6 +508,7 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
     'trace: 'query,
 {
     let next_op = Rc::new(RefCell::new(trace.ops.iter()));
+    #[allow(clippy::arc_with_non_send_sync)] // running queries needs Arc<impl Adapter>
     let trace_reader_adapter = Arc::new(TraceReaderAdapter {
         next_op: next_op.clone(),
     });
