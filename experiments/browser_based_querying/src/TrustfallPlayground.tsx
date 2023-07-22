@@ -26,12 +26,15 @@ import { NumberParam, StringParam, useQueryParams } from 'use-query-params';
 import { InPortal, OutPortal, createHtmlPortalNode } from 'react-reverse-portal';
 
 import SimpleDocExplorer from './components/SimpleDocExplorer';
+import { decompress, compress } from './urlCompression';
 
-const DEFAULT_ENCODING_FORMAT = 1;
+const DEFAULT_ENCODING_FORMAT = 2;
 const DEFAULT_QUERY = '';
-const DEFAULT_VARS = '{\n\n}';
+const DEFAULT_VARS = '{\n  \n}';
 
 function decodeB64(str: string): string | null {
+  return decompress(str);
+
   try {
     return decodeURIComponent(escape(window.atob(str)));
   } catch {
@@ -40,7 +43,9 @@ function decodeB64(str: string): string | null {
 }
 
 function encodeB64(str: string): string {
-  return window.btoa(unescape(encodeURIComponent(str)));
+  return compress(str);
+
+  // return window.btoa(unescape(encodeURIComponent(str)));
 }
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
