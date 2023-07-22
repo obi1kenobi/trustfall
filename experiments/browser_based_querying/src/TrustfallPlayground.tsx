@@ -32,9 +32,18 @@ const DEFAULT_ENCODING_FORMAT = 2;
 const DEFAULT_QUERY = '';
 const DEFAULT_VARS = '{\n  \n}';
 
-function decodeB64(str: string): string | null {
-  return decompress(str);
+function decodeFormat(format: number | null, str: string): string | null {
+  switch (format) {
+    case 1:
+      return decodeV1(str);
+    case 2:
+      return decodeV2(str);
+    default:
+      return decodeV1(str) || decodeV2(str);
+  }
+}
 
+function decodeV1(str: string): string | null {
   try {
     return decodeURIComponent(escape(window.atob(str)));
   } catch {
@@ -42,10 +51,12 @@ function decodeB64(str: string): string | null {
   }
 }
 
-function encodeB64(str: string): string {
-  return compress(str);
+function decodeV2(str: string): string | null {
+  return decompress(str);
+}
 
-  // return window.btoa(unescape(encodeURIComponent(str)));
+function encode(str: string): string {
+  return compress(str);
 }
 
 // Position absolute is necessary to keep the editor from growing constantly on window resize
@@ -163,14 +174,14 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
     q: StringParam, // Query
     v: StringParam, // Vars
   });
-  const { q: encodedQuery, v: encodedVars } = queryParams;
+  const { f: format, q: encodedQuery, v: encodedVars } = queryParams;
 
   // Use useState to grab the first value and cache it (unlike useMemo, which will update)
   const [initialQuery, _setInitialQuery] = useState<string>(
-    () => decodeB64(encodedQuery ?? '') || (exampleQueries[0]?.value[0] ?? DEFAULT_QUERY)
+    () => decodeFormat(format ?? null, encodedQuery ?? '') || (exampleQueries[0]?.value[0] ?? DEFAULT_QUERY)
   );
   const [initialVars, _setInitialVars] = useState<string>(
-    () => decodeB64(encodedVars ?? '') || (exampleQueries[0]?.value[1] ?? DEFAULT_VARS)
+    () => decodeFormat(format ?? null, encodedVars ?? '') || (exampleQueries[0]?.value[1] ?? DEFAULT_VARS)
   );
   const [exampleQuery, setExampleQuery] = useState<{
     name: string;
@@ -313,8 +324,8 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           setQueryParams(
             {
               f: DEFAULT_ENCODING_FORMAT,
-              q: encodeB64(queryEditor.getValue()),
-              v: encodeB64(varsEditor.getValue()),
+              q: encode(queryEditor.getValue()),
+              v: encode(varsEditor.getValue()),
             },
             'replaceIn'
           );
