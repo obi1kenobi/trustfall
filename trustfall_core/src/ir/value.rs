@@ -2,12 +2,12 @@ use std::cmp::Ordering;
 
 /// IR of the values of Trustfall fields.
 use async_graphql_value::{ConstValue, Number, Value};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Values of fields in Trustfall.
 ///
 /// For version that is serialized as an untagged enum, see [TransparentValue].
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum FieldValue {
     // Order may matter here! Deserialization, if ever configured for untagged serialization,
@@ -17,14 +17,18 @@ pub enum FieldValue {
     // and prioritize exact integers over lossy floats.
     #[default]
     Null,
-    /// AKA integer
+
+    /// Together with `Uint64`, corresponds to schemas' `Int` type.
     Int64(i64),
+
+    /// Together with `Int64`, corresponds to schemas' `Int` type.
     Uint64(u64),
-    /// AKA Float, and also not allowed to be NaN
+
+    /// Corresponds to schemas' `Float` type. Not allowed to be NaN or infinite.
     Float64(f64),
+
     String(String),
     Boolean(bool),
-    DateTimeUtc(DateTime<Utc>),
     Enum(String),
     List(Vec<FieldValue>),
 }
@@ -43,6 +47,7 @@ impl Default for &FieldValue {
 ///
 /// Same as [FieldValue], but serialized as an untagged enum,
 /// which may be more suitable e.g. when serializing to JSON.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TransparentValue {
@@ -53,12 +58,18 @@ pub enum TransparentValue {
     // and prioritize exact integers over lossy floats.
     #[default]
     Null,
-    Int64(i64), // AKA Integer
+
+    /// Together with `Uint64`, corresponds to schemas' `Int` type.
+    Int64(i64),
+
+    /// Together with `Int64`, corresponds to schemas' `Int` type.
     Uint64(u64),
-    Float64(f64), // AKA Float, and also not allowed to be NaN
+
+    /// Corresponds to schemas' `Float` type. Not allowed to be NaN or infinite.
+    Float64(f64),
+
     String(String),
     Boolean(bool),
-    DateTimeUtc(DateTime<Utc>),
     Enum(String),
     List(Vec<TransparentValue>),
 }
@@ -72,7 +83,6 @@ impl From<FieldValue> for TransparentValue {
             FieldValue::Float64(x) => TransparentValue::Float64(x),
             FieldValue::String(x) => TransparentValue::String(x),
             FieldValue::Boolean(x) => TransparentValue::Boolean(x),
-            FieldValue::DateTimeUtc(x) => TransparentValue::DateTimeUtc(x),
             FieldValue::Enum(x) => TransparentValue::Enum(x),
             FieldValue::List(x) => {
                 TransparentValue::List(x.into_iter().map(|v| v.into()).collect())
@@ -90,7 +100,6 @@ impl From<TransparentValue> for FieldValue {
             TransparentValue::Float64(x) => FieldValue::Float64(x),
             TransparentValue::String(x) => FieldValue::String(x),
             TransparentValue::Boolean(x) => FieldValue::Boolean(x),
-            TransparentValue::DateTimeUtc(x) => FieldValue::DateTimeUtc(x),
             TransparentValue::Enum(x) => FieldValue::Enum(x),
             TransparentValue::List(x) => {
                 FieldValue::List(x.into_iter().map(|v| v.into()).collect())
@@ -109,9 +118,8 @@ impl FieldValue {
             Self::Float64(..) => 3,
             Self::String(..) => 4,
             Self::Boolean(..) => 5,
-            Self::DateTimeUtc(..) => 6,
-            Self::Enum(..) => 7,
-            Self::List(..) => 8,
+            Self::Enum(..) => 6,
+            Self::List(..) => 7,
         }
     }
 
@@ -123,7 +131,6 @@ impl FieldValue {
             | FieldValue::Float64(_)
             | FieldValue::String(_)
             | FieldValue::Boolean(_)
-            | FieldValue::DateTimeUtc(_)
             | FieldValue::List(_)
             | FieldValue::Enum(_) => None,
         }
@@ -137,7 +144,6 @@ impl FieldValue {
             | FieldValue::Float64(_)
             | FieldValue::String(_)
             | FieldValue::Boolean(_)
-            | FieldValue::DateTimeUtc(_)
             | FieldValue::List(_)
             | FieldValue::Enum(_) => None,
         }
@@ -151,7 +157,6 @@ impl FieldValue {
             | FieldValue::Float64(_)
             | FieldValue::String(_)
             | FieldValue::Boolean(_)
-            | FieldValue::DateTimeUtc(_)
             | FieldValue::List(_)
             | FieldValue::Enum(_) => None,
         }
@@ -185,11 +190,6 @@ impl FieldValue {
         }
     }
 
-    #[deprecated(since = "0.4.0", note = "renamed to `as_vec_with()`")]
-    pub fn as_vec<'a, T>(&'a self, inner: impl Fn(&'a FieldValue) -> Option<T>) -> Option<Vec<T>> {
-        self.as_vec_with(inner)
-    }
-
     pub fn as_vec_with<'a, T>(
         &'a self,
         inner: impl Fn(&'a FieldValue) -> Option<T>,
@@ -214,7 +214,6 @@ impl FieldValue {
             }
             (Self::String(l0), Self::String(r0)) => l0 == r0,
             (Self::Boolean(l0), Self::Boolean(r0)) => l0 == r0,
-            (Self::DateTimeUtc(l0), Self::DateTimeUtc(r0)) => l0 == r0,
             (Self::List(l0), Self::List(r0)) => l0 == r0,
             (Self::Enum(l0), Self::Enum(r0)) => l0 == r0,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
@@ -256,7 +255,6 @@ impl PartialOrd for FieldValue {
                 }
                 (Self::String(l0), Self::String(r0)) => l0.partial_cmp(r0),
                 (Self::Boolean(l0), Self::Boolean(r0)) => l0.partial_cmp(r0),
-                (Self::DateTimeUtc(l0), Self::DateTimeUtc(r0)) => l0.partial_cmp(r0),
                 (Self::List(l0), Self::List(r0)) => l0.partial_cmp(r0),
                 (Self::Enum(l0), Self::Enum(r0)) => l0.partial_cmp(r0),
                 _ => self.discriminant().partial_cmp(&other.discriminant()),
@@ -363,12 +361,6 @@ macro_rules! impl_field_value_from_uint {
 
 impl_field_value_from_int!(i8 i16 i32 i64);
 impl_field_value_from_uint!(u8 u16 u32 u64);
-
-impl From<DateTime<Utc>> for FieldValue {
-    fn from(v: DateTime<Utc>) -> Self {
-        Self::DateTimeUtc(v)
-    }
-}
 
 impl TryFrom<Option<f32>> for FieldValue {
     type Error = (f32, &'static str);

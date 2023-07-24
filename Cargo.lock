@@ -3423,7 +3423,6 @@ version = "0.5.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "chrono",
  "itertools",
  "maplit",
  "once_cell",

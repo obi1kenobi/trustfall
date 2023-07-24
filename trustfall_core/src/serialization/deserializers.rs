@@ -253,7 +253,6 @@ impl<'de> de::Deserializer<'de> for FieldValueDeserializer {
             FieldValue::Float64(v) => visitor.visit_f64(v),
             FieldValue::String(v) => visitor.visit_string(v),
             FieldValue::Boolean(v) => visitor.visit_bool(v),
-            FieldValue::DateTimeUtc(_) => todo!(),
             FieldValue::Enum(_) => todo!(),
             FieldValue::List(v) => visitor.visit_seq(v.into_deserializer()),
         }

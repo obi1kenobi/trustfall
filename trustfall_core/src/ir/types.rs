@@ -226,10 +226,6 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
             // This is a valid value only if the type is Boolean, ignoring nullability.
             matches!(&variable_type.base, BaseType::Named(n) if n == "Boolean")
         }
-        FieldValue::DateTimeUtc(_) => {
-            // This is a valid value only if the type is DateTime, ignoring nullability.
-            matches!(&variable_type.base, BaseType::Named(n) if n == "DateTime")
-        }
         FieldValue::List(nested_values) => {
             // This is a valid value only if the type is a list, and all the inner elements
             // are valid instances of the type inside the list.
