@@ -65,7 +65,9 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         match type_name {
             "Feed" => match property_name {
                 "id" => property(contexts, field_property!(as_feed, id)),
-                "updated" => property(contexts, field_property!(as_feed, updated)),
+                "updated" => property(contexts, field_property!(as_feed, updated, {
+                    updated.map(|t| t.timestamp()).into()
+                })),
                 "language" => property(contexts, field_property!(as_feed, language)),
                 "published" => property(contexts, field_property!(as_feed, published, {
                     published.map(|t| t.timestamp()).into()
@@ -100,7 +102,9 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
             "FeedEntry" => match property_name {
                 "id" => property(contexts, field_property!(as_feed_entry, id)),
                 "source" => property(contexts, field_property!(as_feed_entry, source)),
-                "updated" => property(contexts, field_property!(as_feed_entry, updated)),
+                "updated" => property(contexts, field_property!(as_feed_entry, updated, {
+                    updated.map(|t| t.timestamp()).into()
+                })),
                 "published" => property(contexts, field_property!(as_feed_entry, published, {
                     published.map(|t| t.timestamp()).into()
                 })),
