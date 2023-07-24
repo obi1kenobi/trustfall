@@ -133,4 +133,18 @@ type EdgeParameter {
     - `[String!]!` for non-nullable list of non-nullable strings
     """
     type: String!
+
+    """
+    The JSON serialized representation of this parameter's default value, if any.
+
+    Nullable parameters have a default value of `null`, which is serialized here as `"null"`.
+    Schemas may also declare default values explicitly. Non-nullable parameters without a default
+    value will have a null value in this field.
+
+    For example:
+    - In `edge(x: Int! = 5)`, the default for `x` is JSON serialized here as `"5"`.
+    - In `edge(x: String! = "abc"), the default for `x` is JSON serialized as `"\"abc\"".
+    - In `edge(x: [String] = [null, "abc"]), the default for `x` is `"[null,\"abc\"]"`.
+    """
+    default: String
 }
