@@ -664,7 +664,6 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "base64 0.13.1",
- "chrono",
  "consecrates",
  "csv",
  "futures-executor",
@@ -680,7 +679,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio 1.29.1",
- "trustfall_core",
+ "trustfall",
  "yaml-rust",
 ]
 
@@ -3423,7 +3422,6 @@ version = "0.5.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "chrono",
  "itertools",
  "maplit",
  "once_cell",

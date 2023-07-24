@@ -54,7 +54,6 @@ macro_rules! make_comparison_op_func {
                 (FieldValue::Null, _) => false,
                 (_, FieldValue::Null) => false,
                 (FieldValue::String(l), FieldValue::String(r)) => l $op r,
-                (FieldValue::DateTimeUtc(l), FieldValue::DateTimeUtc(r)) => l $op r,
                 (FieldValue::Int64(l), FieldValue::Int64(r)) => l $op r,
                 (FieldValue::Uint64(l), FieldValue::Uint64(r)) => l $op r,
                 (FieldValue::Float64(l), FieldValue::Float64(r)) => l $op r,

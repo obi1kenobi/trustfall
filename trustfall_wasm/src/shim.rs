@@ -9,6 +9,7 @@ use trustfall_core::{
     ir::FieldValue,
 };
 
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum JsFieldValue {
@@ -46,8 +47,7 @@ impl From<FieldValue> for JsFieldValue {
             FieldValue::Float64(n) => JsFieldValue::Float(n),
             FieldValue::Boolean(b) => JsFieldValue::Boolean(b),
             FieldValue::List(v) => JsFieldValue::List(v.into_iter().map(|x| x.into()).collect()),
-            FieldValue::DateTimeUtc(_) => unimplemented!(),
-            FieldValue::Enum(_) => unimplemented!(),
+            _ => unimplemented!("unsupported value: {v:#?}"),
         }
     }
 }

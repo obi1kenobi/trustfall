@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use octorust::types::ContentFile;
-use trustfall_core::interpreter::VertexIterator;
+use trustfall::provider::VertexIterator;
 use yaml_rust::{Yaml, YamlLoader};
 
 use crate::vertex::{ActionsImportedStep, ActionsJob, ActionsRunStep, Vertex};
