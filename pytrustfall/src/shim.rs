@@ -151,13 +151,13 @@ fn make_python_value(py: Python, value: FieldValue) -> Py<PyAny> {
         FieldValue::Float64(x) => x.into_py(py),
         FieldValue::String(x) => x.into_py(py),
         FieldValue::Boolean(x) => x.into_py(py),
-        FieldValue::DateTimeUtc(_) => todo!(),
         FieldValue::Enum(_) => todo!(),
         FieldValue::List(x) => x
             .into_iter()
             .map(|v| make_python_value(py, v))
             .collect::<Vec<_>>()
             .into_py(py),
+        _ => unimplemented!("unsupported value: {value:#?}")
     }
 }
 
