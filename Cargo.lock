@@ -2873,6 +2873,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbf644ad016b75129f01a34a355dcb8d66a5bc803e417c7a77cc5d5ee9fa0f18"
 dependencies = [
  "console",
+ "serde",
  "similar",
 ]
 
@@ -3430,6 +3431,7 @@ dependencies = [
  "ron 0.6.6",
  "serde",
  "serde_json",
+ "similar-asserts",
  "smallvec 1.11.0",
  "thiserror",
  "trustfall_filetests_macros",

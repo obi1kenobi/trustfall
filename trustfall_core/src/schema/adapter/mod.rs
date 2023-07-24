@@ -11,7 +11,7 @@ use crate::{
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexInfo, VertexIterator,
     },
-    ir::{types::get_base_named_type, EdgeParameters, FieldValue},
+    ir::{types::get_base_named_type, EdgeParameters, FieldValue, TransparentValue},
 };
 
 use super::Schema;
@@ -338,6 +338,30 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 "type" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, type_))
                 }
+                "default" => resolve_property_with(contexts, |vertex| {
+                    let vertex = vertex.as_edge_parameter().expect("not an EdgeParameter");
+                    vertex
+                        .defn
+                        .default_value
+                        .as_ref()
+                        .map(|v| {
+                            let value = &v.node;
+                            value
+                                .clone()
+                                .try_into()
+                                .expect("failed to convert ConstValue")
+                        })
+                        .or_else(|| {
+                            // Nullable edge parameters have an implicit default value of `null`.
+                            vertex.defn.ty.node.nullable.then_some(FieldValue::NULL)
+                        })
+                        .map(|value| {
+                            let transparent = TransparentValue::from(value);
+                            serde_json::to_string(&transparent)
+                                .expect("serde_json failed to serialize value")
+                        })
+                        .into()
+                }),
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             _ => unreachable!("unexpected type name: {type_name}"),
