@@ -37,8 +37,8 @@ chrono = { version = "0.4.19", features = ["serde"] }
 regex = "1.5.4"
 thiserror = "1.0.30"
 itertools = "0.10.1"
-ron = "^0.6.4"
 
 [dev-dependencies]
+ron = "^0.6.4"
 trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version = "0.2.0" }
 similar-asserts = { version = "1.4.2", features = ["serde"] }
