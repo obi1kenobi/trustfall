@@ -302,11 +302,12 @@ impl<'a> Adapter<'a> for DemoAdapter {
             ("GitHubRepository", "fullName") => {
                 resolve_property_with(contexts, field_property!(as_github_repository, full_name))
             }
-            ("GitHubRepository", "lastModified") => {
-                resolve_property_with(contexts, field_property!(as_github_repository, updated_at, {
+            ("GitHubRepository", "lastModified") => resolve_property_with(
+                contexts,
+                field_property!(as_github_repository, updated_at, {
                     updated_at.map(|value| value.timestamp()).into()
-                }))
-            }
+                }),
+            ),
 
             // properties on GitHubWorkflow
             ("GitHubWorkflow", "name") => resolve_property_with(

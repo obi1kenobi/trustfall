@@ -157,7 +157,7 @@ fn make_python_value(py: Python, value: FieldValue) -> Py<PyAny> {
             .map(|v| make_python_value(py, v))
             .collect::<Vec<_>>()
             .into_py(py),
-        _ => unimplemented!("unsupported value: {value:#?}")
+        _ => unimplemented!("unsupported value: {value:#?}"),
     }
 }
 
