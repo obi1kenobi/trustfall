@@ -14,11 +14,11 @@ use trustfall_core::{
 #[serde(untagged)]
 pub enum JsFieldValue {
     Null,
-    String(String),
+    String(Arc<str>),
     Integer(i64),
     Float(f64),
     Boolean(bool),
-    List(Vec<JsFieldValue>),
+    List(Arc<[JsFieldValue]>),
 }
 
 impl From<JsFieldValue> for FieldValue {
@@ -29,7 +29,12 @@ impl From<JsFieldValue> for FieldValue {
             JsFieldValue::Integer(i) => FieldValue::Int64(i),
             JsFieldValue::Float(n) => FieldValue::Float64(n),
             JsFieldValue::Boolean(b) => FieldValue::Boolean(b),
-            JsFieldValue::List(v) => FieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+            JsFieldValue::List(v) => FieldValue::List(
+                v.iter()
+                    .map(|x| x.clone().into())
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
         }
     }
 }
@@ -46,7 +51,12 @@ impl From<FieldValue> for JsFieldValue {
             },
             FieldValue::Float64(n) => JsFieldValue::Float(n),
             FieldValue::Boolean(b) => JsFieldValue::Boolean(b),
-            FieldValue::List(v) => JsFieldValue::List(v.into_iter().map(|x| x.into()).collect()),
+            FieldValue::List(v) => JsFieldValue::List(
+                v.iter()
+                    .map(|x| x.clone().into())
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
             _ => unimplemented!("unsupported value: {v:#?}"),
         }
     }

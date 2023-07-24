@@ -232,10 +232,9 @@ fn check_parameterized_edges() {
             parameter_name: "z".into(),
             parameter_type: "[String]!".into(),
             parameter_default: Some(
-                serde_json::to_string(&TransparentValue::from(FieldValue::List(vec![
-                    FieldValue::NULL,
-                    FieldValue::String("abc".into()),
-                ])))
+                serde_json::to_string(&TransparentValue::from(FieldValue::List(
+                    vec![FieldValue::NULL, FieldValue::String("abc".into())].into(),
+                )))
                 .expect("failed to serialize"),
             ),
         },

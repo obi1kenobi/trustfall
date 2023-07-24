@@ -141,7 +141,7 @@ make_comparison_op_func!(less_than_or_equal, <=, slow_path_less_than_or_equal);
 #[inline(always)]
 pub(super) fn has_substring(left: &FieldValue, right: &FieldValue) -> bool {
     match (left, right) {
-        (FieldValue::String(l), FieldValue::String(r)) => l.contains(r),
+        (FieldValue::String(l), FieldValue::String(r)) => l.contains(r.as_ref()),
         (FieldValue::Null, FieldValue::String(_))
         | (FieldValue::String(_), FieldValue::Null)
         | (FieldValue::Null, FieldValue::Null) => false,
@@ -152,7 +152,7 @@ pub(super) fn has_substring(left: &FieldValue, right: &FieldValue) -> bool {
 #[inline(always)]
 pub(super) fn has_prefix(left: &FieldValue, right: &FieldValue) -> bool {
     match (left, right) {
-        (FieldValue::String(l), FieldValue::String(r)) => l.starts_with(r),
+        (FieldValue::String(l), FieldValue::String(r)) => l.starts_with(r.as_ref()),
         (FieldValue::Null, FieldValue::String(_))
         | (FieldValue::String(_), FieldValue::Null)
         | (FieldValue::Null, FieldValue::Null) => false,
@@ -163,7 +163,7 @@ pub(super) fn has_prefix(left: &FieldValue, right: &FieldValue) -> bool {
 #[inline(always)]
 pub(super) fn has_suffix(left: &FieldValue, right: &FieldValue) -> bool {
     match (left, right) {
-        (FieldValue::String(l), FieldValue::String(r)) => l.ends_with(r),
+        (FieldValue::String(l), FieldValue::String(r)) => l.ends_with(r.as_ref()),
         (FieldValue::Null, FieldValue::String(_))
         | (FieldValue::String(_), FieldValue::Null)
         | (FieldValue::Null, FieldValue::Null) => false,
@@ -760,43 +760,43 @@ mod tests {
     fn test_mixed_list_equality_comparison() {
         let test_data = vec![
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)]),
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)]),
+                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
+                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)]),
-                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)]),
+                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
+                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)].into()),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)]),
-                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)]),
+                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)].into()),
+                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)].into()),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(-2)]),
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(-2)]),
+                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(-2)].into()),
+                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(-2)].into()),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)]),
-                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)]),
+                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)].into()),
+                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)].into()),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)]),
-                FieldValue::List(vec![FieldValue::Uint64(2), FieldValue::Int64(-1)]),
+                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)].into()),
+                FieldValue::List(vec![FieldValue::Uint64(2), FieldValue::Int64(-1)].into()),
                 false,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)]),
-                FieldValue::List(vec![FieldValue::Int64(0)]),
+                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
+                FieldValue::List(vec![FieldValue::Int64(0)].into()),
                 false,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0)]),
-                FieldValue::List(vec![]),
+                FieldValue::List(vec![FieldValue::Uint64(0)].into()),
+                FieldValue::List(vec![].into()),
                 false,
             ),
         ];

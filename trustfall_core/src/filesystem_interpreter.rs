@@ -289,7 +289,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 "name" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemVertex::Directory(ref x)) => {
-                        let value = FieldValue::String(x.name.clone());
+                        let value = FieldValue::String(x.name.clone().into());
                         (context, value)
                     }
                     _ => unreachable!(),
@@ -297,7 +297,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 "path" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemVertex::Directory(ref x)) => {
-                        let value = FieldValue::String(x.path.clone());
+                        let value = FieldValue::String(x.path.clone().into());
                         (context, value)
                     }
                     _ => unreachable!(),
@@ -312,7 +312,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 "name" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemVertex::File(ref x)) => {
-                        let value = FieldValue::String(x.name.clone());
+                        let value = FieldValue::String(x.name.clone().into());
                         (context, value)
                     }
                     _ => unreachable!(),
@@ -320,7 +320,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 "path" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemVertex::File(ref x)) => {
-                        let value = FieldValue::String(x.path.clone());
+                        let value = FieldValue::String(x.path.clone().into());
                         (context, value)
                     }
                     _ => unreachable!(),
@@ -331,7 +331,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                         let value = x
                             .extension
                             .clone()
-                            .map(FieldValue::String)
+                            .map(Into::into)
                             .unwrap_or(FieldValue::Null);
                         (context, value)
                     }

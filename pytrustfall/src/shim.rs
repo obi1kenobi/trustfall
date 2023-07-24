@@ -100,7 +100,7 @@ pub fn interpret_query(
     })?;
     let owned_iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>> =
         Box::new(execution.map(|res| {
-            res.into_iter()
+            res.iter()
                 .map(|(k, v)| {
                     Python::with_gil(|py| {
                         let python_value = make_python_value(py, v);
@@ -143,7 +143,7 @@ impl AdapterShim {
     }
 }
 
-fn make_python_value(py: Python, value: FieldValue) -> Py<PyAny> {
+fn make_python_value(py: Python, value: &FieldValue) -> Py<PyAny> {
     match value {
         FieldValue::Null => Option::<i64>::None.into_py(py),
         FieldValue::Uint64(x) => x.into_py(py),
@@ -153,7 +153,7 @@ fn make_python_value(py: Python, value: FieldValue) -> Py<PyAny> {
         FieldValue::Boolean(x) => x.into_py(py),
         FieldValue::Enum(_) => todo!(),
         FieldValue::List(x) => x
-            .into_iter()
+            .iter()
             .map(|v| make_python_value(py, v))
             .collect::<Vec<_>>()
             .into_py(py),
@@ -171,7 +171,7 @@ fn make_field_value_from_ref(value: &PyAny) -> Result<FieldValue, ()> {
     } else if let Ok(inner) = value.extract::<f64>() {
         Ok(FieldValue::Float64(inner))
     } else if let Ok(inner) = value.extract::<String>() {
-        Ok(FieldValue::String(inner))
+        Ok(FieldValue::String(inner.into()))
     } else if let Ok(inner) = value.extract::<Vec<&PyAny>>() {
         let converted_values = inner
             .iter()
@@ -187,7 +187,7 @@ fn make_field_value_from_ref(value: &PyAny) -> Result<FieldValue, ()> {
             });
 
         if let Some(inner_values) = converted_values {
-            Ok(FieldValue::List(inner_values))
+            Ok(FieldValue::List(inner_values.into()))
         } else {
             Err(())
         }
@@ -244,7 +244,7 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
-                .map(|(k, v)| (k.to_string(), make_python_value(py, v.to_owned())))
+                .map(|(k, v)| (k.to_string(), make_python_value(py, v)))
                 .collect();
 
             let py_iterable = self
@@ -297,7 +297,7 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
-                .map(|(k, v)| (k.to_string(), make_python_value(py, v.to_owned())))
+                .map(|(k, v)| (k.to_string(), make_python_value(py, v)))
                 .collect();
 
             let py_iterable = self

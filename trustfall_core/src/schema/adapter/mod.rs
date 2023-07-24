@@ -237,7 +237,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 if let Some(CandidateValue::Single(FieldValue::String(name_wanted))) =
                     candidate_value
                 {
-                    let name_wanted = name_wanted.as_str();
+                    let name_wanted = name_wanted.as_ref();
                     if let Some(exact_wanted) = self
                         .schema
                         .vertex_types
