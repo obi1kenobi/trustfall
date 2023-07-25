@@ -167,3 +167,8 @@ fn test_schema(name: &str) {
 fn test_hackernews_schema() {
     test_schema("hackernews")
 }
+
+#[test]
+fn test_use_reserved_rust_names_in_schema() {
+    test_schema("use_reserved_rust_names_in_schema");
+}
