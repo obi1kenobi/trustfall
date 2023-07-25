@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn null_values_are_only_valid_for_nullable_types() {
-        let nullable_types = vec![
+        let nullable_types = [
             Type::new("Int").unwrap(),
             Type::new("String").unwrap(),
             Type::new("Boolean").unwrap(),
@@ -282,14 +282,14 @@ mod tests {
 
     #[test]
     fn int_values_are_valid_only_for_int_type_regardless_of_nullability() {
-        let matching_types = vec![Type::new("Int").unwrap(), Type::new("Int!").unwrap()];
-        let non_matching_types = vec![
+        let matching_types = [Type::new("Int").unwrap(), Type::new("Int!").unwrap()];
+        let non_matching_types = [
             Type::new("String").unwrap(),
             Type::new("[Int!]").unwrap(),
             Type::new("[Int!]!").unwrap(),
             Type::new("[[Int!]!]").unwrap(),
         ];
-        let values = vec![
+        let values = [
             FieldValue::Int64(-42),
             FieldValue::Int64(0),
             FieldValue::Uint64(0),
@@ -314,14 +314,14 @@ mod tests {
 
     #[test]
     fn string_values_are_valid_only_for_string_type_regardless_of_nullability() {
-        let matching_types = vec![Type::new("String").unwrap(), Type::new("String!").unwrap()];
-        let non_matching_types = vec![
+        let matching_types = [Type::new("String").unwrap(), Type::new("String!").unwrap()];
+        let non_matching_types = [
             Type::new("Int").unwrap(),
             Type::new("[String!]").unwrap(),
             Type::new("[String!]!").unwrap(),
             Type::new("[[String!]!]").unwrap(),
         ];
-        let values = vec![
+        let values = [
             FieldValue::String("".into()), // empty string is not the same value as null
             FieldValue::String("test string".into()),
         ];
@@ -344,17 +344,17 @@ mod tests {
 
     #[test]
     fn boolean_values_are_valid_only_for_boolean_type_regardless_of_nullability() {
-        let matching_types = vec![
+        let matching_types = [
             Type::new("Boolean").unwrap(),
             Type::new("Boolean!").unwrap(),
         ];
-        let non_matching_types = vec![
+        let non_matching_types = [
             Type::new("Int").unwrap(),
             Type::new("[Boolean!]").unwrap(),
             Type::new("[Boolean!]!").unwrap(),
             Type::new("[[Boolean!]!]").unwrap(),
         ];
-        let values = vec![FieldValue::Boolean(false), FieldValue::Boolean(true)];
+        let values = [FieldValue::Boolean(false), FieldValue::Boolean(true)];
 
         for value in &values {
             for matching_type in &matching_types {
@@ -378,14 +378,14 @@ mod tests {
             vec![Type::new("[Int!]").unwrap(), Type::new("[Int!]!").unwrap()];
         let nullable_contents_matching_types =
             vec![Type::new("[Int]").unwrap(), Type::new("[Int]!").unwrap()];
-        let non_matching_types = vec![
+        let non_matching_types = [
             Type::new("Int").unwrap(),
             Type::new("Int!").unwrap(),
             Type::new("[String!]").unwrap(),
             Type::new("[String!]!").unwrap(),
             Type::new("[[String!]!]").unwrap(),
         ];
-        let non_nullable_values = vec![
+        let non_nullable_values = [
             FieldValue::List((1..3).map(FieldValue::Int64).collect_vec().into()),
             FieldValue::List((1..3).map(FieldValue::Uint64).collect_vec().into()),
             FieldValue::List(
@@ -397,7 +397,7 @@ mod tests {
                 .into(),
             ),
         ];
-        let nullable_values = vec![
+        let nullable_values = [
             FieldValue::List(
                 vec![FieldValue::Int64(1), FieldValue::Null, FieldValue::Int64(2)].into(),
             ),

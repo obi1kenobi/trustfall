@@ -869,6 +869,8 @@ pub struct VariableRef {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::FieldValue;
 
     fn serialize_then_deserialize(value: &FieldValue) -> FieldValue {
@@ -889,14 +891,11 @@ mod tests {
 
     #[test]
     fn serialize_then_deserialize_list() {
-        let value = FieldValue::List(
-            vec![
-                FieldValue::Int64(1),
-                FieldValue::Int64(2),
-                FieldValue::String("foo".into()),
-            ]
-            .into(),
-        );
+        let value = FieldValue::List(Arc::new([
+            FieldValue::Int64(1),
+            FieldValue::Int64(2),
+            FieldValue::String("foo".into()),
+        ]));
         let deserialized: FieldValue = serialize_then_deserialize(&value);
         assert_eq!(
             value,
