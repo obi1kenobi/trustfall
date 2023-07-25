@@ -133,12 +133,7 @@ impl RustFile {
             PATTERN.get_or_init(|| Regex::new("([^{])\n    (pub|fn|use)").expect("invalid regex"));
 
         let pretty_item =
-            prettyplease::unparse(&syn::parse_str(&item.to_string()).unwrap_or_else(|e| {
-                panic!(
-                    "expected to parse valid rust, instead got error: {e:?}\n\ncode:\n{}",
-                    item.to_string()
-                )
-            }));
+            prettyplease::unparse(&syn::parse_str(&item.to_string()).expect("not valid Rust"));
         let postprocessed = pattern.replace_all(&pretty_item, "$1\n\n    $2");
 
         buffer.write_all(postprocessed.as_bytes())?;
