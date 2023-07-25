@@ -267,7 +267,7 @@ jobs:
           RUSTDOCFLAGS: -D warnings
         run: |
           cd experiments/trustfall_rustdoc
-          cargo doc --workspace --all-features --no-deps --document-private-items
+          cargo doc --all-features --no-deps --document-private-items
 
   wasm-tests:
     name: WASM tests
