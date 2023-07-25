@@ -615,6 +615,8 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use crate::{
         interpreter::filtering::{equals, greater_than_or_equal, less_than, less_than_or_equal},
         ir::FieldValue,
@@ -624,7 +626,7 @@ mod tests {
 
     #[test]
     fn test_integer_strict_inequality_comparisons() {
-        let test_data = vec![
+        let test_data = [
             // both values can convert to each other
             (FieldValue::Uint64(0), FieldValue::Int64(0), false),
             (FieldValue::Uint64(0), FieldValue::Int64(1), false),
@@ -656,7 +658,7 @@ mod tests {
 
     #[test]
     fn test_integer_non_strict_inequality_comparisons() {
-        let test_data = vec![
+        let test_data = [
             // both values can convert to each other
             (FieldValue::Uint64(0), FieldValue::Int64(0), true),
             (FieldValue::Uint64(0), FieldValue::Int64(1), false),
@@ -688,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_integer_equality_comparisons() {
-        let test_data = vec![
+        let test_data = [
             // both values can convert to each other
             (FieldValue::Uint64(0), FieldValue::Int64(0), true),
             (FieldValue::Uint64(0), FieldValue::Int64(1), false),
@@ -758,45 +760,45 @@ mod tests {
 
     #[test]
     fn test_mixed_list_equality_comparison() {
-        let test_data = vec![
+        let test_data = [
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
-                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)].into()),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
+                FieldValue::List(Arc::new([FieldValue::Int64(0), FieldValue::Uint64(0)])),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)].into()),
-                FieldValue::List(vec![FieldValue::Int64(0), FieldValue::Uint64(0)].into()),
+                FieldValue::List(Arc::new([FieldValue::Int64(0), FieldValue::Uint64(0)])),
+                FieldValue::List(Arc::new([FieldValue::Int64(0), FieldValue::Uint64(0)])),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(-2)].into()),
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(-2)].into()),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(-2)])),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(-2)])),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)].into()),
-                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)].into()),
+                FieldValue::List(Arc::new([FieldValue::Int64(-1), FieldValue::Uint64(2)])),
+                FieldValue::List(Arc::new([FieldValue::Int64(-1), FieldValue::Uint64(2)])),
                 true,
             ),
             (
-                FieldValue::List(vec![FieldValue::Int64(-1), FieldValue::Uint64(2)].into()),
-                FieldValue::List(vec![FieldValue::Uint64(2), FieldValue::Int64(-1)].into()),
+                FieldValue::List(Arc::new([FieldValue::Int64(-1), FieldValue::Uint64(2)])),
+                FieldValue::List(Arc::new([FieldValue::Uint64(2), FieldValue::Int64(-1)])),
                 false,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0), FieldValue::Int64(0)].into()),
-                FieldValue::List(vec![FieldValue::Int64(0)].into()),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
+                FieldValue::List(Arc::new([FieldValue::Int64(0)])),
                 false,
             ),
             (
-                FieldValue::List(vec![FieldValue::Uint64(0)].into()),
-                FieldValue::List(vec![].into()),
+                FieldValue::List(Arc::new([FieldValue::Uint64(0)])),
+                FieldValue::List(Arc::new([])),
                 false,
             ),
         ];
