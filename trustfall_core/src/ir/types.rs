@@ -322,8 +322,8 @@ mod tests {
             Type::new("[[String!]!]").unwrap(),
         ];
         let values = vec![
-            FieldValue::String("".to_string()), // empty string is not the same value as null
-            FieldValue::String("test string".to_string()),
+            FieldValue::String("".into()), // empty string is not the same value as null
+            FieldValue::String("test string".into()),
         ];
 
         for value in &values {
@@ -386,27 +386,31 @@ mod tests {
             Type::new("[[String!]!]").unwrap(),
         ];
         let non_nullable_values = vec![
-            FieldValue::List((1..3).map(FieldValue::Int64).collect_vec()),
-            FieldValue::List((1..3).map(FieldValue::Uint64).collect_vec()),
-            FieldValue::List(vec![
-                // Integer-typed but non-homogeneous FieldValue entries are okay.
-                FieldValue::Int64(-42),
-                FieldValue::Uint64(64),
-            ]),
+            FieldValue::List((1..3).map(FieldValue::Int64).collect_vec().into()),
+            FieldValue::List((1..3).map(FieldValue::Uint64).collect_vec().into()),
+            FieldValue::List(
+                vec![
+                    // Integer-typed but non-homogeneous FieldValue entries are okay.
+                    FieldValue::Int64(-42),
+                    FieldValue::Uint64(64),
+                ]
+                .into(),
+            ),
         ];
         let nullable_values = vec![
-            FieldValue::List(vec![
-                FieldValue::Int64(1),
-                FieldValue::Null,
-                FieldValue::Int64(2),
-            ]),
-            FieldValue::List(vec![FieldValue::Null, FieldValue::Uint64(42)]),
-            FieldValue::List(vec![
-                // Integer-typed but non-homogeneous FieldValue entries are okay.
-                FieldValue::Int64(-1),
-                FieldValue::Uint64(1),
-                FieldValue::Null,
-            ]),
+            FieldValue::List(
+                vec![FieldValue::Int64(1), FieldValue::Null, FieldValue::Int64(2)].into(),
+            ),
+            FieldValue::List(vec![FieldValue::Null, FieldValue::Uint64(42)].into()),
+            FieldValue::List(
+                vec![
+                    // Integer-typed but non-homogeneous FieldValue entries are okay.
+                    FieldValue::Int64(-1),
+                    FieldValue::Uint64(1),
+                    FieldValue::Null,
+                ]
+                .into(),
+            ),
         ];
 
         for value in &non_nullable_values {

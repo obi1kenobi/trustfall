@@ -402,8 +402,8 @@ mod tests {
             second => FieldValue::Int64(2),
             third => FieldValue::Int64(3),
             null => FieldValue::Null,
-            list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
-            longer_list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2), FieldValue::Int64(3)]),
+            list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()),
+            longer_list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2), FieldValue::Int64(3)].into()),
         };
 
         let test_data = [

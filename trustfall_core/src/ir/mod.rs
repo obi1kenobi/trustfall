@@ -877,7 +877,7 @@ mod tests {
 
     #[test]
     fn serialize_then_deserialize_enum() {
-        let value = FieldValue::Enum("foo".to_string());
+        let value = FieldValue::Enum("foo".into());
         let deserialized: FieldValue = serialize_then_deserialize(&value);
         assert_eq!(
             value,
@@ -889,11 +889,14 @@ mod tests {
 
     #[test]
     fn serialize_then_deserialize_list() {
-        let value = FieldValue::List(vec![
-            FieldValue::Int64(1),
-            FieldValue::Int64(2),
-            FieldValue::String("foo".into()),
-        ]);
+        let value = FieldValue::List(
+            vec![
+                FieldValue::Int64(1),
+                FieldValue::Int64(2),
+                FieldValue::String("foo".into()),
+            ]
+            .into(),
+        );
         let deserialized: FieldValue = serialize_then_deserialize(&value);
         assert_eq!(
             value,

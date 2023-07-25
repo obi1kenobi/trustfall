@@ -122,10 +122,10 @@ type Vertex {
 
     assert_eq!(
         res[0].get("name").unwrap().to_owned(),
-        trustfall::FieldValue::String(String::from("Berit"))
+        trustfall::FieldValue::String("Berit".into())
     );
     assert_eq!(
         res[0].get("initial").unwrap().to_owned(),
-        trustfall::FieldValue::String(String::from("B"))
+        trustfall::FieldValue::String("B".into())
     );
 }

@@ -15,7 +15,7 @@ fn deserialize_simple() {
 
     let value: BTreeMap<Arc<str>, FieldValue> = btreemap! {
         Arc::from("foo") => FieldValue::Int64(42),
-        Arc::from("bar") => FieldValue::String("the answer to everything".to_string()),
+        Arc::from("bar") => FieldValue::String("the answer to everything".into()),
     };
 
     let output_value = value
@@ -94,7 +94,7 @@ fn deserialize_extra_keys_in_query_result() {
 
     let value: BTreeMap<Arc<str>, FieldValue> = btreemap! {
         Arc::from("foo") => FieldValue::Int64(42),
-        Arc::from("bar") => FieldValue::String("the answer to everything".to_string()),
+        Arc::from("bar") => FieldValue::String("the answer to everything".into()),
         Arc::from("extra") => FieldValue::Null,
     };
 
@@ -104,7 +104,7 @@ fn deserialize_extra_keys_in_query_result() {
     assert_eq!(
         Output {
             foo: 42,
-            bar: "the answer to everything".to_string(),
+            bar: "the answer to everything".into(),
         },
         output_value
     );
@@ -123,7 +123,7 @@ fn deserialize_serde_rename() {
 
     let value: BTreeMap<Arc<str>, FieldValue> = btreemap! {
         Arc::from("renamed_foo") => FieldValue::Int64(42),
-        Arc::from("renamed_bar") => FieldValue::String("the answer to everything".to_string()),
+        Arc::from("renamed_bar") => FieldValue::String("the answer to everything".into()),
     };
 
     let output_value = value
@@ -132,7 +132,7 @@ fn deserialize_serde_rename() {
     assert_eq!(
         Output {
             foo: 42,
-            bar: "the answer to everything".to_string(),
+            bar: "the answer to everything".into(),
         },
         output_value
     );

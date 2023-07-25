@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, sync::Arc};
 
 /// IR of the values of Trustfall fields.
 use async_graphql_value::{ConstValue, Number, Value};
@@ -27,10 +27,10 @@ pub enum FieldValue {
     /// Corresponds to schemas' `Float` type. Not allowed to be NaN or infinite.
     Float64(f64),
 
-    String(String),
+    String(Arc<str>),
     Boolean(bool),
-    Enum(String),
-    List(Vec<FieldValue>),
+    Enum(Arc<str>),
+    List(Arc<[FieldValue]>),
 }
 
 impl FieldValue {
@@ -68,10 +68,10 @@ pub enum TransparentValue {
     /// Corresponds to schemas' `Float` type. Not allowed to be NaN or infinite.
     Float64(f64),
 
-    String(String),
+    String(Arc<str>),
     Boolean(bool),
-    Enum(String),
-    List(Vec<TransparentValue>),
+    Enum(Arc<str>),
+    List(Arc<[TransparentValue]>),
 }
 
 impl From<FieldValue> for TransparentValue {
@@ -84,9 +84,12 @@ impl From<FieldValue> for TransparentValue {
             FieldValue::String(x) => TransparentValue::String(x),
             FieldValue::Boolean(x) => TransparentValue::Boolean(x),
             FieldValue::Enum(x) => TransparentValue::Enum(x),
-            FieldValue::List(x) => {
-                TransparentValue::List(x.into_iter().map(|v| v.into()).collect())
-            }
+            FieldValue::List(x) => TransparentValue::List(
+                x.iter()
+                    .map(|v| v.clone().into())
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
         }
     }
 }
@@ -101,9 +104,12 @@ impl From<TransparentValue> for FieldValue {
             TransparentValue::String(x) => FieldValue::String(x),
             TransparentValue::Boolean(x) => FieldValue::Boolean(x),
             TransparentValue::Enum(x) => FieldValue::Enum(x),
-            TransparentValue::List(x) => {
-                FieldValue::List(x.into_iter().map(|v| v.into()).collect())
-            }
+            TransparentValue::List(x) => FieldValue::List(
+                x.iter()
+                    .map(|v| v.clone().into())
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
         }
     }
 }
@@ -171,7 +177,7 @@ impl FieldValue {
 
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            FieldValue::String(s) => Some(s.as_str()),
+            FieldValue::String(s) => Some(s.as_ref()),
             _ => None,
         }
     }
@@ -185,7 +191,7 @@ impl FieldValue {
 
     pub fn as_slice(&self) -> Option<&[FieldValue]> {
         match self {
-            FieldValue::List(l) => Some(l.as_slice()),
+            FieldValue::List(l) => Some(l.as_ref()),
             _ => None,
         }
     }
@@ -283,15 +289,21 @@ impl AsRef<FieldValue> for FieldValue {
     }
 }
 
+impl From<Arc<str>> for FieldValue {
+    fn from(v: Arc<str>) -> Self {
+        Self::String(v)
+    }
+}
+
 impl From<String> for FieldValue {
     fn from(v: String) -> Self {
-        Self::String(v)
+        Self::String(v.into())
     }
 }
 
 impl From<&String> for FieldValue {
     fn from(v: &String) -> Self {
-        Self::String(v.clone())
+        Self::String(v.clone().into())
     }
 }
 
@@ -440,7 +452,7 @@ impl TryFrom<Value> for FieldValue {
         match value {
             Value::Null => Ok(Self::Null),
             Value::Number(n) => convert_number_to_field_value(&n),
-            Value::String(s) => Ok(Self::String(s)),
+            Value::String(s) => Ok(Self::String(s.into())),
             Value::Boolean(b) => Ok(Self::Boolean(b)),
             Value::List(l) => l
                 .into_iter()
@@ -450,7 +462,7 @@ impl TryFrom<Value> for FieldValue {
                 // We have an enum value, so we know the variant name but the variant on its own
                 // doesn't tell us the name of the enum type it belongs in. We'll have to determine
                 // the name of the enum type from context. For now, it's None.
-                Ok(Self::Enum(n.to_string()))
+                Ok(Self::Enum(n.to_string().into()))
             }
             Value::Binary(_) => Err(String::from("Binary values are not supported")),
             Value::Variable(_) => Err(String::from("Cannot use a variable reference")),
@@ -483,23 +495,26 @@ mod tests {
                 FieldValue::Float64(3.15),
             ),
             (false.into(), FieldValue::Boolean(false)),
-            ("a &str".into(), FieldValue::String("a &str".to_string())),
+            (
+                "a &str".into(),
+                FieldValue::String("a &str".to_string().into()),
+            ),
             (
                 "a String".to_string().into(),
-                FieldValue::String("a String".to_string()),
+                FieldValue::String("a String".to_string().into()),
             ),
             (
                 (&"a &String".to_string()).into(),
-                FieldValue::String("a &String".to_string()),
+                FieldValue::String("a &String".to_string().into()),
             ),
             (Option::<i64>::None.into(), FieldValue::Null),
             (
                 vec![1, 2].into(),
-                FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
+                FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()),
             ),
             (
                 vec!["a String".to_string()].as_slice().into(),
-                FieldValue::List(vec![FieldValue::String("a String".to_string())]),
+                FieldValue::List(vec![FieldValue::String("a String".to_string().into())].into()),
             ),
         ];
 

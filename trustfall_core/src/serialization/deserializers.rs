@@ -251,10 +251,10 @@ impl<'de> de::Deserializer<'de> for FieldValueDeserializer {
             FieldValue::Int64(v) => visitor.visit_i64(v),
             FieldValue::Uint64(v) => visitor.visit_u64(v),
             FieldValue::Float64(v) => visitor.visit_f64(v),
-            FieldValue::String(v) => visitor.visit_string(v),
+            FieldValue::String(v) => visitor.visit_str(&v),
             FieldValue::Boolean(v) => visitor.visit_bool(v),
             FieldValue::Enum(_) => todo!(),
-            FieldValue::List(v) => visitor.visit_seq(v.into_deserializer()),
+            FieldValue::List(v) => visitor.visit_seq(v.to_vec().into_deserializer()),
         }
     }
 
