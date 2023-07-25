@@ -140,9 +140,13 @@ pub(crate) fn field_value_to_rust_type(
 }
 
 pub fn escaped_rust_name(name: String) -> String {
-    if name == "type" {
-        name + "_"
-    } else {
-        name
+    // https://doc.rust-lang.org/reference/keywords.html
+    match name.as_str() {
+        "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false"
+        | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "match" | "mod" | "move"
+        | "mut" | "pub" | "ref" | "return" | "self" | "Self" | "static" | "struct" | "super"
+        | "trait" | "true" | "type" | "unsafe" | "use" | "where" | "while" | "async" | "await"
+        | "dyn" | "try" | "macro_rules" | "union" | "'static" => name + "_",
+        _ => name,
     }
 }
