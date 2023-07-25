@@ -335,7 +335,7 @@ dependencies = [
  "js-sys",
  "num-traits",
  "serde",
- "time",
+ "time 0.1.45",
  "wasm-bindgen",
  "winapi 0.3.9",
 ]
@@ -503,7 +503,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "888604f00b3db336d2af898ec3c1d5d0ddf5e6d462220f2ededc33a87ac4bbd5"
 dependencies = [
- "time",
+ "time 0.1.45",
  "url 1.7.2",
 ]
 
@@ -520,7 +520,7 @@ dependencies = [
  "publicsuffix",
  "serde",
  "serde_json",
- "time",
+ "time 0.1.45",
  "try_from",
  "url 1.7.2",
 ]
@@ -679,7 +679,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio 1.29.1",
- "trustfall",
+ "trustfall 0.6.0",
  "yaml-rust",
 ]
 
@@ -1216,7 +1216,7 @@ dependencies = [
  "log",
  "net2",
  "rustc_version",
- "time",
+ "time 0.1.45",
  "tokio 0.1.22",
  "tokio-buf",
  "tokio-executor",
@@ -2117,7 +2117,7 @@ dependencies = [
  "async-graphql-value",
  "once_cell",
  "pyo3",
- "trustfall_core",
+ "trustfall_core 0.6.0",
 ]
 
 [[package]]
@@ -2357,7 +2357,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded 0.5.5",
- "time",
+ "time 0.1.45",
  "tokio 0.1.22",
  "tokio-executor",
  "tokio-io",
@@ -2643,7 +2643,7 @@ dependencies = [
  "derive-new",
  "maplit",
  "once_cell",
- "trustfall_core",
+ "trustfall_core 0.6.0",
 ]
 
 [[package]]
@@ -2656,7 +2656,7 @@ dependencies = [
  "schemaless",
  "serde",
  "serde_json",
- "trustfall_core",
+ "trustfall_core 0.6.0",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
@@ -3089,6 +3089,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "time"
+version = "0.3.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59e399c068f43a5d116fedaf73b203fa4f9c519f17e2b34f63221d3792f81446"
+dependencies = [
+ "itoa 1.0.9",
+ "serde",
+ "time-core",
+ "time-macros",
+]
+
+[[package]]
+name = "time-core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7300fbefb4dadc1af235a9cef3737cea692a9d97e1b9cbcd4ebdae6f8868e6fb"
+
+[[package]]
+name = "time-macros"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96ba15a897f3c86766b757e5ac7221554c6750054d74d5b28844fce5fb36a6c4"
+dependencies = [
+ "time-core",
+]
+
+[[package]]
 name = "tinyvec"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3390,9 +3417,19 @@ dependencies = [
 [[package]]
 name = "trustfall"
 version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d85d9aa80e5cfdb9e6559d0b91fa4a02103d419a305c63ba34a4347cf773628a"
 dependencies = [
  "anyhow",
- "chrono",
+ "trustfall_core 0.5.1",
+ "trustfall_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "trustfall"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
  "csv",
  "feed-rs",
  "hn_api",
@@ -3402,8 +3439,9 @@ dependencies = [
  "ron 0.7.1",
  "serde",
  "serde_json",
- "trustfall_core",
- "trustfall_derive",
+ "time 0.3.23",
+ "trustfall_core 0.6.0",
+ "trustfall_derive 0.3.0",
 ]
 
 [[package]]
@@ -3413,12 +3451,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bc2ee152c43827096f557f8388261c13363f84dc2389eda7f73a120e33a590c"
 dependencies = [
  "rustdoc-types",
- "trustfall",
+ "trustfall 0.5.1",
 ]
 
 [[package]]
 name = "trustfall_core"
 version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea2bf2ead3c6aabf0ca76e0be620d8c347994dd61f6f35db2c4f2981e9ffb6b2"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "chrono",
+ "itertools",
+ "maplit",
+ "once_cell",
+ "regex",
+ "ron 0.6.6",
+ "serde",
+ "smallvec 1.11.0",
+ "thiserror",
+]
+
+[[package]]
+name = "trustfall_core"
+version = "0.6.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
@@ -3442,8 +3499,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "trustfall",
+ "trustfall 0.6.0",
  "trybuild",
+]
+
+[[package]]
+name = "trustfall_derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "486543a0d60e041e8fdf8595a8a0686173ad0071d07e11d8c228750ab28767df"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3469,7 +3537,7 @@ dependencies = [
  "ouroboros",
  "serde_json",
  "trustfall-rustdoc-adapter",
- "trustfall_core",
+ "trustfall_core 0.6.0",
  "trustfall_wasm",
  "wasm-bindgen",
  "wasm-bindgen-test",
@@ -3478,7 +3546,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_stubgen"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-graphql-parser",
@@ -3494,7 +3562,7 @@ dependencies = [
  "serde_json",
  "similar-asserts",
  "syn 2.0.27",
- "trustfall",
+ "trustfall 0.6.0",
 ]
 
 [[package]]
@@ -3508,7 +3576,7 @@ dependencies = [
  "once_cell",
  "ron 0.8.0",
  "serde",
- "trustfall_core",
+ "trustfall_core 0.6.0",
 ]
 
 [[package]]
@@ -3522,7 +3590,7 @@ dependencies = [
  "ron 0.7.1",
  "serde",
  "serde_json",
- "trustfall_core",
+ "trustfall_core 0.6.0",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
