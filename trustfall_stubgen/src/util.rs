@@ -138,3 +138,11 @@ pub(crate) fn field_value_to_rust_type(
         #base.#suffix
     }
 }
+
+pub fn escaped_rust_name(name: String) -> String {
+    if name == "type" {
+        name + "_"
+    } else {
+        name
+    }
+}

@@ -4,6 +4,8 @@ use maplit::btreemap;
 use quote::quote;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
+use crate::util::escaped_rust_name;
+
 use super::{
     root::RustFile,
     util::{
@@ -96,7 +98,10 @@ fn make_type_edge_resolver(
     edges: Vec<(String, Vec<(String, String)>)>,
 ) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
     let lower_type_name = to_lower_snake_case(type_name);
-    let mod_name = syn::Ident::new(&lower_type_name, proc_macro2::Span::call_site());
+    let mod_name = syn::Ident::new(
+        &escaped_rust_name(lower_type_name.clone()),
+        proc_macro2::Span::call_site(),
+    );
 
     let mut arms = proc_macro2::TokenStream::new();
     let mut edge_resolvers = proc_macro2::TokenStream::new();
@@ -155,7 +160,7 @@ fn make_edge_resolver_and_call(
         format!("failed to find parameter '{parameter_name}' for edge '{edge_name}' on type '{type_name}'")
     });
 
-    let resolver_fn_name = to_lower_snake_case(edge_name);
+    let resolver_fn_name = escaped_rust_name(to_lower_snake_case(edge_name));
     let resolver_fn_ident = syn::Ident::new(&resolver_fn_name, proc_macro2::Span::call_site());
     let conversion_fn_name = format!("as_{}", to_lower_snake_case(type_name));
     let conversion_fn_ident = syn::Ident::new(&conversion_fn_name, proc_macro2::Span::call_site());
