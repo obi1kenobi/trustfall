@@ -226,7 +226,9 @@ macro_rules! field_property {
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
     ($conversion:ident, $field:ident) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let vertex = vertex.$conversion().expect("conversion failed");
+            let vertex = vertex.$conversion().unwrap_or_else(|| {
+                panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
+            });
             vertex.$field.clone().into()
         }
     };
@@ -234,7 +236,10 @@ macro_rules! field_property {
     // Use the field's name inside the block.
     ($conversion:ident, $field:ident, $b:block) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let $field = &vertex.$conversion().expect("conversion failed").$field;
+            let $field = &vertex
+                .$conversion()
+                .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
+                .$field;
             $b
         }
     };
@@ -305,7 +310,9 @@ macro_rules! accessor_property {
     // (such as `fn as_foo() -> Option<&Foo>`) before using the accessor.
     ($conversion:ident, $accessor:ident) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let vertex = vertex.$conversion().expect("conversion failed");
+            let vertex = vertex.$conversion().unwrap_or_else(|| {
+                panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
+            });
             vertex.$accessor().clone().into()
         }
     };
@@ -314,7 +321,10 @@ macro_rules! accessor_property {
     // and is available as such inside the block.
     ($conversion:ident, $accessor:ident, $b:block) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let $accessor = vertex.$conversion().expect("conversion failed").$accessor();
+            let $accessor = vertex
+                .$conversion()
+                .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
+                .$accessor();
             $b
         }
     };
