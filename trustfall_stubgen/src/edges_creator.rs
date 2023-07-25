@@ -46,21 +46,14 @@ pub(super) fn make_edges_file(
 
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|x| {
-            x.try_into_struct::<ResultRow>()
-                .expect("invalid conversion")
-        })
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
     for row in rows {
         let mut edges: Vec<(String, Vec<(String, String)>)> = row
             .edge_name
             .into_iter()
-            .zip(
-                row.parameter_name
-                    .into_iter()
-                    .zip(row.parameter_type.into_iter()),
-            )
+            .zip(row.parameter_name.into_iter().zip(row.parameter_type.into_iter()))
             .map(|(edge, (param, ty))| (edge, param.into_iter().zip(ty.into_iter()).collect()))
             .collect();
         edges.sort_unstable();
@@ -70,25 +63,13 @@ pub(super) fn make_edges_file(
         edges_file.top_level_items.push(type_edge_mod);
     }
 
-    edges_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::ContextIterator"));
-    edges_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
-    edges_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::EdgeParameters"));
-    edges_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::ResolveEdgeInfo"));
-    edges_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::VertexIterator"));
+    edges_file.external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
+    edges_file.external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
+    edges_file.external_imports.insert(parse_import("trustfall::provider::EdgeParameters"));
+    edges_file.external_imports.insert(parse_import("trustfall::provider::ResolveEdgeInfo"));
+    edges_file.external_imports.insert(parse_import("trustfall::provider::VertexIterator"));
 
-    edges_file
-        .internal_imports
-        .insert(parse_import("super::vertex::Vertex"));
+    edges_file.internal_imports.insert(parse_import("super::vertex::Vertex"));
 }
 
 fn make_type_edge_resolver(
@@ -147,13 +128,12 @@ fn make_edge_resolver_and_call(
     parameters: &[(String, String)],
     mod_name: &proc_macro2::Ident,
 ) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
-    let FnCall {
-        fn_params,
-        fn_args,
-        fn_arg_prep,
-    } = prepare_call_parameters(parameters, |parameter_name| {
-        format!("failed to find parameter '{parameter_name}' for edge '{edge_name}' on type '{type_name}'")
-    });
+    let FnCall { fn_params, fn_args, fn_arg_prep } = prepare_call_parameters(
+        parameters,
+        |parameter_name| {
+            format!("failed to find parameter '{parameter_name}' for edge '{edge_name}' on type '{type_name}'")
+        },
+    );
 
     let resolver_fn_name = to_lower_snake_case(edge_name);
     let resolver_fn_ident = syn::Ident::new(&resolver_fn_name, proc_macro2::Span::call_site());
@@ -225,9 +205,5 @@ pub(super) fn prepare_call_parameters(
         });
     }
 
-    FnCall {
-        fn_params,
-        fn_args,
-        fn_arg_prep,
-    }
+    FnCall { fn_params, fn_args, fn_arg_prep }
 }

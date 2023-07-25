@@ -75,11 +75,7 @@ fn check_vertex_type_properties_using_one_of() {
         .expect("execution error")
         .collect();
 
-    rows.sort_by(|a, b| {
-        a["property"]
-            .partial_cmp(&b["property"])
-            .expect("to be comparable")
-    });
+    rows.sort_by(|a, b| a["property"].partial_cmp(&b["property"]).expect("to be comparable"));
 
     let expected_rows = [
         btreemap! {
@@ -180,10 +176,9 @@ fn check_parameterized_edges() {
         parameter_default: Option<String>,
     }
 
-    let test_schema = Schema::parse(include_str!(
-        "../../../test_data/schemas/parameterized_edges.graphql"
-    ))
-    .unwrap();
+    let test_schema =
+        Schema::parse(include_str!("../../../test_data/schemas/parameterized_edges.graphql"))
+            .unwrap();
     let adapter = Arc::new(SchemaAdapter::new(&test_schema));
 
     let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");

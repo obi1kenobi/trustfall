@@ -14,11 +14,7 @@ struct Value {
 }
 impl Value {
     fn initial(&self) -> String {
-        self.name
-            .chars()
-            .next()
-            .map(String::from)
-            .unwrap_or_default()
+        self.name.chars().next().map(String::from).unwrap_or_default()
     }
 }
 
@@ -30,9 +26,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
         _edge_name: &str,
         _parameters: &trustfall::provider::EdgeParameters,
     ) -> trustfall::provider::VertexIterator<'static, Self::Vertex> {
-        Box::new(std::iter::once(V::Variant(Value {
-            name: String::from("Berit"),
-        })))
+        Box::new(std::iter::once(V::Variant(Value { name: String::from("Berit") })))
     }
     fn resolve_property(
         &self,

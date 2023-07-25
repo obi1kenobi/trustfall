@@ -18,16 +18,8 @@ fn deserialize_simple() {
         Arc::from("bar") => FieldValue::String("the answer to everything".into()),
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
-    assert_eq!(
-        Output {
-            foo: 42,
-            bar: "the answer to everything".to_string(),
-        },
-        output_value
-    );
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
+    assert_eq!(Output { foo: 42, bar: "the answer to everything".to_string() }, output_value);
 }
 
 #[test]
@@ -46,16 +38,8 @@ fn deserialize_list() {
         Arc::from("bar") => FieldValue::List(vec_str.clone().into_iter().map(Into::into).collect()),
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
-    assert_eq!(
-        Output {
-            foo: vec_int,
-            bar: vec_str,
-        },
-        output_value
-    );
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
+    assert_eq!(Output { foo: vec_int, bar: vec_str }, output_value);
 }
 
 #[test]
@@ -72,16 +56,8 @@ fn deserialize_option() {
         Arc::from("bar") => FieldValue::Null,
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
-    assert_eq!(
-        Output {
-            foo: vec_int,
-            bar: None,
-        },
-        output_value
-    );
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
+    assert_eq!(Output { foo: vec_int, bar: None }, output_value);
 }
 
 #[test]
@@ -98,16 +74,8 @@ fn deserialize_extra_keys_in_query_result() {
         Arc::from("extra") => FieldValue::Null,
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
-    assert_eq!(
-        Output {
-            foo: 42,
-            bar: "the answer to everything".into(),
-        },
-        output_value
-    );
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
+    assert_eq!(Output { foo: 42, bar: "the answer to everything".into() }, output_value);
 }
 
 #[test]
@@ -126,16 +94,8 @@ fn deserialize_serde_rename() {
         Arc::from("renamed_bar") => FieldValue::String("the answer to everything".into()),
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
-    assert_eq!(
-        Output {
-            foo: 42,
-            bar: "the answer to everything".into(),
-        },
-        output_value
-    );
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
+    assert_eq!(Output { foo: 42, bar: "the answer to everything".into() }, output_value);
 }
 
 #[test]
@@ -159,20 +119,8 @@ fn deserialize_narrower_types() {
         Arc::from("u8") => FieldValue::Uint64(8),
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
-    assert_eq!(
-        Output {
-            i32: -32,
-            i16: -16,
-            i8: 8,
-            u32: 32,
-            u16: 16,
-            u8: 8,
-        },
-        output_value
-    );
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
+    assert_eq!(Output { i32: -32, i16: -16, i8: 8, u32: 32, u16: 16, u8: 8 }, output_value);
 }
 
 #[test]
@@ -186,9 +134,7 @@ fn deserialize_narrower_type_f32() {
         Arc::from("f32") => FieldValue::Float64(1.234),
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
     assert_eq!(Output { f32: 1.234f32 }, output_value);
 }
 
@@ -217,9 +163,7 @@ fn deserialize_adjust_numeric_type_signedness() {
         Arc::from("u8") => FieldValue::Int64(i8::MAX.into()),
     };
 
-    let output_value = value
-        .try_into_struct::<Output>()
-        .expect("failed to create struct");
+    let output_value = value.try_into_struct::<Output>().expect("failed to create struct");
     assert_eq!(
         Output {
             i64: i64::MAX,

@@ -29,12 +29,9 @@ impl From<JsFieldValue> for FieldValue {
             JsFieldValue::Integer(i) => FieldValue::Int64(i),
             JsFieldValue::Float(n) => FieldValue::Float64(n),
             JsFieldValue::Boolean(b) => FieldValue::Boolean(b),
-            JsFieldValue::List(v) => FieldValue::List(
-                v.iter()
-                    .map(|x| x.clone().into())
-                    .collect::<Vec<_>>()
-                    .into(),
-            ),
+            JsFieldValue::List(v) => {
+                FieldValue::List(v.iter().map(|x| x.clone().into()).collect::<Vec<_>>().into())
+            }
         }
     }
 }
@@ -51,12 +48,9 @@ impl From<FieldValue> for JsFieldValue {
             },
             FieldValue::Float64(n) => JsFieldValue::Float(n),
             FieldValue::Boolean(b) => JsFieldValue::Boolean(b),
-            FieldValue::List(v) => JsFieldValue::List(
-                v.iter()
-                    .map(|x| x.clone().into())
-                    .collect::<Vec<_>>()
-                    .into(),
-            ),
+            FieldValue::List(v) => {
+                JsFieldValue::List(v.iter().map(|x| x.clone().into()).collect::<Vec<_>>().into())
+            }
             _ => unimplemented!("unsupported value: {v:#?}"),
         }
     }
@@ -71,10 +65,7 @@ pub struct JsEdgeParameters {
 #[wasm_bindgen]
 impl JsEdgeParameters {
     pub fn get(&self, name: &str) -> JsValue {
-        let value = self
-            .values
-            .get(name)
-            .expect("no edge parameter by that name");
+        let value = self.values.get(name).expect("no edge parameter by that name");
 
         JsValue::from_serde(&value).expect("serde conversion failed")
     }
@@ -92,12 +83,7 @@ impl From<trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
 
 impl From<&trustfall_core::ir::EdgeParameters> for JsEdgeParameters {
     fn from(p: &trustfall_core::ir::EdgeParameters) -> Self {
-        Self {
-            values: p
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone().into()))
-                .collect(),
-        }
+        Self { values: p.iter().map(|(k, v)| (k.to_string(), v.clone().into())).collect() }
     }
 }
 
@@ -112,10 +98,7 @@ pub struct JsContext {
 #[wasm_bindgen]
 impl JsContext {
     pub(super) fn new(local_id: u32, active_vertex: Option<JsValue>) -> Self {
-        Self {
-            local_id,
-            active_vertex,
-        }
+        Self { local_id, active_vertex }
     }
 
     #[wasm_bindgen(getter, js_name = "activeVertex")]
@@ -134,10 +117,7 @@ pub(super) struct JsStringConstants {
 
 impl JsStringConstants {
     pub(super) fn new() -> Self {
-        Self {
-            local_id: JsValue::from_str("localId"),
-            neighbors: JsValue::from_str("neighbors"),
-        }
+        Self { local_id: JsValue::from_str("localId"), neighbors: JsValue::from_str("neighbors") }
     }
 }
 
@@ -177,11 +157,7 @@ impl ContextIteratorItem {
 #[wasm_bindgen]
 impl JsContextIterator {
     pub(super) fn new(iter: VertexIterator<'static, DataContext<JsValue>>) -> Self {
-        Self {
-            iter,
-            registry: Rc::from(RefCell::new(Default::default())),
-            next_item: 0,
-        }
+        Self { iter, registry: Rc::from(RefCell::new(Default::default())), next_item: 0 }
     }
 
     #[wasm_bindgen(js_name = "next")]
@@ -193,10 +169,7 @@ impl JsContextIterator {
             let current_vertex = ctx.active_vertex().cloned();
 
             let existing = self.registry.borrow_mut().insert(next_item, ctx);
-            assert!(
-                existing.is_none(),
-                "id {next_item} already inserted with value {existing:?}",
-            );
+            assert!(existing.is_none(), "id {next_item} already inserted with value {existing:?}",);
 
             ContextIteratorItem::new_item(JsContext::new(next_item, current_vertex))
         } else {

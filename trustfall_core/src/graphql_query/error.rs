@@ -60,10 +60,7 @@ pub enum ParseError {
     #[error("Tag name \"{0}\" contains invalid characters: {1:?}")]
     InvalidTagName(String, Vec<char>, Pos),
 
-    #[serde(
-        skip_deserializing,
-        serialize_with = "fail_serialize_invalid_graphql_error"
-    )]
+    #[serde(skip_deserializing, serialize_with = "fail_serialize_invalid_graphql_error")]
     #[error("{0}")]
     InvalidGraphQL(async_graphql_parser::Error),
 
@@ -90,9 +87,7 @@ fn fail_serialize_invalid_graphql_error<S: Serializer>(
     _: &async_graphql_parser::Error,
     _: S,
 ) -> Result<S::Ok, S::Error> {
-    Err(S::Error::custom(
-        "cannot serialize InvalidGraphQL error variant",
-    ))
+    Err(S::Error::custom("cannot serialize InvalidGraphQL error variant"))
 }
 
 impl From<async_graphql_parser::Error> for ParseError {

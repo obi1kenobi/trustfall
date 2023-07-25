@@ -154,28 +154,20 @@ impl From<CsvMetarReport> for MetarReport {
     fn from(csv_metar: CsvMetarReport) -> Self {
         let mut cloud_cover: Vec<MetarCloudCover> = vec![];
         if let Some(sky_cover) = csv_metar.sky_cover_1 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_1,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_1 })
         }
         if let Some(sky_cover) = csv_metar.sky_cover_2 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_2,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_2 })
         }
         if let Some(sky_cover) = csv_metar.sky_cover_3 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_3,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_3 })
         }
         if let Some(sky_cover) = csv_metar.sky_cover_4 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_4,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_4 })
         }
 
         let visibility = get_visibility(&csv_metar.raw_metar);

@@ -60,9 +60,7 @@ where
             .expect("Expected to have an item but found none.");
         assert_eq!(
             self.parent_opid,
-            trace_op
-                .parent_opid
-                .expect("Expected an operation with a parent_opid."),
+            trace_op.parent_opid.expect("Expected an operation with a parent_opid."),
             "Expected parent_opid {:?} did not match operation {:#?}",
             self.parent_opid,
             trace_op,
@@ -106,9 +104,7 @@ where
                 .expect("Expected to have an item but found none.");
             assert_eq!(
                 self.parent_opid,
-                input_op
-                    .parent_opid
-                    .expect("Expected an operation with a parent_opid."),
+                input_op.parent_opid.expect("Expected an operation with a parent_opid."),
                 "Expected parent_opid {:?} did not match operation {:#?}",
                 self.parent_opid,
                 input_op,
@@ -121,9 +117,7 @@ where
                     .expect("Expected to have an item but found none.");
                 assert_eq!(
                     self.parent_opid,
-                    input_op
-                        .parent_opid
-                        .expect("Expected an operation with a parent_opid."),
+                    input_op.parent_opid.expect("Expected an operation with a parent_opid."),
                     "Expected parent_opid {:?} did not match operation {:#?}",
                     self.parent_opid,
                     input_op,
@@ -186,9 +180,7 @@ where
                 .expect("Expected to have an item but found none.");
             assert_eq!(
                 self.parent_opid,
-                input_op
-                    .parent_opid
-                    .expect("Expected an operation with a parent_opid."),
+                input_op.parent_opid.expect("Expected an operation with a parent_opid."),
                 "Expected parent_opid {:?} did not match operation {:#?}",
                 self.parent_opid,
                 input_op,
@@ -201,9 +193,7 @@ where
                     .expect("Expected to have an item but found none.");
                 assert_eq!(
                     self.parent_opid,
-                    input_op
-                        .parent_opid
-                        .expect("Expected an operation with a parent_opid."),
+                    input_op.parent_opid.expect("Expected an operation with a parent_opid."),
                     "Expected parent_opid {:?} did not match operation {:#?}",
                     self.parent_opid,
                     input_op,
@@ -266,9 +256,7 @@ where
                 .expect("Expected to have an item but found none.");
             assert_eq!(
                 self.parent_opid,
-                input_op
-                    .parent_opid
-                    .expect("Expected an operation with a parent_opid."),
+                input_op.parent_opid.expect("Expected an operation with a parent_opid."),
                 "Expected parent_opid {:?} did not match operation {:#?}",
                 self.parent_opid,
                 input_op,
@@ -281,9 +269,7 @@ where
                     .expect("Expected to have an item but found none.");
                 assert_eq!(
                     self.parent_opid,
-                    input_op
-                        .parent_opid
-                        .expect("Expected an operation with a parent_opid."),
+                    input_op.parent_opid.expect("Expected an operation with a parent_opid."),
                     "Expected parent_opid {:?} did not match operation {:#?}",
                     self.parent_opid,
                     input_op,
@@ -353,9 +339,7 @@ where
         assert!(!self.exhausted);
         assert_eq!(
             self.parent_iterator_opid,
-            trace_op
-                .parent_opid
-                .expect("Expected an operation with a parent_opid."),
+            trace_op.parent_opid.expect("Expected an operation with a parent_opid."),
             "Expected parent_opid {:?} did not match operation {:#?}",
             self.parent_iterator_opid,
             trace_op,
@@ -508,17 +492,11 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
     'trace: 'query,
 {
     let next_op = Rc::new(RefCell::new(trace.ops.iter()));
-    let trace_reader_adapter = Arc::new(TraceReaderAdapter {
-        next_op: next_op.clone(),
-    });
+    let trace_reader_adapter = Arc::new(TraceReaderAdapter { next_op: next_op.clone() });
 
     let query: Arc<IndexedQuery> = Arc::new(trace.ir_query.clone().try_into().unwrap());
     let arguments = Arc::new(
-        trace
-            .arguments
-            .iter()
-            .map(|(k, v)| (Arc::from(k.to_owned()), v.clone()))
-            .collect(),
+        trace.arguments.iter().map(|(k, v)| (Arc::from(k.to_owned()), v.clone())).collect(),
     );
     let mut trace_iter = interpret_ir(trace_reader_adapter, query, arguments).unwrap();
     let mut expected_iter = expected_results.iter();

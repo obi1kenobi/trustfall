@@ -101,28 +101,21 @@ impl InferredSchema {
 
     pub(crate) fn add_new_anon_type(&mut self) -> Rc<str> {
         let anon_type: Rc<str> = Rc::from(format!("_AnonType{}", self.next_anon_type_number));
-        self.next_anon_type_number = self
-            .next_anon_type_number
-            .checked_add(1)
-            .expect("wow! how big is your query?!");
+        self.next_anon_type_number =
+            self.next_anon_type_number.checked_add(1).expect("wow! how big is your query?!");
 
         let existing = self.types.insert(
             anon_type.clone(),
             InferredVertexType::new(anon_type.clone(), VertexKind::Type),
         );
-        assert!(
-            existing.is_none(),
-            "unexpected type name conflict: {anon_type}",
-        );
+        assert!(existing.is_none(), "unexpected type name conflict: {anon_type}",);
 
         anon_type
     }
 
     pub(crate) fn ensure_vertex_kind_is_interface(&mut self, type_name: &Rc<str>) {
-        self.types
-            .get_mut(type_name)
-            .expect("vertex type was never added")
-            .kind = VertexKind::Interface;
+        self.types.get_mut(type_name).expect("vertex type was never added").kind =
+            VertexKind::Interface;
     }
 
     pub(crate) fn ensure_vertex_type_implements(
@@ -277,13 +270,7 @@ impl InferredSchema {
         let is_interface = self
             .types
             .iter()
-            .filter_map(|(k, v)| {
-                if k.as_ref() != type_name {
-                    Some(v)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(k, v)| if k.as_ref() != type_name { Some(v) } else { None })
             .flat_map(|v| v.implements.iter())
             .any(|implemented| implemented.as_ref() == type_name);
         let type_kind = if is_interface { "interface" } else { "type" };
@@ -334,9 +321,7 @@ impl InferredSchema {
         field_name: &str,
         field_info: &InferredField,
     ) {
-        let field_ty = field_info
-            .ty
-            .to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
+        let field_ty = field_info.ty.to_graphql_type(Self::TYPE_CHOICE_FOR_FREE_TYPES);
         let parameters = if field_info.parameters.is_empty() {
             String::new()
         } else {
@@ -428,10 +413,8 @@ fn recurse_into_selection_set(
             return Err("illegal query: contains directives applied to an inline fragment".into());
         }
 
-        let coerce_to: Option<Rc<str>> = fragment
-            .type_condition
-            .as_ref()
-            .map(|tc| Rc::from(tc.node.on.node.to_string()));
+        let coerce_to: Option<Rc<str>> =
+            fragment.type_condition.as_ref().map(|tc| Rc::from(tc.node.on.node.to_string()));
 
         let coerced_type = if let Some(coerce_to) = coerce_to {
             inferred.ensure_type_exists(coerce_to.clone());
@@ -483,21 +466,18 @@ fn recurse_into_selection_set(
                 return Err("illegal query: found property-only directive on field that seems to be an edge".into());
             } else if has_non_empty_selection_set || has_only_edge_directives {
                 // found an edge
-                let inferred_type_name = if field
-                    .directives
-                    .iter()
-                    .any(|d| d.node.name.node.as_ref() == "recurse")
-                {
-                    // Found an edge that is being recursed,
-                    // assume for simplicity that it points to the same type we came from.
-                    // This is almost always true in practice, although it doesn't necessarily
-                    // have to hold.
-                    current_type.clone()
-                } else {
-                    // We can't know the exact type of the destination vertex, so make
-                    // a new type with a generated name.
-                    inferred.add_new_anon_type()
-                };
+                let inferred_type_name =
+                    if field.directives.iter().any(|d| d.node.name.node.as_ref() == "recurse") {
+                        // Found an edge that is being recursed,
+                        // assume for simplicity that it points to the same type we came from.
+                        // This is almost always true in practice, although it doesn't necessarily
+                        // have to hold.
+                        current_type.clone()
+                    } else {
+                        // We can't know the exact type of the destination vertex, so make
+                        // a new type with a generated name.
+                        inferred.add_new_anon_type()
+                    };
                 let inferred_type =
                     InferredType::List(Box::new(InferredType::Vertex(inferred_type_name.clone())));
 

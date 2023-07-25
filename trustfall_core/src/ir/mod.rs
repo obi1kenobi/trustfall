@@ -232,10 +232,8 @@ pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
 }
 
-static NON_NULL_INT_TYPE: Lazy<Type> = Lazy::new(|| Type {
-    base: BaseType::Named(Name::new("Int")),
-    nullable: false,
-});
+static NON_NULL_INT_TYPE: Lazy<Type> =
+    Lazy::new(|| Type { base: BaseType::Named(Name::new("Int")), nullable: false });
 
 impl FoldSpecificFieldKind {
     pub fn field_type(&self) -> &Type {
@@ -624,14 +622,12 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 if left_type.nullable {
                     Ok(())
                 } else {
-                    Err(vec![
-                        FilterTypeError::NonNullableTypeFilteredForNullability(
-                            self.operation_name().to_owned(),
-                            left.named().to_string(),
-                            left_type.to_string(),
-                            matches!(self, Operation::IsNotNull(..)),
-                        ),
-                    ])
+                    Err(vec![FilterTypeError::NonNullableTypeFilteredForNullability(
+                        self.operation_name().to_owned(),
+                        left.named().to_string(),
+                        left_type.to_string(),
+                        matches!(self, Operation::IsNotNull(..)),
+                    )])
                 }
             }
             Operation::Equals(_, _) | Operation::NotEquals(_, _) => {
@@ -881,12 +877,7 @@ mod tests {
     fn serialize_then_deserialize_enum() {
         let value = FieldValue::Enum("foo".into());
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(
-            value,
-            deserialized,
-            "Serialized as: {}",
-            ron::to_string(&value).unwrap()
-        );
+        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
     }
 
     #[test]
@@ -897,47 +888,27 @@ mod tests {
             FieldValue::String("foo".into()),
         ]));
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(
-            value,
-            deserialized,
-            "Serialized as: {}",
-            ron::to_string(&value).unwrap()
-        );
+        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
     }
 
     #[test]
     fn serialize_then_deserialize_float() {
         let value = FieldValue::Float64(1.0);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(
-            value,
-            deserialized,
-            "Serialized as: {}",
-            ron::to_string(&value).unwrap()
-        );
+        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
     }
 
     #[test]
     fn serialize_then_deserialize_i64() {
         let value = FieldValue::Int64(-123);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(
-            value,
-            deserialized,
-            "Serialized as: {}",
-            ron::to_string(&value).unwrap()
-        );
+        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
     }
 
     #[test]
     fn serialize_then_deserialize_u64() {
         let value = FieldValue::Uint64((i64::MAX as u64) + 1);
         let deserialized: FieldValue = serialize_then_deserialize(&value);
-        assert_eq!(
-            value,
-            deserialized,
-            "Serialized as: {}",
-            ron::to_string(&value).unwrap()
-        );
+        assert_eq!(value, deserialized, "Serialized as: {}", ron::to_string(&value).unwrap());
     }
 }

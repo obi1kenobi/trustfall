@@ -171,20 +171,13 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
     match (&left.base, &right.base) {
         (BaseType::Named(l), BaseType::Named(r)) => {
             if l == r {
-                Some(Type {
-                    base: left.base.clone(),
-                    nullable,
-                })
+                Some(Type { base: left.base.clone(), nullable })
             } else {
                 None
             }
         }
-        (BaseType::List(left), BaseType::List(right)) => {
-            intersect_types(left, right).map(|inner| Type {
-                base: BaseType::List(Box::new(inner)),
-                nullable,
-            })
-        }
+        (BaseType::List(left), BaseType::List(right)) => intersect_types(left, right)
+            .map(|inner| Type { base: BaseType::List(Box::new(inner)), nullable }),
         (BaseType::Named(_), BaseType::List(_)) | (BaseType::List(_), BaseType::Named(_)) => None,
     }
 }
@@ -230,9 +223,9 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
             // This is a valid value only if the type is a list, and all the inner elements
             // are valid instances of the type inside the list.
             match &variable_type.base {
-                BaseType::List(inner) => nested_values
-                    .iter()
-                    .all(|value| is_argument_type_valid(inner.as_ref(), value)),
+                BaseType::List(inner) => {
+                    nested_values.iter().all(|value| is_argument_type_valid(inner.as_ref(), value))
+                }
                 BaseType::Named(_) => false,
             }
         }
@@ -258,18 +251,11 @@ mod tests {
         ];
         let non_nullable_types = nullable_types
             .iter()
-            .map(|t| Type {
-                base: t.base.clone(),
-                nullable: false,
-            })
+            .map(|t| Type { base: t.base.clone(), nullable: false })
             .collect_vec();
 
         for nullable_type in &nullable_types {
-            assert!(
-                is_argument_type_valid(nullable_type, &FieldValue::Null),
-                "{}",
-                nullable_type
-            );
+            assert!(is_argument_type_valid(nullable_type, &FieldValue::Null), "{}", nullable_type);
         }
         for non_nullable_type in &non_nullable_types {
             assert!(
@@ -298,10 +284,7 @@ mod tests {
 
         for value in &values {
             for matching_type in &matching_types {
-                assert!(
-                    is_argument_type_valid(matching_type, value),
-                    "{matching_type} {value:?}",
-                );
+                assert!(is_argument_type_valid(matching_type, value), "{matching_type} {value:?}",);
             }
             for non_matching_type in &non_matching_types {
                 assert!(
@@ -328,10 +311,7 @@ mod tests {
 
         for value in &values {
             for matching_type in &matching_types {
-                assert!(
-                    is_argument_type_valid(matching_type, value),
-                    "{matching_type} {value:?}",
-                );
+                assert!(is_argument_type_valid(matching_type, value), "{matching_type} {value:?}",);
             }
             for non_matching_type in &non_matching_types {
                 assert!(
@@ -344,10 +324,7 @@ mod tests {
 
     #[test]
     fn boolean_values_are_valid_only_for_boolean_type_regardless_of_nullability() {
-        let matching_types = [
-            Type::new("Boolean").unwrap(),
-            Type::new("Boolean!").unwrap(),
-        ];
+        let matching_types = [Type::new("Boolean").unwrap(), Type::new("Boolean!").unwrap()];
         let non_matching_types = [
             Type::new("Int").unwrap(),
             Type::new("[Boolean!]").unwrap(),
@@ -358,10 +335,7 @@ mod tests {
 
         for value in &values {
             for matching_type in &matching_types {
-                assert!(
-                    is_argument_type_valid(matching_type, value),
-                    "{matching_type} {value:?}",
-                );
+                assert!(is_argument_type_valid(matching_type, value), "{matching_type} {value:?}",);
             }
             for non_matching_type in &non_matching_types {
                 assert!(
@@ -416,16 +390,10 @@ mod tests {
         for value in &non_nullable_values {
             // Values without nulls match both the nullable and the non-nullable types.
             for matching_type in &nullable_contents_matching_types {
-                assert!(
-                    is_argument_type_valid(matching_type, value),
-                    "{matching_type} {value:?}",
-                );
+                assert!(is_argument_type_valid(matching_type, value), "{matching_type} {value:?}",);
             }
             for matching_type in &non_nullable_contents_matching_types {
-                assert!(
-                    is_argument_type_valid(matching_type, value),
-                    "{matching_type} {value:?}",
-                );
+                assert!(is_argument_type_valid(matching_type, value), "{matching_type} {value:?}",);
             }
 
             // Regardless of nulls, these types don't match.
@@ -440,10 +408,7 @@ mod tests {
         for value in &nullable_values {
             // Nullable values match only the nullable types.
             for matching_type in &nullable_contents_matching_types {
-                assert!(
-                    is_argument_type_valid(matching_type, value),
-                    "{matching_type} {value:?}",
-                );
+                assert!(is_argument_type_valid(matching_type, value), "{matching_type} {value:?}",);
             }
 
             // The nullable values don't match the non-nullable types.

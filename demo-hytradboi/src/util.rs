@@ -28,12 +28,7 @@ pub(crate) struct PaginationIterator<T, P: Pager<Item = T>> {
 
 impl<T, P: Pager<Item = T>> PaginationIterator<T, P> {
     pub(crate) fn new(pager: P) -> Self {
-        Self {
-            pager,
-            next_page: 1,
-            batch: None,
-            final_page_seen: false,
-        }
+        Self { pager, next_page: 1, batch: None, final_page_seen: false }
     }
 }
 

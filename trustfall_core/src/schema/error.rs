@@ -8,10 +8,7 @@ pub enum InvalidSchemaError {
     #[error("Multiple schema errors: {0}")]
     MultipleErrors(DisplayVec<InvalidSchemaError>),
 
-    #[serde(
-        skip_deserializing,
-        serialize_with = "fail_serialize_schema_parse_error"
-    )]
+    #[serde(skip_deserializing, serialize_with = "fail_serialize_schema_parse_error")]
     #[error("Schema failed to parse.")]
     SchemaParseError(#[from] async_graphql_parser::Error),
 
@@ -148,7 +145,5 @@ fn fail_serialize_schema_parse_error<S: Serializer>(
     _: &async_graphql_parser::Error,
     _: S,
 ) -> Result<S::Ok, S::Error> {
-    Err(S::Error::custom(
-        "cannot serialize SchemaParseError error variant",
-    ))
+    Err(S::Error::custom("cannot serialize SchemaParseError error variant"))
 }

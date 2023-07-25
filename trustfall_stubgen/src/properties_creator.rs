@@ -51,22 +51,14 @@ pub(super) fn make_properties_file(
         properties_file.top_level_items.push(resolver);
     }
 
-    properties_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::ContextIterator"));
+    properties_file.external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     properties_file
         .external_imports
         .insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
-    properties_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::ResolveInfo"));
-    properties_file
-        .external_imports
-        .insert(parse_import("trustfall::FieldValue"));
+    properties_file.external_imports.insert(parse_import("trustfall::provider::ResolveInfo"));
+    properties_file.external_imports.insert(parse_import("trustfall::FieldValue"));
 
-    properties_file
-        .internal_imports
-        .insert(parse_import("super::vertex::Vertex"));
+    properties_file.internal_imports.insert(parse_import("super::vertex::Vertex"));
 }
 
 fn make_resolver_fn(type_name: &str, properties: &[String]) -> proc_macro2::TokenStream {

@@ -72,14 +72,10 @@ fn read_metar_data() -> Vec<MetarReport> {
         buf.truncate(0);
     }
 
-    let mut csv_reader = csv::ReaderBuilder::new()
-        .has_headers(false)
-        .from_reader(reader);
+    let mut csv_reader = csv::ReaderBuilder::new().has_headers(false).from_reader(reader);
 
-    let metars: Vec<MetarReport> = csv_reader
-        .deserialize::<CsvMetarReport>()
-        .map(|x| x.unwrap().into())
-        .collect();
+    let metars: Vec<MetarReport> =
+        csv_reader.deserialize::<CsvMetarReport>().map(|x| x.unwrap().into()).collect();
 
     metars
 }
@@ -107,10 +103,7 @@ fn run_query(path: &str) {
 }
 
 fn refresh_data() {
-    let all_data = reqwest::blocking::get(METAR_DOC_URL)
-        .unwrap()
-        .text()
-        .unwrap();
+    let all_data = reqwest::blocking::get(METAR_DOC_URL).unwrap().text().unwrap();
     let write_file_path = METAR_DOC_LOCATION.to_owned() + "-temp";
 
     let write_file = File::create(&write_file_path).unwrap();

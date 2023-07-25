@@ -1,0 +1,2 @@
+# Rust code formatting; see https://rust-lang.github.io/rustfmt
+use_small_heuristics = "Max"

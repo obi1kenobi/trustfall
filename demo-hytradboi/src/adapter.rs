@@ -32,14 +32,14 @@ static CRATES_CLIENT: Lazy<consecrates::Client> =
 static GITHUB_CLIENT: Lazy<octorust::Client> = Lazy::new(|| {
     octorust::Client::new(
         USER_AGENT,
-        Some(octorust::auth::Credentials::Token(
-            std::env::var("GITHUB_TOKEN").unwrap_or_else(|_| {
+        Some(octorust::auth::Credentials::Token(std::env::var("GITHUB_TOKEN").unwrap_or_else(
+            |_| {
                 fs::read_to_string("./localdata/gh_token")
                     .expect("could not find creds file")
                     .trim()
                     .to_string()
-            }),
-        )),
+            },
+        ))),
     )
     .unwrap()
 });
@@ -47,12 +47,8 @@ static GITHUB_CLIENT: Lazy<octorust::Client> = Lazy::new(|| {
 static REPOS_CLIENT: Lazy<octorust::repos::Repos> =
     Lazy::new(|| octorust::repos::Repos::new(GITHUB_CLIENT.clone()));
 
-static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
+static RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap());
 
 pub struct DemoAdapter;
 
@@ -125,11 +121,7 @@ impl DemoAdapter {
     }
 
     fn most_downloaded_crates(&self) -> VertexIterator<'static, Vertex> {
-        Box::new(
-            CratesPager::new(&CRATES_CLIENT)
-                .into_iter()
-                .map(|x| x.into()),
-        )
+        Box::new(CratesPager::new(&CRATES_CLIENT).into_iter().map(|x| x.into()))
     }
 }
 
@@ -290,9 +282,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
 
             // properties on GitHubRepository
             ("GitHubRepository", "owner") => resolve_property_with(contexts, |vertex| {
-                let repo = vertex
-                    .as_github_repository()
-                    .expect("not a GitHubRepository");
+                let repo = vertex.as_github_repository().expect("not a GitHubRepository");
                 let (owner, _) = get_owner_and_repo(repo);
                 owner.into()
             }),
@@ -312,15 +302,11 @@ impl<'a> Adapter<'a> for DemoAdapter {
             // properties on GitHubWorkflow
             ("GitHubWorkflow", "name") => resolve_property_with(
                 contexts,
-                field_property!(as_github_workflow, workflow, {
-                    workflow.name.as_str().into()
-                }),
+                field_property!(as_github_workflow, workflow, { workflow.name.as_str().into() }),
             ),
             ("GitHubWorkflow", "path") => resolve_property_with(
                 contexts,
-                field_property!(as_github_workflow, workflow, {
-                    workflow.path.as_str().into()
-                }),
+                field_property!(as_github_workflow, workflow, { workflow.path.as_str().into() }),
             ),
 
             // properties on GitHubActionsJob
@@ -352,20 +338,10 @@ impl<'a> Adapter<'a> for DemoAdapter {
 
             // properties on NameValuePair
             ("NameValuePair", "name") => resolve_property_with(contexts, |vertex| {
-                vertex
-                    .as_name_value_pair()
-                    .expect("not a NameValuePair")
-                    .0
-                    .clone()
-                    .into()
+                vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
             }),
             ("NameValuePair", "value") => resolve_property_with(contexts, |vertex| {
-                vertex
-                    .as_name_value_pair()
-                    .expect("not a NameValuePair")
-                    .0
-                    .clone()
-                    .into()
+                vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
             }),
             _ => unreachable!(),
         }
