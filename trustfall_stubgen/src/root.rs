@@ -430,13 +430,14 @@ fn ensure_no_vertex_name_keyword_conflicts(
         name: String,
     }
 
-    let rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
         })
         .collect();
+    rows.sort_unstable();
 
     let mut uniq: HashMap<String, String> = HashMap::new();
 
@@ -478,13 +479,14 @@ fn ensure_no_edge_name_keyword_conflicts(
         property_names: Vec<String>,
     }
 
-    let rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .expect("invalid conversion")
         })
         .collect();
+    rows.sort_unstable();
 
     for row in &rows {
         let mut uniq: HashMap<String, String> = HashMap::new();
