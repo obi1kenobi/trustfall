@@ -3421,7 +3421,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d85d9aa80e5cfdb9e6559d0b91fa4a02103d419a305c63ba34a4347cf773628a"
 dependencies = [
  "anyhow",
- "trustfall_core 0.5.1",
+ "trustfall_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "trustfall_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3459,6 +3459,24 @@ name = "trustfall_core"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2bf2ead3c6aabf0ca76e0be620d8c347994dd61f6f35db2c4f2981e9ffb6b2"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "chrono",
+ "itertools",
+ "maplit",
+ "once_cell",
+ "regex",
+ "ron 0.6.6",
+ "serde",
+ "smallvec 1.11.0",
+ "thiserror",
+]
+
+[[package]]
+name = "trustfall_core"
+version = "0.5.1"
+source = "git+https://github.com/obi1kenobi/trustfall.git?rev=trustfall_core-v0.5.1#e415f784596db4d15d403f4c2799f79530060cea"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
@@ -3537,8 +3555,8 @@ dependencies = [
  "ouroboros",
  "serde_json",
  "trustfall-rustdoc-adapter",
- "trustfall_core 0.6.0",
- "trustfall_wasm",
+ "trustfall_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trustfall_wasm 0.1.0 (git+https://github.com/obi1kenobi/trustfall.git?rev=trustfall_core-v0.5.1)",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
@@ -3593,6 +3611,23 @@ dependencies = [
  "trustfall_core 0.6.0",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
+name = "trustfall_wasm"
+version = "0.1.0"
+source = "git+https://github.com/obi1kenobi/trustfall.git?rev=trustfall_core-v0.5.1#e415f784596db4d15d403f4c2799f79530060cea"
+dependencies = [
+ "console_error_panic_hook",
+ "gloo-utils",
+ "js-sys",
+ "maplit",
+ "ron 0.7.1",
+ "serde",
+ "serde_json",
+ "trustfall_core 0.5.1 (git+https://github.com/obi1kenobi/trustfall.git?rev=trustfall_core-v0.5.1)",
+ "wasm-bindgen",
  "web-sys",
 ]
 
