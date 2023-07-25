@@ -11,7 +11,6 @@ members = [
     "demo-hytradboi",
     "experiments/schemaless",
     "experiments/schemaless_wasm",
-    "experiments/trustfall_rustdoc",
 ]
 resolver = "2"
 
@@ -19,11 +18,3 @@ resolver = "2"
 edition = "2021"
 rust-version = "1.65"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
-
-# Some of the experiment crates use Trustfall as an "external" dependency:
-# they use a crate defined outside this repo that depends on Trustfall.
-# This makes it difficult to use the local Trustfall together with the external one;
-# patch all Trustfall uses to use the internal ones until we find a better solution.
-[patch.crates-io]
-trustfall = { path = "./trustfall" }
-trustfall_core = { path = "./trustfall_core" }

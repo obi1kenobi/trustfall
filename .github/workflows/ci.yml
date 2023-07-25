@@ -24,6 +24,7 @@ jobs:
       - lint
       - rust-tests
       - rust-fuzz
+      - rust-rustdoc-wasm
       - python-tests
       - wasm-tests
       - js-lint
@@ -37,6 +38,7 @@ jobs:
           echo "python-tests: ${{ needs.python-tests.result }}"
           echo "wasm-tests: ${{ needs.wasm-tests.result }}"
           echo "js-lint: ${{ needs.js-lint.result }}"
+          echo "rust-rustdoc-wasm: ${{ needs.rust-rustdoc-wasm.result }}"
 
       # Fail this required job if any of its dependent jobs have failed.
       #
@@ -54,6 +56,8 @@ jobs:
       - if: ${{ needs.wasm-tests.result != 'success' }}
         run: exit 1
       - if: ${{ needs.js-lint.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.rust-rustdoc-wasm.result != 'success' }}
         run: exit 1
 
   python-tests:
@@ -204,6 +208,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ./trustfall_core/fuzz
 
       - uses: r7kamura/rust-problem-matchers@v1
 
@@ -223,6 +230,44 @@ jobs:
         run: |
           cd trustfall_core/fuzz
           cargo doc --workspace --all-features --no-deps --document-private-items
+
+  rust-rustdoc-wasm:
+    name: Check rustdoc WASM target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ./experiments/trustfall_rustdoc
+
+      - uses: r7kamura/rust-problem-matchers@v1
+
+      - name: cargo clippy
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo clippy --all-features --all-targets -- -D warnings --allow deprecated
+
+      - name: cargo fmt
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo fmt -- --check
+
+      - name: cargo doc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo doc --all-features --no-deps --document-private-items
 
   wasm-tests:
     name: WASM tests
