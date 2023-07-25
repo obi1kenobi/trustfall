@@ -205,9 +205,7 @@ pub(super) fn regex_matches_slow_path(left: &FieldValue, right: &FieldValue) -> 
             // Bad regex values can happen in ways that can't be prevented,
             // for example: when using a tag argument and the tagged value isn't a valid regex.
             // In such cases, we declare that the regex doesn't match.
-            Regex::new(r)
-                .map(|pattern| pattern.is_match(l))
-                .unwrap_or(false)
+            Regex::new(r).map(|pattern| pattern.is_match(l)).unwrap_or(false)
         }
         (FieldValue::Null, FieldValue::Null)
         | (FieldValue::Null, FieldValue::String(_))
@@ -278,11 +276,8 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
     //       - turn "in_collection" filter arguments into sets if possible
     match filter.right() {
         Some(Argument::Variable(var)) => {
-            let query_arguments = &carrier
-                .query
-                .as_ref()
-                .expect("query was not returned")
-                .arguments;
+            let query_arguments =
+                &carrier.query.as_ref().expect("query was not returned").arguments;
             let right_value = query_arguments[var.variable_name.as_ref()].to_owned();
             apply_filter_with_static_argument_value(filter, right_value, iterator)
         }
@@ -415,24 +410,18 @@ fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'quer
             (!has_substring(&left_value, &right_value)).then_some(ctx)
         })),
         Operation::RegexMatches(_, _) => {
-            let pattern = Regex::new(
-                right_value
-                    .as_str()
-                    .expect("regex argument was not a string"),
-            )
-            .expect("regex argument was not a valid regex");
+            let pattern =
+                Regex::new(right_value.as_str().expect("regex argument was not a string"))
+                    .expect("regex argument was not a valid regex");
             Box::new(iterator.filter_map(move |mut ctx| {
                 let left_value = ctx.values.pop().expect("no value present");
                 regex_matches_optimized(&left_value, &pattern).then_some(ctx)
             }))
         }
         Operation::NotRegexMatches(_, _) => {
-            let pattern = Regex::new(
-                right_value
-                    .as_str()
-                    .expect("regex argument was not a string"),
-            )
-            .expect("regex argument was not a valid regex");
+            let pattern =
+                Regex::new(right_value.as_str().expect("regex argument was not a string"))
+                    .expect("regex argument was not a valid regex");
             Box::new(iterator.filter_map(move |mut ctx| {
                 let left_value = ctx.values.pop().expect("no value present");
                 (!regex_matches_optimized(&left_value, &pattern)).then_some(ctx)
@@ -447,168 +436,168 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
     argument_value_iterator: ContextOutcomeIterator<'query, Vertex, TaggedValue>,
 ) -> ContextIterator<'query, Vertex> {
     match filter {
-        Operation::Equals(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+        Operation::Equals(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 equals(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotEquals(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotEquals(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!equals(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
-        Operation::LessThan(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::LessThan(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 less_than(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::LessThanOrEqual(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::LessThanOrEqual(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 less_than_or_equal(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::GreaterThan(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::GreaterThan(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 greater_than(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::GreaterThanOrEqual(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::GreaterThanOrEqual(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 greater_than_or_equal(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::Contains(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::Contains(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 contains(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotContains(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotContains(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!contains(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
-        Operation::OneOf(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::OneOf(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 one_of(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotOneOf(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotOneOf(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!one_of(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
-        Operation::HasPrefix(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::HasPrefix(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 has_prefix(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotHasPrefix(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotHasPrefix(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!has_prefix(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
-        Operation::HasSuffix(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::HasSuffix(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 has_suffix(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotHasSuffix(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotHasSuffix(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!has_suffix(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
-        Operation::HasSubstring(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::HasSubstring(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 has_substring(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotHasSubstring(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotHasSubstring(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!has_substring(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
-        Operation::RegexMatches(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::RegexMatches(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 regex_matches_slow_path(&left_value, &right_value).then_some(ctx)
-            },
-        )),
-        Operation::NotRegexMatches(_, _) => Box::new(argument_value_iterator.filter_map(
-            move |(mut ctx, tagged_value)| {
+            }))
+        }
+        Operation::NotRegexMatches(_, _) => {
+            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
                 };
                 (!regex_matches_slow_path(&left_value, &right_value)).then_some(ctx)
-            },
-        )),
+            }))
+        }
         Operation::IsNull(_) | Operation::IsNotNull(_) => unreachable!("{filter:?}"),
     }
 }
@@ -643,16 +632,8 @@ mod tests {
         ];
 
         for (left, right, expected_outcome) in test_data {
-            assert_eq!(
-                expected_outcome,
-                greater_than(&left, &right),
-                "{left:?} > {right:?}",
-            );
-            assert_eq!(
-                expected_outcome,
-                less_than(&right, &left),
-                "{right:?} < {left:?}",
-            );
+            assert_eq!(expected_outcome, greater_than(&left, &right), "{left:?} > {right:?}",);
+            assert_eq!(expected_outcome, less_than(&right, &left), "{right:?} < {left:?}",);
         }
     }
 
@@ -707,29 +688,15 @@ mod tests {
         ];
 
         for (left, right, expected_outcome) in test_data {
-            assert_eq!(
-                expected_outcome,
-                equals(&left, &right),
-                "{left:?} = {right:?}",
-            );
-            assert_eq!(
-                expected_outcome,
-                equals(&right, &left),
-                "{right:?} = {left:?}",
-            );
+            assert_eq!(expected_outcome, equals(&left, &right), "{left:?} = {right:?}",);
+            assert_eq!(expected_outcome, equals(&right, &left), "{right:?} = {left:?}",);
 
             if expected_outcome {
                 // both >= and <= comparisons in either direction should return true
                 assert!(less_than_or_equal(&left, &right), "{left:?} <= {right:?}",);
-                assert!(
-                    greater_than_or_equal(&left, &right),
-                    "{left:?} >= {right:?}",
-                );
+                assert!(greater_than_or_equal(&left, &right), "{left:?} >= {right:?}",);
                 assert!(less_than_or_equal(&right, &left), "{right:?} <= {left:?}",);
-                assert!(
-                    greater_than_or_equal(&right, &left),
-                    "{right:?} >= {left:?}",
-                );
+                assert!(greater_than_or_equal(&right, &left), "{right:?} >= {left:?}",);
 
                 // both > and < comparisons in either direction should return false
                 assert!(!less_than(&left, &right), "{left:?} < {right:?}");
@@ -804,16 +771,8 @@ mod tests {
         ];
 
         for (left, right, expected_outcome) in test_data {
-            assert_eq!(
-                expected_outcome,
-                equals(&left, &right),
-                "{left:?} = {right:?}",
-            );
-            assert_eq!(
-                expected_outcome,
-                equals(&right, &left),
-                "{right:?} = {left:?}",
-            );
+            assert_eq!(expected_outcome, equals(&left, &right), "{left:?} = {right:?}",);
+            assert_eq!(expected_outcome, equals(&right, &left), "{right:?} = {left:?}",);
         }
     }
 }

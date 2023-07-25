@@ -1,23 +1,11 @@
 use pyo3::{create_exception, types::PyModule, PyResult, Python};
 
-create_exception!(
-    pytrustfall,
-    InvalidSchemaError,
-    pyo3::exceptions::PyException
-);
+create_exception!(pytrustfall, InvalidSchemaError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, ParseError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, ValidationError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, FrontendError, pyo3::exceptions::PyException);
-create_exception!(
-    pytrustfall,
-    InvalidIRQueryError,
-    pyo3::exceptions::PyException
-);
-create_exception!(
-    pytrustfall,
-    QueryArgumentsError,
-    pyo3::exceptions::PyException
-);
+create_exception!(pytrustfall, InvalidIRQueryError, pyo3::exceptions::PyException);
+create_exception!(pytrustfall, QueryArgumentsError, pyo3::exceptions::PyException);
 
 pub(crate) fn register(py: Python, m: &PyModule) -> PyResult<()> {
     m.add("InvalidSchemaError", py.get_type::<InvalidSchemaError>())?;

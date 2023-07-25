@@ -43,9 +43,8 @@ type Vertex {
     .expect("failed to parse schema");
     let contexts = Box::new(std::iter::once(DataContext::new(Some(Vertex::Variant))));
 
-    let outputs: Vec<_> = resolve_typename(contexts, &schema, "Vertex")
-        .map(|(_ctx, value)| value)
-        .collect();
+    let outputs: Vec<_> =
+        resolve_typename(contexts, &schema, "Vertex").map(|(_ctx, value)| value).collect();
 
     assert_eq!(vec![FieldValue::from("Vertex")], outputs);
 }
@@ -91,8 +90,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -106,8 +104,7 @@ mod correctness {
                         panic!("oops! we forgot to implement __typename on Named");
                     }
 
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -135,14 +132,11 @@ mod correctness {
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -164,8 +158,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -175,8 +168,7 @@ mod correctness {
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -208,14 +200,11 @@ mod correctness {
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -237,8 +226,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -248,8 +236,7 @@ mod correctness {
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -281,14 +268,11 @@ mod correctness {
                         panic!("oops! we forgot to implement coercion from Named to Number");
                     }
 
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -326,8 +310,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -343,8 +326,7 @@ mod correctness {
                         let _ = contexts.next();
                     }
 
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -372,14 +354,11 @@ mod correctness {
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -404,8 +383,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -415,8 +393,7 @@ mod correctness {
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -450,14 +427,11 @@ mod correctness {
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -480,8 +454,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -491,8 +464,7 @@ mod correctness {
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -526,14 +498,11 @@ mod correctness {
                         let _ = contexts.next();
                     }
 
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -573,8 +542,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -629,14 +597,11 @@ mod correctness {
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -661,8 +626,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -672,8 +636,7 @@ mod correctness {
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -714,14 +677,11 @@ mod correctness {
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-                    self.inner
-                        .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+                    self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)
@@ -746,8 +706,7 @@ mod correctness {
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveInfo,
                 ) -> VertexIterator<'a, Self::Vertex> {
-                    self.inner
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info)
+                    self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
                 fn resolve_property(
@@ -757,8 +716,7 @@ mod correctness {
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
                 ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
-                    self.inner
-                        .resolve_property(contexts, type_name, property_name, resolve_info)
+                    self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
                 fn resolve_neighbors(
@@ -807,9 +765,7 @@ mod correctness {
                 }
             }
 
-            let adapter = AdapterWrapper {
-                inner: NumbersAdapter::new(),
-            };
+            let adapter = AdapterWrapper { inner: NumbersAdapter::new() };
             let schema = adapter.inner.schema().clone();
 
             super::super::super::correctness::check_adapter_invariants(&schema, adapter)

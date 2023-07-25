@@ -142,9 +142,7 @@ directive @transform(op: String!) on FIELD
 
                     match &node.kind {
                         TypeKind::Scalar => {
-                            scalars
-                                .insert_or_error(type_name.clone(), node.clone())
-                                .unwrap();
+                            scalars.insert_or_error(type_name.clone(), node.clone()).unwrap();
                         }
                         TypeKind::Object(_) | TypeKind::Interface(_) => {
                             match vertex_types.insert_or_error(type_name.clone(), node.clone()) {
@@ -194,12 +192,8 @@ directive @transform(op: String!) on FIELD
         }
 
         let schema = schema.expect("Schema definition was not present.");
-        let query_type_name = schema
-            .query
-            .as_ref()
-            .expect("No query type was declared in the schema")
-            .node
-            .as_ref();
+        let query_type_name =
+            schema.query.as_ref().expect("No query type was declared in the schema").node.as_ref();
         let query_type_definition = vertex_types
             .get(query_type_name)
             .expect("The query type set in the schema object was never defined.");
@@ -269,9 +263,7 @@ directive @transform(op: String!) on FIELD
 
         Some(self.vertex_types.iter().filter_map(move |(name, defn)| {
             if name.as_ref() == type_name
-                || get_vertex_type_implements(defn)
-                    .iter()
-                    .any(|x| x.node.as_ref() == type_name)
+                || get_vertex_type_implements(defn).iter().any(|x| x.node.as_ref() == type_name)
             {
                 Some(name.as_ref())
             } else {
@@ -359,11 +351,7 @@ fn check_type_and_property_and_edge_invariants(
                         type_name.to_string(),
                         field_defn.name.node.to_string(),
                         field_type.to_string(),
-                        field_defn
-                            .arguments
-                            .iter()
-                            .map(|x| x.node.name.node.to_string())
-                            .collect(),
+                        field_defn.arguments.iter().map(|x| x.node.name.node.to_string()).collect(),
                     ));
                 }
             } else if vertex_types.contains_key(base_named_type) {
@@ -536,10 +524,8 @@ fn check_required_transitive_implementations(
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
     for (type_name, type_defn) in vertex_types {
-        let implementations: BTreeSet<&str> = get_vertex_type_implements(type_defn)
-            .iter()
-            .map(|x| x.node.as_ref())
-            .collect();
+        let implementations: BTreeSet<&str> =
+            get_vertex_type_implements(type_defn).iter().map(|x| x.node.as_ref()).collect();
 
         // Check the `implements` portion of the type definition.
         for implements_type in implementations.iter().copied() {
@@ -684,10 +670,7 @@ fn check_field_type_narrowing(
                             field_name.to_owned(),
                             type_name.to_string(),
                             implementation.to_owned(),
-                            missing_parameters
-                                .into_iter()
-                                .map(ToOwned::to_owned)
-                                .collect_vec(),
+                            missing_parameters.into_iter().map(ToOwned::to_owned).collect_vec(),
                         ));
                     }
 
@@ -703,10 +686,7 @@ fn check_field_type_narrowing(
                             field_name.to_owned(),
                             type_name.to_string(),
                             implementation.to_owned(),
-                            unexpected_parameters
-                                .into_iter()
-                                .map(ToOwned::to_owned)
-                                .collect_vec(),
+                            unexpected_parameters.into_iter().map(ToOwned::to_owned).collect_vec(),
                         ));
                     }
 
@@ -813,10 +793,8 @@ fn get_field_origins(
             };
             let parent_fields = get_vertex_type_fields(implemented_defn);
             for field in parent_fields {
-                let parent_field_origin = &field_origins[&(
-                    Arc::from(implemented_interface),
-                    Arc::from(field.node.name.node.as_ref()),
-                )];
+                let parent_field_origin = &field_origins
+                    [&(Arc::from(implemented_interface), Arc::from(field.node.name.node.as_ref()))];
 
                 implemented_fields
                     .entry(field.node.name.node.as_ref())
@@ -926,9 +904,6 @@ mod tests {
 
         let mut number_subtypes = schema.subtypes("Number").unwrap().collect_vec();
         number_subtypes.sort_unstable();
-        assert_eq!(
-            vec!["Composite", "Neither", "Number", "Prime"],
-            number_subtypes
-        );
+        assert_eq!(vec!["Composite", "Neither", "Number", "Prime"], number_subtypes);
     }
 }

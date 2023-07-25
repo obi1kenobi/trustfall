@@ -23,10 +23,7 @@ struct QueryResultMapDeserializer<I: Iterator<Item = (Arc<str>, FieldValue)>> {
 
 impl<I: Iterator<Item = (Arc<str>, FieldValue)>> QueryResultMapDeserializer<I> {
     fn new(iter: I) -> Self {
-        Self {
-            iter,
-            next_value: Default::default(),
-        }
+        Self { iter, next_value: Default::default() }
     }
 }
 
@@ -52,9 +49,7 @@ impl<'de> de::Deserializer<'de> for QueryResultDeserializer {
     where
         V: de::Visitor<'de>,
     {
-        visitor.visit_map(QueryResultMapDeserializer::new(
-            self.query_result.into_iter(),
-        ))
+        visitor.visit_map(QueryResultMapDeserializer::new(self.query_result.into_iter()))
     }
 
     serde::forward_to_deserialize_any! {

@@ -23,9 +23,7 @@ pub struct FilesystemInterpreter {
 
 impl FilesystemInterpreter {
     pub fn new(origin: String) -> FilesystemInterpreter {
-        FilesystemInterpreter {
-            origin: Rc::new(origin),
-        }
+        FilesystemInterpreter { origin: Rc::new(origin) }
     }
 }
 
@@ -37,10 +35,7 @@ struct OriginIterator {
 
 impl OriginIterator {
     pub fn new(vertex: DirectoryVertex) -> OriginIterator {
-        OriginIterator {
-            origin_vertex: vertex,
-            produced: false,
-        }
+        OriginIterator { origin_vertex: vertex, produced: false }
     }
 }
 
@@ -123,11 +118,7 @@ impl SubdirectoryIterator {
     pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> Self {
         let mut buf = PathBuf::new();
         buf.extend([&*origin, &directory.path]);
-        Self {
-            origin,
-            directory: directory.clone(),
-            dir_iter: fs::read_dir(buf).unwrap(),
-        }
+        Self { origin, directory: directory.clone(), dir_iter: fs::read_dir(buf).unwrap() }
     }
 }
 
@@ -151,10 +142,8 @@ impl Iterator for SubdirectoryIterator {
 
                             let mut buf = PathBuf::new();
                             buf.extend([&self.directory.path, &name]);
-                            let result = DirectoryVertex {
-                                name,
-                                path: buf.to_str().unwrap().to_owned(),
-                            };
+                            let result =
+                                DirectoryVertex { name, path: buf.to_str().unwrap().to_owned() };
                             return Some(FilesystemVertex::Directory(result));
                         }
                     }
@@ -171,10 +160,8 @@ pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
 type IndividualEdgeResolver<'a> =
     fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
-type ContextAndIterableOfEdges<'a> = (
-    DataContext<FilesystemVertex>,
-    VertexIterator<'a, FilesystemVertex>,
-);
+type ContextAndIterableOfEdges<'a> =
+    (DataContext<FilesystemVertex>, VertexIterator<'a, FilesystemVertex>);
 
 struct EdgeResolverIterator<'a> {
     origin: Rc<String>,
@@ -188,19 +175,12 @@ impl<'a> EdgeResolverIterator<'a> {
         contexts: VertexIterator<'a, DataContext<FilesystemVertex>>,
         edge_resolver: IndividualEdgeResolver<'a>,
     ) -> Self {
-        Self {
-            origin,
-            contexts,
-            edge_resolver,
-        }
+        Self { origin, contexts, edge_resolver }
     }
 }
 
 impl<'a> Iterator for EdgeResolverIterator<'a> {
-    type Item = (
-        DataContext<FilesystemVertex>,
-        VertexIterator<'a, FilesystemVertex>,
-    );
+    type Item = (DataContext<FilesystemVertex>, VertexIterator<'a, FilesystemVertex>);
 
     fn next(&mut self) -> Option<ContextAndIterableOfEdges<'a>> {
         if let Some(context) = self.contexts.next() {
@@ -270,10 +250,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
     ) -> VertexIterator<'a, Self::Vertex> {
         assert!(edge_name.as_ref() == "OriginDirectory");
         assert!(parameters.is_empty());
-        let vertex = DirectoryVertex {
-            name: "<origin>".to_owned(),
-            path: "".to_owned(),
-        };
+        let vertex = DirectoryVertex { name: "<origin>".to_owned(), path: "".to_owned() };
         Box::new(OriginIterator::new(vertex))
     }
 
@@ -328,11 +305,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 "extension" => Box::new(contexts.map(|context| match context.active_vertex() {
                     None => (context, FieldValue::Null),
                     Some(FilesystemVertex::File(ref x)) => {
-                        let value = x
-                            .extension
-                            .clone()
-                            .map(Into::into)
-                            .unwrap_or(FieldValue::Null);
+                        let value = x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
                         (context, value)
                     }
                     _ => unreachable!(),

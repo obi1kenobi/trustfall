@@ -63,14 +63,9 @@ fn coerce_if_needed<'query, AdapterT: Adapter<'query>>(
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     match vertex.coerced_from_type.as_ref() {
         None => iterator,
-        Some(coerced_from) => perform_coercion(
-            adapter,
-            carrier,
-            vertex,
-            coerced_from,
-            &vertex.type_name,
-            iterator,
-        ),
+        Some(coerced_from) => {
+            perform_coercion(adapter, carrier, vertex, coerced_from, &vertex.type_name, iterator)
+        }
     }
 }
 
@@ -191,14 +186,8 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     let mut query = carrier.query.take().expect("query was not returned");
 
     let root_component = query.indexed_query.ir_query.root_component.clone();
-    let mut output_names: Vec<Arc<str>> = query
-        .indexed_query
-        .ir_query
-        .root_component
-        .outputs
-        .keys()
-        .cloned()
-        .collect();
+    let mut output_names: Vec<Arc<str>> =
+        query.indexed_query.ir_query.root_component.outputs.keys().cloned().collect();
     output_names.sort_unstable(); // to ensure deterministic resolve_property() ordering
 
     let mut output_iterator = iterator;
@@ -238,11 +227,8 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
             &context.values
         );
 
-        let mut output: BTreeMap<Arc<str>, FieldValue> = output_names
-            .iter()
-            .cloned()
-            .zip(context.values.drain(..))
-            .collect();
+        let mut output: BTreeMap<Arc<str>, FieldValue> =
+            output_names.iter().cloned().zip(context.values.drain(..)).collect();
 
         for ((_, output_name), output_value) in context.folded_values {
             let existing = output.insert(output_name, output_value.into());
@@ -261,11 +247,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
 fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
-    let query_arguments = &carrier
-        .query
-        .as_ref()
-        .expect("query was not returned")
-        .arguments;
+    let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
             Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
@@ -382,9 +364,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                     } else {
                         TaggedValue::NonexistentOptional
                     };
-                    context
-                        .imported_tags
-                        .insert(cloned_field.clone(), tag_value);
+                    context.imported_tags.insert(cloned_field.clone(), tag_value);
                     context
                 }));
             }
@@ -459,10 +439,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             None
         };
 
-        context
-            .folded_contexts
-            .insert_or_error(fold_eid, fold_elements)
-            .unwrap();
+        context.folded_contexts.insert_or_error(fold_eid, fold_elements).unwrap();
 
         // Remove no-longer-needed imported tags.
         for imported_tag in &moved_fold.imported_tags {
@@ -509,13 +486,11 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
             // If the @fold is inside an @optional that doesn't exist,
             // its outputs should be `null` rather than empty lists (the usual for empty folds).
             // Transformed outputs should also be `null` rather than their usual transformed defaults.
-            let value = fold_elements
-                .as_ref()
-                .map(|elements| match fold_specific_field {
-                    FoldSpecificFieldKind::Count => {
-                        ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
-                    }
-                });
+            let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
+                FoldSpecificFieldKind::Count => {
+                    ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+                }
+            });
             ctx.folded_values
                 .insert_or_error((fold_eid, output_name.clone()), value)
                 .expect("this fold output was already computed");
@@ -523,11 +498,8 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
 
         // Prepare empty vectors for all the outputs from this @fold component.
         // If the fold-root vertex didn't exist, the default is `null` instead.
-        let default_value = if fold_elements.is_some() {
-            Some(ValueOrVec::Vec(vec![]))
-        } else {
-            None
-        };
+        let default_value =
+            if fold_elements.is_some() { Some(ValueOrVec::Vec(vec![])) } else { None };
         let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), default_value.clone()))
@@ -535,10 +507,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
         // Skip the adapter resolve_property() calls and add the empty output values directly.
-        let fold_contains_elements = fold_elements
-            .as_ref()
-            .map(|e| !e.is_empty())
-            .unwrap_or(false);
+        let fold_contains_elements = fold_elements.as_ref().map(|e| !e.is_empty()).unwrap_or(false);
         if !fold_contains_elements {
             // We need to make sure any outputs from any nested @fold components (recursively)
             // are set to the default value (empty list if the @fold existed and was empty,
@@ -556,11 +525,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
         } else {
             // Iterate through the elements of the fold and get the values we need.
             let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> = Box::new(
-                fold_elements
-                    .as_ref()
-                    .expect("fold did not contain elements")
-                    .clone()
-                    .into_iter(),
+                fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter(),
             );
             for output_name in output_names.iter() {
                 // This is a slimmed-down version of computing a context field:
@@ -623,10 +588,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
         ctx.folded_values.extend(folded_values);
 
         // Ensure the merged maps had disjoint keys.
-        assert_eq!(
-            ctx.folded_values.len(),
-            prior_folded_values_count + new_folded_values_count
-        );
+        assert_eq!(ctx.folded_values.len(), prior_folded_values_count + new_folded_values_count);
 
         ctx
     });
@@ -643,14 +605,8 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let local_field = filter.left();
-    let field_iterator = compute_local_field(
-        adapter,
-        carrier,
-        component,
-        current_vid,
-        local_field,
-        iterator,
-    );
+    let field_iterator =
+        compute_local_field(adapter, carrier, component, current_vid, local_field, iterator);
 
     apply_filter(
         adapter,
@@ -974,14 +930,8 @@ fn perform_entry_into_new_vertex<'query, AdapterT: Adapter<'query>>(
     let vertex_id = vertex.vid;
     let mut iterator = coerce_if_needed(adapter, carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
-        iterator = apply_local_field_filter(
-            adapter,
-            carrier,
-            component,
-            vertex_id,
-            filter_expr,
-            iterator,
-        );
+        iterator =
+            apply_local_field_filter(adapter, carrier, component, vertex_id, filter_expr, iterator);
     }
     Box::new(iterator.map(move |mut x| {
         x.record_vertex(vertex_id);
@@ -1027,10 +977,8 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
         recursion_iterator,
     );
 
-    let edge_endpoint_type = expanding_to
-        .coerced_from_type
-        .as_ref()
-        .unwrap_or(&expanding_to.type_name);
+    let edge_endpoint_type =
+        expanding_to.coerced_from_type.as_ref().unwrap_or(&expanding_to.type_name);
     let recursing_from = recursive.coerce_to.as_ref().unwrap_or(edge_endpoint_type);
 
     for _ in 2..=max_depth {
@@ -1049,13 +997,16 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
             // This coercion is unusual since it doesn't discard elements that can't be coerced.
             // This is because we still want to produce those elements, and we simply want to
             // not continue recursing deeper through them since they don't have the edge we need.
-            recursion_iterator = Box::new(coercion_iter.map(|(ctx, can_coerce)| {
-                if can_coerce {
-                    ctx
-                } else {
-                    ctx.ensure_suspended()
-                }
-            }));
+            recursion_iterator =
+                Box::new(coercion_iter.map(
+                    |(ctx, can_coerce)| {
+                        if can_coerce {
+                            ctx
+                        } else {
+                            ctx.ensure_suspended()
+                        }
+                    },
+                ));
         }
 
         recursion_iterator = perform_one_recursive_edge_expansion(
@@ -1155,10 +1106,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
                     // The "self" vertex has already been moved out, so use the neighbor base context
                     // as the starting point for constructing a new context.
                     return Some(
-                        self.neighbor_base
-                            .as_ref()
-                            .unwrap()
-                            .split_and_move_to_vertex(Some(vertex)),
+                        self.neighbor_base.as_ref().unwrap().split_and_move_to_vertex(Some(vertex)),
                     );
                 }
             } else {
@@ -1205,14 +1153,10 @@ fn unpack_piggyback_inner<Vertex: Debug + Clone>(
 fn post_process_recursive_expansion<'query, Vertex: Clone + Debug + 'query>(
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
-    Box::new(
-        iterator
-            .flat_map(|context| unpack_piggyback(context))
-            .map(|context| {
-                assert!(context.piggyback.is_none());
-                context.ensure_unsuspended()
-            }),
-    )
+    Box::new(iterator.flat_map(|context| unpack_piggyback(context)).map(|context| {
+        assert!(context.piggyback.is_none());
+        context.ensure_unsuspended()
+    }))
 }
 
 #[cfg(test)]
@@ -1246,10 +1190,8 @@ mod tests {
         let check_data = fs::read_to_string(check_path).unwrap();
         let expected_output_data: TestInterpreterOutputData = ron::from_str(&check_data).unwrap();
 
-        let indexed_query: IndexedQuery = test_query
-            .ir_query
-            .try_into()
-            .expect("failed to create IndexedQuery");
+        let indexed_query: IndexedQuery =
+            test_query.ir_query.try_into().expect("failed to create IndexedQuery");
         assert_eq!(expected_output_data.outputs, indexed_query.outputs);
     }
 
@@ -1266,11 +1208,8 @@ mod tests {
         let test_query: TestIRQueryResult = ron::from_str(&input_data).unwrap();
         let test_query = test_query.unwrap();
 
-        let arguments: BTreeMap<Arc<str>, FieldValue> = test_query
-            .arguments
-            .into_iter()
-            .map(|(k, v)| (Arc::from(k), v))
-            .collect();
+        let arguments: BTreeMap<Arc<str>, FieldValue> =
+            test_query.arguments.into_iter().map(|(k, v)| (Arc::from(k), v)).collect();
 
         let indexed_query: IndexedQuery = test_query.ir_query.try_into().unwrap();
         let constructed_test_item = InterpretedQuery::from_query_and_arguments(
@@ -1305,12 +1244,8 @@ mod tests {
 
         impl<I: Iterator> VariableChunkIterator<I> {
             fn new(iter: I, chunk_sequence: u64) -> Self {
-                let mut value = Self {
-                    iter,
-                    buffer: VecDeque::with_capacity(4),
-                    chunk_sequence,
-                    offset: 0,
-                };
+                let mut value =
+                    Self { iter, buffer: VecDeque::with_capacity(4), chunk_sequence, offset: 0 };
 
                 // Eagerly advancing the input iterator is important because that's how we repro:
                 // https://github.com/obi1kenobi/trustfall/issues/205
@@ -1341,8 +1276,7 @@ mod tests {
                     let next = self.iter.next();
                     if next.is_some() {
                         let elements_to_buffer = self.next_chunk_size() - 1;
-                        self.buffer
-                            .extend(self.iter.by_ref().take(elements_to_buffer));
+                        self.buffer.extend(self.iter.by_ref().take(elements_to_buffer));
                     }
                     next
                 }
@@ -1379,8 +1313,7 @@ mod tests {
                 drop(batch_sequences_ref);
 
                 let inner =
-                    self.adapter
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info);
+                    self.adapter.resolve_starting_vertices(edge_name, parameters, resolve_info);
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
@@ -1470,20 +1403,12 @@ mod tests {
                 Arc::new(input_data.ir_query.try_into().unwrap());
             assert_eq!(&output_data.outputs, &indexed_query.outputs);
 
-            let arguments = Arc::new(
-                input_data
-                    .arguments
-                    .into_iter()
-                    .map(|(k, v)| (k.into(), v))
-                    .collect(),
-            );
-            let adapter = Arc::new(VariableBatchingAdapter::new(
-                NumbersAdapter::new(),
-                batch_sequences,
-            ));
-            let actual_results: Vec<_> = interpret_ir(adapter, indexed_query, arguments)
-                .unwrap()
-                .collect();
+            let arguments =
+                Arc::new(input_data.arguments.into_iter().map(|(k, v)| (k.into(), v)).collect());
+            let adapter =
+                Arc::new(VariableBatchingAdapter::new(NumbersAdapter::new(), batch_sequences));
+            let actual_results: Vec<_> =
+                interpret_ir(adapter, indexed_query, arguments).unwrap().collect();
 
             assert_eq!(output_data.results, actual_results);
         }

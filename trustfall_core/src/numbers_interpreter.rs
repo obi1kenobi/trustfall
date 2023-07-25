@@ -191,11 +191,8 @@ fn get_factors(primes: &BTreeSet<i64>, num: i64) -> BTreeSet<i64> {
             pos_factors
         }
         x if x >= 2 => {
-            let factors: BTreeSet<i64> = primes
-                .iter()
-                .copied()
-                .filter(|prime| num % *prime == 0)
-                .collect();
+            let factors: BTreeSet<i64> =
+                primes.iter().copied().filter(|prime| num % *prime == 0).collect();
             factors
         }
         _ => unreachable!(),
@@ -412,10 +409,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 })
             }
             _ => {
-                unreachable!(
-                    "Unexpected edge {} on vertex type {}",
-                    &edge_name, &type_name
-                );
+                unreachable!("Unexpected edge {} on vertex type {}", &edge_name, &type_name);
             }
         }
     }
@@ -428,9 +422,9 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
-            ("Number" | "Named", "Prime") => resolve_coercion_with(contexts, |vertex| {
-                matches!(vertex, NumbersVertex::Prime(..))
-            }),
+            ("Number" | "Named", "Prime") => {
+                resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersVertex::Prime(..)))
+            }
             ("Number" | "Named", "Composite") => resolve_coercion_with(contexts, |vertex| {
                 matches!(vertex, NumbersVertex::Composite(..))
             }),
@@ -448,11 +442,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                         | NumbersVertex::Neither(..)
                 )
             }),
-            _ => unimplemented!(
-                "Unexpected coercion attempted: {} {}",
-                type_name,
-                coerce_to_type
-            ),
+            _ => unimplemented!("Unexpected coercion attempted: {} {}", type_name, coerce_to_type),
         }
     }
 }

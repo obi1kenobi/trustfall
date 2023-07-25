@@ -45,9 +45,7 @@ where
 {
     let mut serializer = serializer.serialize_map(Some(value.len()))?;
 
-    value
-        .iter()
-        .try_for_each(|(k, v)| serializer.serialize_entry(k, &v.to_string()))?;
+    value.iter().try_for_each(|(k, v)| serializer.serialize_entry(k, &v.to_string()))?;
 
     serializer.end()
 }

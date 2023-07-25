@@ -64,9 +64,7 @@ impl<'a> SchemaAdapter<'a> {
     /// Make an adapter for querying the given Trustfall schema.
     #[inline(always)]
     pub fn new(schema_to_query: &'a Schema) -> Self {
-        Self {
-            schema: schema_to_query,
-        }
+        Self { schema: schema_to_query }
     }
 
     /// A schema that describes Trustfall schemas.
@@ -163,11 +161,7 @@ pub struct Property<'a> {
 impl<'a> Property<'a> {
     #[inline(always)]
     fn new(parent: &'a TypeDefinition, name: &'a str, type_: &'a Type) -> Self {
-        Self {
-            parent,
-            name,
-            type_,
-        }
+        Self { parent, name, type_ }
     }
 }
 
@@ -254,29 +248,21 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     let possibilities_as_owned_strings = possibilities
                         .iter()
                         .map(|el| {
-                            el.as_str()
-                                .expect("for name possibility to be a string")
-                                .to_string()
+                            el.as_str().expect("for name possibility to be a string").to_string()
                         })
                         .collect::<Vec<_>>();
 
                     let vertex_types = &self.schema.vertex_types;
 
-                    Box::new(
-                        possibilities_as_owned_strings
-                            .into_iter()
-                            .filter_map(move |wanted| {
-                                vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
-                                    if exact_wanted.name.node != root_query_type {
-                                        Some(SchemaVertex::VertexType(VertexType::new(
-                                            exact_wanted,
-                                        )))
-                                    } else {
-                                        None
-                                    }
-                                })
-                            }),
-                    )
+                    Box::new(possibilities_as_owned_strings.into_iter().filter_map(move |wanted| {
+                        vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
+                            if exact_wanted.name.node != root_query_type {
+                                Some(SchemaVertex::VertexType(VertexType::new(exact_wanted)))
+                            } else {
+                                None
+                            }
+                        })
+                    }))
                 } else {
                     Box::new(self.schema.vertex_types.values().filter_map(move |v| {
                         (v.name.node != root_query_type)
@@ -346,10 +332,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                         .as_ref()
                         .map(|v| {
                             let value = &v.node;
-                            value
-                                .clone()
-                                .try_into()
-                                .expect("failed to convert ConstValue")
+                            value.clone().try_into().expect("failed to convert ConstValue")
                         })
                         .or_else(|| {
                             // Nullable edge parameters have an implicit default value of `null`.

@@ -85,10 +85,7 @@ impl From<FieldValue> for TransparentValue {
             FieldValue::Boolean(x) => TransparentValue::Boolean(x),
             FieldValue::Enum(x) => TransparentValue::Enum(x),
             FieldValue::List(x) => TransparentValue::List(
-                x.iter()
-                    .map(|v| v.clone().into())
-                    .collect::<Vec<_>>()
-                    .into(),
+                x.iter().map(|v| v.clone().into()).collect::<Vec<_>>().into(),
             ),
         }
     }
@@ -104,12 +101,9 @@ impl From<TransparentValue> for FieldValue {
             TransparentValue::String(x) => FieldValue::String(x),
             TransparentValue::Boolean(x) => FieldValue::Boolean(x),
             TransparentValue::Enum(x) => FieldValue::Enum(x),
-            TransparentValue::List(x) => FieldValue::List(
-                x.iter()
-                    .map(|v| v.clone().into())
-                    .collect::<Vec<_>>()
-                    .into(),
-            ),
+            TransparentValue::List(x) => {
+                FieldValue::List(x.iter().map(|v| v.clone().into()).collect::<Vec<_>>().into())
+            }
         }
     }
 }
@@ -454,10 +448,7 @@ impl TryFrom<Value> for FieldValue {
             Value::Number(n) => convert_number_to_field_value(&n),
             Value::String(s) => Ok(Self::String(s.into())),
             Value::Boolean(b) => Ok(Self::Boolean(b)),
-            Value::List(l) => l
-                .into_iter()
-                .map(Self::try_from)
-                .collect::<Result<Self, _>>(),
+            Value::List(l) => l.into_iter().map(Self::try_from).collect::<Result<Self, _>>(),
             Value::Enum(n) => {
                 // We have an enum value, so we know the variant name but the variant on its own
                 // doesn't tell us the name of the enum type it belongs in. We'll have to determine
@@ -499,21 +490,12 @@ mod tests {
         test(Some::<i64>(123), FieldValue::Int64(123));
         test(Some::<u64>(123), FieldValue::Uint64(123));
 
-        test(
-            FiniteF64::try_from(3.15).unwrap(),
-            FieldValue::Float64(3.15),
-        );
+        test(FiniteF64::try_from(3.15).unwrap(), FieldValue::Float64(3.15));
 
         test("a &str", FieldValue::String("a &str".into()));
-        test(
-            "a String".to_string(),
-            FieldValue::String("a String".into()),
-        );
+        test("a String".to_string(), FieldValue::String("a String".into()));
 
-        test(
-            vec![1, 2],
-            FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()),
-        );
+        test(vec![1, 2], FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()));
 
         test(
             ["a String".to_string()].as_slice(),

@@ -74,16 +74,7 @@ pub fn execute_query<'vertex>(
     variables: BTreeMap<impl Into<Arc<str>>, impl Into<FieldValue>>,
 ) -> anyhow::Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex>> {
     let parsed_query = trustfall_core::frontend::parse(schema, query)?;
-    let vars = Arc::new(
-        variables
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect(),
-    );
+    let vars = Arc::new(variables.into_iter().map(|(k, v)| (k.into(), v.into())).collect());
 
-    Ok(trustfall_core::interpreter::execution::interpret_ir(
-        adapter,
-        parsed_query,
-        vars,
-    )?)
+    Ok(trustfall_core::interpreter::execution::interpret_ir(adapter, parsed_query, vars)?)
 }

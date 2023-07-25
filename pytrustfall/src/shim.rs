@@ -152,11 +152,9 @@ fn make_python_value(py: Python, value: &FieldValue) -> Py<PyAny> {
         FieldValue::String(x) => x.into_py(py),
         FieldValue::Boolean(x) => x.into_py(py),
         FieldValue::Enum(_) => todo!(),
-        FieldValue::List(x) => x
-            .iter()
-            .map(|v| make_python_value(py, v))
-            .collect::<Vec<_>>()
-            .into_py(py),
+        FieldValue::List(x) => {
+            x.iter().map(|v| make_python_value(py, v)).collect::<Vec<_>>().into_py(py)
+        }
         _ => unimplemented!("unsupported value: {value:#?}"),
     }
 }
@@ -173,18 +171,17 @@ fn make_field_value_from_ref(value: &PyAny) -> Result<FieldValue, ()> {
     } else if let Ok(inner) = value.extract::<String>() {
         Ok(FieldValue::String(inner.into()))
     } else if let Ok(inner) = value.extract::<Vec<&PyAny>>() {
-        let converted_values = inner
-            .iter()
-            .copied()
-            .map(make_field_value_from_ref)
-            .try_fold(vec![], |mut acc, item| {
+        let converted_values = inner.iter().copied().map(make_field_value_from_ref).try_fold(
+            vec![],
+            |mut acc, item| {
                 if let Ok(value) = item {
                     acc.push(value);
                     Some(acc)
                 } else {
                     None
                 }
-            });
+            },
+        );
 
         if let Some(inner_values) = converted_values {
             Ok(FieldValue::List(inner_values.into()))
@@ -242,10 +239,8 @@ impl Adapter<'static> for AdapterShim {
         _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         Python::with_gil(|py| {
-            let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
-                .iter()
-                .map(|(k, v)| (k.to_string(), make_python_value(py, v)))
-                .collect();
+            let parameter_data: BTreeMap<String, Py<PyAny>> =
+                parameters.iter().map(|(k, v)| (k.to_string(), make_python_value(py, v))).collect();
 
             let py_iterable = self
                 .adapter
@@ -295,22 +290,15 @@ impl Adapter<'static> for AdapterShim {
     ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
-            let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
-                .iter()
-                .map(|(k, v)| (k.to_string(), make_python_value(py, v)))
-                .collect();
+            let parameter_data: BTreeMap<String, Py<PyAny>> =
+                parameters.iter().map(|(k, v)| (k.to_string(), make_python_value(py, v))).collect();
 
             let py_iterable = self
                 .adapter
                 .call_method(
                     py,
                     "resolve_neighbors",
-                    (
-                        contexts,
-                        type_name.as_ref(),
-                        edge_name.as_ref(),
-                        parameter_data,
-                    ),
+                    (contexts, type_name.as_ref(), edge_name.as_ref(), parameter_data),
                     None,
                 )
                 .unwrap();
@@ -359,20 +347,18 @@ impl Iterator for PythonVertexIterator {
     type Item = Arc<Py<PyAny>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(
-            |py| match self.underlying.call_method(py, "__next__", (), None) {
-                Ok(value) => Some(Arc::new(value)),
-                Err(e) => {
-                    if e.is_instance_of::<PyStopIteration>(py) {
-                        None
-                    } else {
-                        println!("Got error: {e:?}");
-                        e.print(py);
-                        panic!();
-                    }
+        Python::with_gil(|py| match self.underlying.call_method(py, "__next__", (), None) {
+            Ok(value) => Some(Arc::new(value)),
+            Err(e) => {
+                if e.is_instance_of::<PyStopIteration>(py) {
+                    None
+                } else {
+                    println!("Got error: {e:?}");
+                    e.print(py);
+                    panic!();
                 }
-            },
-        )
+            }
+        })
     }
 }
 
@@ -403,10 +389,7 @@ impl Iterator for PythonResolvePropertyIterator {
                     // TODO: if this panics, we got an unrepresentable FieldValue,
                     //       which should be a proper error
                     let value: FieldValue = make_field_value_from_ref(
-                        output
-                            .call_method(py, "__getitem__", (1i64,), None)
-                            .unwrap()
-                            .as_ref(py),
+                        output.call_method(py, "__getitem__", (1i64,), None).unwrap().as_ref(py),
                     )
                     .unwrap();
 
@@ -437,10 +420,7 @@ impl PythonResolveNeighborsIterator {
 }
 
 impl Iterator for PythonResolveNeighborsIterator {
-    type Item = (
-        DataContext<Arc<Py<PyAny>>>,
-        VertexIterator<'static, Arc<Py<PyAny>>>,
-    );
+    type Item = (DataContext<Arc<Py<PyAny>>>, VertexIterator<'static, Arc<Py<PyAny>>>);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
@@ -452,9 +432,8 @@ impl Iterator for PythonResolveNeighborsIterator {
                         .unwrap()
                         .extract(py)
                         .unwrap();
-                    let neighbors_iterable = output
-                        .call_method(py, "__getitem__", (1i64,), None)
-                        .unwrap();
+                    let neighbors_iterable =
+                        output.call_method(py, "__getitem__", (1i64,), None).unwrap();
 
                     // Allow returning iterables (e.g. []), not just iterators.
                     // Iterators return self when __iter__() is called.

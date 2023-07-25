@@ -53,10 +53,7 @@ fn validate_field<'a>(
     let old_path_length = path.len();
     let field_def = schema
         .fields
-        .get(&(
-            Arc::from(parent_type_name.to_string()),
-            Arc::from(node.name.to_string()),
-        ))
+        .get(&(Arc::from(parent_type_name.to_string()), Arc::from(node.name.to_string())))
         .ok_or_else(|| {
             path.push(&node.name);
             FrontendError::ValidationError(ValidationError::NonExistentPath(
@@ -89,10 +86,7 @@ fn validate_field<'a>(
                 | TypeKind::Enum(_)
                 | TypeKind::InputObject(_) => unreachable!(),
             };
-            if !implemented_interfaces
-                .iter()
-                .any(|x| x.node.as_ref() == pre_coercion_type_name)
-            {
+            if !implemented_interfaces.iter().any(|x| x.node.as_ref() == pre_coercion_type_name) {
                 // The specified coerced-to type does not implement the source interface.
                 return Err(FrontendError::ValidationError(
                     ValidationError::CannotCoerceToUnrelatedType(
@@ -103,9 +97,9 @@ fn validate_field<'a>(
             }
         } else {
             // The coerced-to type is not part of the schema.
-            return Err(FrontendError::ValidationError(
-                ValidationError::NonExistentType(coerced.to_string()),
-            ));
+            return Err(FrontendError::ValidationError(ValidationError::NonExistentType(
+                coerced.to_string(),
+            )));
         }
 
         path.push(coerced);

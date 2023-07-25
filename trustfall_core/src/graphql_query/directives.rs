@@ -139,10 +139,7 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                     expected_arg_count,
                     parsed_args.len()
                 ),
-                value
-                    .node
-                    .get_argument("value")
-                    .map_or(value.pos, |arg| arg.pos),
+                value.node.get_argument("value").map_or(value.pos, |arg| arg.pos),
             ));
         }
 
@@ -154,10 +151,7 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
             "<" => Ok(Operation::LessThan((), parsed_args.pop().unwrap())),
             "<=" => Ok(Operation::LessThanOrEqual((), parsed_args.pop().unwrap())),
             ">" => Ok(Operation::GreaterThan((), parsed_args.pop().unwrap())),
-            ">=" => Ok(Operation::GreaterThanOrEqual(
-                (),
-                parsed_args.pop().unwrap(),
-            )),
+            ">=" => Ok(Operation::GreaterThanOrEqual((), parsed_args.pop().unwrap())),
             "contains" => Ok(Operation::Contains((), parsed_args.pop().unwrap())),
             "not_contains" => Ok(Operation::NotContains((), parsed_args.pop().unwrap())),
             "one_of" => Ok(Operation::OneOf((), parsed_args.pop().unwrap())),
@@ -248,9 +242,7 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
             })?;
         }
 
-        Ok(Self {
-            name: output_argument,
-        })
+        Ok(Self { name: output_argument })
     }
 }
 
@@ -494,16 +486,15 @@ impl TryFrom<&Positioned<Directive>> for RecurseDirective {
             )
         })?;
         let depth = match &depth_argument.node {
-            Value::Number(n) => n
-                .as_u64()
-                .and_then(|v| NonZeroUsize::new(v as usize))
-                .ok_or_else(|| {
+            Value::Number(n) => {
+                n.as_u64().and_then(|v| NonZeroUsize::new(v as usize)).ok_or_else(|| {
                     ParseError::InappropriateTypeForDirectiveArgument(
                         "@recurse".to_owned(),
                         "depth".to_owned(),
                         depth_argument.pos,
                     )
-                }),
+                })
+            }
             _ => Err(ParseError::InappropriateTypeForDirectiveArgument(
                 "@recurse".to_owned(),
                 "depth".to_owned(),
@@ -541,10 +532,8 @@ pub(crate) struct FoldGroup {
 }
 
 fn ensure_name_is_valid(name: &str) -> Result<(), Vec<char>> {
-    let mut invalid_char_iter = name
-        .chars()
-        .filter(|c| !c.is_ascii_alphanumeric() && *c != '_')
-        .peekable();
+    let mut invalid_char_iter =
+        name.chars().filter(|c| !c.is_ascii_alphanumeric() && *c != '_').peekable();
     if invalid_char_iter.peek().is_some() {
         let mut seen_chars: HashSet<char> = Default::default();
         let mut invalid_chars: Vec<_> = Default::default();
