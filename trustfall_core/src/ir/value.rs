@@ -485,41 +485,39 @@ mod tests {
 
     #[test]
     fn test_field_value_into() {
-        let test_data: &[(FieldValue, FieldValue)] = &[
-            (123i64.into(), FieldValue::Int64(123)),
-            (123u64.into(), FieldValue::Uint64(123)),
-            (Option::<i64>::Some(123i64).into(), FieldValue::Int64(123)),
-            (Option::<u64>::Some(123u64).into(), FieldValue::Uint64(123)),
-            (
-                FiniteF64::try_from(3.15).unwrap().into(),
-                FieldValue::Float64(3.15),
-            ),
-            (false.into(), FieldValue::Boolean(false)),
-            (
-                "a &str".into(),
-                FieldValue::String("a &str".to_string().into()),
-            ),
-            (
-                "a String".to_string().into(),
-                FieldValue::String("a String".to_string().into()),
-            ),
-            (
-                (&"a &String".to_string()).into(),
-                FieldValue::String("a &String".to_string().into()),
-            ),
-            (Option::<i64>::None.into(), FieldValue::Null),
-            (
-                vec![1, 2].into(),
-                FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()),
-            ),
-            (
-                ["a String".to_string()].as_slice().into(),
-                FieldValue::List(vec![FieldValue::String("a String".to_string().into())].into()),
-            ),
-        ];
-
-        for (actual_value, expected_value) in test_data {
-            assert_eq!(actual_value, expected_value);
+        #[track_caller]
+        fn test(value: impl Into<FieldValue>, expected: FieldValue) {
+            assert_eq!(value.into(), expected);
         }
+
+        test(false, FieldValue::Boolean(false));
+
+        test(123i64, FieldValue::Int64(123));
+        test(123u64, FieldValue::Uint64(123));
+
+        test(None::<i64>, FieldValue::Null);
+        test(Some::<i64>(123), FieldValue::Int64(123));
+        test(Some::<u64>(123), FieldValue::Uint64(123));
+
+        test(
+            FiniteF64::try_from(3.15).unwrap(),
+            FieldValue::Float64(3.15),
+        );
+
+        test("a &str", FieldValue::String("a &str".into()));
+        test(
+            "a String".to_string(),
+            FieldValue::String("a String".into()),
+        );
+
+        test(
+            vec![1, 2],
+            FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()),
+        );
+
+        test(
+            ["a String".to_string()].as_slice(),
+            FieldValue::List(vec![FieldValue::String("a String".to_string().into())].into()),
+        );
     }
 }
