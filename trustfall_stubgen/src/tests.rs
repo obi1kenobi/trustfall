@@ -172,3 +172,35 @@ fn test_hackernews_schema() {
 fn test_use_reserved_rust_names_in_schema() {
     test_schema("use_reserved_rust_names_in_schema");
 }
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' vertices, consider renaming one of them"
+)]
+fn use_type_and_typeunderscore_edge_names() {
+    test_schema("use_type_and_typeunderscore_edge_names");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type_' and 'Type' as field names on vertex 'Type', consider renaming one of them"
+)]
+fn vertextype_with_type_and_typeunderscore_edge_and_property() {
+    test_schema("vertextype_with_type_and_typeunderscore_edge_and_property");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' as field names on vertex 'Type', consider renaming one of them"
+)]
+fn vertextype_with_type_and_typeunderscore_edges() {
+    test_schema("vertextype_with_type_and_typeunderscore_edges");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' as field names on vertex 'Type', consider renaming one of them"
+)]
+fn vertextype_with_type_and_typeunderscore_properties() {
+    test_schema("vertextype_with_type_and_typeunderscore_properties");
+}

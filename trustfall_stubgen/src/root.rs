@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     io::Write,
     path::Path,
     sync::{Arc, OnceLock},
@@ -10,7 +10,7 @@ use quote::quote;
 use regex::Regex;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
-use crate::util::parse_import;
+use crate::util::{escaped_rust_name, parse_import, to_lower_snake_case};
 
 use super::{
     adapter_creator::make_adapter_file, edges_creator::make_edges_file,
@@ -51,6 +51,9 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
     let mut stub = AdapterStub::with_standard_mod(schema);
 
     let mut entrypoint_match_arms = proc_macro2::TokenStream::new();
+
+    ensure_no_vertex_name_keyword_conflicts(&querying_schema, schema_adapter.clone());
+    ensure_no_edge_name_keyword_conflicts(&querying_schema, schema_adapter.clone());
 
     make_vertex_file(&querying_schema, schema_adapter.clone(), &mut stub.vertex);
     make_entrypoints_file(
@@ -130,7 +133,12 @@ impl RustFile {
             PATTERN.get_or_init(|| Regex::new("([^{])\n    (pub|fn|use)").expect("invalid regex"));
 
         let pretty_item =
-            prettyplease::unparse(&syn::parse_str(&item.to_string()).expect("not valid Rust"));
+            prettyplease::unparse(&syn::parse_str(&item.to_string()).unwrap_or_else(|e| {
+                panic!(
+                    "expected to parse valid rust, instead got error: {e:?}\n\ncode:\n{}",
+                    item.to_string()
+                )
+            }));
         let postprocessed = pattern.replace_all(&pretty_item, "$1\n\n    $2");
 
         buffer.write_all(postprocessed.as_bytes())?;
@@ -408,4 +416,105 @@ fn make_vertex_file(
     };
 
     vertex_file.top_level_items.push(vertex);
+}
+
+fn ensure_no_vertex_name_keyword_conflicts(
+    querying_schema: &Schema,
+    adapter: Arc<SchemaAdapter<'_>>,
+) {
+    let query = r#"
+{
+    VertexType {
+        name @output
+    }
+}"#;
+    let variables: BTreeMap<String, String> = Default::default();
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct ResultRow {
+        name: String,
+    }
+
+    let rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
+        .expect("invalid query")
+        .map(|x| {
+            x.try_into_struct::<ResultRow>()
+                .expect("invalid conversion")
+        })
+        .collect();
+
+    let mut uniq: HashMap<String, String> = HashMap::new();
+
+    for row in rows {
+        let name = row.name.clone();
+        let converted = escaped_rust_name(to_lower_snake_case(&name));
+        let v = uniq.insert(converted, name);
+        if let Some(v) = v {
+            panic!(
+                "cannot generate adapter for a schema containing both '{}' and '{}' vertices, consider renaming one of them",
+                v, &row.name
+            );
+        }
+    }
+}
+
+fn ensure_no_edge_name_keyword_conflicts(
+    querying_schema: &Schema,
+    adapter: Arc<SchemaAdapter<'_>>,
+) {
+    let query = r#"
+{
+    VertexType {
+        name @output
+        edge_: edge @fold {
+            names: name @output
+        }
+        property_: property @fold {
+            names: name @output
+        }
+    }
+}"#;
+    let variables: BTreeMap<String, String> = Default::default();
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct ResultRow {
+        name: String,
+        edge_names: Vec<String>,
+        property_names: Vec<String>,
+    }
+
+    let rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
+        .expect("invalid query")
+        .map(|x| {
+            x.try_into_struct::<ResultRow>()
+                .expect("invalid conversion")
+        })
+        .collect();
+
+    for row in &rows {
+        let mut uniq: HashMap<String, String> = HashMap::new();
+
+        for edge_name in &row.edge_names {
+            let edge_name_for_map = edge_name.clone();
+            let converted = escaped_rust_name(to_lower_snake_case(&edge_name_for_map));
+            let v = uniq.insert(converted, edge_name_for_map);
+            if let Some(v) = v {
+                panic!(
+                    "cannot generate adapter for a schema containing both '{}' and '{}' as field names on vertex '{}', consider renaming one of them",
+                    v, &edge_name, &row.name
+                );
+            }
+        }
+        for property_name in &row.property_names {
+            let property_name_for_map = property_name.clone();
+            let converted = escaped_rust_name(to_lower_snake_case(&property_name_for_map));
+            let v = uniq.insert(converted, property_name_for_map);
+            if let Some(v) = v {
+                panic!(
+                    "cannot generate adapter for a schema containing both '{}' and '{}' as field names on vertex '{}', consider renaming one of them",
+                    v, &property_name, &row.name
+                );
+            }
+        }
+    }
 }
