@@ -232,7 +232,7 @@ jobs:
           cargo doc --workspace --all-features --no-deps --document-private-items
 
   rust-rustdoc-wasm:
-    name: Check fuzz targets
+    name: Check rustdoc WASM target
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
