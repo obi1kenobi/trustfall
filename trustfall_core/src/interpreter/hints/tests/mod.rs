@@ -1372,7 +1372,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(3)),
                         CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
                     ];
@@ -1429,7 +1429,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(0)), true)),
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(2)), true)),
@@ -1532,7 +1532,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
                     ];
                     let candidate = destination.dynamically_required_property("name");
@@ -1603,7 +1603,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
                     ];
                     let candidate = destination.dynamically_required_property("name");
@@ -1657,7 +1657,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -1798,7 +1798,7 @@ mod dynamic_property_values {
 
                     // Here the value *is* dynamically known, since the `@optional`
                     // has already been resolved in a prior step.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -1879,7 +1879,7 @@ mod dynamic_property_values {
 
                     // Here the value *is* dynamically known, since the property value can
                     // affect which vertices this edge is resolved to.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -1943,7 +1943,7 @@ mod dynamic_property_values {
                     // This value *is* dynamically known here: the "fold-count-filter" around it
                     // ensures that at least one such value must exist, or else vertices
                     // from the currently-resolved edge will be discarded.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = next_neighbor.dynamically_required_property("value");
@@ -1967,7 +1967,7 @@ mod dynamic_property_values {
 
                     // Here the value is also dynamically known, since the property is local
                     // to the edge being resolved.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -2065,7 +2065,7 @@ mod dynamic_property_values {
 
                     // Here the value is also dynamically known, since the property is local
                     // to the edge being resolved.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");

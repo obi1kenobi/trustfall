@@ -40,7 +40,7 @@ fn check_vertex_type_properties() {
         .expect("execution error")
         .collect();
 
-    let expected_rows = vec![
+    let expected_rows = [
         btreemap! {
             "property".into() => "name".into(),
         },
@@ -49,7 +49,7 @@ fn check_vertex_type_properties() {
         },
     ];
 
-    assert_eq!(expected_rows, rows);
+    assert_eq!(expected_rows.as_slice(), rows);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn check_vertex_type_properties_using_one_of() {
             .expect("to be comparable")
     });
 
-    let expected_rows = vec![
+    let expected_rows = [
         btreemap! {
             "property".into() => "is_interface".into(),
             "name".into() => "VertexType".into()
@@ -100,7 +100,7 @@ fn check_vertex_type_properties_using_one_of() {
         },
     ];
 
-    assert_eq!(expected_rows, rows);
+    assert_eq!(expected_rows.as_slice(), rows);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn check_entrypoint_target_edges() {
         .expect("execution error")
         .collect();
 
-    let expected_rows = vec![
+    let expected_rows = [
         btreemap! {
             "target".into() => "VertexType".into(),
             "edge".into() => "implements".into(),
@@ -149,7 +149,7 @@ fn check_entrypoint_target_edges() {
         },
     ];
 
-    assert_eq!(expected_rows, rows);
+    assert_eq!(expected_rows.as_slice(), rows);
 }
 
 #[test]
@@ -193,7 +193,7 @@ fn check_parameterized_edges() {
         .collect();
     rows.sort_unstable();
 
-    let mut expected_rows = vec![
+    let mut expected_rows = [
         Output {
             edge: "nullable".into(),
             parameter_name: "x".into(),
@@ -241,5 +241,5 @@ fn check_parameterized_edges() {
     ];
     expected_rows.sort_unstable();
 
-    similar_asserts::assert_eq!(expected_rows, rows);
+    similar_asserts::assert_eq!(expected_rows.as_slice(), rows);
 }

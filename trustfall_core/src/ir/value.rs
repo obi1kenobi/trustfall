@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn test_field_value_into() {
-        let test_data: Vec<(FieldValue, FieldValue)> = vec![
+        let test_data: &[(FieldValue, FieldValue)] = &[
             (123i64.into(), FieldValue::Int64(123)),
             (123u64.into(), FieldValue::Uint64(123)),
             (Option::<i64>::Some(123i64).into(), FieldValue::Int64(123)),
@@ -513,7 +513,7 @@ mod tests {
                 FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()),
             ),
             (
-                vec!["a String".to_string()].as_slice().into(),
+                ["a String".to_string()].as_slice().into(),
                 FieldValue::List(vec![FieldValue::String("a String".to_string().into())].into()),
             ),
         ];
