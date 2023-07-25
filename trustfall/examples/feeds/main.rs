@@ -34,10 +34,7 @@ struct InputQuery<'a> {
 }
 
 fn refresh_data() {
-    let data = [
-        (PCGAMER_FEED_URI, PCGAMER_FEED_LOCATION),
-        (WIRED_FEED_URI, WIRED_FEED_LOCATION),
-    ];
+    let data = [(PCGAMER_FEED_URI, PCGAMER_FEED_LOCATION), (WIRED_FEED_URI, WIRED_FEED_LOCATION)];
     for (uri, location) in data {
         let all_data = reqwest::blocking::get(uri).unwrap().bytes().unwrap();
         let write_file_path = location.to_owned() + "-temp";
@@ -78,10 +75,7 @@ fn run_query(path: &str) {
 }
 
 fn read_feed_data() -> Vec<Feed> {
-    let data = [
-        (PCGAMER_FEED_URI, PCGAMER_FEED_LOCATION),
-        (WIRED_FEED_URI, WIRED_FEED_LOCATION),
-    ];
+    let data = [(PCGAMER_FEED_URI, PCGAMER_FEED_LOCATION), (WIRED_FEED_URI, WIRED_FEED_LOCATION)];
 
     data.iter()
         .map(|(feed_uri, feed_file)| {

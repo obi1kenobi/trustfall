@@ -62,11 +62,7 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
         &mut stub.entrypoints,
         &mut entrypoint_match_arms,
     );
-    make_properties_file(
-        &querying_schema,
-        schema_adapter.clone(),
-        &mut stub.properties,
-    );
+    make_properties_file(&querying_schema, schema_adapter.clone(), &mut stub.properties);
     make_edges_file(&querying_schema, schema_adapter.clone(), &mut stub.edges);
     make_adapter_file(
         &querying_schema,
@@ -349,13 +345,11 @@ impl<'a> AdapterStub<'a> {
 }
 
 fn make_tests_file(tests_file: &mut RustFile) {
-    tests_file.external_imports.insert(parse_import(
-        "trustfall::provider::check_adapter_invariants",
-    ));
-
     tests_file
-        .internal_imports
-        .insert(parse_import("super::Adapter"));
+        .external_imports
+        .insert(parse_import("trustfall::provider::check_adapter_invariants"));
+
+    tests_file.internal_imports.insert(parse_import("super::Adapter"));
 
     tests_file.top_level_items.push(quote! {
         #[test]
@@ -388,10 +382,7 @@ fn make_vertex_file(
     let mut variants = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|x| {
-            x.try_into_struct::<ResultRow>()
-                .expect("invalid conversion")
-        })
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
     for row in rows {

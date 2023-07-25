@@ -6,7 +6,7 @@ use crate::{
     interpreter::{Adapter, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo},
     ir::{
         ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent, IRVertex,
-        Vid,
+        TransparentValue, Vid,
     },
     schema::{Schema, SchemaAdapter},
     TryIntoStruct,
@@ -58,9 +58,10 @@ use crate::{
 ///
 /// # Limitations
 ///
-/// The current implementation is not able to check edges that take any non-nullable parameters.
-/// Edges that take parameters for which "all nulls" is a valid set of parameter values
-/// will be checked using those parameters.
+/// Parameterized edges are checked using the default values of all their parameters.
+/// Nullable parameters are implicitly considered to have `null` as a default value.
+///
+/// Edges that take any non-nullable parameters without specified default values are not checked.
 ///
 /// # "My adapter fails this test, now what?"
 ///
@@ -361,7 +362,7 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
             parameter_: parameter @fold {
                 name @output
                 type @output
-                # default @output  # add once we expose default values to the schema
+                default @output
             }
 
             target {
@@ -379,6 +380,7 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
         edge_name: Arc<str>,
         parameter_name: Vec<Arc<str>>,
         parameter_type: Vec<Arc<str>>,
+        parameter_default: Vec<Option<String>>,
         target_type: Arc<str>,
     }
 
@@ -387,9 +389,20 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
         let type_name = output.type_name;
         let edge_name = output.edge_name;
 
-        if output.parameter_type.iter().any(|t| t.ends_with('!')) {
-            // This edge has a non-nullable parameter, and we don't know what are its valid values.
-            // Skip checking this edge.
+        let parameter_defaults: Vec<_> = output
+            .parameter_default
+            .into_iter()
+            .map(|value| {
+                value.map(|content| {
+                    let transparent_value: TransparentValue =
+                        serde_json::from_str(&content).expect("invalid serialized content");
+                    FieldValue::from(transparent_value)
+                })
+            })
+            .collect();
+        if parameter_defaults.contains(&Option::None) {
+            // This edge has a parameter without a default value.
+            // We can't check it since we don't know what values are valid to provide.
             continue;
         }
 
@@ -397,7 +410,8 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
             output
                 .parameter_name
                 .into_iter()
-                .map(|name| (name, FieldValue::NULL))
+                .zip(parameter_defaults)
+                .map(|(name, value)| (name, value.expect("parameter has a default")))
                 .collect(),
         );
         let parameters = EdgeParameters::new(edge_parameters.clone());

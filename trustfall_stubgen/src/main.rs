@@ -39,10 +39,7 @@ fn main() -> Result<(), anyhow::Error> {
         );
     }
     if !schema_is_file {
-        anyhow::bail!(
-            "schema path {} does not point to a file",
-            cli.schema.display()
-        );
+        anyhow::bail!("schema path {} does not point to a file", cli.schema.display());
     }
     if target_is_file {
         anyhow::bail!(

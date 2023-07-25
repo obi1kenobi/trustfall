@@ -22,10 +22,7 @@ struct TrackCalls<F> {
 
 impl<F> TrackCalls<F> {
     fn new_underlying(underlying: F) -> Self {
-        Self {
-            underlying: Some(underlying),
-            calls: 0,
-        }
+        Self { underlying: Some(underlying), calls: 0 }
     }
 }
 
@@ -87,8 +84,7 @@ impl<'a> Adapter<'a> for TestAdapter {
             x.call(resolve_info);
         }
         drop(map_ref);
-        self.inner
-            .resolve_starting_vertices(edge_name, parameters, resolve_info)
+        self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
     }
 
     fn resolve_property(
@@ -103,8 +99,7 @@ impl<'a> Adapter<'a> for TestAdapter {
             x.call(resolve_info);
         }
         drop(map_ref);
-        self.inner
-            .resolve_property(contexts, type_name, property_name, resolve_info)
+        self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
     }
 
     fn resolve_neighbors(
@@ -120,8 +115,7 @@ impl<'a> Adapter<'a> for TestAdapter {
             x.call(resolve_info);
         }
         drop(map_ref);
-        self.inner
-            .resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
+        self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
     }
 
     fn resolve_coercion(
@@ -136,8 +130,7 @@ impl<'a> Adapter<'a> for TestAdapter {
             x.call(resolve_info);
         }
         drop(map_ref);
-        self.inner
-            .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+        self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
     }
 }
 
@@ -164,11 +157,7 @@ fn run_query<A: Adapter<'static> + 'static>(adapter: A, input_name: &str) -> Arc
         adapter.clone(),
         Arc::new(input.ir_query.try_into().unwrap()),
         Arc::new(
-            input
-                .arguments
-                .iter()
-                .map(|(k, v)| (Arc::from(k.to_owned()), v.clone()))
-                .collect(),
+            input.arguments.iter().map(|(k, v)| (Arc::from(k.to_owned()), v.clone())).collect(),
         ),
     )
     .unwrap()
@@ -1218,10 +1207,7 @@ mod dynamic_property_values {
 
     impl<F> TrackCalls<F> {
         fn new_underlying(underlying: F) -> Self {
-            Self {
-                underlying,
-                calls: 0,
-            }
+            Self { underlying, calls: 0 }
         }
     }
 
@@ -1285,8 +1271,7 @@ mod dynamic_property_values {
                 let _ = x.call(&self.inner, Box::new(std::iter::empty()), resolve_info);
             }
             drop(map_ref);
-            self.inner
-                .resolve_starting_vertices(edge_name, parameters, resolve_info)
+            self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
         }
 
         fn resolve_property(
@@ -1301,8 +1286,7 @@ mod dynamic_property_values {
                 contexts = x.call(&self.inner, contexts, resolve_info);
             }
             drop(map_ref);
-            self.inner
-                .resolve_property(contexts, type_name, property_name, resolve_info)
+            self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
         }
 
         fn resolve_neighbors(
@@ -1319,8 +1303,7 @@ mod dynamic_property_values {
                 contexts = x.call(&self.inner, contexts, resolve_info);
             }
             drop(map_ref);
-            self.inner
-                .resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
+            self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
         }
 
         fn resolve_coercion(
@@ -1335,8 +1318,7 @@ mod dynamic_property_values {
                 contexts = x.call(&self.inner, contexts, resolve_info);
             }
             drop(map_ref);
-            self.inner
-                .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
+            self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
         }
     }
 
@@ -1372,7 +1354,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(3)),
                         CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
                     ];
@@ -1429,7 +1411,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(0)), true)),
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(2)), true)),
@@ -1532,7 +1514,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
                     ];
                     let candidate = destination.dynamically_required_property("name");
@@ -1603,7 +1585,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
                     ];
                     let candidate = destination.dynamically_required_property("name");
@@ -1657,7 +1639,7 @@ mod dynamic_property_values {
 
                     let destination = info.destination();
 
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -1798,7 +1780,7 @@ mod dynamic_property_values {
 
                     // Here the value *is* dynamically known, since the `@optional`
                     // has already been resolved in a prior step.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -1879,7 +1861,7 @@ mod dynamic_property_values {
 
                     // Here the value *is* dynamically known, since the property value can
                     // affect which vertices this edge is resolved to.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -1943,7 +1925,7 @@ mod dynamic_property_values {
                     // This value *is* dynamically known here: the "fold-count-filter" around it
                     // ensures that at least one such value must exist, or else vertices
                     // from the currently-resolved edge will be discarded.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = next_neighbor.dynamically_required_property("value");
@@ -1967,7 +1949,7 @@ mod dynamic_property_values {
 
                     // Here the value is also dynamically known, since the property is local
                     // to the edge being resolved.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");
@@ -2065,7 +2047,7 @@ mod dynamic_property_values {
 
                     // Here the value is also dynamically known, since the property is local
                     // to the edge being resolved.
-                    let expected_values = vec![
+                    let expected_values = [
                         CandidateValue::Single(FieldValue::Int64(1)),
                     ];
                     let candidate = destination.dynamically_required_property("value");

@@ -25,11 +25,8 @@ where
 {
     fn try_collect_unique(&mut self) -> Result<BTreeMap<K, V>, BTreeMap<K, Vec<V>>> {
         let size_hint = self.size_hint().0;
-        let mut map = if size_hint > 0 {
-            HashMap::with_capacity(size_hint)
-        } else {
-            HashMap::new()
-        };
+        let mut map =
+            if size_hint > 0 { HashMap::with_capacity(size_hint) } else { HashMap::new() };
 
         let mut maybe_duplicate: Option<(K, V)> = None;
         for (key, value) in &mut *self {
@@ -51,10 +48,7 @@ where
             for (key, value) in map.drain() {
                 duplicate_map.entry(key).or_default().push(value);
             }
-            duplicate_map
-                .get_mut(&first_duplicate_key)
-                .unwrap()
-                .push(first_duplicate_value);
+            duplicate_map.get_mut(&first_duplicate_key).unwrap().push(first_duplicate_value);
 
             for (key, value) in &mut *self {
                 duplicate_map.entry(key).or_default().push(value);

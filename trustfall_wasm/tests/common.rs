@@ -158,18 +158,10 @@ pub fn run_numbers_query(
     let results: Vec<_> = trustfall_core::interpreter::execution::interpret_ir(
         wrapped_adapter,
         query,
-        Arc::new(
-            args.into_iter()
-                .map(|(k, v)| (Arc::from(k), v.into()))
-                .collect(),
-        ),
+        Arc::new(args.into_iter().map(|(k, v)| (Arc::from(k), v.into())).collect()),
     )
     .map_err(|e| e.to_string())?
-    .map(|res| {
-        res.into_iter()
-            .map(|(k, v)| (k.to_string(), v.into()))
-            .collect()
-    })
+    .map(|res| res.into_iter().map(|(k, v)| (k.to_string(), v.into())).collect())
     .collect();
 
     Ok(results)

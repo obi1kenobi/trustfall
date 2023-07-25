@@ -23,10 +23,7 @@ struct QueryResultMapDeserializer<I: Iterator<Item = (Arc<str>, FieldValue)>> {
 
 impl<I: Iterator<Item = (Arc<str>, FieldValue)>> QueryResultMapDeserializer<I> {
     fn new(iter: I) -> Self {
-        Self {
-            iter,
-            next_value: Default::default(),
-        }
+        Self { iter, next_value: Default::default() }
     }
 }
 
@@ -52,9 +49,7 @@ impl<'de> de::Deserializer<'de> for QueryResultDeserializer {
     where
         V: de::Visitor<'de>,
     {
-        visitor.visit_map(QueryResultMapDeserializer::new(
-            self.query_result.into_iter(),
-        ))
+        visitor.visit_map(QueryResultMapDeserializer::new(self.query_result.into_iter()))
     }
 
     serde::forward_to_deserialize_any! {
@@ -251,11 +246,10 @@ impl<'de> de::Deserializer<'de> for FieldValueDeserializer {
             FieldValue::Int64(v) => visitor.visit_i64(v),
             FieldValue::Uint64(v) => visitor.visit_u64(v),
             FieldValue::Float64(v) => visitor.visit_f64(v),
-            FieldValue::String(v) => visitor.visit_string(v),
+            FieldValue::String(v) => visitor.visit_str(&v),
             FieldValue::Boolean(v) => visitor.visit_bool(v),
-            FieldValue::DateTimeUtc(_) => todo!(),
             FieldValue::Enum(_) => todo!(),
-            FieldValue::List(v) => visitor.visit_seq(v.into_deserializer()),
+            FieldValue::List(v) => visitor.visit_seq(v.to_vec().into_deserializer()),
         }
     }
 

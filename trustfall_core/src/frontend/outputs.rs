@@ -44,9 +44,7 @@ impl<'query> OutputHandler<'query> {
     }
 
     pub(super) fn end_subcomponent(&mut self) -> BTreeMap<Arc<str>, Vec<FieldRef>> {
-        self.component_outputs_stack
-            .pop()
-            .expect("stack was unexpectedly empty")
+        self.component_outputs_stack.pop().expect("stack was unexpectedly empty")
     }
 
     fn make_output_name(&self, local_name: &str, transforms: Option<&[&str]>) -> Arc<str> {

@@ -77,10 +77,7 @@ pub struct MyIterator {
 impl MyIterator {
     pub fn next(&mut self) -> MyIteratorElement {
         if self.current_num > self.max_num {
-            MyIteratorElement {
-                done: true,
-                value: None,
-            }
+            MyIteratorElement { done: true, value: None }
         } else {
             let value = Some(self.current_num);
             self.current_num += 1;
@@ -91,8 +88,5 @@ impl MyIterator {
 
 #[wasm_bindgen]
 pub fn get_iterator() -> MyIterator {
-    MyIterator {
-        max_num: 5,
-        current_num: 0,
-    }
+    MyIterator { max_num: 5, current_num: 0 }
 }

@@ -72,12 +72,10 @@ pub(super) fn candidate_from_statically_evaluated_filters<'a, 'b, T: Debug + Clo
         } else {
             CandidateValue::Range(Range::full_non_null())
         };
-        candidates
-            .into_iter()
-            .fold(initial_candidate, |mut acc, e| {
-                acc.intersect(e);
-                acc
-            })
+        candidates.into_iter().fold(initial_candidate, |mut acc, e| {
+            acc.intersect(e);
+            acc
+        })
     };
     candidate.normalize();
 
@@ -103,20 +101,15 @@ pub(super) fn candidate_from_statically_evaluated_filters<'a, 'b, T: Debug + Clo
     // a `!=` or equivalent filter operation.
     let disallowed_values = filters_and_values
         .iter()
-        .filter_map(
-            |(op, value)| -> Option<Box<dyn Iterator<Item = &FieldValue>>> {
-                match op {
-                    Operation::NotEquals(..) => Some(Box::new(std::iter::once(*value))),
-                    Operation::NotOneOf(..) => Some(Box::new(
-                        value
-                            .as_slice()
-                            .expect("not_one_of operand was not a list")
-                            .iter(),
-                    )),
-                    _ => None,
-                }
-            },
-        )
+        .filter_map(|(op, value)| -> Option<Box<dyn Iterator<Item = &FieldValue>>> {
+            match op {
+                Operation::NotEquals(..) => Some(Box::new(std::iter::once(*value))),
+                Operation::NotOneOf(..) => Some(Box::new(
+                    value.as_slice().expect("not_one_of operand was not a list").iter(),
+                )),
+                _ => None,
+            }
+        })
         .flatten();
     for disallowed in disallowed_values {
         candidate.exclude_single_value(&disallowed);
@@ -131,10 +124,8 @@ pub(super) fn fold_requires_at_least_one_element(
     query_variables: &BTreeMap<Arc<str>, FieldValue>,
     fold: &IRFold,
 ) -> bool {
-    let relevant_filters = fold
-        .post_filters
-        .iter()
-        .filter(|op| matches!(op.left(), FoldSpecificFieldKind::Count));
+    let relevant_filters =
+        fold.post_filters.iter().filter(|op| matches!(op.left(), FoldSpecificFieldKind::Count));
     let is_subject_field_nullable = false; // the "count" value can't be null
     candidate_from_statically_evaluated_filters(
         relevant_filters,

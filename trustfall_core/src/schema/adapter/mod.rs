@@ -11,7 +11,7 @@ use crate::{
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexInfo, VertexIterator,
     },
-    ir::{types::get_base_named_type, EdgeParameters, FieldValue},
+    ir::{types::get_base_named_type, EdgeParameters, FieldValue, TransparentValue},
 };
 
 use super::Schema;
@@ -64,9 +64,7 @@ impl<'a> SchemaAdapter<'a> {
     /// Make an adapter for querying the given Trustfall schema.
     #[inline(always)]
     pub fn new(schema_to_query: &'a Schema) -> Self {
-        Self {
-            schema: schema_to_query,
-        }
+        Self { schema: schema_to_query }
     }
 
     /// A schema that describes Trustfall schemas.
@@ -163,11 +161,7 @@ pub struct Property<'a> {
 impl<'a> Property<'a> {
     #[inline(always)]
     fn new(parent: &'a TypeDefinition, name: &'a str, type_: &'a Type) -> Self {
-        Self {
-            parent,
-            name,
-            type_,
-        }
+        Self { parent, name, type_ }
     }
 }
 
@@ -237,7 +231,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 if let Some(CandidateValue::Single(FieldValue::String(name_wanted))) =
                     candidate_value
                 {
-                    let name_wanted = name_wanted.as_str();
+                    let name_wanted = name_wanted.as_ref();
                     if let Some(exact_wanted) = self
                         .schema
                         .vertex_types
@@ -254,29 +248,21 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     let possibilities_as_owned_strings = possibilities
                         .iter()
                         .map(|el| {
-                            el.as_str()
-                                .expect("for name possibility to be a string")
-                                .to_string()
+                            el.as_str().expect("for name possibility to be a string").to_string()
                         })
                         .collect::<Vec<_>>();
 
                     let vertex_types = &self.schema.vertex_types;
 
-                    Box::new(
-                        possibilities_as_owned_strings
-                            .into_iter()
-                            .filter_map(move |wanted| {
-                                vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
-                                    if exact_wanted.name.node != root_query_type {
-                                        Some(SchemaVertex::VertexType(VertexType::new(
-                                            exact_wanted,
-                                        )))
-                                    } else {
-                                        None
-                                    }
-                                })
-                            }),
-                    )
+                    Box::new(possibilities_as_owned_strings.into_iter().filter_map(move |wanted| {
+                        vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
+                            if exact_wanted.name.node != root_query_type {
+                                Some(SchemaVertex::VertexType(VertexType::new(exact_wanted)))
+                            } else {
+                                None
+                            }
+                        })
+                    }))
                 } else {
                     Box::new(self.schema.vertex_types.values().filter_map(move |v| {
                         (v.name.node != root_query_type)
@@ -338,6 +324,27 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 "type" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, type_))
                 }
+                "default" => resolve_property_with(contexts, |vertex| {
+                    let vertex = vertex.as_edge_parameter().expect("not an EdgeParameter");
+                    vertex
+                        .defn
+                        .default_value
+                        .as_ref()
+                        .map(|v| {
+                            let value = &v.node;
+                            value.clone().try_into().expect("failed to convert ConstValue")
+                        })
+                        .or_else(|| {
+                            // Nullable edge parameters have an implicit default value of `null`.
+                            vertex.defn.ty.node.nullable.then_some(FieldValue::NULL)
+                        })
+                        .map(|value| {
+                            let transparent = TransparentValue::from(value);
+                            serde_json::to_string(&transparent)
+                                .expect("serde_json failed to serialize value")
+                        })
+                        .into()
+                }),
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             _ => unreachable!("unexpected type name: {type_name}"),
