@@ -476,25 +476,12 @@ fn ensure_no_edge_name_keyword_conflicts(
     for row in &rows {
         let mut uniq: HashMap<String, String> = HashMap::new();
 
-        for edge_name in &row.edge_names {
-            let edge_name_for_map = edge_name.clone();
-            let converted = escaped_rust_name(to_lower_snake_case(&edge_name_for_map));
-            let v = uniq.insert(converted, edge_name_for_map);
-            if let Some(v) = v {
+        for field_name in row.edge_names.iter().chain(row.property_names.iter()) {
+            let converted = escaped_rust_name(to_lower_snake_case(field_name));
+            if let Some(v) = uniq.insert(converted, field_name.clone()) {
                 panic!(
                     "cannot generate adapter for a schema containing both '{}' and '{}' as field names on vertex '{}', consider renaming one of them",
-                    v, &edge_name, &row.name
-                );
-            }
-        }
-        for property_name in &row.property_names {
-            let property_name_for_map = property_name.clone();
-            let converted = escaped_rust_name(to_lower_snake_case(&property_name_for_map));
-            let v = uniq.insert(converted, property_name_for_map);
-            if let Some(v) = v {
-                panic!(
-                    "cannot generate adapter for a schema containing both '{}' and '{}' as field names on vertex '{}', consider renaming one of them",
-                    v, &property_name, &row.name
+                    v, &field_name, &row.name
                 );
             }
         }
