@@ -191,13 +191,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         operation: Operation<(), ()>,
         initial_candidate: CandidateValue<FieldValue>,
     ) -> Self {
-        Self {
-            query,
-            resolve_on_component,
-            field,
-            operation,
-            initial_candidate,
-        }
+        Self { query, resolve_on_component, field, operation, initial_candidate }
     }
 
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
@@ -247,16 +241,13 @@ impl<'a> DynamicallyResolvedValue<'a> {
             + 'vertex,
     ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, VertexIterator<'vertex, AdapterT::Vertex>>
     {
-        Box::new(
-            self.resolve(adapter, contexts)
-                .map(move |(ctx, candidate)| {
-                    let neighbors = match ctx.active_vertex.as_ref() {
-                        Some(vertex) => neighbor_resolver(vertex, candidate),
-                        None => Box::new(std::iter::empty()),
-                    };
-                    (ctx, neighbors)
-                }),
-        )
+        Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
+            let neighbors = match ctx.active_vertex.as_ref() {
+                Some(vertex) => neighbor_resolver(vertex, candidate),
+                None => Box::new(std::iter::empty()),
+            };
+            (ctx, neighbors)
+        }))
     }
 
     fn compute_candidate_from_tagged_value<'vertex, AdapterT: Adapter<'vertex>>(
@@ -265,9 +256,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, AdapterT::Vertex>,
     ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
-        let mut carrier = QueryCarrier {
-            query: Some(self.query),
-        };
+        let mut carrier = QueryCarrier { query: Some(self.query) };
         let iterator = compute_context_field_with_separate_value(
             adapter,
             &mut carrier,

@@ -26,14 +26,8 @@ impl Parse for ParameterizeArgs {
         let vars_vec: Vec<_> = vars.into_iter().collect();
 
         match vars_vec.len() {
-            1 => Ok(Self {
-                path: vars_vec[0].value(),
-                glob: "*.graphql.ron".to_string(),
-            }),
-            2 => Ok(Self {
-                path: vars_vec[0].value(),
-                glob: vars_vec[1].value(),
-            }),
+            1 => Ok(Self { path: vars_vec[0].value(), glob: "*.graphql.ron".to_string() }),
+            2 => Ok(Self { path: vars_vec[0].value(), glob: vars_vec[1].value() }),
             _ => Err(syn::Error::new(
                 input.span(),
                 "Expected a path string literal and an optional glob string literal.",

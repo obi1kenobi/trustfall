@@ -17,6 +17,14 @@ pub(crate) fn to_lower_snake_case(value: &str) -> String {
     result
 }
 
+pub(crate) fn upper_case_variant_name(value: &str) -> String {
+    let mut chars = value.chars();
+    let first_char = chars.next().expect("unexpectedly got an empty string").to_ascii_uppercase();
+    let rest_chars: String = chars.collect();
+
+    format!("{}{}", first_char, rest_chars)
+}
+
 pub(crate) fn property_resolver_fn_name(type_name: &str) -> String {
     let normalized_name = to_lower_snake_case(type_name);
     format!("resolve_{normalized_name}_property")
@@ -136,5 +144,17 @@ pub(crate) fn field_value_to_rust_type(
 
     quote! {
         #base.#suffix
+    }
+}
+
+pub fn escaped_rust_name(name: String) -> String {
+    // https://doc.rust-lang.org/reference/keywords.html
+    match name.as_str() {
+        "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false"
+        | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "match" | "mod" | "move"
+        | "mut" | "pub" | "ref" | "return" | "self" | "Self" | "static" | "struct" | "super"
+        | "trait" | "true" | "type" | "unsafe" | "use" | "where" | "while" | "async" | "await"
+        | "dyn" | "try" | "macro_rules" | "union" | "'static" => name + "_",
+        _ => name,
     }
 }

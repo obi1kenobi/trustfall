@@ -65,9 +65,17 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         match type_name {
             "Feed" => match property_name {
                 "id" => property(contexts, field_property!(as_feed, id)),
-                "updated" => property(contexts, field_property!(as_feed, updated)),
+                "updated" => property(
+                    contexts,
+                    field_property!(as_feed, updated, { updated.map(|t| t.timestamp()).into() }),
+                ),
                 "language" => property(contexts, field_property!(as_feed, language)),
-                "published" => property(contexts, field_property!(as_feed, published)),
+                "published" => property(
+                    contexts,
+                    field_property!(as_feed, published, {
+                        published.map(|t| t.timestamp()).into()
+                    }),
+                ),
                 "ttl" => property(contexts, field_property!(as_feed, ttl)),
                 "feed_type" => property(
                     contexts,
@@ -98,8 +106,18 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
             "FeedEntry" => match property_name {
                 "id" => property(contexts, field_property!(as_feed_entry, id)),
                 "source" => property(contexts, field_property!(as_feed_entry, source)),
-                "updated" => property(contexts, field_property!(as_feed_entry, updated)),
-                "published" => property(contexts, field_property!(as_feed_entry, published)),
+                "updated" => property(
+                    contexts,
+                    field_property!(as_feed_entry, updated, {
+                        updated.map(|t| t.timestamp()).into()
+                    }),
+                ),
+                "published" => property(
+                    contexts,
+                    field_property!(as_feed_entry, published, {
+                        published.map(|t| t.timestamp()).into()
+                    }),
+                ),
                 _ => unreachable!("type {type_name} property {property_name} not found"),
             },
             "FeedContent" => match property_name {
@@ -155,15 +173,13 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
             },
             "FeedEntry" => match edge_name {
                 "title" => neighbors(contexts, iterable!(as_feed_entry, title, Vertex::FeedText)),
-                "content" => neighbors(
-                    contexts,
-                    iterable!(as_feed_entry, content, Vertex::FeedContent),
-                ),
+                "content" => {
+                    neighbors(contexts, iterable!(as_feed_entry, content, Vertex::FeedContent))
+                }
                 "links" => neighbors(contexts, iterable!(as_feed_entry, links, Vertex::FeedLink)),
-                "summary" => neighbors(
-                    contexts,
-                    iterable!(as_feed_entry, summary, Vertex::FeedText),
-                ),
+                "summary" => {
+                    neighbors(contexts, iterable!(as_feed_entry, summary, Vertex::FeedText))
+                }
                 "rights" => neighbors(contexts, iterable!(as_feed_entry, rights, Vertex::FeedText)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
@@ -172,10 +188,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             "ChannelImage" => match edge_name {
-                "link" => neighbors(
-                    contexts,
-                    iterable!(as_channel_image, link, Vertex::FeedLink),
-                ),
+                "link" => neighbors(contexts, iterable!(as_channel_image, link, Vertex::FeedLink)),
                 _ => unreachable!("type {type_name} edge {edge_name} not found"),
             },
             _ => unreachable!("type {type_name} not found"),

@@ -241,10 +241,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         // - a `!=` filter,
         // breaking ties based on which filter was specified first.
         let filter_to_use = {
-            relevant_filters
-                .iter()
-                .find(|op| matches!(op, Operation::Equals(..)))
-                .unwrap_or_else(|| {
+            relevant_filters.iter().find(|op| matches!(op, Operation::Equals(..))).unwrap_or_else(
+                || {
                     relevant_filters
                         .iter()
                         .find(|op| matches!(op, Operation::OneOf(..)))
@@ -262,7 +260,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                                 })
                                 .unwrap_or(first_filter)
                         })
-                })
+                },
+            )
         };
 
         let field = filter_to_use
@@ -327,10 +326,7 @@ fn filters_on_local_property<'a: 'b, 'b>(
     vertex: &'a IRVertex,
     property_name: &'b str,
 ) -> impl Iterator<Item = &'a Operation<LocalField, Argument>> + 'b {
-    vertex
-        .filters
-        .iter()
-        .filter(move |op| op.left().field_name.as_ref() == property_name)
+    vertex.filters.iter().filter(move |op| op.left().field_name.as_ref() == property_name)
 }
 
 fn compute_statically_known_candidate<'a, 'b>(
@@ -392,18 +388,16 @@ mod tests {
             variable_type: list_int_type.clone(),
         });
 
-        let local_field = LocalField {
-            field_name: Arc::from("my_field"),
-            field_type: nullable_int_type.clone(),
-        };
+        let local_field =
+            LocalField { field_name: Arc::from("my_field"), field_type: nullable_int_type.clone() };
 
         let variables = btreemap! {
             first => FieldValue::Int64(1),
             second => FieldValue::Int64(2),
             third => FieldValue::Int64(3),
             null => FieldValue::Null,
-            list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
-            longer_list => FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2), FieldValue::Int64(3)]),
+            list => FieldValue::List(Arc::new([FieldValue::Int64(1), FieldValue::Int64(2)])),
+            longer_list => FieldValue::List(Arc::new([FieldValue::Int64(1), FieldValue::Int64(2), FieldValue::Int64(3)])),
         };
 
         let test_data = [
@@ -517,16 +511,10 @@ mod tests {
             ),
             //
             // `!= 1` by itself doesn't produce any candidates
-            (
-                vec![Operation::NotEquals(local_field.clone(), first_var.clone())],
-                None,
-            ),
+            (vec![Operation::NotEquals(local_field.clone(), first_var.clone())], None),
             //
             // `not_one_of [1, 2]` by itself doesn't produce any candidates
-            (
-                vec![Operation::NotEquals(local_field.clone(), list_var.clone())],
-                None,
-            ),
+            (vec![Operation::NotEquals(local_field.clone(), list_var.clone())], None),
         ];
 
         for (filters, expected_output) in test_data {
@@ -561,10 +549,8 @@ mod tests {
             variable_type: int_type.clone(),
         });
 
-        let local_field = LocalField {
-            field_name: Arc::from("my_field"),
-            field_type: int_type.clone(),
-        };
+        let local_field =
+            LocalField { field_name: Arc::from("my_field"), field_type: int_type.clone() };
 
         let variables = btreemap! {
             first => FieldValue::Int64(1),
@@ -574,20 +560,14 @@ mod tests {
             // The local field is non-nullable.
             // When we apply a range bound on the field, the range must be non-nullable too.
             (
-                vec![Operation::GreaterThanOrEqual(
-                    local_field.clone(),
-                    first_var.clone(),
-                )],
+                vec![Operation::GreaterThanOrEqual(local_field.clone(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Included(&variables["first"]),
                     false,
                 ))),
             ),
             (
-                vec![Operation::GreaterThan(
-                    local_field.clone(),
-                    first_var.clone(),
-                )],
+                vec![Operation::GreaterThan(local_field.clone(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Excluded(&variables["first"]),
                     false,
@@ -601,10 +581,7 @@ mod tests {
                 ))),
             ),
             (
-                vec![Operation::LessThanOrEqual(
-                    local_field.clone(),
-                    first_var.clone(),
-                )],
+                vec![Operation::LessThanOrEqual(local_field.clone(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_end(
                     Bound::Included(&variables["first"]),
                     false,

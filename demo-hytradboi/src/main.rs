@@ -7,10 +7,7 @@ use std::time::{Duration, Instant};
 use adapter::DemoAdapter;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use trustfall_core::ir::TransparentValue;
-use trustfall_core::{
-    frontend::parse, interpreter::execution::interpret_ir, ir::FieldValue, schema::Schema,
-};
+use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
 mod actions_parser;
 mod adapter;
@@ -25,18 +22,14 @@ static SCHEMA: Lazy<Schema> =
 struct InputQuery<'a> {
     query: &'a str,
 
-    args: Arc<BTreeMap<Arc<str>, FieldValue>>,
+    args: BTreeMap<Arc<str>, FieldValue>,
 }
 
-fn execute_query(path: &str) {
+fn run_query(path: &str) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let adapter = Arc::new(DemoAdapter::new());
-
-    let query = parse(&SCHEMA, input_query.query).unwrap();
-    let arguments = input_query.args;
-
     let max_results = 20usize;
 
     println!("Executing query:");
@@ -47,14 +40,11 @@ fn execute_query(path: &str) {
     println!("\nQuery args:");
     println!(
         "{:?}",
-        arguments
-            .as_ref()
+        input_query
+            .args
             .clone()
             .into_iter()
-            .map(|(k, v)| (
-                k,
-                serde_json::to_string_pretty(&TransparentValue::from(v)).unwrap()
-            ))
+            .map(|(k, v)| (k, serde_json::to_string_pretty(&TransparentValue::from(v)).unwrap()))
             .collect::<BTreeMap<_, _>>()
     );
 
@@ -62,7 +52,10 @@ fn execute_query(path: &str) {
 
     let mut total_query_duration: Duration = Default::default();
     let mut current_instant = Instant::now();
-    for (index, data_item) in interpret_ir(adapter, query, arguments).unwrap().enumerate() {
+    for (index, data_item) in execute_query(&SCHEMA, adapter, input_query.query, input_query.args)
+        .expect("not a valid query")
+        .enumerate()
+    {
         let next_item_duration = current_instant.elapsed();
         total_query_duration += next_item_duration;
 
@@ -109,7 +102,7 @@ fn main() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                execute_query(path)
+                run_query(path)
             }
         },
         Some(cmd) => panic!("Unrecognized command given: {cmd}"),

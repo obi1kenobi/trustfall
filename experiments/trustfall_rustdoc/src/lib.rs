@@ -46,10 +46,7 @@ pub fn run_query(
     trustfall_wasm::util::initialize().expect("init failed");
 
     let schema = RustdocAdapter::schema();
-    let adapter = Arc::new(RustdocAdapter::new(
-        crate_info.inner.borrow_indexed_crate(),
-        None,
-    ));
+    let adapter = Arc::new(RustdocAdapter::new(crate_info.inner.borrow_indexed_crate(), None));
 
     let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
     let args = from_js_args(args)?;

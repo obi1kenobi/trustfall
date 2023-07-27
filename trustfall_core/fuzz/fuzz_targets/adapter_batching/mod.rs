@@ -32,12 +32,8 @@ struct VariableChunkIterator<I: Iterator> {
 
 impl<I: Iterator> VariableChunkIterator<I> {
     fn new(iter: I, chunk_sequence: u64) -> Self {
-        let mut value = Self {
-            iter,
-            buffer: VecDeque::with_capacity(4),
-            chunk_sequence,
-            offset: 0,
-        };
+        let mut value =
+            Self { iter, buffer: VecDeque::with_capacity(4), chunk_sequence, offset: 0 };
 
         // Eagerly advancing the input iterator is important
         // because that's how we reproduce: https://github.com/obi1kenobi/trustfall/issues/205
@@ -68,8 +64,7 @@ impl<I: Iterator> Iterator for VariableChunkIterator<I> {
             let next = self.iter.next();
             if next.is_some() {
                 let elements_to_buffer = self.next_chunk_size() - 1;
-                self.buffer
-                    .extend(self.iter.by_ref().take(elements_to_buffer));
+                self.buffer.extend(self.iter.by_ref().take(elements_to_buffer));
             }
             next
         }
@@ -84,11 +79,7 @@ struct VariableBatchingAdapter<'a, AdapterT: Adapter<'a> + 'a> {
 
 impl<'a, AdapterT: Adapter<'a> + 'a> VariableBatchingAdapter<'a, AdapterT> {
     fn new(adapter: AdapterT, cursor: Cursor<&'a [u8]>) -> Self {
-        Self {
-            adapter,
-            cursor: RefCell::new(cursor),
-            _marker: PhantomData,
-        }
+        Self { adapter, cursor: RefCell::new(cursor), _marker: PhantomData }
     }
 }
 
@@ -105,9 +96,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
         drop(cursor_ref);
 
-        let inner = self
-            .adapter
-            .resolve_starting_vertices(edge_name, parameters, resolve_info);
+        let inner = self.adapter.resolve_starting_vertices(edge_name, parameters, resolve_info);
         Box::new(VariableChunkIterator::new(inner, sequence))
     }
 
@@ -169,8 +158,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         drop(cursor_ref);
 
         let inner =
-            self.adapter
-                .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info);
+            self.adapter.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info);
         Box::new(VariableChunkIterator::new(inner, sequence))
     }
 }
@@ -229,13 +217,8 @@ static QUERY_DATA: Lazy<Vec<QueryAndArgs>> = Lazy::new(|| {
             .expect("Err result");
         if input_data.schema_name == "numbers" {
             let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
-            let arguments = Arc::new(
-                input_data
-                    .arguments
-                    .into_iter()
-                    .map(|(k, v)| (k.into(), v))
-                    .collect(),
-            );
+            let arguments =
+                Arc::new(input_data.arguments.into_iter().map(|(k, v)| (k.into(), v)).collect());
             outputs.push((indexed_query, arguments));
         }
     }
@@ -255,22 +238,14 @@ impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
         let (query, args) = QUERY_DATA.get(file_selector).ok_or(())?;
         let cursor = Cursor::new(rest);
 
-        Ok(Self {
-            query: query.clone(),
-            arguments: args.clone(),
-            cursor,
-        })
+        Ok(Self { query: query.clone(), arguments: args.clone(), cursor })
     }
 }
 
 fn execute_query_with_fuzzed_batching(test_case: TestCase<'_>) {
-    let adapter = Arc::new(VariableBatchingAdapter::new(
-        numbers_adapter::NumbersAdapter,
-        test_case.cursor,
-    ));
-    interpret_ir(adapter, test_case.query, test_case.arguments)
-        .unwrap()
-        .for_each(drop);
+    let adapter =
+        Arc::new(VariableBatchingAdapter::new(numbers_adapter::NumbersAdapter, test_case.cursor));
+    interpret_ir(adapter, test_case.query, test_case.arguments).unwrap().for_each(drop);
 }
 
 fuzz_target!(|data: &[u8]| {

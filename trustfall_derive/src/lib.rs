@@ -169,12 +169,7 @@ fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::Toke
 
     let variants = match &ast.data {
         syn::Data::Enum(d) => &d.variants,
-        _ => {
-            return Err(syn::Error::new_spanned(
-                ast,
-                "only enums can derive Typename",
-            ))
-        }
+        _ => return Err(syn::Error::new_spanned(ast, "only enums can derive Typename")),
     };
 
     let arms = variants
@@ -208,12 +203,7 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
 
     let variants = match &ast.data {
         syn::Data::Enum(d) => &d.variants,
-        _ => {
-            return Err(syn::Error::new_spanned(
-                ast,
-                "only enums can derive TrustfallEnumVertex",
-            ))
-        }
+        _ => return Err(syn::Error::new_spanned(ast, "only enums can derive TrustfallEnumVertex")),
     };
 
     let conversions = variants
@@ -324,10 +314,8 @@ fn generate_conversion_method(variant: &syn::Variant) -> syn::Result<proc_macro2
             if named_fields.named.len() == 1 {
                 // Struct variants with only a single field return `Option<&ThatField>`.
                 let named_arg = &named_fields.named[0];
-                let field_name = named_arg
-                    .ident
-                    .as_ref()
-                    .expect("struct variant field had no name");
+                let field_name =
+                    named_arg.ident.as_ref().expect("struct variant field had no name");
                 let field_type = &named_arg.ty;
                 Ok(syn::parse_quote! {
                     pub(crate) fn #conversion_name(&self) -> Option<&#field_type> {
@@ -346,10 +334,8 @@ fn generate_conversion_method(variant: &syn::Variant) -> syn::Result<proc_macro2
 
                 let mut fields = syn::punctuated::Punctuated::<_, syn::Token![,]>::new();
                 for field in named_fields.named.iter() {
-                    let field_name = field
-                        .ident
-                        .as_ref()
-                        .expect("struct variant field had no name");
+                    let field_name =
+                        field.ident.as_ref().expect("struct variant field had no name");
                     fields.push(field_name);
                 }
                 Ok(syn::parse_quote! {
@@ -420,10 +406,7 @@ fn tuple_of_field_types(
         }
         quote!((#punct))
     } else {
-        panic!(
-            "list of fields had {} field(s), which is not more than one field",
-            fields.len()
-        );
+        panic!("list of fields had {} field(s), which is not more than one field", fields.len());
     }
 }
 

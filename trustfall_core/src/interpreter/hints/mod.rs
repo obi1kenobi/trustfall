@@ -66,11 +66,7 @@ pub struct ResolveEdgeInfo {
 
 impl ResolveInfo {
     pub(crate) fn new(query: InterpretedQuery, current_vid: Vid, vertex_completed: bool) -> Self {
-        Self {
-            query,
-            current_vid,
-            vertex_completed,
-        }
+        Self { query, current_vid, vertex_completed }
     }
 
     pub(crate) fn into_inner(self) -> InterpretedQuery {
@@ -182,12 +178,7 @@ impl ResolveEdgeInfo {
         target_vid: Vid,
         crossing_eid: Eid,
     ) -> Self {
-        Self {
-            query,
-            current_vid,
-            target_vid,
-            crossing_eid,
-        }
+        Self { query, current_vid, target_vid, crossing_eid }
     }
 
     pub(crate) fn into_inner(self) -> InterpretedQuery {
@@ -449,10 +440,7 @@ impl InternalVertexInfo for NeighborInfo {
 /// With recursions to depth 2+, there are "middle" layers of vertices that don't have to satisfy
 /// the filters (and will be filtered out) but can still have more edge expansions in the recursion.
 fn check_locally_non_binding_filters_for_edge(edge: &IREdge) -> bool {
-    edge.recursive
-        .as_ref()
-        .map(|r| r.depth.get() >= 2)
-        .unwrap_or(false)
+    edge.recursive.as_ref().map(|r| r.depth.get() >= 2).unwrap_or(false)
 }
 
 #[cfg(test)]

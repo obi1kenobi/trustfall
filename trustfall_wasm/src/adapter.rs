@@ -67,10 +67,8 @@ impl Iterator for JsVertexIterator {
     type Item = JsValue;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next_value = self
-            .inner
-            .next()?
-            .expect("unexpected value returned from JS iterator next()");
+        let next_value =
+            self.inner.next()?.expect("unexpected value returned from JS iterator next()");
 
         Some(next_value)
     }
@@ -87,11 +85,7 @@ impl ContextAndValueIterator {
         inner: js_sys::Iterator,
         registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
     ) -> Self {
-        Self {
-            inner,
-            registry,
-            next_item: 0,
-        }
+        Self { inner, registry, next_item: 0 }
     }
 }
 
@@ -99,10 +93,8 @@ impl Iterator for ContextAndValueIterator {
     type Item = (DataContext<JsValue>, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let iter_next = self
-            .inner
-            .next()
-            .expect("unexpected value returned from JS iterator next()");
+        let iter_next =
+            self.inner.next().expect("unexpected value returned from JS iterator next()");
 
         if iter_next.done() {
             assert!(self.registry.borrow().is_empty());
@@ -117,11 +109,7 @@ impl Iterator for ContextAndValueIterator {
 
             self.next_item = self.next_item.wrapping_add(1);
 
-            let ctx = self
-                .registry
-                .borrow_mut()
-                .remove(&next_item)
-                .expect("id not found");
+            let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
 
             Some((ctx, next_element.value.into()))
         }
@@ -141,12 +129,7 @@ impl ContextAndNeighborsIterator {
         registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
         constants: Rc<JsStringConstants>,
     ) -> Self {
-        Self {
-            inner,
-            registry,
-            next_item: 0,
-            constants,
-        }
+        Self { inner, registry, next_item: 0, constants }
     }
 }
 
@@ -154,10 +137,8 @@ impl Iterator for ContextAndNeighborsIterator {
     type Item = (DataContext<JsValue>, VertexIterator<'static, JsValue>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let iter_next = self
-            .inner
-            .next()
-            .expect("unexpected value returned from JS iterator next()");
+        let iter_next =
+            self.inner.next().expect("unexpected value returned from JS iterator next()");
 
         if iter_next.done() {
             assert!(self.registry.borrow().is_empty());
@@ -178,11 +159,7 @@ impl Iterator for ContextAndNeighborsIterator {
 
             self.next_item = self.next_item.wrapping_add(1);
 
-            let ctx = self
-                .registry
-                .borrow_mut()
-                .remove(&next_item)
-                .expect("id not found");
+            let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
 
             Some((ctx, Box::new(JsVertexIterator::new(neighbors_iter))))
         }
@@ -200,11 +177,7 @@ impl ContextAndBoolIterator {
         inner: js_sys::Iterator,
         registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
     ) -> Self {
-        Self {
-            inner,
-            registry,
-            next_item: 0,
-        }
+        Self { inner, registry, next_item: 0 }
     }
 }
 
@@ -212,10 +185,8 @@ impl Iterator for ContextAndBoolIterator {
     type Item = (DataContext<JsValue>, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let iter_next = self
-            .inner
-            .next()
-            .expect("unexpected value returned from JS iterator next()");
+        let iter_next =
+            self.inner.next().expect("unexpected value returned from JS iterator next()");
 
         if iter_next.done() {
             assert!(self.registry.borrow().is_empty());
@@ -230,11 +201,7 @@ impl Iterator for ContextAndBoolIterator {
 
             self.next_item = self.next_item.wrapping_add(1);
 
-            let ctx = self
-                .registry
-                .borrow_mut()
-                .remove(&next_item)
-                .expect("id not found");
+            let ctx = self.registry.borrow_mut().remove(&next_item).expect("id not found");
 
             Some((ctx, next_element.value))
         }
@@ -248,10 +215,7 @@ pub struct AdapterShim {
 
 impl AdapterShim {
     pub fn new(inner: JsAdapter) -> Self {
-        Self {
-            inner,
-            constants: Rc::new(JsStringConstants::new()),
-        }
+        Self { inner, constants: Rc::new(JsStringConstants::new()) }
     }
 }
 
@@ -265,9 +229,8 @@ impl Adapter<'static> for AdapterShim {
         _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.clone().into();
-        let js_iter = self
-            .inner
-            .resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
+        let js_iter =
+            self.inner.resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
         Box::new(JsVertexIterator::new(js_iter.into_iter()))
     }
 
@@ -281,8 +244,7 @@ impl Adapter<'static> for AdapterShim {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter =
-            self.inner
-                .resolve_property(ctx_iter, type_name.as_ref(), property_name.as_ref());
+            self.inner.resolve_property(ctx_iter, type_name.as_ref(), property_name.as_ref());
         Box::new(ContextAndValueIterator::new(js_iter, registry))
     }
 
@@ -304,11 +266,7 @@ impl Adapter<'static> for AdapterShim {
             edge_name.as_ref(),
             parameters.into_js_dict(),
         );
-        Box::new(ContextAndNeighborsIterator::new(
-            js_iter,
-            registry,
-            self.constants.clone(),
-        ))
+        Box::new(ContextAndNeighborsIterator::new(js_iter, registry, self.constants.clone()))
     }
 
     fn resolve_coercion(
@@ -321,8 +279,7 @@ impl Adapter<'static> for AdapterShim {
         let ctx_iter = JsContextIterator::new(contexts);
         let registry = ctx_iter.registry.clone();
         let js_iter =
-            self.inner
-                .resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type.as_ref());
+            self.inner.resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type.as_ref());
         Box::new(ContextAndBoolIterator::new(js_iter, registry))
     }
 }

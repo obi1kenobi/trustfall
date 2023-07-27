@@ -195,9 +195,7 @@ impl<Vertex: Clone + Debug> DataContext<Vertex> {
     }
 
     fn record_vertex(&mut self, vid: Vid) {
-        self.vertices
-            .insert_or_error(vid, self.active_vertex.clone())
-            .unwrap();
+        self.vertices.insert_or_error(vid, self.active_vertex.clone()).unwrap();
     }
 
     fn activate_vertex(self, vid: &Vid) -> DataContext<Vertex> {
@@ -351,10 +349,7 @@ impl InterpretedQuery {
         }
         if !missing_arguments.is_empty() {
             errors.push(QueryArgumentsError::MissingArguments(
-                missing_arguments
-                    .into_iter()
-                    .map(|x| x.to_string())
-                    .collect(),
+                missing_arguments.into_iter().map(|x| x.to_string()).collect(),
             ));
         }
 
@@ -365,18 +360,12 @@ impl InterpretedQuery {
             .collect_vec();
         if !unused_arguments.is_empty() {
             errors.push(QueryArgumentsError::UnusedArguments(
-                unused_arguments
-                    .into_iter()
-                    .map(|x| x.to_string())
-                    .collect(),
+                unused_arguments.into_iter().map(|x| x.to_string()).collect(),
             ));
         }
 
         if errors.is_empty() {
-            Ok(Self {
-                indexed_query,
-                arguments,
-            })
+            Ok(Self { indexed_query, arguments })
         } else {
             Err(errors.into())
         }

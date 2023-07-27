@@ -93,12 +93,7 @@ fn get_field_name_and_type_from_schema<'a>(
             } else {
                 pre_coercion_type_name.clone()
             };
-            return (
-                field_name,
-                pre_coercion_type_name,
-                post_coercion_type_name,
-                field_raw_type,
-            );
+            return (field_name, pre_coercion_type_name, post_coercion_type_name, field_raw_type);
         }
     }
 
@@ -201,9 +196,8 @@ fn make_edge_parameters(
                 ));
             }
             Some(value) => {
-                edge_arguments
-                    .insert_or_error(arg_name.to_owned().into(), value)
-                    .unwrap(); // Duplicates should have been caught at parse time.
+                edge_arguments.insert_or_error(arg_name.to_owned().into(), value).unwrap();
+                // Duplicates should have been caught at parse time.
             }
         }
     }
@@ -250,23 +244,18 @@ fn infer_variable_type(
             // Using a "null" valued variable doesn't make sense as a comparison.
             // However, [[1], [2], null] is a valid value to use in the comparison, since
             // there are definitely values that it is smaller than or bigger than.
-            Ok(Type {
-                base: property_type.base.clone(),
-                nullable: false,
-            })
+            Ok(Type { base: property_type.base.clone(), nullable: false })
         }
         Operation::Contains(..) | Operation::NotContains(..) => {
             // To be able to check whether the property's value contains the operand,
             // the property needs to be a list. If it's not a list, this is a bad filter.
             let inner_type = match &property_type.base {
                 BaseType::Named(_) => {
-                    return Err(Box::new(
-                        FilterTypeError::ListFilterOperationOnNonListField(
-                            operation.operation_name().to_string(),
-                            property_name.to_string(),
-                            property_type.to_string(),
-                        ),
-                    ))
+                    return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
+                        operation.operation_name().to_string(),
+                        property_name.to_string(),
+                        property_type.to_string(),
+                    )))
                 }
                 BaseType::List(inner) => inner.as_ref(),
             };
@@ -279,10 +268,7 @@ fn infer_variable_type(
             // Whatever the property's type is, the argument must be a non-nullable list of
             // the same type, so that the elements of that list may be checked for equality
             // against that property's value.
-            Ok(Type {
-                base: BaseType::List(Box::new(property_type.clone())),
-                nullable: false,
-            })
+            Ok(Type { base: BaseType::List(Box::new(property_type.clone())), nullable: false })
         }
         Operation::HasPrefix(..)
         | Operation::NotHasPrefix(..)
@@ -293,10 +279,7 @@ fn infer_variable_type(
         | Operation::RegexMatches(..)
         | Operation::NotRegexMatches(..) => {
             // Filtering operations involving strings only take non-nullable strings as inputs.
-            Ok(Type {
-                base: BaseType::Named(Name::new("String")),
-                nullable: false,
-            })
+            Ok(Type { base: BaseType::Named(Name::new("String")), nullable: false })
         }
         Operation::IsNull(..) | Operation::IsNotNull(..) => {
             // These are unary operations, there's no place where a variable can be used.
@@ -317,19 +300,9 @@ fn make_local_field_filter_expr(
     property_type: &Type,
     filter_directive: &FilterDirective,
 ) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
-    let left = LocalField {
-        field_name: property_name.clone(),
-        field_type: property_type.clone(),
-    };
+    let left = LocalField { field_name: property_name.clone(), field_type: property_type.clone() };
 
-    make_filter_expr(
-        schema,
-        component_path,
-        tags,
-        current_vertex_vid,
-        left,
-        filter_directive,
-    )
+    make_filter_expr(schema, component_path, tags, current_vertex_vid, left, filter_directive)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -409,15 +382,11 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
 
     let mut vid_maker = successors(Some(Vid::new(NonZeroUsize::new(1).unwrap())), |x| {
         let inner_number = x.0.get();
-        Some(Vid::new(
-            NonZeroUsize::new(inner_number.checked_add(1).unwrap()).unwrap(),
-        ))
+        Some(Vid::new(NonZeroUsize::new(inner_number.checked_add(1).unwrap()).unwrap()))
     });
     let mut eid_maker = successors(Some(Eid::new(NonZeroUsize::new(1).unwrap())), |x| {
         let inner_number = x.0.get();
-        Some(Eid::new(
-            NonZeroUsize::new(inner_number.checked_add(1).unwrap()).unwrap(),
-        ))
+        Some(Eid::new(NonZeroUsize::new(inner_number.checked_add(1).unwrap()).unwrap()))
     });
 
     let mut errors: Vec<FrontendError> = vec![];
@@ -466,9 +435,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
     }
 
     if let Err(e) = tags.finish() {
-        errors.push(FrontendError::UnusedTags(
-            e.into_iter().map(String::from).collect(),
-        ));
+        errors.push(FrontendError::UnusedTags(e.into_iter().map(String::from).collect()));
     }
 
     let all_outputs = output_handler.finish();
@@ -575,10 +542,7 @@ fn make_duplicated_output_names_error(
                     .map(|field| match field {
                         FieldRef::ContextField(field) => {
                             let vid = field.vertex_id;
-                            (
-                                ir_vertices[&vid].type_name.to_string(),
-                                field.field_name.to_string(),
-                            )
+                            (ir_vertices[&vid].type_name.to_string(), field.field_name.to_string())
                         }
                         FieldRef::FoldSpecificField(field) => {
                             let vid = field.fold_root_vid;
@@ -671,20 +635,18 @@ where
         errors.extend(e);
     }
 
-    let vertex_results = vertices
-        .iter()
-        .map(|(vid, (uncoerced_type_name, field_node))| {
-            make_vertex(
-                schema,
-                &property_names_by_vertex,
-                &properties,
-                tags,
-                component_path,
-                *vid,
-                uncoerced_type_name,
-                field_node,
-            )
-        });
+    let vertex_results = vertices.iter().map(|(vid, (uncoerced_type_name, field_node))| {
+        make_vertex(
+            schema,
+            &property_names_by_vertex,
+            &properties,
+            tags,
+            component_path,
+            *vid,
+            uncoerced_type_name,
+            field_node,
+        )
+    });
 
     let ir_vertices: BTreeMap<Vid, IRVertex> = vertex_results
         .filter_map(|res| match res {
@@ -871,9 +833,7 @@ fn get_recurse_implicit_coercion(
 
     // Case 4, check whether the destination type also has an edge by that name.
     let edge_name: Arc<str> = Arc::from(edge_definition.name.node.as_ref());
-    let destination_edge = schema
-        .fields
-        .get(&(Arc::from(destination_type), edge_name.clone()));
+    let destination_edge = schema.fields.get(&(Arc::from(destination_type), edge_name.clone()));
     match destination_edge {
         Some(destination_edge) => {
             // The destination type has that edge too.
@@ -883,9 +843,7 @@ fn get_recurse_implicit_coercion(
                 Ok(None)
             } else {
                 // Case 4b, Err() because it's not supported yet.
-                Err(FrontendError::EdgeRecursionNeedingMultipleCoercions(
-                    edge_name.to_string(),
-                ))
+                Err(FrontendError::EdgeRecursionNeedingMultipleCoercions(edge_name.to_string()))
             }
         }
         None => {
@@ -908,9 +866,7 @@ fn get_recurse_implicit_coercion(
                 }
                 FieldOrigin::MultipleAncestors(multiple) => {
                     // Case 4d, Err() because we can't figure out which implicit coercion to use.
-                    Err(FrontendError::AmbiguousOriginEdgeRecursion(
-                        edge_name.to_string(),
-                    ))
+                    Err(FrontendError::AmbiguousOriginEdgeRecursion(edge_name.to_string()))
                 }
             }
         }
@@ -941,16 +897,12 @@ fn make_vertex<'schema, 'query>(
     // and we should report an error.
     let is_fold_root = component_path.is_component_root(vid);
     if !is_fold_root && !field_node.output.is_empty() {
-        errors.push(FrontendError::UnsupportedEdgeOutput(
-            field_node.name.as_ref().to_owned(),
-        ));
+        errors.push(FrontendError::UnsupportedEdgeOutput(field_node.name.as_ref().to_owned()));
     }
 
     if let Some(first_filter) = field_node.filter.first() {
         // TODO: If @filter on edges is allowed, tweak this.
-        errors.push(FrontendError::UnsupportedEdgeFilter(
-            field_node.name.as_ref().to_owned(),
-        ));
+        errors.push(FrontendError::UnsupportedEdgeFilter(field_node.name.as_ref().to_owned()));
     }
 
     let (type_name, coerced_from_type) = match field_node.coerced_to.clone().map_or_else(
@@ -1004,12 +956,7 @@ fn make_vertex<'schema, 'query>(
     }
 
     if errors.is_empty() {
-        Ok(IRVertex {
-            vid,
-            type_name,
-            coerced_from_type,
-            filters,
-        })
+        Ok(IRVertex { vid, type_name, coerced_from_type, filters })
     } else {
         Err(errors)
     }
@@ -1046,9 +993,7 @@ where
 {
     let mut errors: Vec<FrontendError> = vec![];
 
-    vertices
-        .insert_or_error(current_vid, (pre_coercion_type, current_field))
-        .unwrap();
+    vertices.insert_or_error(current_vid, (pre_coercion_type, current_field)).unwrap();
 
     let defined_fields = get_vertex_field_definitions(schema, post_coercion_type.as_ref());
 
@@ -1060,10 +1005,7 @@ where
             subfield_raw_type,
         ) = get_field_name_and_type_from_schema(defined_fields, subfield);
 
-        if schema
-            .vertex_types
-            .contains_key(subfield_post_coercion_type.as_ref())
-        {
+        if schema.vertex_types.contains_key(subfield_post_coercion_type.as_ref()) {
             // Processing an edge.
 
             let next_vid = vid_maker.next().unwrap();
@@ -1152,9 +1094,7 @@ where
 
             output_handler.end_nested_scope(next_vid);
         } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
-            || schema
-                .scalars
-                .contains_key(subfield_post_coercion_type.as_ref())
+            || schema.scalars.contains_key(subfield_post_coercion_type.as_ref())
             || subfield_name.as_ref() == TYPENAME_META_FIELD
         {
             // Processing a property.
@@ -1210,11 +1150,8 @@ where
                 // - the explicit "name" parameter in the @tag directive itself
                 // - the alias of the field with the @tag directive
                 // - the name of the field with the @tag directive
-                let tag_name = tag_directive
-                    .name
-                    .as_ref()
-                    .map(|x| x.as_ref())
-                    .unwrap_or_else(|| {
+                let tag_name =
+                    tag_directive.name.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| {
                         subfield
                             .alias
                             .as_ref()
@@ -1231,9 +1168,7 @@ where
                 if let Err(e) =
                     tags.register_tag(tag_name, FieldRef::ContextField(tag_field), component_path)
                 {
-                    errors.push(FrontendError::MultipleTagsWithSameName(
-                        tag_name.to_string(),
-                    ));
+                    errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
             }
         } else {
@@ -1296,9 +1231,7 @@ where
     if !starting_field.output.is_empty() {
         // The edge has @fold @output but no @transform.
         // If it had a @transform then the output would have been in the field's transform group.
-        errors.push(FrontendError::UnsupportedEdgeOutput(
-            starting_field.name.as_ref().to_owned(),
-        ));
+        errors.push(FrontendError::UnsupportedEdgeOutput(starting_field.name.as_ref().to_owned()));
     }
 
     let mut post_filters = vec![];
@@ -1375,9 +1308,7 @@ where
                 let field = FieldRef::FoldSpecificField(fold_specific_field.clone());
 
                 if let Err(e) = tags.register_tag(tag_name, field, component_path) {
-                    errors.push(FrontendError::MultipleTagsWithSameName(
-                        tag_name.to_string(),
-                    ));
+                    errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
             } else {
                 errors.push(FrontendError::ExplicitTagNameRequired(

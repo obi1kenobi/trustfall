@@ -79,12 +79,7 @@ impl TryFrom<IRQuery> for IndexedQuery {
             &mut vec![],
         )?;
 
-        Ok(Self {
-            ir_query,
-            vids,
-            eids,
-            outputs,
-        })
+        Ok(Self { ir_query, vids, eids, outputs })
     }
 }
 
@@ -171,9 +166,8 @@ fn add_data_from_component(
         let output_vid = field.vertex_id;
 
         // the output must be from a vertex in this component
-        let output_component = vids
-            .get(&output_vid)
-            .ok_or(InvalidIRQueryError::GetBetterVariant(1))?;
+        let output_component =
+            vids.get(&output_vid).ok_or(InvalidIRQueryError::GetBetterVariant(1))?;
         if !ptr::eq(component.as_ref(), output_component.as_ref()) {
             return Err(InvalidIRQueryError::GetBetterVariant(2));
         }
@@ -185,11 +179,7 @@ fn add_data_from_component(
             &component_optional_vertices,
             are_folds_optional,
         );
-        let output = Output {
-            name: output_name.clone(),
-            value_type: output_type,
-            vid: output_vid,
-        };
+        let output = Output { name: output_name.clone(), value_type: output_type, vid: output_vid };
         let existing = outputs.insert(output_name, output);
         if existing.is_some() {
             return Err(InvalidIRQueryError::GetBetterVariant(3));
@@ -203,15 +193,13 @@ fn add_data_from_component(
         }
 
         // the edge's endpoints must be vertices from this component
-        let from_component = vids
-            .get(&edge.from_vid)
-            .ok_or(InvalidIRQueryError::GetBetterVariant(5))?;
+        let from_component =
+            vids.get(&edge.from_vid).ok_or(InvalidIRQueryError::GetBetterVariant(5))?;
         if !ptr::eq(component.as_ref(), from_component.as_ref()) {
             return Err(InvalidIRQueryError::GetBetterVariant(6));
         }
-        let to_component = vids
-            .get(&edge.to_vid)
-            .ok_or(InvalidIRQueryError::GetBetterVariant(7))?;
+        let to_component =
+            vids.get(&edge.to_vid).ok_or(InvalidIRQueryError::GetBetterVariant(7))?;
         if !ptr::eq(component.as_ref(), to_component.as_ref()) {
             return Err(InvalidIRQueryError::GetBetterVariant(8));
         }
@@ -229,9 +217,8 @@ fn add_data_from_component(
         }
 
         // The folded edge's "from" vertex must be from this component.
-        let from_component = vids
-            .get(&fold.from_vid)
-            .ok_or(InvalidIRQueryError::GetBetterVariant(11))?;
+        let from_component =
+            vids.get(&fold.from_vid).ok_or(InvalidIRQueryError::GetBetterVariant(11))?;
         if !ptr::eq(component.as_ref(), from_component.as_ref()) {
             return Err(InvalidIRQueryError::GetBetterVariant(12));
         }
@@ -257,11 +244,7 @@ fn add_data_from_component(
             outputs
                 .insert_or_error(
                     name.clone(),
-                    Output {
-                        name: name.clone(),
-                        value_type: output_type,
-                        vid: fold.to_vid,
-                    },
+                    Output { name: name.clone(), value_type: output_type, vid: fold.to_vid },
                 )
                 .map_err(|_| InvalidIRQueryError::GetBetterVariant(15))?;
         }
@@ -275,9 +258,7 @@ fn add_data_from_component(
             &fold.component,
             are_folds_optional,
         )?;
-        are_folds_optional
-            .pop()
-            .expect("pushed value is no longer present");
+        are_folds_optional.pop().expect("pushed value is no longer present");
     }
 
     Ok(())

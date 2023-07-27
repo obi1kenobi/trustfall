@@ -54,11 +54,7 @@ pub(crate) struct WorkflowsPager<'a> {
 
 impl<'a> WorkflowsPager<'a> {
     pub(crate) fn new(client: octorust::Client, repo_vertex: Vertex, runtime: &'a Runtime) -> Self {
-        Self {
-            actions: octorust::actions::Actions::new(client),
-            repo_vertex,
-            runtime,
-        }
+        Self { actions: octorust::actions::Actions::new(client), repo_vertex, runtime }
     }
 }
 

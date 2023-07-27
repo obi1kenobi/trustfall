@@ -125,9 +125,7 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
 
     match &document.operations {
         DocumentOperations::Multiple(mult) => {
-            return Err(ParseError::MultipleOperationsInDocument(
-                mult.values().next().unwrap().pos,
-            ))
+            return Err(ParseError::MultipleOperationsInDocument(mult.values().next().unwrap().pos))
         }
         DocumentOperations::Single(op) => {
             let root_node = &op.node;
@@ -163,14 +161,12 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
             let root_node = root_items.first().unwrap();
             match &root_node.node {
                 Selection::Field(positioned_field) => Ok(positioned_field),
-                Selection::FragmentSpread(fs) => Err(ParseError::UnsupportedQueryRoot(
-                    "a fragment spread".to_string(),
-                    fs.pos,
-                )),
-                Selection::InlineFragment(inl) => Err(ParseError::UnsupportedQueryRoot(
-                    "an inline fragment".to_string(),
-                    inl.pos,
-                )),
+                Selection::FragmentSpread(fs) => {
+                    Err(ParseError::UnsupportedQueryRoot("a fragment spread".to_string(), fs.pos))
+                }
+                Selection::InlineFragment(inl) => {
+                    Err(ParseError::UnsupportedQueryRoot("an inline fragment".to_string(), inl.pos))
+                }
             }
         }
     }
@@ -235,10 +231,7 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
         .iter()
         .find(|selection| matches!(selection.node, Selection::FragmentSpread(_)));
     if let Some(s) = fragment_spread {
-        return Err(ParseError::UnsupportedSyntax(
-            "fragment spread".to_string(),
-            s.pos,
-        ));
+        return Err(ParseError::UnsupportedSyntax("fragment spread".to_string(), s.pos));
     }
 
     let inline_fragment = field
@@ -419,11 +412,7 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
     Ok(FieldConnection {
         position: field.pos,
         name: field.node.name.node.as_ref().to_owned().into(),
-        alias: field
-            .node
-            .alias
-            .as_ref()
-            .map(|p| p.node.as_ref().to_owned().into()),
+        alias: field.node.alias.as_ref().map(|p| p.node.as_ref().to_owned().into()),
         arguments,
         optional,
         recurse,
@@ -441,10 +430,7 @@ fn make_fold_group(
                 Some(make_transform_group(transform, directive_iter)?)
             }
             ParsedDirective::Fold(_, pos) => {
-                return Err(ParseError::UnsupportedDuplicatedDirective(
-                    "@fold".to_string(),
-                    pos,
-                ));
+                return Err(ParseError::UnsupportedDuplicatedDirective("@fold".to_string(), pos));
             }
             _ => {
                 return Err(ParseError::UnsupportedDirectivePosition(
@@ -458,10 +444,7 @@ fn make_fold_group(
         None
     };
 
-    Ok(FoldGroup {
-        fold,
-        transform: transform_group,
-    })
+    Ok(FoldGroup { fold, transform: transform_group })
 }
 
 fn make_transform_group(
@@ -500,13 +483,7 @@ fn make_transform_group(
     // all other directives apply to the transformed value and are processed here.
     assert!(directive_iter.next().is_none());
 
-    Ok(TransformGroup {
-        transform,
-        output,
-        tag,
-        filter,
-        retransform,
-    })
+    Ok(TransformGroup { transform, output, tag, filter, retransform })
 }
 
 /// Parses a query document. May fail if there is no query root.
@@ -527,10 +504,7 @@ pub fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError
 
     let root_field = make_field_node(query_root)?;
 
-    Ok(Query {
-        root_connection,
-        root_field,
-    })
+    Ok(Query { root_connection, root_field })
 }
 
 #[cfg(test)]
@@ -563,12 +537,9 @@ mod tests {
         let document = parse_query(test_query.query).unwrap();
         let check_data = fs::read_to_string(check_path).unwrap();
 
-        let constructed_test_item =
-            parse_document(&document).map(move |query| TestParsedGraphQLQuery {
-                schema_name: test_query.schema_name,
-                query,
-                arguments,
-            });
+        let constructed_test_item = parse_document(&document).map(move |query| {
+            TestParsedGraphQLQuery { schema_name: test_query.schema_name, query, arguments }
+        });
 
         let check_parsed: TestParsedGraphQLQueryResult = ron::from_str(&check_data).unwrap();
 

@@ -1,9 +1,9 @@
 use std::fmt;
 
-use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{de::Visitor, Deserialize, Deserializer};
+use time::OffsetDateTime;
 
 #[allow(dead_code)]
 #[allow(non_snake_case)] // names match the official naming scheme, should use serde rename instead
@@ -12,7 +12,8 @@ pub(crate) struct CsvMetarReport {
     pub(crate) raw_metar: String,
     pub(crate) station_id: String,
 
-    pub(crate) observation_time: DateTime<Utc>,
+    #[serde(with = "time::serde::iso8601")]
+    pub(crate) observation_time: OffsetDateTime,
 
     pub(crate) latitude: Option<f64>,
     pub(crate) longitude: Option<f64>,
@@ -120,7 +121,7 @@ where
 pub(crate) struct MetarReport {
     pub(crate) station_id: String,
     pub(crate) raw_report: String,
-    pub(crate) observation_time: DateTime<Utc>,
+    pub(crate) observation_time: OffsetDateTime,
 
     pub(crate) latitude: Option<f64>,
     pub(crate) longitude: Option<f64>,
@@ -154,28 +155,20 @@ impl From<CsvMetarReport> for MetarReport {
     fn from(csv_metar: CsvMetarReport) -> Self {
         let mut cloud_cover: Vec<MetarCloudCover> = vec![];
         if let Some(sky_cover) = csv_metar.sky_cover_1 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_1,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_1 })
         }
         if let Some(sky_cover) = csv_metar.sky_cover_2 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_2,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_2 })
         }
         if let Some(sky_cover) = csv_metar.sky_cover_3 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_3,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_3 })
         }
         if let Some(sky_cover) = csv_metar.sky_cover_4 {
-            cloud_cover.push(MetarCloudCover {
-                sky_cover,
-                base_altitude: csv_metar.cloud_base_ft_agl_4,
-            })
+            cloud_cover
+                .push(MetarCloudCover { sky_cover, base_altitude: csv_metar.cloud_base_ft_agl_4 })
         }
 
         let visibility = get_visibility(&csv_metar.raw_metar);
@@ -216,9 +209,9 @@ impl From<CsvMetarReport> for MetarReport {
 static METAR_STATION_AND_DATE_PATTERN: &str = r"[A-Z]{4} \d{6}Z ";
 static METAR_AUTO_OPTIONAL_MARKER_PATTERN: &str = r"(?:AUTO )?";
 
-//                                     |   direction   |intensity|    gusts    |    units    | unknown |
+//       |   direction   |intensity|    gusts     |     units     | unknown |
 static METAR_WIND_PATTERN: &str =
-    r"(?:(?:VRB|[0-9/]{3})[0-9/]{2}(?:G[0-9/]{2})(?:MPS|KPH|KT))|(?://///) ";
+    r"(?:(?:VRB|[0-9/]{3})[0-9/]{2}(?:G[0-9/]{2})?(?:MPS|KPH|KT)?)|(?://///) ";
 
 // see Surface Wind: http://www.bom.gov.au/aviation/data/education/metar-speci.pdf
 static METAR_WIND_VARIABILITY_PATTERN: &str = r"(?:[0-9/]{3}V[0-9/]{3} )?";
@@ -259,7 +252,10 @@ fn get_visibility(raw_metar: &str) -> Visibility {
                         let total_mi: f64 = integer_mi + (numerator / denominator);
                         Visibility::StatuteMiles(total_mi)
                     } else {
-                        unreachable!()
+                        unreachable!(
+                            "unexpected fractional_mi '{fractional_mi}' in visibility_amount \
+                            '{visibility_amount}': {raw_metar} {capture:#?}"
+                        );
                     }
                 } else if let Some((numerator, denominator)) = visibility_amount.split_once('/') {
                     let numerator: f64 = numerator.parse().unwrap();

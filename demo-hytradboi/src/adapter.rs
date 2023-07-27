@@ -7,12 +7,12 @@ use hn_api::{types::Item, HnClient};
 use octorust::types::{ContentFile, FullRepository};
 use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
-use trustfall_core::{
-    interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        VertexIterator,
+use trustfall::{
+    provider::{
+        field_property, resolve_property_with, Adapter, ContextIterator, ContextOutcomeIterator,
+        EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator,
     },
-    ir::{EdgeParameters, FieldValue},
+    FieldValue,
 };
 
 use crate::{
@@ -32,14 +32,14 @@ static CRATES_CLIENT: Lazy<consecrates::Client> =
 static GITHUB_CLIENT: Lazy<octorust::Client> = Lazy::new(|| {
     octorust::Client::new(
         USER_AGENT,
-        Some(octorust::auth::Credentials::Token(
-            std::env::var("GITHUB_TOKEN").unwrap_or_else(|_| {
+        Some(octorust::auth::Credentials::Token(std::env::var("GITHUB_TOKEN").unwrap_or_else(
+            |_| {
                 fs::read_to_string("./localdata/gh_token")
                     .expect("could not find creds file")
                     .trim()
                     .to_string()
-            }),
-        )),
+            },
+        ))),
     )
     .unwrap()
 });
@@ -47,12 +47,8 @@ static GITHUB_CLIENT: Lazy<octorust::Client> = Lazy::new(|| {
 static REPOS_CLIENT: Lazy<octorust::repos::Repos> =
     Lazy::new(|| octorust::repos::Repos::new(GITHUB_CLIENT.clone()));
 
-static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
+static RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap());
 
 pub struct DemoAdapter;
 
@@ -125,11 +121,7 @@ impl DemoAdapter {
     }
 
     fn most_downloaded_crates(&self) -> VertexIterator<'static, Vertex> {
-        Box::new(
-            CratesPager::new(&CRATES_CLIENT)
-                .into_iter()
-                .map(|x| x.into()),
-        )
+        Box::new(CratesPager::new(&CRATES_CLIENT).into_iter().map(|x| x.into()))
     }
 }
 
@@ -156,31 +148,7 @@ macro_rules! impl_item_property {
     };
 }
 
-macro_rules! impl_property {
-    ($contexts:ident, $conversion:ident, $attr:ident) => {
-        Box::new($contexts.map(|ctx| {
-            let vertex = ctx
-                .active_vertex()
-                .map(|vertex| vertex.$conversion().unwrap());
-            let value = vertex.map(|t| t.$attr.clone()).into();
-
-            (ctx, value)
-        }))
-    };
-
-    ($contexts:ident, $conversion:ident, $var:ident, $b:block) => {
-        Box::new($contexts.map(|ctx| {
-            let vertex = ctx
-                .active_vertex()
-                .map(|vertex| vertex.$conversion().unwrap());
-            let value = vertex.map(|$var| $b).into();
-
-            (ctx, value)
-        }))
-    };
-}
-
-impl Adapter<'static> for DemoAdapter {
+impl<'a> Adapter<'a> for DemoAdapter {
     type Vertex = Vertex;
 
     fn resolve_starting_vertices(
@@ -188,7 +156,7 @@ impl Adapter<'static> for DemoAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'static, Self::Vertex> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "HackerNewsFrontPage" => self.front_page(),
             "HackerNewsTop" => {
@@ -210,11 +178,11 @@ impl Adapter<'static> for DemoAdapter {
 
     fn resolve_property(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
                 let value = match ctx.active_vertex() {
@@ -238,117 +206,159 @@ impl Adapter<'static> for DemoAdapter {
             }
 
             // properties on HackerNewsJob
-            ("HackerNewsJob", "score") => impl_property!(contexts, as_job, score),
-            ("HackerNewsJob", "title") => impl_property!(contexts, as_job, title),
-            ("HackerNewsJob", "url") => impl_property!(contexts, as_job, url),
+            ("HackerNewsJob", "score") => {
+                resolve_property_with(contexts, field_property!(as_job, score))
+            }
+            ("HackerNewsJob", "title") => {
+                resolve_property_with(contexts, field_property!(as_job, title))
+            }
+            ("HackerNewsJob", "url") => {
+                resolve_property_with(contexts, field_property!(as_job, url))
+            }
 
             // properties on HackerNewsStory
-            ("HackerNewsStory", "byUsername") => impl_property!(contexts, as_story, by),
-            ("HackerNewsStory", "text") => impl_property!(contexts, as_story, text),
-            ("HackerNewsStory", "commentsCount") => {
-                impl_property!(contexts, as_story, descendants)
+            ("HackerNewsStory", "byUsername") => {
+                resolve_property_with(contexts, field_property!(as_story, by))
             }
-            ("HackerNewsStory", "score") => impl_property!(contexts, as_story, score),
-            ("HackerNewsStory", "title") => impl_property!(contexts, as_story, title),
-            ("HackerNewsStory", "url") => impl_property!(contexts, as_story, url),
+            ("HackerNewsStory", "text") => {
+                resolve_property_with(contexts, field_property!(as_story, text))
+            }
+            ("HackerNewsStory", "commentsCount") => {
+                resolve_property_with(contexts, field_property!(as_story, descendants))
+            }
+            ("HackerNewsStory", "score") => {
+                resolve_property_with(contexts, field_property!(as_story, score))
+            }
+            ("HackerNewsStory", "title") => {
+                resolve_property_with(contexts, field_property!(as_story, title))
+            }
+            ("HackerNewsStory", "url") => {
+                resolve_property_with(contexts, field_property!(as_story, url))
+            }
 
             // properties on HackerNewsComment
-            ("HackerNewsComment", "byUsername") => impl_property!(contexts, as_comment, by),
-            ("HackerNewsComment", "text") => impl_property!(contexts, as_comment, text),
-            ("HackerNewsComment", "childCount") => {
-                impl_property!(contexts, as_comment, comment, {
-                    comment.kids.as_ref().map(|v| v.len() as u64).unwrap_or(0)
-                })
+            ("HackerNewsComment", "byUsername") => {
+                resolve_property_with(contexts, field_property!(as_comment, by))
             }
+            ("HackerNewsComment", "text") => {
+                resolve_property_with(contexts, field_property!(as_comment, text))
+            }
+            ("HackerNewsComment", "childCount") => resolve_property_with(
+                contexts,
+                field_property!(as_comment, kids, {
+                    kids.as_ref().map(|v| v.len() as u64).unwrap_or(0).into()
+                }),
+            ),
 
             // properties on HackerNewsUser
-            ("HackerNewsUser", "id") => impl_property!(contexts, as_user, id),
-            ("HackerNewsUser", "karma") => impl_property!(contexts, as_user, karma),
-            ("HackerNewsUser", "about") => impl_property!(contexts, as_user, about),
-            ("HackerNewsUser", "unixCreatedAt") => impl_property!(contexts, as_user, created),
-            ("HackerNewsUser", "delay") => impl_property!(contexts, as_user, delay),
+            ("HackerNewsUser", "id") => {
+                resolve_property_with(contexts, field_property!(as_user, id))
+            }
+            ("HackerNewsUser", "karma") => {
+                resolve_property_with(contexts, field_property!(as_user, karma))
+            }
+            ("HackerNewsUser", "about") => {
+                resolve_property_with(contexts, field_property!(as_user, about))
+            }
+            ("HackerNewsUser", "unixCreatedAt") => {
+                resolve_property_with(contexts, field_property!(as_user, created))
+            }
+            ("HackerNewsUser", "delay") => {
+                resolve_property_with(contexts, field_property!(as_user, delay))
+            }
 
             // properties on Crate
-            ("Crate", "name") => impl_property!(contexts, as_crate, name),
-            ("Crate", "latestVersion") => impl_property!(contexts, as_crate, max_version),
+            ("Crate", "name") => resolve_property_with(contexts, field_property!(as_crate, name)),
+            ("Crate", "latestVersion") => {
+                resolve_property_with(contexts, field_property!(as_crate, max_version))
+            }
 
             // properties on Webpage
             ("Webpage" | "Repository" | "GitHubRepository", "url") => {
-                impl_property!(contexts, as_webpage, url, { url })
+                resolve_property_with(contexts, |vertex| {
+                    vertex.as_webpage().expect("not a Webpage").into()
+                })
             }
 
             // properties on GitHubRepository
-            ("GitHubRepository", "owner") => {
-                impl_property!(contexts, as_github_repository, repo, {
-                    let (owner, _) = get_owner_and_repo(repo);
-                    owner
-                })
-            }
+            ("GitHubRepository", "owner") => resolve_property_with(contexts, |vertex| {
+                let repo = vertex.as_github_repository().expect("not a GitHubRepository");
+                let (owner, _) = get_owner_and_repo(repo);
+                owner.into()
+            }),
             ("GitHubRepository", "name") => {
-                impl_property!(contexts, as_github_repository, name)
+                resolve_property_with(contexts, field_property!(as_github_repository, name))
             }
             ("GitHubRepository", "fullName") => {
-                impl_property!(contexts, as_github_repository, full_name)
+                resolve_property_with(contexts, field_property!(as_github_repository, full_name))
             }
-            ("GitHubRepository", "lastModified") => {
-                impl_property!(contexts, as_github_repository, updated_at)
-            }
+            ("GitHubRepository", "lastModified") => resolve_property_with(
+                contexts,
+                field_property!(as_github_repository, updated_at, {
+                    updated_at.map(|value| value.timestamp()).into()
+                }),
+            ),
 
             // properties on GitHubWorkflow
-            ("GitHubWorkflow", "name") => impl_property!(contexts, as_github_workflow, wf, {
-                wf.workflow.name.as_str()
-            }),
-            ("GitHubWorkflow", "path") => impl_property!(contexts, as_github_workflow, wf, {
-                wf.workflow.path.as_str()
-            }),
+            ("GitHubWorkflow", "name") => resolve_property_with(
+                contexts,
+                field_property!(as_github_workflow, workflow, { workflow.name.as_str().into() }),
+            ),
+            ("GitHubWorkflow", "path") => resolve_property_with(
+                contexts,
+                field_property!(as_github_workflow, workflow, { workflow.path.as_str().into() }),
+            ),
 
             // properties on GitHubActionsJob
             ("GitHubActionsJob", "name") => {
-                impl_property!(contexts, as_github_actions_job, name)
+                resolve_property_with(contexts, field_property!(as_github_actions_job, name))
             }
             ("GitHubActionsJob", "runsOn") => {
-                impl_property!(contexts, as_github_actions_job, runs_on)
+                resolve_property_with(contexts, field_property!(as_github_actions_job, runs_on))
             }
 
             // properties on GitHubActionsStep and its implementers
             (
                 "GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep",
                 "name",
-            ) => impl_property!(contexts, as_github_actions_step, step_name, { step_name }),
+            ) => resolve_property_with(contexts, |vertex| {
+                vertex.as_github_actions_step().expect("not a step").into()
+            }),
 
             // properties on GitHubActionsImportedStep
-            ("GitHubActionsImportedStep", "uses") => {
-                impl_property!(contexts, as_github_actions_imported_step, uses)
-            }
+            ("GitHubActionsImportedStep", "uses") => resolve_property_with(
+                contexts,
+                field_property!(as_github_actions_imported_step, uses),
+            ),
 
             // properties on GitHubActionsRunStep
             ("GitHubActionsRunStep", "run") => {
-                impl_property!(contexts, as_github_actions_run_step, run)
+                resolve_property_with(contexts, field_property!(as_github_actions_run_step, run))
             }
 
             // properties on NameValuePair
-            ("NameValuePair", "name") => {
-                impl_property!(contexts, as_name_value_pair, pair, { pair.0.clone() })
-            }
-            ("NameValuePair", "value") => {
-                impl_property!(contexts, as_name_value_pair, pair, { pair.1.clone() })
-            }
+            ("NameValuePair", "name") => resolve_property_with(contexts, |vertex| {
+                vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
+            }),
+            ("NameValuePair", "value") => resolve_property_with(contexts, |vertex| {
+                vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
+            }),
             _ => unreachable!(),
         }
     }
 
     fn resolve_neighbors(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let story = vertex.as_story().unwrap();
@@ -371,7 +381,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsStory", "comment") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let story = vertex.as_story().unwrap();
@@ -406,7 +416,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsStory", "link") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let story = vertex.as_story().unwrap();
@@ -424,7 +434,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsJob", "link") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let job = vertex.as_job().unwrap();
@@ -441,7 +451,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsComment", "byUser") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let comment = vertex.as_comment().unwrap();
@@ -464,7 +474,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsComment", "parent") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let comment = vertex.as_comment().unwrap();
@@ -488,7 +498,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsComment", "topmostAncestor") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let comment = vertex.as_comment().unwrap();
@@ -525,7 +535,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsComment", "reply") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let comment = vertex.as_comment().unwrap();
@@ -557,7 +567,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("HackerNewsUser", "submitted") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let user = vertex.as_user().unwrap();
@@ -582,7 +592,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("Crate", "repository") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let cr = vertex.as_crate().unwrap();
@@ -600,7 +610,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("GitHubRepository", "workflows") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => Box::new(
                         WorkflowsPager::new(GITHUB_CLIENT.clone(), vertex, &RUNTIME)
@@ -613,7 +623,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("GitHubWorkflow", "jobs") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => {
                         let workflow = vertex.as_github_workflow().unwrap();
@@ -634,7 +644,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("GitHubActionsJob", "step") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(Vertex::GitHubActionsJob(job)) => get_steps_in_job(job),
                     _ => unreachable!(),
@@ -644,7 +654,7 @@ impl Adapter<'static> for DemoAdapter {
             })),
             ("GitHubActionsRunStep", "env") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
-                let neighbors: VertexIterator<'static, Self::Vertex> = match vertex {
+                let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(Vertex::GitHubActionsRunStep(s)) => get_env_for_run_step(s),
                     _ => unreachable!(),
@@ -658,11 +668,11 @@ impl Adapter<'static> for DemoAdapter {
 
     fn resolve_coercion(
         &self,
-        contexts: ContextIterator<'static, Self::Vertex>,
+        contexts: ContextIterator<'a, Self::Vertex>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
         let type_name = type_name.clone();
         let coerce_to_type = coerce_to_type.clone();
         let iterator = contexts.map(move |ctx| {

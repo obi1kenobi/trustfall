@@ -36,21 +36,13 @@ where
 {
     #[allow(dead_code)]
     pub fn new(ir_query: IRQuery, arguments: BTreeMap<String, FieldValue>) -> Self {
-        Self {
-            ops: Default::default(),
-            ir_query,
-            arguments,
-        }
+        Self { ops: Default::default(), ir_query, arguments }
     }
 
     pub fn record(&mut self, content: TraceOpContent<Vertex>, parent: Option<Opid>) -> Opid {
         let next_opid = Opid(NonZeroUsize::new(self.ops.len() + 1).unwrap());
 
-        let op = TraceOp {
-            opid: next_opid,
-            parent_opid: parent,
-            content,
-        };
+        let op = TraceOp { opid: next_opid, parent_opid: parent, content };
         self.ops.insert_or_error(next_opid, op).unwrap();
         next_opid
     }
@@ -129,10 +121,7 @@ fn make_iter_with_end_action<T, I: Iterator<Item = T>, F: FnOnce()>(
     inner: I,
     on_end: F,
 ) -> OnIterEnd<T, I, F> {
-    OnIterEnd {
-        inner,
-        on_end_func: Some(on_end),
-    }
+    OnIterEnd { inner, on_end_func: Some(on_end) }
 }
 
 pub struct PreActionIter<T, I: Iterator<Item = T>, F: Fn()> {
@@ -177,11 +166,7 @@ where
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>) -> Self {
-        Self {
-            tracer,
-            inner: adapter,
-            _phantom: PhantomData,
-        }
+        Self { tracer, inner: adapter, _phantom: PhantomData }
     }
 
     pub fn finish(self) -> Trace<AdapterT::Vertex> {
@@ -231,9 +216,7 @@ where
         );
         drop(trace);
 
-        let inner_iter = self
-            .inner
-            .resolve_starting_vertices(edge_name, parameters, resolve_info);
+        let inner_iter = self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info);
         let tracer_ref_1 = self.tracer.clone();
         let tracer_ref_2 = self.tracer.clone();
         Box::new(
@@ -295,8 +278,7 @@ where
             }),
         );
         let inner_iter =
-            self.inner
-                .resolve_property(wrapped_contexts, type_name, property_name, resolve_info);
+            self.inner.resolve_property(wrapped_contexts, type_name, property_name, resolve_info);
 
         let tracer_ref_4 = self.tracer.clone();
         let tracer_ref_5 = self.tracer.clone();
@@ -455,8 +437,7 @@ where
             }),
         );
         let inner_iter =
-            self.inner
-                .resolve_coercion(wrapped_contexts, type_name, coerce_to_type, resolve_info);
+            self.inner.resolve_coercion(wrapped_contexts, type_name, coerce_to_type, resolve_info);
 
         let tracer_ref_4 = self.tracer.clone();
         let tracer_ref_5 = self.tracer.clone();
