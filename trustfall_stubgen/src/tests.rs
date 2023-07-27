@@ -25,7 +25,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [dependencies]
-trustfall = "0.5.0"
+trustfall = "*"
 
 [workspace]
 "#;
