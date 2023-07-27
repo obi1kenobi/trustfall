@@ -17,6 +17,14 @@ pub(crate) fn to_lower_snake_case(value: &str) -> String {
     result
 }
 
+pub(crate) fn enum_variant_name_to_upper_case(value: &str) -> String {
+    let mut chars = value.chars();
+    let first_char = chars.next().unwrap().to_ascii_uppercase();
+    let rest_chars: String = chars.collect();
+
+    format!("{}{}", first_char, rest_chars)
+}
+
 pub(crate) fn property_resolver_fn_name(type_name: &str) -> String {
     let normalized_name = to_lower_snake_case(type_name);
     format!("resolve_{normalized_name}_property")

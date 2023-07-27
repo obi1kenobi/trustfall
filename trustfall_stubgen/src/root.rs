@@ -10,7 +10,9 @@ use quote::quote;
 use regex::Regex;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
-use crate::util::{escaped_rust_name, parse_import, to_lower_snake_case};
+use crate::util::{
+    enum_variant_name_to_upper_case, escaped_rust_name, parse_import, to_lower_snake_case,
+};
 
 use super::{
     adapter_creator::make_adapter_file, edges_creator::make_edges_file,
@@ -385,7 +387,7 @@ fn make_vertex_file(
         .collect();
     rows.sort_unstable();
     for row in rows {
-        let name = &escaped_rust_name(row.name);
+        let name = &escaped_rust_name(enum_variant_name_to_upper_case(&row.name));
         let ident = syn::Ident::new(name.as_str(), proc_macro2::Span::call_site());
         variants.extend(quote! {
             #ident(()),
@@ -427,6 +429,8 @@ fn ensure_no_vertex_name_conflicts(querying_schema: &Schema, adapter: Arc<Schema
 
     for row in rows {
         let name = row.name.clone();
+        // we normalize to lower snake case here, however in vertex name we capitalize this name instead
+        // it doesn't really matter though because the important one is just to normalize to the same capitalization scheme
         let converted = escaped_rust_name(to_lower_snake_case(&name));
         let v = uniq.insert(converted, name);
         if let Some(v) = v {
