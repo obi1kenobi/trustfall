@@ -25,7 +25,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [dependencies]
-trustfall = "0.5.0"
+trustfall = "*"
 
 [workspace]
 "#;
@@ -41,9 +41,12 @@ mod adapter;
     lib_rs_path.push("lib.rs");
     write_new_file(lib_rs_path.as_path(), lib_rs);
 
+    // Run `cargo test --no-run` over the generated code.
+    // This is like a `cargo check` but includes `#[cfg(test)]` code as well.
     let output = Command::new("cargo")
         .current_dir(path)
-        .arg("check")
+        .arg("test")
+        .arg("--no-run")
         .output()
         .expect("failed to execute process");
 
@@ -150,12 +153,12 @@ fn test_schema(name: &str) {
 }
 
 #[test]
-fn test_hackernews_schema() {
+fn hackernews_schema() {
     test_schema("hackernews")
 }
 
 #[test]
-fn test_use_reserved_rust_names_in_schema() {
+fn use_reserved_rust_names_in_schema() {
     test_schema("use_reserved_rust_names_in_schema");
 }
 

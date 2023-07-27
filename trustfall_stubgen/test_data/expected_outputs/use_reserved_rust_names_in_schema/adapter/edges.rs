@@ -34,7 +34,7 @@ mod const_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_const_()
+                    .as_const()
                     .expect("conversion failed, vertex was not a const");
                 todo!("get neighbors along edge 'const' for type 'const'")
             },
@@ -74,7 +74,7 @@ mod continue_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_continue_()
+                    .as_continue()
                     .expect("conversion failed, vertex was not a continue");
                 todo!("get neighbors along edge 'continue' for type 'continue'")
             },
@@ -114,7 +114,7 @@ mod dyn_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_dyn_()
+                    .as_dyn()
                     .expect("conversion failed, vertex was not a dyn");
                 todo!("get neighbors along edge 'dyn' for type 'dyn'")
             },
@@ -154,7 +154,7 @@ mod if_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_if_()
+                    .as_if()
                     .expect("conversion failed, vertex was not a if");
                 todo!("get neighbors along edge 'if' for type 'if'")
             },
@@ -194,7 +194,7 @@ mod mod_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_mod_()
+                    .as_mod()
                     .expect("conversion failed, vertex was not a mod");
                 todo!("get neighbors along edge 'mod' for type 'mod'")
             },
@@ -274,7 +274,7 @@ mod type_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_type_()
+                    .as_type()
                     .expect("conversion failed, vertex was not a type");
                 todo!("get neighbors along edge 'type' for type 'type'")
             },
@@ -314,7 +314,7 @@ mod unsafe_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_unsafe_()
+                    .as_unsafe()
                     .expect("conversion failed, vertex was not a unsafe");
                 todo!("get neighbors along edge 'unsafe' for type 'unsafe'")
             },
@@ -354,7 +354,7 @@ mod where_ {
             contexts,
             |vertex| {
                 let vertex = vertex
-                    .as_where_()
+                    .as_where()
                     .expect("conversion failed, vertex was not a where");
                 todo!("get neighbors along edge 'where' for type 'where'")
             },
