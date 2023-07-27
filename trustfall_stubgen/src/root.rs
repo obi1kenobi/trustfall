@@ -52,8 +52,8 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
 
     let mut entrypoint_match_arms = proc_macro2::TokenStream::new();
 
-    ensure_no_vertex_name_keyword_conflicts(&querying_schema, schema_adapter.clone());
-    ensure_no_edge_name_keyword_conflicts(&querying_schema, schema_adapter.clone());
+    ensure_no_vertex_name_conflicts(&querying_schema, schema_adapter.clone());
+    ensure_no_field_name_conflicts_on_vertex_type(&querying_schema, schema_adapter.clone());
 
     make_vertex_file(&querying_schema, schema_adapter.clone(), &mut stub.vertex);
     make_entrypoints_file(
@@ -403,10 +403,7 @@ fn make_vertex_file(
     vertex_file.top_level_items.push(vertex);
 }
 
-fn ensure_no_vertex_name_keyword_conflicts(
-    querying_schema: &Schema,
-    adapter: Arc<SchemaAdapter<'_>>,
-) {
+fn ensure_no_vertex_name_conflicts(querying_schema: &Schema, adapter: Arc<SchemaAdapter<'_>>) {
     let query = r#"
 {
     VertexType {
@@ -441,7 +438,7 @@ fn ensure_no_vertex_name_keyword_conflicts(
     }
 }
 
-fn ensure_no_edge_name_keyword_conflicts(
+fn ensure_no_field_name_conflicts_on_vertex_type(
     querying_schema: &Schema,
     adapter: Arc<SchemaAdapter<'_>>,
 ) {
