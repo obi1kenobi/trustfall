@@ -43,14 +43,415 @@ directive @transform(
 All the possible data types where querying can begin in this API.
 """
 type RootSchemaQuery {
-  type: [Type!]!
-  type2: [Type2!]!
+  # as: [as!]!
+  # as2: [as2!]!
+  # async: [async!]!
+  # async2: [async2!]!
+  # await: [await!]!
+  # await2: [await2!]!
+  # break: [break!]!
+  # break2: [break2!]!
+  # const: [const!]!
+  # const2: [const2!]!
+  # continue: [continue!]!
+  # continue2: [continue2!]!
+  # crate: [crate!]!
+  # crate2: [crate2!]!
+  # dyn: [dyn!]!
+  # dyn2: [dyn2!]!
+  # else: [else!]!
+  # else2: [else2!]!
+  # enum: [enum!]!
+  # enum2: [enum2!]!
+  # extern: [extern!]!
+  # extern2: [extern2!]!
+  # false: [false!]!
+  # false2: [false2!]!
+  # fn: [fn!]!
+  # fn2: [fn2!]!
+  # for: [for!]!
+  # for2: [for2!]!
+  # if: [if!]!
+  # if2: [if2!]!
+  # impl: [impl!]!
+  # impl2: [impl2!]!
+  # in: [in!]!
+  # in2: [in2!]!
+  # let: [let!]!
+  # let2: [let2!]!
+  # loop: [loop!]!
+  # loop2: [loop2!]!
+  # macro_rules: [macro_rules!]!
+  # macro_rules2: [macro_rules2!]!
+  # match: [match!]!
+  # match2: [match2!]!
+  # mod: [mod!]!
+  # mod2: [mod2!]!
+  # move: [move!]!
+  # move2: [move2!]!
+  # mut: [mut!]!
+  # mut2: [mut2!]!
+  # pub: [pub!]!
+  # pub2: [pub2!]!
+  # ref: [ref!]!
+  # ref2: [ref2!]!
+  # return: [return!]!
+  # return2: [return2!]!
+  # Self: [Self!]!
+  # # self: [self!]! # We generate 'Self', so no need to generate lowercase 'self'
+  # Self2: [Self2!]!
+  # static: [static!]!
+  # static2: [static2!]!
+  # struct: [struct!]!
+  # struct2: [struct2!]!
+  # super: [super!]!
+  # super2: [super2!]!
+  # trait: [trait!]!
+  # trait2: [trait2!]!
+  # true: [true!]!
+  # true2: [true2!]!
+  # try: [try!]!
+  # try2: [try2!]!
+  # type: [type!]!
+  # type2: [type2!]!
+  # union: [union!]!
+  # union2: [union2!]!
+  # unsafe: [unsafe!]!
+  unsafe2: [unsafe2!]!
+  use: [use!]!
+  use2: [use2!]!
+  # where: [where!]!
+  # where2: [where2!]!
+  # while: [while!]!
+  # while2: [while2!]!
 }
 
-type Type {
-  type: [Type!]!
+# type as {
+#   as: [as!]!
+# }
+
+# type break {
+#   break: [break!]!
+# }
+
+# type const {
+#   const: [const!]!
+# }
+
+# type continue {
+#   continue: [continue!]!
+# }
+
+# type crate {
+#   crate: [crate!]!
+# }
+
+# type else {
+#   else: [else!]!
+# }
+
+# type enum {
+#   enum: [enum!]!
+# }
+
+# type extern {
+#   extern: [extern!]!
+# }
+
+# type false {
+#   false: [false!]!
+# }
+
+# type fn {
+#   fn: [fn!]!
+# }
+
+# type for {
+#   for: [for!]!
+# }
+
+# type if {
+#   if: [if!]!
+# }
+
+# type impl {
+#   impl: [impl!]!
+# }
+
+# type in {
+#   in: [in!]!
+# }
+
+# type let {
+#   let: [let!]!
+# }
+
+# type loop {
+#   loop: [loop!]!
+# }
+
+# type match {
+#   match: [match!]!
+# }
+
+# type mod {
+#   mod: [mod!]!
+# }
+
+# type move {
+#   move: [move!]!
+# }
+
+# type mut {
+#   mut: [mut!]!
+# }
+
+# type pub {
+#   pub: [pub!]!
+# }
+
+# type ref {
+#   ref: [ref!]!
+# }
+
+# type return {
+#   return: [return!]!
+# }
+
+# # We generate 'Self', so no need to generate lowercase 'self'
+# # type self {
+# #   self: [self!]!
+# # }
+
+# type Self {
+#   Self: [Self!]!
+# }
+
+# type static {
+#   static: [static!]!
+# }
+
+# type struct {
+#   struct: [struct!]!
+# }
+
+# type super {
+#   super: [super!]!
+# }
+
+# type trait {
+#   trait: [trait!]!
+# }
+
+# type true {
+#   true: [true!]!
+# }
+
+# type type {
+#   type: [type!]!
+# }
+
+# type unsafe {
+#   unsafe: [unsafe!]!
+# }
+
+type use {
+  use: [use!]!
 }
 
-type Type2 {
-  type: Int!
+# type where {
+#   where: [where!]!
+# }
+
+# type while {
+#   while: [while!]!
+# }
+
+# type async {
+#   async: [async!]!
+# }
+
+# type await {
+#   await: [await!]!
+# }
+
+# type dyn {
+#   dyn: [dyn!]!
+# }
+
+# type try {
+#   try: [try!]!
+# }
+
+# type macro_rules {
+#   macro_rules: [macro_rules!]!
+# }
+
+# type union {
+#   union: [union!]!
+# }
+
+# type as2 {
+#   as: Int!
+# }
+
+# type break2 {
+#   break: Int!
+# }
+
+# type const2 {
+#   const: Int!
+# }
+
+# type continue2 {
+#   continue: Int!
+# }
+
+# type crate2 {
+#   crate: Int!
+# }
+
+# type else2 {
+#   else: Int!
+# }
+
+# type enum2 {
+#   enum: Int!
+# }
+
+# type extern2 {
+#   extern: Int!
+# }
+
+# type false2 {
+#   false: Int!
+# }
+
+# type fn2 {
+#   fn: Int!
+# }
+
+# type for2 {
+#   for: Int!
+# }
+
+# type if2 {
+#   if: Int!
+# }
+
+# type impl2 {
+#   impl: Int!
+# }
+
+# type in2 {
+#   in: Int!
+# }
+
+# type let2 {
+#   let: Int!
+# }
+
+# type loop2 {
+#   loop: Int!
+# }
+
+# type match2 {
+#   match: Int!
+# }
+
+# type mod2 {
+#   mod: Int!
+# }
+
+# type move2 {
+#   move: Int!
+# }
+
+# type mut2 {
+#   mut: Int!
+# }
+
+# type pub2 {
+#   pub: Int!
+# }
+
+# type ref2 {
+#   ref: Int!
+# }
+
+# type return2 {
+#   return: Int!
+# }
+
+# # We generate 'Self', so no need to generate lowercase 'self'
+# # type self2 {
+# #   self: Int!
+# # }
+
+# type Self2 {
+#   Self: Int!
+# }
+
+# type static2 {
+#   static: Int!
+# }
+
+# type struct2 {
+#   struct: Int!
+# }
+
+# type super2 {
+#   super: Int!
+# }
+
+# type trait2 {
+#   trait: Int!
+# }
+
+# type true2 {
+#   true: Int!
+# }
+
+# type type2 {
+#   type: Int!
+# }
+
+type unsafe2 {
+  unsafe: Int!
 }
+
+type use2 {
+  use: Int!
+}
+
+# type where2 {
+#   where: Int!
+# }
+
+# type while2 {
+#   while: Int!
+# }
+
+# type async2 {
+#   async: Int!
+# }
+
+# type await2 {
+#   await: Int!
+# }
+
+# type dyn2 {
+#   dyn: Int!
+# }
+
+# type try2 {
+#   try: Int!
+# }
+
+# type macro_rules2 {
+#   macro_rules: Int!
+# }
+
+# type union2 {
+#   union: Int!
+# }

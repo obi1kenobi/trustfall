@@ -35,8 +35,9 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
-            "type" => super::entrypoints::type_(resolve_info),
-            "type2" => super::entrypoints::type2(resolve_info),
+            "unsafe2" => super::entrypoints::unsafe2(resolve_info),
+            "use" => super::entrypoints::use_(resolve_info),
+            "use2" => super::entrypoints::use2(resolve_info),
             _ => {
                 unreachable!(
                     "attempted to resolve starting vertices for unexpected edge name: {edge_name}"
@@ -53,8 +54,15 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
-            "Type2" => {
-                super::properties::resolve_type2_property(
+            "unsafe2" => {
+                super::properties::resolve_unsafe2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
+                )
+            }
+            "use2" => {
+                super::properties::resolve_use2_property(
                     contexts,
                     property_name.as_ref(),
                     resolve_info,
@@ -77,8 +85,8 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name.as_ref() {
-            "Type" => {
-                super::edges::resolve_type_edge(
+            "use" => {
+                super::edges::resolve_use_edge(
                     contexts,
                     edge_name.as_ref(),
                     parameters,

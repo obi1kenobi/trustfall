@@ -127,7 +127,6 @@ impl RustFile {
         static PATTERN: OnceLock<Regex> = OnceLock::new();
         let pattern =
             PATTERN.get_or_init(|| Regex::new("([^{])\n    (pub|fn|use)").expect("invalid regex"));
-
         let pretty_item =
             prettyplease::unparse(&syn::parse_str(&item.to_string()).expect("not valid Rust"));
         let postprocessed = pattern.replace_all(&pretty_item, "$1\n\n    $2");
@@ -386,7 +385,7 @@ fn make_vertex_file(
         .collect();
     rows.sort_unstable();
     for row in rows {
-        let name = &row.name;
+        let name = &escaped_rust_name(row.name);
         let ident = syn::Ident::new(name.as_str(), proc_macro2::Span::call_site());
         variants.extend(quote! {
             #ident(()),

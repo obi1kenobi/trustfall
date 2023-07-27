@@ -2,16 +2,33 @@ use trustfall::{FieldValue, provider::{ContextIterator, ContextOutcomeIterator, 
 
 use super::vertex::Vertex;
 
-pub(super) fn resolve_type2_property<'a>(
+pub(super) fn resolve_unsafe2_property<'a>(
     contexts: ContextIterator<'a, Vertex>,
     property_name: &str,
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
-        "type" => todo!("implement property 'type' in fn `resolve_type2_property()`"),
+        "unsafe" => {
+            todo!("implement property 'unsafe' in fn `resolve_unsafe2_property()`")
+        }
         _ => {
             unreachable!(
-                "attempted to read unexpected property '{property_name}' on type 'Type2'"
+                "attempted to read unexpected property '{property_name}' on type 'unsafe2'"
+            )
+        }
+    }
+}
+
+pub(super) fn resolve_use2_property<'a>(
+    contexts: ContextIterator<'a, Vertex>,
+    property_name: &str,
+    _resolve_info: &ResolveInfo,
+) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
+    match property_name {
+        "use" => todo!("implement property 'use' in fn `resolve_use2_property()`"),
+        _ => {
+            unreachable!(
+                "attempted to read unexpected property '{property_name}' on type 'use2'"
             )
         }
     }
