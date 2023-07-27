@@ -4,7 +4,7 @@ use maplit::btreemap;
 use quote::quote;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
-use crate::util::escaped_rust_name;
+use super::util::escaped_rust_name;
 
 use super::{
     root::RustFile,
