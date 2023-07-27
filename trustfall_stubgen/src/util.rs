@@ -17,7 +17,7 @@ pub(crate) fn to_lower_snake_case(value: &str) -> String {
     result
 }
 
-pub(crate) fn enum_variant_name_to_upper_case(value: &str) -> String {
+pub(crate) fn upper_case_variant_name(value: &str) -> String {
     let mut chars = value.chars();
     let first_char = chars.next().unwrap().to_ascii_uppercase();
     let rest_chars: String = chars.collect();

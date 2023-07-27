@@ -10,9 +10,7 @@ use quote::quote;
 use regex::Regex;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
-use crate::util::{
-    enum_variant_name_to_upper_case, escaped_rust_name, parse_import, to_lower_snake_case,
-};
+use crate::util::{escaped_rust_name, parse_import, to_lower_snake_case, upper_case_variant_name};
 
 use super::{
     adapter_creator::make_adapter_file, edges_creator::make_edges_file,
@@ -387,7 +385,7 @@ fn make_vertex_file(
         .collect();
     rows.sort_unstable();
     for row in rows {
-        let name = &escaped_rust_name(enum_variant_name_to_upper_case(&row.name));
+        let name = &escaped_rust_name(upper_case_variant_name(&row.name));
         let ident = syn::Ident::new(name.as_str(), proc_macro2::Span::call_site());
         variants.extend(quote! {
             #ident(()),
