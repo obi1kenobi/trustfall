@@ -1,0 +1,136 @@
+schema {
+  query: RootSchemaQuery
+}
+directive @filter(
+  """
+  Name of the filter operation to perform.
+  """
+  op: String!
+  """
+  List of string operands for the operator.
+  """
+  value: [String!]
+) on FIELD | INLINE_FRAGMENT
+directive @tag(
+  """
+  Name to apply to the given property field.
+  """
+  name: String
+) on FIELD
+directive @output(
+  """
+  What to designate the output field generated from this property field.
+  """
+  name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+  """
+  Recurse up to this many times on this edge. A depth of 1 produces the current
+  vertex and its immediate neighbors along the given edge.
+  """
+  depth: Int!
+) on FIELD
+directive @fold on FIELD
+directive @transform(
+  """
+  Name of the transformation operation to perform.
+  """
+  op: String!
+) on FIELD
+
+"""
+All the possible data types where querying can begin in this API.
+"""
+type RootSchemaQuery {
+  const: [const!]!
+  const2: [const2!]!
+  continue: [continue!]!
+  continue2: [continue2!]!
+  dyn: [dyn!]!
+  dyn2: [dyn2!]!
+  if: [if!]!
+  if2: [if2!]!
+  mod: [mod!]!
+  mod2: [mod2!]!
+  self: [self!]!
+  self2: [self2!]!
+  type: [type!]!
+  type2: [type2!]!
+  unsafe: [unsafe!]!
+  unsafe2: [unsafe2!]!
+  where: [where!]!
+  where2: [where2!]!
+}
+
+type const {
+  const: [const!]!
+}
+
+type continue {
+  continue: [continue!]!
+}
+
+type if {
+  if: [if!]!
+}
+
+type mod {
+  mod: [mod!]!
+}
+
+type self {
+  self: [self!]!
+}
+
+type type {
+  type: [type!]!
+}
+
+type unsafe {
+  unsafe: [unsafe!]!
+}
+
+type where {
+  where: [where!]!
+}
+
+type dyn {
+  dyn: [dyn!]!
+}
+
+type const2 {
+  const: Int!
+}
+
+type continue2 {
+  continue: Int!
+}
+
+type if2 {
+  if: Int!
+}
+
+type mod2 {
+  mod: Int!
+}
+
+type self2 {
+  self: Int!
+}
+
+type type2 {
+  type: Int!
+}
+
+type unsafe2 {
+  unsafe: Int!
+}
+
+type where2 {
+  where: Int!
+}
+
+type dyn2 {
+  dyn: Int!
+}

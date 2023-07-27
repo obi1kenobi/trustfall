@@ -4,7 +4,10 @@ use maplit::btreemap;
 use quote::quote;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
-use crate::edges_creator::{prepare_call_parameters, FnCall};
+use crate::{
+    edges_creator::{prepare_call_parameters, FnCall},
+    util::escaped_rust_name,
+};
 
 use super::{
     root::RustFile,
@@ -70,7 +73,7 @@ fn make_entrypoint_fn(
         },
     );
 
-    let entrypoint_fn_name = to_lower_snake_case(entrypoint);
+    let entrypoint_fn_name = escaped_rust_name(to_lower_snake_case(entrypoint));
     let ident = syn::Ident::new(&entrypoint_fn_name, proc_macro2::Span::call_site());
     let todo_msg =
         format!("implement resolving starting vertices for entrypoint edge '{entrypoint}'");
