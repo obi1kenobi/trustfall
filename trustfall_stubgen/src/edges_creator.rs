@@ -142,7 +142,7 @@ fn make_edge_resolver_and_call(
 
     let resolver_fn_name = escaped_rust_name(to_lower_snake_case(edge_name));
     let resolver_fn_ident = syn::Ident::new(&resolver_fn_name, proc_macro2::Span::call_site());
-    let conversion_fn_name = format!("as_{}", to_lower_snake_case(type_name));
+    let conversion_fn_name = format!("as_{}", escaped_rust_name(to_lower_snake_case(type_name)));
     let conversion_fn_ident = syn::Ident::new(&conversion_fn_name, proc_macro2::Span::call_site());
     let expect_msg = format!("conversion failed, vertex was not a {type_name}");
     let todo_msg = format!("get neighbors along edge '{edge_name}' for type '{type_name}'");
