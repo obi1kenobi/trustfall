@@ -255,12 +255,18 @@ fn generate_conversion_method(variant: &syn::Variant) -> syn::Result<proc_macro2
         }
 
         let content: syn::Ident = attr.parse_args().map_err(|_| {
-            syn::Error::new_spanned(attr, "unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?")
+            syn::Error::new_spanned(
+                attr,
+                "unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?",
+            )
         })?;
         if content == SKIP_CONVERSION_ATTRIBUTE {
             return Ok(Default::default());
         } else {
-            return Err(syn::Error::new_spanned(attr, "unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?"));
+            return Err(syn::Error::new_spanned(
+                attr,
+                "unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?",
+            ));
         }
     }
 
