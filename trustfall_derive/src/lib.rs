@@ -249,57 +249,25 @@ fn generate_conversion_method(variant: &syn::Variant) -> syn::Result<proc_macro2
     // Check if we should skip generating the conversion method
     // because of a `#[trustfall(skip_conversion)]` attribute on the variant.
     for attr in &variant.attrs {
-        if let Some(ident) = attr.path.get_ident() {
-            if ident != TRUSTFALL_ATTRIBUTE {
-                // Not one of our attributes, skip.
-                continue;
-            }
+        if !attr.path().is_ident(TRUSTFALL_ATTRIBUTE) {
+            // Not one of our attributes, skip.
+            continue;
         }
 
-        // If we ever add more attribute contents, here's how to make the parsing smarter:
-        // https://blog.turbo.fish/proc-macro-parsing/
-        match attr.parse_meta()? {
-            syn::Meta::Path { .. } => {
-                return Err(syn::Error::new_spanned(
-                    attr,
-                    "no arguments found, did you mean `#[trustfall(skip_conversion)]`?",
-                ));
-            }
-            syn::Meta::List(values) => {
-                let mut skipping = false;
-                for nested in values.nested.iter() {
-                    match nested {
-                        syn::NestedMeta::Meta(syn::Meta::Path(path)) => {
-                            if let Some(ident) = path.get_ident() {
-                                if ident == SKIP_CONVERSION_ATTRIBUTE {
-                                    skipping = true;
-                                } else {
-                                    return Err(syn::Error::new_spanned(
-                                        nested,
-                                        "unexpected arguments found, did you mean `#[trustfall(skip_conversion)]`?",
-                                    ));
-                                }
-                            }
-                        }
-                        _ => {
-                            return Err(syn::Error::new_spanned(
-                                attr,
-                                "unexpected arguments found, did you mean `#[trustfall(skip_conversion)]`?",
-                            ));
-                        }
-                    }
-                }
-                if skipping {
-                    return Ok(Default::default());
-                }
-            }
-            syn::Meta::NameValue(name_value) => {
-                return Err(syn::Error::new_spanned(
-                    &name_value.lit,
-                    "unexpected arguments found, did you mean `#[trustfall(skip_conversion)]`?",
-                ));
-            }
-        };
+        let content: syn::Ident = attr.parse_args().map_err(|_| {
+            syn::Error::new_spanned(
+                attr,
+                "unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?",
+            )
+        })?;
+        if content == SKIP_CONVERSION_ATTRIBUTE {
+            return Ok(Default::default());
+        } else {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?",
+            ));
+        }
     }
 
     let variant_ident = &variant.ident;

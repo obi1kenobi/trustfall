@@ -1,4 +1,4 @@
-error: no arguments found, did you mean `#[trustfall(skip_conversion)]`?
+error: unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?
  --> tests/ui/invalid_attr_as_path_only.rs:5:5
   |
 5 |     #[trustfall]

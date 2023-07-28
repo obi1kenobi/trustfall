@@ -1,6 +1,6 @@
 [package]
 name = "trustfall"
-version = "0.6.0"
+version = "0.6.1"
 license = "Apache-2.0"
 description = "The trustfall query engine, empowering you to query everything."
 repository = "https://github.com/obi1kenobi/trustfall"
@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 anyhow = { workspace = true }
 trustfall_core = { version = "=0.6.0", path = "../trustfall_core" }
-trustfall_derive = { version = "=0.3.0", path = "../trustfall_derive" }
+trustfall_derive = { version = "=0.3.1", path = "../trustfall_derive" }
 
 [dev-dependencies]  # including examples dependencies
 ron = { workspace = true }
