@@ -472,7 +472,7 @@ jobs:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   attempt-publish-trustfall-derive:
-    name: publish trustfall
+    name: publish trustfall_derive
     if: github.ref == 'refs/heads/main'
     needs:
       - pre-publish-checks
