@@ -14,11 +14,10 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["console_error_panic_hook"]
 
-
 [dependencies]
-ron = "0.7.0"
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = "1.0.74"
+ron = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 trustfall_core = { path = "../trustfall_core" }
 wasm-bindgen = { version = "0.2.81" }
 
