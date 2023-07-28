@@ -15,21 +15,21 @@ authors.workspace = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-anyhow = "1.0.69"
+anyhow = { workspace = true }
 trustfall_core = { version = "=0.6.0", path = "../trustfall_core" }
 trustfall_derive = { version = "=0.3.0", path = "../trustfall_derive" }
 
 [dev-dependencies]  # including examples dependencies
-ron = "0.7.0"
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = "1.0.69"
-feed-rs = "1.0.0"
-once_cell = "1.17"
+ron = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+once_cell = { workspace = true }
+regex = { workspace = true }
 reqwest = { version = "0.11.6", features = ["blocking", "json"] }
+time = { version = "0.3.23", features = ["serde-human-readable"] }
+feed-rs = "1.0.0"
 hn_api = "0.1.0"
 csv = "1.1.6"
-regex = "1.7.1"
-time = { version = "0.3.23", features = ["serde-human-readable"] }
 
 [[example]]
 # Running queries over RSS/Atom feeds.

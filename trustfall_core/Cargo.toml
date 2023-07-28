@@ -26,18 +26,18 @@ doc = true
 crate-type = ["lib"]
 
 [dependencies]
-serde = { version = "^1.0", features = ["derive", "rc"] }
-serde_json = "^1.0.0"
-async-graphql-parser = "^2.11.3"
-async-graphql-value = "^2.11.3"
-maplit = "^1.0.2"
-once_cell = "1.17"
-smallvec = { version = "^1.6.1", features = ["serde"] }
-regex = "1.5.4"
-thiserror = "1.0.30"
-itertools = "0.10.1"
+serde = { workspace = true, features = ["derive", "rc"] }
+serde_json = { workspace = true }
+async-graphql-parser = { workspace = true }
+async-graphql-value = { workspace = true }
+maplit = { workspace = true }
+once_cell = { workspace = true }
+smallvec = { version = "1.6.1", features = ["serde"] }
+regex = { workspace = true }
+thiserror = { workspace = true }
+itertools = { workspace = true }
 
 [dev-dependencies]
-ron = "^0.6.4"
+ron = { workspace = true }
 trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version = "0.2.0" }
-similar-asserts = { version = "1.4.2", features = ["serde"] }
+similar-asserts = { workspace = true, features = ["serde"] }
