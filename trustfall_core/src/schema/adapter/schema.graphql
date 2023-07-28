@@ -1,167 +1,169 @@
 schema {
-  query: RootSchemaQuery
+    query: RootSchemaQuery
 }
 
 """
 Query the contents of Trustfall schemas: their vertex types, properties, edges, etc.
 """
 type RootSchemaQuery {
-  """
-  All types of vertices present in this schema.
-  """
-  VertexType: [VertexType!]!
+    """
+    All types of vertices present in this schema.
+    """
+    VertexType: [VertexType!]!
 
-  """
-  The entry point edges at which querying may begin.
+    """
+    The entry point edges at which querying may begin.
 
-  Corresponds to the valid edge names for the `resolve_starting_vertices()`
-  method for adapters over this schema.
-  """
-  Entrypoint: [Edge!]!
-
-  Schema: Schema!
+    Corresponds to the valid edge names for the `resolve_starting_vertices()`
+    method for adapters over this schema.
+    """
+    Entrypoint: [Edge!]!
+    
+    Schema: Schema!
 }
 
+"""
+Query the contents of Trustfall schemas: their vertex types, properties, edges, etc.
+"""
 type Schema {
-  """
-  All types of vertices present in this schema.
-  """
-  vertex_type: [VertexType!]!
+    """
+    All types of vertices present in this schema.
+    """
+    vertex_type: [VertexType!]!
 
-  """
-  The entry point edges at which querying may begin.
-
-  Corresponds to the valid edge names for the `resolve_starting_vertices()`
-  method for adapters over this schema.
-  """
-  entrypoint: [Edge!]!
+    """
+    The entry point edges at which querying may begin.
+    Corresponds to the valid edge names for the `resolve_starting_vertices()`
+    method for adapters over this schema.
+    """
+    entrypoint: [Edge!]!
 }
 
 """
 A type of vertex in a schema.
 """
 type VertexType {
-  """
-  The name of the vertex type.
-  """
-  name: String!
+    """
+    The name of the vertex type.
+    """
+    name: String!
 
-  """
-  True if this vertex is an interface (may have subtypes),
-  and false otherwise.
-  """
-  is_interface: Boolean!
+    """
+    True if this vertex is an interface (may have subtypes),
+    and false otherwise.
+    """
+    is_interface: Boolean!
 
-  """
-  Supertypes of this vertex type.
-  """
-  implements: [VertexType!]
+    """
+    Supertypes of this vertex type.
+    """
+    implements: [VertexType!]
 
-  """
-  Subtypes of this vertex type.
+    """
+    Subtypes of this vertex type.
 
-  If this is not an interface type, this edge is guaranteed to be empty.
-  """
-  implementer: [VertexType!]
+    If this is not an interface type, this edge is guaranteed to be empty.
+    """
+    implementer: [VertexType!]
 
-  """
-  Properties available at this vertex type.
+    """
+    Properties available at this vertex type.
 
-  Only includes the properties that are explicitly defined in the schema.
-  Does not include special properties like `__typename` which
-  are automatically available on every vertex type.
-  """
-  property: [Property!]
+    Only includes the properties that are explicitly defined in the schema.
+    Does not include special properties like `__typename` which
+    are automatically available on every vertex type.
+    """
+    property: [Property!]
 
-  """
-  Edges to other vertices available at this vertex type.
-  """
-  edge: [Edge!]
+    """
+    Edges to other vertices available at this vertex type.
+    """
+    edge: [Edge!]
 }
 
 """
 A vertex property.
 """
 type Property {
-  """
-  The name of the property.
-  """
-  name: String!
+    """
+    The name of the property.
+    """
+    name: String!
 
-  """
-  The string representation of the property's type.
+    """
+    The string representation of the property's type.
 
-  For example:
-  - `String` for nullable string
-  - `Int!` for non-nullable integer
-  - `[Float!]` for nullable list of non-nullable floats
-  - `[String!]!` for non-nullable list of non-nullable strings
-  """
-  type: String!
+    For example:
+    - `String` for nullable string
+    - `Int!` for non-nullable integer
+    - `[Float!]` for nullable list of non-nullable floats
+    - `[String!]!` for non-nullable list of non-nullable strings
+    """
+    type: String!
 }
 
 """
 A directed edge connecting a vertex type to neighboring vertices.
 """
 type Edge {
-  """
-  The name of the edge.
-  """
-  name: String!
+    """
+    The name of the edge.
+    """
+    name: String!
 
-  """
-  True if one vertex may have multiple instances of this edge,
-  otherwise false.
-  """
-  to_many: Boolean!
+    """
+    True if one vertex may have multiple instances of this edge,
+    otherwise false.
+    """
+    to_many: Boolean!
 
-  """
-  True if all source vertices are required to have at least one such edge.
-  """
-  at_least_one: Boolean!
+    """
+    True if all source vertices are required to have at least one such edge.
+    """
+    at_least_one: Boolean!
 
-  """
-  The type of the destination vertex of this edge.
-  """
-  target: VertexType!
+    """
+    The type of the destination vertex of this edge.
+    """
+    target: VertexType!
 
-  """
-  Parameters this edge takes.
-  """
-  parameter: [EdgeParameter!]
+    """
+    Parameters this edge takes.
+    """
+    parameter: [EdgeParameter!]
 }
 
 """
 A parameter required by an edge.
 """
 type EdgeParameter {
-  """
-  The name of the parameter.
-  """
-  name: String!
+    """
+    The name of the parameter.
+    """
+    name: String!
 
-  """
-  The string representation of the parameter's type.
+    """
+    The string representation of the parameter's type.
 
-  For example:
-  - `String` for nullable string
-  - `Int!` for non-nullable integer
-  - `[Float!]` for nullable list of non-nullable floats
-  - `[String!]!` for non-nullable list of non-nullable strings
-  """
-  type: String!
+    For example:
+    - `String` for nullable string
+    - `Int!` for non-nullable integer
+    - `[Float!]` for nullable list of non-nullable floats
+    - `[String!]!` for non-nullable list of non-nullable strings
+    """
+    type: String!
 
-  """
-  The JSON serialized representation of this parameter's default value, if any.
+    """
+    The JSON serialized representation of this parameter's default value, if any.
 
-  Nullable parameters have a default value of `null`, which is serialized here as `"null"`.
-  Schemas may also declare default values explicitly. Non-nullable parameters without a default
-  value will have a null value in this field.
+    Nullable parameters have a default value of `null`, which is serialized here as `"null"`.
+    Schemas may also declare default values explicitly. Non-nullable parameters without a default
+    value will have a null value in this field.
 
-  For example:
-  - In `edge(x: Int! = 5)`, the default for `x` is JSON serialized here as `"5"`.
-  - In `edge(x: String! = "abc"), the default for `x` is JSON serialized as `"\"abc\"".
-  - In `edge(x: [String] = [null, "abc"]), the default for `x` is `"[null,\"abc\"]"`.
-  """
-  default: String
+    For example:
+    - In `edge(x: Int! = 5)`, the default for `x` is JSON serialized here as `"5"`.
+    - In `edge(x: String! = "abc"), the default for `x` is JSON serialized as `"\"abc\"".
+    - In `edge(x: [String] = [null, "abc"]), the default for `x` is `"[null,\"abc\"]"`.
+    """
+    default: String
 }
