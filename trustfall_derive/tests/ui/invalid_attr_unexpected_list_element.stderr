@@ -1,11 +1,11 @@
-error: unexpected arguments found, did you mean `#[trustfall(skip_conversion)]`?
- --> tests/ui/invalid_attr_unexpected_list_element.rs:5:34
+error: unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?
+ --> tests/ui/invalid_attr_unexpected_list_element.rs:5:5
   |
 5 |     #[trustfall(skip_conversion, unexpected_arg)]
-  |                                  ^^^^^^^^^^^^^^
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unexpected arguments found, did you mean `#[trustfall(skip_conversion)]`?
-  --> tests/ui/invalid_attr_unexpected_list_element.rs:13:17
+error: unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?
+  --> tests/ui/invalid_attr_unexpected_list_element.rs:13:5
    |
 13 |     #[trustfall(unexpected_arg, skip_conversion)]
-   |                 ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
