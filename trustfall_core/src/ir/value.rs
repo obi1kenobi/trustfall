@@ -176,6 +176,13 @@ impl FieldValue {
         }
     }
 
+    pub fn as_arc_str(&self) -> Option<&Arc<str>> {
+        match self {
+            FieldValue::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             FieldValue::Boolean(b) => Some(*b),
@@ -186,6 +193,13 @@ impl FieldValue {
     pub fn as_slice(&self) -> Option<&[FieldValue]> {
         match self {
             FieldValue::List(l) => Some(l.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_arc_slice(&self) -> Option<&Arc<[FieldValue]>> {
+        match self {
+            FieldValue::List(l) => Some(l),
             _ => None,
         }
     }
