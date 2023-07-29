@@ -415,8 +415,8 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     })
                 }
                 "entrypoint" => {
-                    let mut iter = Some(entrypoints_iter(self.schema));
-                    resolve_neighbors_with(contexts, move |_| iter.take().unwrap())
+                    let schema = self.schema;
+                    resolve_neighbors_with(contexts, move |_| entrypoints_iter(schema))
                 }
                 _ => unreachable!("unexpected property name on type {type_name}: {edge_name}"),
             },
