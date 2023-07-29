@@ -73,16 +73,6 @@ impl<'a> SchemaAdapter<'a> {
     pub fn schema_text() -> &'static str {
         include_str!("./schema.graphql")
     }
-
-    pub fn entrypoints_iter(&self) -> VertexIterator<'a, SchemaVertex<'a>> {
-        Box::new(Box::new(
-            self.schema
-                .query_type
-                .fields
-                .iter()
-                .map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
-        ))
-    }
 }
 
 fn vertex_type_iter(
@@ -116,6 +106,12 @@ fn vertex_type_iter(
             (v.name.node != root_query_type).then(|| SchemaVertex::VertexType(VertexType::new(v)))
         }))
     }
+}
+
+fn entrypoints_iter<'a>(schema: &Schema) -> VertexIterator<'a, SchemaVertex<'a>> {
+    Box::new(
+        schema.query_type.fields.iter().map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
+    )
 }
 
 #[derive(Debug, Clone)]
