@@ -19,6 +19,9 @@ type RootSchemaQuery {
     """
     Entrypoint: [Edge!]!
     
+    """
+    Information about the schema itself.
+    """
     Schema: Schema!
 }
 
