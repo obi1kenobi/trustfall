@@ -74,51 +74,6 @@ impl<'a> SchemaAdapter<'a> {
         include_str!("./schema.graphql")
     }
 
-    pub fn vertex_type_iter(
-        &self,
-        candidate_value_for_name: Option<CandidateValue<&FieldValue>>,
-    ) -> VertexIterator<'a, SchemaVertex<'a>> {
-        let root_query_type = self.schema.query_type_name();
-
-        if let Some(CandidateValue::Single(FieldValue::String(name_wanted))) =
-            candidate_value_for_name
-        {
-            let name_wanted = name_wanted.as_ref();
-            if let Some(exact_wanted) = self
-                .schema
-                .vertex_types
-                .get(name_wanted)
-                .filter(move |v| v.name.node != root_query_type)
-            {
-                Box::new(std::iter::once(SchemaVertex::VertexType(VertexType::new(exact_wanted))))
-            } else {
-                Box::new(std::iter::empty())
-            }
-        } else if let Some(CandidateValue::Multiple(possibilities)) = candidate_value_for_name {
-            let possibilities_as_owned_strings = possibilities
-                .iter()
-                .map(|el| el.as_str().expect("for name possibility to be a string").to_string())
-                .collect::<Vec<_>>();
-
-            let vertex_types = &self.schema.vertex_types;
-
-            Box::new(possibilities_as_owned_strings.into_iter().filter_map(move |wanted| {
-                vertex_types.get(wanted.as_str()).and_then(|exact_wanted| {
-                    if exact_wanted.name.node != root_query_type {
-                        Some(SchemaVertex::VertexType(VertexType::new(exact_wanted)))
-                    } else {
-                        None
-                    }
-                })
-            }))
-        } else {
-            Box::new(self.schema.vertex_types.values().filter_map(move |v| {
-                (v.name.node != root_query_type)
-                    .then(|| SchemaVertex::VertexType(VertexType::new(v)))
-            }))
-        }
-    }
-
     pub fn entrypoints_iter(&self) -> VertexIterator<'a, SchemaVertex<'a>> {
         Box::new(Box::new(
             self.schema
@@ -127,6 +82,39 @@ impl<'a> SchemaAdapter<'a> {
                 .iter()
                 .map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
         ))
+    }
+}
+
+fn vertex_type_iter(
+    schema: &Schema,
+    vertex_type_name: Option<CandidateValue<FieldValue>>,
+) -> VertexIterator<'_, SchemaVertex<'_>> {
+    let root_query_type = schema.query_type_name();
+
+    if let Some(CandidateValue::Single(FieldValue::String(name))) = vertex_type_name {
+        let neighbors = schema
+            .vertex_types
+            .get(name.as_ref())
+            .filter(move |v| v.name.node != root_query_type)
+            .into_iter()
+            .map(|defn| SchemaVertex::VertexType(VertexType::new(defn)));
+
+        Box::new(neighbors)
+    } else if let Some(CandidateValue::Multiple(possibilities)) = vertex_type_name {
+        let neighbors = possibilities.into_iter().filter_map(move |name| {
+            schema
+                .vertex_types
+                .get(name.as_str().expect("vertex type name was not a string"))
+                .and_then(move |defn| {
+                    (defn.name.node != root_query_type)
+                        .then(|| SchemaVertex::VertexType(VertexType::new(defn)))
+                })
+        });
+        Box::new(neighbors)
+    } else {
+        Box::new(schema.vertex_types.values().filter_map(move |v| {
+            (v.name.node != root_query_type).then(|| SchemaVertex::VertexType(VertexType::new(v)))
+        }))
     }
 }
 
@@ -280,9 +268,11 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         _parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
-        let candidate_value_for_name = resolve_info.statically_required_property("name");
         match edge_name.as_ref() {
-            "VertexType" => self.vertex_type_iter(candidate_value_for_name),
+            "VertexType" => {
+                let name = resolve_info.statically_required_property("name");
+                vertex_type_iter(self.schema, name.map(|x| x.cloned()))
+            }
             "Entrypoint" => self.entrypoints_iter(),
             "Schema" => Box::new(std::iter::once(SchemaVertex::Schema)),
             _ => unreachable!("unexpected starting edge: {edge_name}"),
@@ -415,7 +405,10 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     let candidate_value_for_name =
                         candidate_destination.statically_required_property("name");
 
-                    let mut iter = Some(self.vertex_type_iter(candidate_value_for_name));
+                    let mut iter = Some(vertex_type_iter(
+                        self.schema,
+                        candidate_value_for_name.map(|x| x.cloned()),
+                    ));
 
                     resolve_neighbors_with(contexts, move |_| iter.take().unwrap())
                 }
