@@ -104,7 +104,7 @@ fn vertex_type_iter(
         let neighbors = possibilities.into_iter().filter_map(move |name| {
             schema
                 .vertex_types
-                .get(name.as_str().expect("vertex type name was not a string"))
+                .get(name.as_arc_str().expect("vertex type name was not a string"))
                 .and_then(move |defn| {
                     (defn.name.node != root_query_type)
                         .then(|| SchemaVertex::VertexType(VertexType::new(defn)))
