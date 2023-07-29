@@ -108,7 +108,7 @@ fn vertex_type_iter(
     }
 }
 
-fn entrypoints_iter<'a>(schema: &Schema) -> VertexIterator<'a, SchemaVertex<'a>> {
+fn entrypoints_iter(schema: &Schema) -> VertexIterator<'_, SchemaVertex<'_>> {
     Box::new(
         schema.query_type.fields.iter().map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
     )
@@ -269,7 +269,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 let name = resolve_info.statically_required_property("name");
                 vertex_type_iter(self.schema, name.map(|x| x.cloned()))
             }
-            "Entrypoint" => self.entrypoints_iter(),
+            "Entrypoint" => entrypoints_iter(self.schema),
             "Schema" => Box::new(std::iter::once(SchemaVertex::Schema)),
             _ => unreachable!("unexpected starting edge: {edge_name}"),
         }
@@ -415,7 +415,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     })
                 }
                 "entrypoint" => {
-                    let mut iter = Some(self.entrypoints_iter());
+                    let mut iter = Some(entrypoints_iter(self.schema));
                     resolve_neighbors_with(contexts, move |_| iter.take().unwrap())
                 }
                 _ => unreachable!("unexpected property name on type {type_name}: {edge_name}"),
