@@ -190,11 +190,11 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
 /// use trustfall_core::ir::{FieldValue, types::is_argument_type_valid};
 ///
 /// let variable_type = Type::new("[Int]").unwrap();
-/// let argument_value = FieldValue::List(vec![
+/// let argument_value = FieldValue::List([
 ///     FieldValue::Int64(-1),
 ///     FieldValue::Uint64(1),
 ///     FieldValue::Null,
-/// ]);
+/// ].as_slice().into());
 /// assert!(is_argument_type_valid(&variable_type, &argument_value));
 /// ```
 pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue) -> bool {

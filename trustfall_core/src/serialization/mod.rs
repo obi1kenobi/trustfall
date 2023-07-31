@@ -51,7 +51,7 @@ mod tests;
 /// # fn run_query() -> Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>>>, ()> {
 /// #     Ok(Box::new(vec![
 /// #        btreemap! {
-/// #           Arc::from("item_name") => FieldValue::String("widget".to_string()),
+/// #           Arc::from("item_name") => FieldValue::String("widget".into()),
 /// #           Arc::from("quantity") => FieldValue::Int64(42),
 /// #        }
 /// #     ].into_iter()))

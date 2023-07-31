@@ -188,17 +188,26 @@ jobs:
 
       - uses: r7kamura/rust-problem-matchers@v1
 
-      # Test everything except trustfall_stubgen,
+      # Test all crates except trustfall_stubgen,
       # which is only tested if it has changed since its tests are a bit long.
+      #
+      # `--all-targets` also tests example and bench targets, but explicitly excludes doctests.
+      # We'll test doctests separately in their own step.
+      # https://github.com/rust-lang/cargo/issues/6669
       - name: cargo test
         run: cargo test --workspace --all-targets --all-features --exclude trustfall_stubgen
+
+      # Run doctests separately, since `--all-targets` above explicitly excludes doctests.
+      # https://github.com/rust-lang/cargo/issues/6669
+      - name: run doctests
+        run: cargo test --workspace --all-features --doc
 
       - name: test trustfall_stubgen if it has changed
         run: |
           git fetch origin main
 
           # `git diff --quiet` exits non-zero if there are changes
-          git diff --quiet HEAD origin/main -- ./trustfall_stubgen || (cd trustfall_stubgen/ && cargo test --all-targets --all-features)
+          git diff --quiet HEAD origin/main -- ./trustfall_stubgen || (cd trustfall_stubgen/ && cargo test --all-features)
 
   rust-fuzz:
     name: Check fuzz targets
