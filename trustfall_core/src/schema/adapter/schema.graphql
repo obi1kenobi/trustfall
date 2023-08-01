@@ -36,6 +36,7 @@ type Schema {
 
     """
     The entry point edges at which querying may begin.
+
     Corresponds to the valid edge names for the `resolve_starting_vertices()`
     method for adapters over this schema.
     """
