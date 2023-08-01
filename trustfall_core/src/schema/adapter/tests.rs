@@ -100,6 +100,49 @@ fn check_vertex_type_properties_using_one_of() {
 }
 
 #[test]
+fn check_schema_then_vertex_type() {
+    #[derive(Debug, PartialEq, Eq, serde::Deserialize, PartialOrd, Ord)]
+    struct Output {
+        name: String,
+        property: String,
+    }
+
+    let query = r#"
+{
+    Schema {
+        vertex_type {
+            name @filter(op: "one_of", value: ["$name"]) @output
+
+            property {
+                property: name @output
+            }
+        }
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => vec!["VertexType", "Property"].into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        rows,
+        vec![
+            Output { name: "VertexType".to_owned(), property: "name".to_owned() },
+            Output { name: "VertexType".to_owned(), property: "is_interface".to_owned() },
+            Output { name: "Property".to_owned(), property: "name".to_owned() },
+            Output { name: "Property".to_owned(), property: "type".to_owned() }
+        ]
+    );
+}
+
+#[test]
 fn check_entrypoint_target_edges() {
     let query = r#"
 {
