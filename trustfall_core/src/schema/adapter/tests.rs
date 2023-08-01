@@ -101,6 +101,12 @@ fn check_vertex_type_properties_using_one_of() {
 
 #[test]
 fn check_schema_then_vertex_type() {
+    #[derive(Debug, PartialEq, Eq, serde::Deserialize, PartialOrd, Ord)]
+    struct Output {
+        name: String,
+        property: String,
+    }
+
     let query = r#"
 {
     Schema {
@@ -120,32 +126,20 @@ fn check_schema_then_vertex_type() {
     let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
 
     let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
-    let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+    let rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .collect();
+        .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
+        .collect::<Vec<_>>();
 
-    rows.sort_by(|a, b| a["name"].partial_cmp(&b["name"]).expect("to be comparable"));
-
-    let expected_rows = [
-        btreemap! {
-            "name".into() => "Property".into(),
-            "property".into() => "name".into(),
-        },
-        btreemap! {
-            "name".into() => "Property".into(),
-            "property".into() => "type".into(),
-        },
-        btreemap! {
-            "name".into() => "VertexType".into(),
-            "property".into() => "name".into(),
-        },
-        btreemap! {
-            "name".into() => "VertexType".into(),
-            "property".into() => "is_interface".into(),
-        },
-    ];
-
-    assert_eq!(expected_rows.as_slice(), rows);
+    assert_eq!(
+        rows,
+        vec![
+            Output { name: "VertexType".to_owned(), property: "name".to_owned() },
+            Output { name: "VertexType".to_owned(), property: "is_interface".to_owned() },
+            Output { name: "Property".to_owned(), property: "name".to_owned() },
+            Output { name: "Property".to_owned(), property: "type".to_owned() }
+        ]
+    );
 }
 
 #[test]
