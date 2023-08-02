@@ -217,6 +217,7 @@ TestInterpreterOutputTrace(
     arguments: {
       "min_primes_count": List([
         Uint64(1),
+        Uint64(0),
       ]),
     },
   ),
