@@ -1,4 +1,3 @@
-
 TestGraphQLQuery (
     schema_name: "numbers",
     query: r#"
