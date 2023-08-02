@@ -250,6 +250,8 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
+            // Equals and OneOf must be visited here as they are not visited
+            // in `get_min_fold_count_limit`
             Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
             | Operation::LessThanOrEqual(
                 FoldSpecificFieldKind::Count,
@@ -286,10 +288,52 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     result
 }
 
+/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// a min size that can be statically determined, return that min size so it can
+/// be used for further optimizations. Otherwise, return None.
+fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
+    let mut result: Option<usize> = None;
+
+    let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
+    for post_fold_filter in fold.post_filters.iter() {
+        let next_limit = match post_fold_filter {
+            // We do not need to visit Equals and OneOf here,
+            // since those will be handled by `get_max_fold_count_limit`
+            Operation::GreaterThanOrEqual(
+                FoldSpecificFieldKind::Count,
+                Argument::Variable(var_ref),
+            ) => {
+                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                Some(variable_value)
+            }
+            Operation::GreaterThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                Some(variable_value + 1)
+            }
+            _ => None,
+        };
+
+        match (result, next_limit) {
+            (None, _) => result = next_limit,
+            (Some(l), Some(r)) if l < r => result = next_limit,
+            _ => {}
+        }
+    }
+
+    result
+}
+
 fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
     mut iterator: ContextIterator<'query, Vertex>,
     max_fold_count_limit: &Option<usize>,
+    min_fold_count_limit: &Option<usize>,
+    no_outputs_in_fold: bool,
+    has_output_on_fold_count: bool,
 ) -> Option<Vec<DataContext<Vertex>>> {
+    // We do not apply the min_fold_count_limit optimization if we have an upper bound,
+    // in the form of max_fold_count_limit, because if we have a required upperbound,
+    // then we can't stop at the lower bound, if we are required to observe whether we hit the
+    // upperbound, it's no longer safe to stop at the lower bound.
     if let Some(max_fold_count_limit) = max_fold_count_limit {
         // If this fold has more than `max_fold_count_limit` elements,
         // it will get filtered out by a post-fold filter.
@@ -318,9 +362,28 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
 
         Some(fold_elements)
     } else {
-        // We weren't able to find any early-termination condition for materializing the fold,
-        // so materialize the whole thing and return it.
-        Some(iterator.collect())
+        let collected = match min_fold_count_limit {
+            // If we have a min_fold_count_limit then it is safe to .take(min_fold_count_limit)
+            // because .take will take at max min_fold_count_limit elements, and if the iterator has
+            // less it will just take all of them.
+
+            // This optimization requires that the user can never observe that we didn't fully
+            // iterate the entire iterator. This is only possible if the fold has no outputs and
+            // the user does not have output the count of elements in the fold.
+
+            // Additionally, we only apply this optimization if we don't have an upper bound,
+            // in the form of max_fold_count_limit, because if we dont have a required upperbound
+            // can we stop at the lower bound, if we are required to observe whether we hit the
+            // upperbound, it's no longer safe to stop at the lower bound.
+            Some(min_fold_count_limit) if no_outputs_in_fold && !has_output_on_fold_count => {
+                iterator.take(*min_fold_count_limit).collect()
+            }
+            // We weren't able to find any early-termination condition for materializing the fold,
+            // so materialize the whole thing and return it.
+            _ => iterator.collect(),
+        };
+
+        Some(collected)
     }
 }
 
@@ -411,6 +474,10 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
     let max_fold_size = get_max_fold_count_limit(carrier, fold.as_ref());
+    let min_fold_size = get_min_fold_count_limit(carrier, fold.as_ref());
+    let no_outputs_in_fold = fold.component.outputs.is_empty();
+    let has_output_on_fold_count =
+        fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
@@ -434,7 +501,13 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
         let fold_elements = if fold_exists {
             // N.B.: Note the `?` at the end here!
             //       This lets us early-discard folds that failed a post-processing filter.
-            Some(collect_fold_elements(computed_iterator, &max_fold_size)?)
+            Some(collect_fold_elements(
+                computed_iterator,
+                &max_fold_size,
+                &min_fold_size,
+                no_outputs_in_fold,
+                has_output_on_fold_count,
+            )?)
         } else {
             None
         };
