@@ -4,7 +4,7 @@ Ok(TestIRQuery(
     root_name: "Number",
     root_parameters: EdgeParameters(
       contents: {
-        "max": Int64(30),
+        "max": Int64(32),
         "min": Int64(30),
       },
     ),

@@ -2,7 +2,7 @@ TestGraphQLQuery (
     schema_name: "numbers",
     query: r#"
 {
-    Number(min: 30, max: 30) {
+    Number(min: 30, max: 32) {
         ... on Composite {
             value @output
 
