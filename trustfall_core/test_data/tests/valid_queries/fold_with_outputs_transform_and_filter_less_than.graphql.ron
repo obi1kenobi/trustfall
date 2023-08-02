@@ -1,0 +1,18 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count") @filter(op: "<", value: ["$min_primes"]) {
+                __typename @output
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "min_primes": Uint64(2)
+    },
+)

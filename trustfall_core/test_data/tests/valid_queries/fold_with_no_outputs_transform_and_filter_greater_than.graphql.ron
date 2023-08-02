@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    // This @fold statement doesn't actually need to fully evaluate:
+    // it has no outputs, and the predicate can be determined to be satisfied
+    // with only a partial evaluation of the @fold.
+
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count") @filter(op: ">", value: ["$min_primes"]) {
+                __typename
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "min_primes": Uint64(2)
+    },
+)
