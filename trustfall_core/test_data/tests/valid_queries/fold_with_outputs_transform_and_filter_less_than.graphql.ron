@@ -7,7 +7,7 @@ TestGraphQLQuery (
             value @output
 
             primeFactor @fold @transform(op: "count") @filter(op: "<", value: ["$min_primes"]) {
-                __typename @output
+                prime: value @output
             }
         }
     }

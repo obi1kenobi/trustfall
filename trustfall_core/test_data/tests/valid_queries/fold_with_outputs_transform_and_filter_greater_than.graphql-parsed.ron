@@ -67,13 +67,15 @@ Ok(TestParsedGraphQLQuery(
                 line: 8,
                 column: 17,
               ),
-              name: "__typename",
+              name: "value",
+              alias: Some("prime"),
             ), FieldNode(
               position: Pos(
                 line: 8,
                 column: 17,
               ),
-              name: "__typename",
+              name: "value",
+              alias: Some("prime"),
               output: [
                 OutputDirective(),
               ],

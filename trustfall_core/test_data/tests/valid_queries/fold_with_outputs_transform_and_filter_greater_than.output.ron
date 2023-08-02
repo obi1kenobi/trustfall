@@ -1,9 +1,9 @@
 TestInterpreterOutputData(
   schema_name: "numbers",
   outputs: {
-    "__typename": Output(
-      name: "__typename",
-      value_type: "[String!]!",
+    "prime": Output(
+      name: "prime",
+      value_type: "[Int]!",
       vid: Vid(2),
     ),
     "value": Output(
@@ -14,10 +14,10 @@ TestInterpreterOutputData(
   },
   results: [
     {
-      "__typename": List([
-        String("Prime"),
-        String("Prime"),
-        String("Prime"),
+      "prime": List([
+        Int64(2),
+        Int64(3),
+        Int64(5),
       ]),
       "value": Int64(30),
     },
