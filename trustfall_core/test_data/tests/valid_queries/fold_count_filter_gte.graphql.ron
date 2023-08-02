@@ -1,4 +1,5 @@
 TestGraphQLQuery (
+    // We use a negative number as a filter to ensure that we properly handle the negative number case in get_max_fold_count_limit.
     schema_name: "numbers",
     query: r#"
 {
