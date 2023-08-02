@@ -245,7 +245,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
 /// a max size that can be statically determined, return that max size so it can
 /// be used for further optimizations. Otherwise, return None.
 fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
-    let mut result: Option<usize> = None;
+    let mut result: Option<_> = None;
 
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
@@ -255,11 +255,11 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
             ) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                let variable_value = query_arguments[&var_ref.variable_name].as_i64().unwrap();
                 Some(variable_value)
             }
             Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                let variable_value = query_arguments[&var_ref.variable_name].as_i64().unwrap();
                 // saturating_sub() here is a safeguard against underflow: in principle,
                 // we shouldn't see a comparison for "< 0", but if we do regardless, we'd prefer to
                 // saturate to 0 rather than wrapping around. This check is an optimization and
@@ -269,7 +269,7 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
             }
             Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
                 match &query_arguments[&var_ref.variable_name] {
-                    FieldValue::List(v) => v.iter().map(|x| x.as_usize().unwrap()).max(),
+                    FieldValue::List(v) => v.iter().map(|x| x.as_i64().unwrap()).max(),
                     _ => unreachable!(),
                 }
             }
@@ -283,7 +283,10 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
         }
     }
 
-    result
+    // NOTE: We use .max(0) so that if the filter is negative, we still return a usize.
+    // This number signifies how many items to take from the fold, anything less than 0
+    // doesn't make sense.
+    result.map(|x| x.max(0) as usize)
 }
 
 fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
