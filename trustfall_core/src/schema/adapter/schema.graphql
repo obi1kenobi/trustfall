@@ -18,7 +18,7 @@ type RootSchemaQuery {
     method for adapters over this schema.
     """
     Entrypoint: [Edge!]!
-    
+
     """
     Information about the schema itself.
     """
@@ -51,6 +51,11 @@ type VertexType {
     The name of the vertex type.
     """
     name: String!
+
+    """
+    Documentation associated with this vertex type.
+    """
+    docs: String
 
     """
     True if this vertex is an interface (may have subtypes),
@@ -95,6 +100,11 @@ type Property {
     name: String!
 
     """
+    Documentation associated with this property.
+    """
+    docs: String
+
+    """
     The string representation of the property's type.
 
     For example:
@@ -114,6 +124,11 @@ type Edge {
     The name of the edge.
     """
     name: String!
+
+    """
+    Documentation associated with this edge.
+    """
+    docs: String
 
     """
     True if one vertex may have multiple instances of this edge,
