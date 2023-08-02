@@ -60,6 +60,6 @@ Ok(TestIRQuery(
     },
   ),
   arguments: {
-    "min_primes": Uint64(2),
+    "min_primes": Uint64(1),
   },
 ))
