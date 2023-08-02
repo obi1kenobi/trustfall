@@ -35,18 +35,22 @@ fn check_vertex_type_properties() {
     .into();
     let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
 
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct Output {
+        property: String,
+    }
+
     let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
-    let rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+    let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
+        .map(|row| row.try_into_struct().expect("incorrect result shape"))
         .collect();
+    rows.sort_unstable();
 
     let expected_rows = [
-        btreemap! {
-            "property".into() => "name".into(),
-        },
-        btreemap! {
-            "property".into() => "is_interface".into(),
-        },
+        Output { property: "docs".into() },
+        Output { property: "is_interface".into() },
+        Output { property: "name".into() },
     ];
 
     assert_eq!(expected_rows.as_slice(), rows);
@@ -70,30 +74,26 @@ fn check_vertex_type_properties_using_one_of() {
     .into();
     let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
 
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct Output {
+        name: String,
+        property: String,
+    }
+
     let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
+        .map(|row| row.try_into_struct().expect("incorrect result shape"))
         .collect();
-
-    rows.sort_by(|a, b| a["property"].partial_cmp(&b["property"]).expect("to be comparable"));
+    rows.sort_unstable();
 
     let expected_rows = [
-        btreemap! {
-            "property".into() => "is_interface".into(),
-            "name".into() => "VertexType".into()
-        },
-        btreemap! {
-            "property".into() => "name".into(),
-            "name".into() => "VertexType".into()
-        },
-        btreemap! {
-            "property".into() => "name".into(),
-            "name".into() => "Property".into()
-        },
-        btreemap! {
-            "property".into() => "type".into(),
-            "name".into() => "Property".into()
-        },
+        Output { name: "Property".into(), property: "docs".into() },
+        Output { name: "Property".into(), property: "name".into() },
+        Output { name: "Property".into(), property: "type".into() },
+        Output { name: "VertexType".into(), property: "docs".into() },
+        Output { name: "VertexType".into(), property: "is_interface".into() },
+        Output { name: "VertexType".into(), property: "name".into() },
     ];
 
     assert_eq!(expected_rows.as_slice(), rows);
@@ -126,18 +126,21 @@ fn check_schema_then_vertex_type() {
     let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
 
     let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
-    let rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+    let mut rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
         .collect::<Vec<_>>();
+    rows.sort_unstable();
 
     assert_eq!(
         rows,
         vec![
-            Output { name: "VertexType".to_owned(), property: "name".to_owned() },
-            Output { name: "VertexType".to_owned(), property: "is_interface".to_owned() },
+            Output { name: "Property".to_owned(), property: "docs".to_owned() },
             Output { name: "Property".to_owned(), property: "name".to_owned() },
-            Output { name: "Property".to_owned(), property: "type".to_owned() }
+            Output { name: "Property".to_owned(), property: "type".to_owned() },
+            Output { name: "VertexType".to_owned(), property: "docs".to_owned() },
+            Output { name: "VertexType".to_owned(), property: "is_interface".to_owned() },
+            Output { name: "VertexType".to_owned(), property: "name".to_owned() },
         ]
     );
 }
@@ -280,4 +283,156 @@ fn check_parameterized_edges() {
     expected_rows.sort_unstable();
 
     similar_asserts::assert_eq!(expected_rows.as_slice(), rows);
+}
+
+fn check_entrypoint_docs() {
+    let query = r#"
+{
+    Entrypoint {
+        name @filter(op: "=", value: ["$name"])
+        docs @output
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => "Entrypoint".into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct Output {
+        docs: String,
+    }
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .collect();
+    rows.sort_unstable();
+
+    let expected_rows = [Output {
+        docs: "\
+The entry point edges at which querying may begin.
+
+Corresponds to the valid edge names for the `resolve_starting_vertices()`
+method for adapters over this schema."
+            .into(),
+    }];
+
+    assert_eq!(expected_rows.as_slice(), rows);
+}
+
+fn check_vertex_type_docs() {
+    let query = r#"
+{
+    VertexType {
+        name @filter(op: "=", value: ["$name"])
+        docs @output
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => "VertexType".into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct Output {
+        docs: String,
+    }
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .collect();
+    rows.sort_unstable();
+
+    let expected_rows = [Output { docs: "A type of vertex in a schema.".into() }];
+
+    assert_eq!(expected_rows.as_slice(), rows);
+}
+
+fn check_property_docs() {
+    let query = r#"
+{
+    VertexType {
+        name @filter(op: "=", value: ["$name"])
+
+        property {
+            name @filter(op: "=", value: ["$property"])
+            docs @output
+        }
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => "VertexType".into(),
+        "property".into() => "is_interface".into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct Output {
+        docs: String,
+    }
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .collect();
+    rows.sort_unstable();
+
+    let expected_rows = [Output {
+        docs: "\
+True if this vertex is an interface (may have subtypes),
+and false otherwise."
+            .into(),
+    }];
+
+    assert_eq!(expected_rows.as_slice(), rows);
+}
+
+fn check_edge_docs() {
+    let query = r#"
+{
+    VertexType {
+        name @filter(op: "=", value: ["$name"])
+
+        edge {
+            name @filter(op: "=", value: ["$edge"])
+            docs @output
+        }
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => "VertexType".into(),
+        "edge".into() => "implementer".into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct Output {
+        docs: String,
+    }
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .collect();
+    rows.sort_unstable();
+
+    let expected_rows = [Output {
+        docs: "\
+Subtypes of this vertex type.
+
+If this is not an interface type, this edge is guaranteed to be empty."
+            .into(),
+    }];
+
+    assert_eq!(expected_rows.as_slice(), rows);
 }

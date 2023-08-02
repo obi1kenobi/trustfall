@@ -187,6 +187,11 @@ impl<'a> VertexType<'a> {
     }
 
     #[inline(always)]
+    fn docs(&self) -> Option<&'a str> {
+        self.defn.description.as_ref().map(|x| x.node.as_str())
+    }
+
+    #[inline(always)]
     fn is_interface(&self) -> bool {
         matches!(self.defn.kind, TypeKind::Interface(..))
     }
@@ -196,13 +201,19 @@ impl<'a> VertexType<'a> {
 pub struct Property<'a> {
     parent: &'a TypeDefinition,
     name: &'a str,
+    docs: Option<&'a str>,
     type_: &'a Type,
 }
 
 impl<'a> Property<'a> {
     #[inline(always)]
-    fn new(parent: &'a TypeDefinition, name: &'a str, type_: &'a Type) -> Self {
-        Self { parent, name, type_ }
+    fn new(
+        parent: &'a TypeDefinition,
+        name: &'a str,
+        docs: Option<&'a str>,
+        type_: &'a Type,
+    ) -> Self {
+        Self { parent, name, docs, type_ }
     }
 }
 
@@ -220,6 +231,11 @@ impl<'a> Edge<'a> {
     #[inline(always)]
     fn name(&self) -> &'a str {
         &self.defn.name.node
+    }
+
+    #[inline(always)]
+    fn docs(&self) -> Option<&'a str> {
+        self.defn.description.as_ref().map(|x| x.node.as_str())
     }
 
     #[inline(always)]
@@ -289,6 +305,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         match type_name.as_ref() {
             "VertexType" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, accessor_property!(as_vertex_type, name)),
+                "docs" => resolve_property_with(contexts, accessor_property!(as_vertex_type, docs)),
                 "is_interface" => resolve_property_with(
                     contexts,
                     accessor_property!(as_vertex_type, is_interface),
@@ -297,6 +314,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             },
             "Property" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, field_property!(as_property, name)),
+                "docs" => resolve_property_with(contexts, field_property!(as_property, docs)),
                 "type" => resolve_property_with(
                     contexts,
                     field_property!(as_property, type_, { type_.to_string().into() }),
@@ -305,6 +323,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             },
             "Edge" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, accessor_property!(as_edge, name)),
+                "docs" => resolve_property_with(contexts, accessor_property!(as_edge, docs)),
                 "to_many" => resolve_property_with(contexts, accessor_property!(as_edge, to_many)),
                 "at_least_one" => {
                     resolve_property_with(contexts, accessor_property!(as_edge, at_least_one))
@@ -490,6 +509,7 @@ fn resolve_vertex_type_property_edge<'a>(
             Some(SchemaVertex::Property(Property::new(
                 parent_defn,
                 field.name.node.as_str(),
+                field.description.as_ref().map(|x| x.node.as_str()),
                 field_ty,
             )))
         } else {
