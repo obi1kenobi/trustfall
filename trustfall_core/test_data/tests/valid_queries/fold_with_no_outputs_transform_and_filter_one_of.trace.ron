@@ -118,148 +118,46 @@ TestInterpreterOutputTrace(
       ),
       Opid(15): TraceOp(
         opid: Opid(15),
-        parent_opid: Some(Opid(12)),
-        content: YieldFrom(ResolveNeighborsInner(2, Prime(PrimeNumber(5)))),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
       ),
       Opid(16): TraceOp(
         opid: Opid(16),
-        parent_opid: Some(Opid(12)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(17): TraceOp(
         opid: Opid(17),
-        parent_opid: Some(Opid(4)),
-        content: YieldInto(SerializableContext(
-          active_vertex: Some(Composite(CompositeNumber(30, [
-            2,
-            3,
-            5,
-          ]))),
-          vertices: {
-            Vid(1): Some(Composite(CompositeNumber(30, [
-              2,
-              3,
-              5,
-            ]))),
-          },
-          folded_contexts: {
-            Eid(1): Some([
-              SerializableContext(
-                active_vertex: Some(Prime(PrimeNumber(2))),
-                vertices: {
-                  Vid(2): Some(Prime(PrimeNumber(2))),
-                },
-              ),
-              SerializableContext(
-                active_vertex: Some(Prime(PrimeNumber(3))),
-                vertices: {
-                  Vid(2): Some(Prime(PrimeNumber(3))),
-                },
-              ),
-              SerializableContext(
-                active_vertex: Some(Prime(PrimeNumber(5))),
-                vertices: {
-                  Vid(2): Some(Prime(PrimeNumber(5))),
-                },
-              ),
-            ]),
-          },
-        )),
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
       ),
       Opid(18): TraceOp(
         opid: Opid(18),
-        parent_opid: Some(Opid(4)),
-        content: YieldFrom(ResolveProperty(SerializableContext(
-          active_vertex: Some(Composite(CompositeNumber(30, [
-            2,
-            3,
-            5,
-          ]))),
-          vertices: {
-            Vid(1): Some(Composite(CompositeNumber(30, [
-              2,
-              3,
-              5,
-            ]))),
-          },
-          folded_contexts: {
-            Eid(1): Some([
-              SerializableContext(
-                active_vertex: Some(Prime(PrimeNumber(2))),
-                vertices: {
-                  Vid(2): Some(Prime(PrimeNumber(2))),
-                },
-              ),
-              SerializableContext(
-                active_vertex: Some(Prime(PrimeNumber(3))),
-                vertices: {
-                  Vid(2): Some(Prime(PrimeNumber(3))),
-                },
-              ),
-              SerializableContext(
-                active_vertex: Some(Prime(PrimeNumber(5))),
-                vertices: {
-                  Vid(2): Some(Prime(PrimeNumber(5))),
-                },
-              ),
-            ]),
-          },
-        ), Int64(30))),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
       ),
       Opid(19): TraceOp(
         opid: Opid(19),
-        parent_opid: None,
-        content: ProduceQueryResult({
-          "value": Int64(30),
-        }),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
       ),
       Opid(20): TraceOp(
         opid: Opid(20),
-        parent_opid: Some(Opid(4)),
-        content: AdvanceInputIterator,
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
       ),
       Opid(21): TraceOp(
         opid: Opid(21),
         parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
+        content: OutputIteratorExhausted,
       ),
       Opid(22): TraceOp(
         opid: Opid(22),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
-      ),
-      Opid(23): TraceOp(
-        opid: Opid(23),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(24): TraceOp(
-        opid: Opid(24),
-        parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
-      ),
-      Opid(25): TraceOp(
-        opid: Opid(25),
-        parent_opid: Some(Opid(2)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(26): TraceOp(
-        opid: Opid(26),
-        parent_opid: Some(Opid(3)),
-        content: InputIteratorExhausted,
-      ),
-      Opid(27): TraceOp(
-        opid: Opid(27),
-        parent_opid: Some(Opid(3)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(28): TraceOp(
-        opid: Opid(28),
         parent_opid: Some(Opid(4)),
         content: InputIteratorExhausted,
       ),
-      Opid(29): TraceOp(
-        opid: Opid(29),
+      Opid(23): TraceOp(
+        opid: Opid(23),
         parent_opid: Some(Opid(4)),
         content: OutputIteratorExhausted,
       ),
@@ -298,7 +196,7 @@ TestInterpreterOutputTrace(
             ),
             post_filters: [
               OneOf(Count, Variable(VariableRef(
-                variable_name: "min_primes",
+                variable_name: "min_primes_count",
                 variable_type: "[Int!]!",
               ))),
             ],
@@ -313,14 +211,12 @@ TestInterpreterOutputTrace(
         },
       ),
       variables: {
-        "min_primes": "[Int!]!",
+        "min_primes_count": "[Int!]!",
       },
     ),
     arguments: {
-      "min_primes": List([
-        Uint64(2),
-        Uint64(3),
-        Uint64(5),
+      "min_primes_count": List([
+        Uint64(1),
       ]),
     },
   ),

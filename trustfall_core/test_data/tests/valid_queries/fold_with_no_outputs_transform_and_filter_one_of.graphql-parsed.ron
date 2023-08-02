@@ -50,7 +50,7 @@ Ok(TestParsedGraphQLQuery(
               ),
               filter: [
                 FilterDirective(
-                  operation: OneOf((), VariableRef("min_primes")),
+                  operation: OneOf((), VariableRef("min_primes_count")),
                 ),
               ],
             )),
@@ -82,7 +82,7 @@ Ok(TestParsedGraphQLQuery(
             ),
             filter: [
               FilterDirective(
-                operation: OneOf((), VariableRef("min_primes")),
+                operation: OneOf((), VariableRef("min_primes_count")),
               ),
             ],
           )),
@@ -91,10 +91,8 @@ Ok(TestParsedGraphQLQuery(
     ),
   ),
   arguments: {
-    "min_primes": List([
-      Uint64(2),
-      Uint64(3),
-      Uint64(5),
+    "min_primes_count": List([
+      Uint64(1),
     ]),
   },
 ))
