@@ -241,11 +241,29 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     }))
 }
 
+/// takes a FieldValue and produces a usize clamped to 0 and usize::MAX
+fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
+    match field_value {
+        FieldValue::Int64(num) => {
+            Some(usize::try_from(*num.max(&0)).expect("i64 can be converted to usize"))
+        }
+        FieldValue::Uint64(num) => {
+            Some(usize::try_from(*num).expect("i64 can be converted to usize"))
+        }
+        FieldValue::Float64(_)
+        | FieldValue::List(_)
+        | FieldValue::Enum(_)
+        | FieldValue::Boolean(_)
+        | FieldValue::String(_)
+        | FieldValue::Null => None,
+    }
+}
+
 /// If this IRFold has a filter on the folded element count, and that filter imposes
 /// a max size that can be statically determined, return that max size so it can
 /// be used for further optimizations. Otherwise, return None.
 fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
-    let mut result: Option<_> = None;
+    let mut result: Option<usize> = None;
 
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
@@ -255,11 +273,15 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
             ) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_i64().unwrap();
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
             Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_i64().unwrap();
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
                 // saturating_sub() here is a safeguard against underflow: in principle,
                 // we shouldn't see a comparison for "< 0", but if we do regardless, we'd prefer to
                 // saturate to 0 rather than wrapping around. This check is an optimization and
@@ -269,7 +291,13 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
             }
             Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
                 match &query_arguments[&var_ref.variable_name] {
-                    FieldValue::List(v) => v.iter().map(|x| x.as_i64().unwrap()).max(),
+                    FieldValue::List(v) => v
+                        .iter()
+                        .map(|x| {
+                            usize_from_field_value(x)
+                                .expect("for field value to be coercible to usize")
+                        })
+                        .max(),
                     _ => unreachable!(),
                 }
             }
@@ -283,10 +311,7 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
         }
     }
 
-    // NOTE: We use .max(0) so that if the filter is negative, we still return a usize.
-    // This number signifies how many items to take from the fold, anything less than 0
-    // doesn't make sense.
-    result.map(|x| x.max(0) as usize)
+    result
 }
 
 fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
@@ -301,7 +326,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
         // If we are able to pull more than `max_fold_count_limit + 1` elements,
         // we know that this fold is going to get filtered out, so we might as well
         // stop materializing its elements early.
-        let mut fold_elements = Vec::with_capacity(*max_fold_count_limit);
+        let mut fold_elements = Vec::with_capacity((*max_fold_count_limit).min(16));
 
         let mut stopped_early = false;
         for _ in 0..*max_fold_count_limit {
