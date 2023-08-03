@@ -325,7 +325,8 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
         // and as an optimization we'd like to stop pulling elements as soon as possible.
         // If we are able to pull more than `max_fold_count_limit + 1` elements,
         // we know that this fold is going to get filtered out, so we might as well
-        // stop materializing its elements early.
+        // stop materializing its elements early. Limit the max allocation size since
+        // it might not always be fully used.
         let mut fold_elements = Vec::with_capacity((*max_fold_count_limit).min(16));
 
         let mut stopped_early = false;
