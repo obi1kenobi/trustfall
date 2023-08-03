@@ -50,7 +50,7 @@ Ok(TestParsedGraphQLQuery(
               ),
               filter: [
                 FilterDirective(
-                  operation: Equals((), VariableRef("neg_two")),
+                  operation: NotEquals((), VariableRef("neg_two")),
                 ),
               ],
             )),
@@ -87,7 +87,7 @@ Ok(TestParsedGraphQLQuery(
             ),
             filter: [
               FilterDirective(
-                operation: Equals((), VariableRef("neg_two")),
+                operation: NotEquals((), VariableRef("neg_two")),
               ),
             ],
           )),
