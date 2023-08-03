@@ -241,7 +241,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     }))
 }
 
-/// takes a FieldValue and produces a usize clamped to 0 and usize::MAX
+/// Takes a FieldValue and produces a usize clamped between 0 and `usize::MAX`.
 fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
     match field_value {
         FieldValue::Int64(num) => {
