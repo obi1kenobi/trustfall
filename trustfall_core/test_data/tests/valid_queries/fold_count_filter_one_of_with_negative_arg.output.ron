@@ -12,19 +12,5 @@ TestInterpreterOutputData(
       vid: Vid(1),
     ),
   },
-  results: [
-    {
-      "factors": List([
-        Int64(2),
-      ]),
-      "value": Int64(4),
-    },
-    {
-      "factors": List([
-        Int64(2),
-        Int64(3),
-      ]),
-      "value": Int64(6),
-    },
-  ],
+  results: [],
 )
