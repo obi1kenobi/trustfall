@@ -7,7 +7,7 @@ TestGraphQLQuery (
         ... on Composite {
             value @output
 
-            primeFactor @fold @transform(op: "count") @filter(op: "=", value: ["$neg_two"]) {
+            primeFactor @fold @transform(op: "count") @filter(op: "!=", value: ["$neg_two"]) {
                 factors: value @output
             }
         }
