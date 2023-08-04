@@ -16,8 +16,8 @@ TestGraphQLQuery (
             value @output
 
             primeFactor @fold @transform(op: "count")
-                        @filter(op: ">", value: ["$three"])
-                        @filter(op: ">", value: ["$two"])
+                        @filter(op: "<", value: ["$three"])
+                        @filter(op: "<", value: ["$two"])
         }
     }
 }"#,

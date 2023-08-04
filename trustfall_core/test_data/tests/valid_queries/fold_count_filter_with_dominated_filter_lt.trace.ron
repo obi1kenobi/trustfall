@@ -118,56 +118,46 @@ TestInterpreterOutputTrace(
       ),
       Opid(15): TraceOp(
         opid: Opid(15),
-        parent_opid: Some(Opid(12)),
-        content: YieldFrom(ResolveNeighborsInner(2, Prime(PrimeNumber(5)))),
+        parent_opid: Some(Opid(3)),
+        content: AdvanceInputIterator,
       ),
       Opid(16): TraceOp(
         opid: Opid(16),
-        parent_opid: Some(Opid(12)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(17): TraceOp(
         opid: Opid(17),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
       ),
       Opid(18): TraceOp(
         opid: Opid(18),
         parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
+        content: InputIteratorExhausted,
       ),
       Opid(19): TraceOp(
         opid: Opid(19),
-        parent_opid: Some(Opid(1)),
+        parent_opid: Some(Opid(2)),
         content: OutputIteratorExhausted,
       ),
       Opid(20): TraceOp(
         opid: Opid(20),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(3)),
         content: InputIteratorExhausted,
       ),
       Opid(21): TraceOp(
         opid: Opid(21),
-        parent_opid: Some(Opid(2)),
+        parent_opid: Some(Opid(3)),
         content: OutputIteratorExhausted,
       ),
       Opid(22): TraceOp(
         opid: Opid(22),
-        parent_opid: Some(Opid(3)),
+        parent_opid: Some(Opid(4)),
         content: InputIteratorExhausted,
       ),
       Opid(23): TraceOp(
         opid: Opid(23),
-        parent_opid: Some(Opid(3)),
-        content: OutputIteratorExhausted,
-      ),
-      Opid(24): TraceOp(
-        opid: Opid(24),
-        parent_opid: Some(Opid(4)),
-        content: InputIteratorExhausted,
-      ),
-      Opid(25): TraceOp(
-        opid: Opid(25),
         parent_opid: Some(Opid(4)),
         content: OutputIteratorExhausted,
       ),
@@ -205,11 +195,11 @@ TestInterpreterOutputTrace(
               },
             ),
             post_filters: [
-              GreaterThan(Count, Variable(VariableRef(
+              LessThan(Count, Variable(VariableRef(
                 variable_name: "three",
                 variable_type: "Int!",
               ))),
-              GreaterThan(Count, Variable(VariableRef(
+              LessThan(Count, Variable(VariableRef(
                 variable_name: "two",
                 variable_type: "Int!",
               ))),
