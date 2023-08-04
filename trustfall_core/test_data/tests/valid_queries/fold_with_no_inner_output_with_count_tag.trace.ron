@@ -644,7 +644,7 @@ TestInterpreterOutputTrace(
         parent_opid: None,
         content: ProduceQueryResult({
           "composite_value": Int64(30),
-          "divisor_that_is_equal_to_number_of_prime_factors": Int64(3),
+          "prime_factors": Int64(3),
         }),
       ),
       Opid(41): TraceOp(
@@ -1171,7 +1171,7 @@ TestInterpreterOutputTrace(
             field_name: "value",
             field_type: "Int",
           ),
-          "divisor_that_is_equal_to_number_of_prime_factors": ContextField(
+          "prime_factors": ContextField(
             vertex_id: Vid(3),
             field_name: "value",
             field_type: "Int",

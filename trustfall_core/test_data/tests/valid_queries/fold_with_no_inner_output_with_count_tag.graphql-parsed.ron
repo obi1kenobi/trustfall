@@ -52,7 +52,7 @@ Ok(TestParsedGraphQLQuery(
               ),
               tag: [
                 TagDirective(
-                  name: Some("number_of_prime_factors"),
+                  name: Some("primes"),
                 ),
               ],
               filter: [
@@ -68,28 +68,13 @@ Ok(TestParsedGraphQLQuery(
             column: 13,
           ),
           name: "primeFactor",
-          connections: [
-            (FieldConnection(
-              position: Pos(
-                line: 8,
-                column: 17,
-              ),
-              name: "__typename",
-            ), FieldNode(
-              position: Pos(
-                line: 8,
-                column: 17,
-              ),
-              name: "__typename",
-            )),
-          ],
           transform_group: Some(TransformGroup(
             transform: TransformDirective(
               kind: Count,
             ),
             tag: [
               TagDirective(
-                name: Some("number_of_prime_factors"),
+                name: Some("primes"),
               ),
             ],
             filter: [
@@ -101,34 +86,34 @@ Ok(TestParsedGraphQLQuery(
         )),
         (FieldConnection(
           position: Pos(
-            line: 11,
+            line: 9,
             column: 13,
           ),
           name: "divisor",
         ), FieldNode(
           position: Pos(
-            line: 11,
+            line: 9,
             column: 13,
           ),
           name: "divisor",
           connections: [
             (FieldConnection(
               position: Pos(
-                line: 12,
+                line: 10,
                 column: 17,
               ),
               name: "value",
-              alias: Some("divisor_that_is_equal_to_number_of_prime_factors"),
+              alias: Some("prime_factors"),
             ), FieldNode(
               position: Pos(
-                line: 12,
+                line: 10,
                 column: 17,
               ),
               name: "value",
-              alias: Some("divisor_that_is_equal_to_number_of_prime_factors"),
+              alias: Some("prime_factors"),
               filter: [
                 FilterDirective(
-                  operation: Equals((), TagRef("number_of_prime_factors")),
+                  operation: Equals((), TagRef("primes")),
                 ),
               ],
               output: [

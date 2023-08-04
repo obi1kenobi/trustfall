@@ -68,7 +68,7 @@ Ok(TestIRQuery(
           field_name: "value",
           field_type: "Int",
         ),
-        "divisor_that_is_equal_to_number_of_prime_factors": ContextField(
+        "prime_factors": ContextField(
           vertex_id: Vid(3),
           field_name: "value",
           field_type: "Int",

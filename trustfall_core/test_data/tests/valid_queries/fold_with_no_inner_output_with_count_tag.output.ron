@@ -6,8 +6,8 @@ TestInterpreterOutputData(
       value_type: "Int",
       vid: Vid(1),
     ),
-    "divisor_that_is_equal_to_number_of_prime_factors": Output(
-      name: "divisor_that_is_equal_to_number_of_prime_factors",
+    "prime_factors": Output(
+      name: "prime_factors",
       value_type: "Int",
       vid: Vid(3),
     ),
@@ -15,7 +15,7 @@ TestInterpreterOutputData(
   results: [
     {
       "composite_value": Int64(30),
-      "divisor_that_is_equal_to_number_of_prime_factors": Int64(3),
+      "prime_factors": Int64(3),
     },
   ],
 )
