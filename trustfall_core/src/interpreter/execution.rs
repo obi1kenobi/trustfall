@@ -364,6 +364,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
     min_fold_count_limit: &Option<usize>,
     no_outputs_in_fold: bool,
     has_output_on_fold_count: bool,
+    has_tag_on_fold_count: bool,
 ) -> Option<Vec<DataContext<Vertex>>> {
     // We do not apply the min_fold_count_limit optimization if we have an upper bound,
     // in the form of max_fold_count_limit, because if we have a required upperbound,
@@ -412,7 +413,9 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
             // When we do `iterator.take(*min_fold_count_limit)`, this statement takes at most
             // `min_fold_count_limit` elements, however if we have less the iterator can stop
             // early.
-            Some(min_fold_count_limit) if no_outputs_in_fold && !has_output_on_fold_count => {
+            Some(min_fold_count_limit)
+                if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count =>
+            {
                 iterator.take(*min_fold_count_limit).collect()
             }
             // We weren't able to find any early-termination condition for materializing the fold,
@@ -515,6 +518,23 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let no_outputs_in_fold = fold.component.outputs.is_empty();
     let has_output_on_fold_count =
         fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
+    let has_tag_on_fold_count = parent_component
+        .vertices
+        .iter()
+        .flat_map(|x| {
+            x.1.filters.iter().filter(|x| {
+                let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) = x.right()
+                else {
+                    return false;
+                };
+
+                tagged_fold_count.fold_root_vid == fold.to_vid
+                    && tagged_fold_count.fold_eid == fold.eid
+                    && tagged_fold_count.kind == FoldSpecificFieldKind::Count
+            })
+        })
+        .next()
+        .is_some();
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
@@ -544,6 +564,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                 &min_fold_size,
                 no_outputs_in_fold,
                 has_output_on_fold_count,
+                has_tag_on_fold_count,
             )?)
         } else {
             None
