@@ -50,7 +50,7 @@ Ok(TestParsedGraphQLQuery(
               ),
               filter: [
                 FilterDirective(
-                  operation: LessThan((), VariableRef("three")),
+                  operation: LessThan((), VariableRef("four")),
                 ),
                 FilterDirective(
                   operation: LessThan((), VariableRef("two")),
@@ -70,7 +70,7 @@ Ok(TestParsedGraphQLQuery(
             ),
             filter: [
               FilterDirective(
-                operation: LessThan((), VariableRef("three")),
+                operation: LessThan((), VariableRef("four")),
               ),
               FilterDirective(
                 operation: LessThan((), VariableRef("two")),
@@ -82,7 +82,7 @@ Ok(TestParsedGraphQLQuery(
     ),
   ),
   arguments: {
-    "three": Uint64(3),
+    "four": Uint64(4),
     "two": Uint64(2),
   },
 ))

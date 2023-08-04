@@ -34,7 +34,7 @@ Ok(TestIRQuery(
           ),
           post_filters: [
             LessThan(Count, Variable(VariableRef(
-              variable_name: "three",
+              variable_name: "four",
               variable_type: "Int!",
             ))),
             LessThan(Count, Variable(VariableRef(
@@ -53,12 +53,12 @@ Ok(TestIRQuery(
       },
     ),
     variables: {
-      "three": "Int!",
+      "four": "Int!",
       "two": "Int!",
     },
   ),
   arguments: {
-    "three": Uint64(3),
+    "four": Uint64(4),
     "two": Uint64(2),
   },
 ))
