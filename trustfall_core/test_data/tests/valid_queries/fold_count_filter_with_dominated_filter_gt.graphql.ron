@@ -15,7 +15,7 @@ TestGraphQLQuery (
         ... on Composite {
             value @output
 
-            primeFactor @fold @transform(op: "count")
+            multiple(max: 5) @fold @transform(op: "count")
                         @filter(op: ">", value: ["$two"])
                         @filter(op: ">", value: ["$three"])
         }

@@ -109,65 +109,291 @@ TestInterpreterOutputTrace(
       Opid(13): TraceOp(
         opid: Opid(13),
         parent_opid: Some(Opid(12)),
-        content: YieldFrom(ResolveNeighborsInner(0, Prime(PrimeNumber(2)))),
+        content: YieldFrom(ResolveNeighborsInner(0, Composite(CompositeNumber(30, [
+          2,
+          3,
+          5,
+        ])))),
       ),
       Opid(14): TraceOp(
         opid: Opid(14),
         parent_opid: Some(Opid(12)),
-        content: YieldFrom(ResolveNeighborsInner(1, Prime(PrimeNumber(3)))),
+        content: YieldFrom(ResolveNeighborsInner(1, Composite(CompositeNumber(60, [
+          2,
+          3,
+          5,
+        ])))),
       ),
       Opid(15): TraceOp(
         opid: Opid(15),
         parent_opid: Some(Opid(12)),
-        content: YieldFrom(ResolveNeighborsInner(2, Prime(PrimeNumber(5)))),
+        content: YieldFrom(ResolveNeighborsInner(2, Composite(CompositeNumber(90, [
+          2,
+          3,
+          5,
+        ])))),
       ),
       Opid(16): TraceOp(
         opid: Opid(16),
         parent_opid: Some(Opid(12)),
-        content: OutputIteratorExhausted,
+        content: YieldFrom(ResolveNeighborsInner(3, Composite(CompositeNumber(120, [
+          2,
+          3,
+          5,
+        ])))),
       ),
       Opid(17): TraceOp(
         opid: Opid(17),
-        parent_opid: Some(Opid(3)),
-        content: AdvanceInputIterator,
+        parent_opid: Some(Opid(12)),
+        content: YieldFrom(ResolveNeighborsInner(4, Composite(CompositeNumber(150, [
+          2,
+          3,
+          5,
+        ])))),
       ),
       Opid(18): TraceOp(
         opid: Opid(18),
-        parent_opid: Some(Opid(2)),
-        content: AdvanceInputIterator,
+        parent_opid: Some(Opid(12)),
+        content: OutputIteratorExhausted,
       ),
       Opid(19): TraceOp(
         opid: Opid(19),
-        parent_opid: Some(Opid(1)),
-        content: OutputIteratorExhausted,
+        parent_opid: Some(Opid(4)),
+        content: YieldInto(SerializableContext(
+          active_vertex: Some(Composite(CompositeNumber(30, [
+            2,
+            3,
+            5,
+          ]))),
+          vertices: {
+            Vid(1): Some(Composite(CompositeNumber(30, [
+              2,
+              3,
+              5,
+            ]))),
+          },
+          folded_contexts: {
+            Eid(1): Some([
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(30, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(30, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(60, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(60, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(90, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(90, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(120, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(120, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(150, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(150, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+            ]),
+          },
+        )),
       ),
       Opid(20): TraceOp(
         opid: Opid(20),
-        parent_opid: Some(Opid(2)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(4)),
+        content: YieldFrom(ResolveProperty(SerializableContext(
+          active_vertex: Some(Composite(CompositeNumber(30, [
+            2,
+            3,
+            5,
+          ]))),
+          vertices: {
+            Vid(1): Some(Composite(CompositeNumber(30, [
+              2,
+              3,
+              5,
+            ]))),
+          },
+          folded_contexts: {
+            Eid(1): Some([
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(30, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(30, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(60, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(60, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(90, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(90, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(120, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(120, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+              SerializableContext(
+                active_vertex: Some(Composite(CompositeNumber(150, [
+                  2,
+                  3,
+                  5,
+                ]))),
+                vertices: {
+                  Vid(2): Some(Composite(CompositeNumber(150, [
+                    2,
+                    3,
+                    5,
+                  ]))),
+                },
+              ),
+            ]),
+          },
+        ), Int64(30))),
       ),
       Opid(21): TraceOp(
         opid: Opid(21),
-        parent_opid: Some(Opid(2)),
-        content: OutputIteratorExhausted,
+        parent_opid: None,
+        content: ProduceQueryResult({
+          "value": Int64(30),
+        }),
       ),
       Opid(22): TraceOp(
         opid: Opid(22),
-        parent_opid: Some(Opid(3)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(4)),
+        content: AdvanceInputIterator,
       ),
       Opid(23): TraceOp(
         opid: Opid(23),
         parent_opid: Some(Opid(3)),
-        content: OutputIteratorExhausted,
+        content: AdvanceInputIterator,
       ),
       Opid(24): TraceOp(
         opid: Opid(24),
-        parent_opid: Some(Opid(4)),
-        content: InputIteratorExhausted,
+        parent_opid: Some(Opid(2)),
+        content: AdvanceInputIterator,
       ),
       Opid(25): TraceOp(
         opid: Opid(25),
+        parent_opid: Some(Opid(1)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(26): TraceOp(
+        opid: Opid(26),
+        parent_opid: Some(Opid(2)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(27): TraceOp(
+        opid: Opid(27),
+        parent_opid: Some(Opid(2)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(28): TraceOp(
+        opid: Opid(28),
+        parent_opid: Some(Opid(3)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(29): TraceOp(
+        opid: Opid(29),
+        parent_opid: Some(Opid(3)),
+        content: OutputIteratorExhausted,
+      ),
+      Opid(30): TraceOp(
+        opid: Opid(30),
+        parent_opid: Some(Opid(4)),
+        content: InputIteratorExhausted,
+      ),
+      Opid(31): TraceOp(
+        opid: Opid(31),
         parent_opid: Some(Opid(4)),
         content: OutputIteratorExhausted,
       ),
@@ -194,13 +420,18 @@ TestInterpreterOutputTrace(
             eid: Eid(1),
             from_vid: Vid(1),
             to_vid: Vid(2),
-            edge_name: "primeFactor",
+            edge_name: "multiple",
+            parameters: EdgeParameters(
+              contents: {
+                "max": Int64(5),
+              },
+            ),
             component: IRQueryComponent(
               root: Vid(2),
               vertices: {
                 Vid(2): IRVertex(
                   vid: Vid(2),
-                  type_name: "Prime",
+                  type_name: "Composite",
                 ),
               },
             ),
