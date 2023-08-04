@@ -334,11 +334,15 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
             ) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
             Operation::GreaterThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
                 Some(variable_value + 1)
             }
             _ => None,
