@@ -241,8 +241,8 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     }))
 }
 
-/// Takes a FieldValue and produces a usize clamped between 0 and `usize::MAX`.
-/// Only expected to take Null or a finite number type such as Int64, Uint64.
+/// Takes a FieldValue and returns a positive usize. If the FieldValue is a Null,
+/// returns None.
 fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
     match field_value {
         FieldValue::Int64(num) => {
