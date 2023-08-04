@@ -1,7 +1,7 @@
 TestGraphQLQuery (
     // Ensure that we properly handle two of the same type of filters
-    // but one of the filters beat's the other. In this case filtering
-    // by greater than two is beat by filtering for greater than three.
+    // but one of the filters dominates the other. In this case filtering
+    // by greater than two is dominated by filtering for greater than three.
     // 
     // This test guards against an accidental min/max mixup in the implementation
     // of the optimization that allows us to stop expanding folds early.
