@@ -1,0 +1,21 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "composite_value": Output(
+      name: "composite_value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "divisor_that_is_equal_to_number_of_prime_factors": Output(
+      name: "divisor_that_is_equal_to_number_of_prime_factors",
+      value_type: "Int",
+      vid: Vid(3),
+    ),
+  },
+  results: [
+    {
+      "composite_value": Int64(30),
+      "divisor_that_is_equal_to_number_of_prime_factors": Int64(3),
+    },
+  ],
+)
