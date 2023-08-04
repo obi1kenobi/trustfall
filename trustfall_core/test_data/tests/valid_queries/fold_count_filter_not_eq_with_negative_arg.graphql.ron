@@ -1,0 +1,19 @@
+TestGraphQLQuery (
+    // Ensure that we properly handle negative numbers in a `!=` filter on a folded edge's count.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 4, max: 6) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count") @filter(op: "!=", value: ["$neg_two"]) {
+                factors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "neg_two": Int64(-2),
+    },
+)

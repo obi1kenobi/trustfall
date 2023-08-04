@@ -1,0 +1,20 @@
+TestGraphQLQuery (
+    // We use a number larger than i64 max to make sure get_max_fold_count_limit can handle numbers larger than i64 max.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 4, max: 6) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count") @filter(op: "<", value: ["$over_i64_max"]) {
+                factors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {
+        // this is usize max
+        "over_i64_max": Uint64(18446744073709551615),
+    },
+)
