@@ -1,0 +1,28 @@
+TestGraphQLQuery (
+    // Ensure that we properly handle two of the same type of filters
+    // but one of the filters dominates the other. In this case filtering
+    // by less than three is dominated by filtering for less than two.
+    //
+    // This test guards against an accidental min/max mixup in the implementation
+    // of the optimization that allows us to stop expanding folds early.
+    // We should only stop when the dominating filter is satisfied,
+    // not when the dominated filter is satisfied. If such a bug were to happen,
+    // this query would return `{ "value": 30 }` instead of having no results.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count")
+                        @filter(op: ">", value: ["$three"])
+                        @filter(op: ">", value: ["$two"])
+        }
+    }
+}"#,
+    arguments: {
+        "two": Uint64(2),
+        "three": Uint64(3),
+    },
+)
