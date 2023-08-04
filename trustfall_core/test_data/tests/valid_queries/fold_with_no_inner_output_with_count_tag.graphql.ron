@@ -3,21 +3,16 @@ TestGraphQLQuery (
     // This @fold statement needs to evaluate because the @tag forces us to observe the
     // full iterator in order to calculate length.
     //
-    // The number 30 is composite and has 3 prime factors: 2, 3, 5.
-    // This test ensures that we don't incorrectly stop the evaluation of the @fold
-    // early, after producing only two of those primes thereby satisfying the predicate.
-    //
-    // The `__typename` inside the @fold doesn't do anything.
-    // It's used to make the `{}` block valid, since empty blocks aren't legal GraphQL.
+    // It is important that we do not `@output` anything inside the fold or `@output` the count for the purpose of this test
+    // which is to make sure that we do not change any behavior when we have a `@tag` to a `@fold` statement that can observe
+    // the count of elements in the fold.
     query: r#"
 {
     Number(min: 30, max: 30) {
         ... on Composite {
             composite_value: value @output
 
-            primeFactor @fold @transform(op: "count") @filter(op: ">=", value: ["$min_primes"]) @tag(name: "number_of_prime_factors") {
-                __typename
-            }
+            primeFactor @fold @transform(op: "count") @filter(op: ">=", value: ["$min_primes"]) @tag(name: "number_of_prime_factors")
 
             divisor {
                 divisor_that_is_equal_to_number_of_prime_factors: value @filter(op: "=", value: ["%number_of_prime_factors"]) @output
