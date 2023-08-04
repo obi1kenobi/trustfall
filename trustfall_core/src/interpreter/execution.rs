@@ -402,11 +402,11 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
             // If we have a min_fold_count_limit then it is safe to .take(min_fold_count_limit)
             // because it will take at most min_fold_count_limit elements, and if the iterator has
             // fewer items then it will just take all of them.
-
+            //
             // This optimization requires that the user can never observe that we didn't fully
-            // iterate the entire iterator. This is only possible if the fold has no outputs and
+            // compute the entire `@fold`. This is only possible if the fold has no outputs and
             // the user does not have output the count of elements in the fold.
-
+            //
             // Additionally, we only apply this optimization if we don't have an upper bound,
             // in the form of max_fold_count_limit, because if we dont have a required upperbound
             // can we stop at the lower bound, if we are required to observe whether we hit the
