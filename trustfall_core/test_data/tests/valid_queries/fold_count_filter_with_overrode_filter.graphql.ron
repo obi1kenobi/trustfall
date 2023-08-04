@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    // Ensure that we properly handle two of the same type of filters
+    // but one of the filters beat's the other. In this case filtering
+    // by greater than two is beat by filtering for greater than three.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count")
+                        @filter(op: ">", value: ["$two"])
+                        @filter(op: ">", value: ["$three"])
+        }
+    }
+}"#,
+    arguments: {
+        "two": Uint64(2),
+        "three": Uint64(3),
+    },
+)
