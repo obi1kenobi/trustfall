@@ -205,6 +205,7 @@ fn check_parameterized_edges() {
 
                 parameter_: parameter {
                     name @output
+                    docs @output
                     type @output
                     default @output
                 }
@@ -218,6 +219,7 @@ fn check_parameterized_edges() {
     struct Output {
         edge: String,
         parameter_name: String,
+        parameter_docs: Option<String>,
         parameter_type: String,
         parameter_default: Option<String>,
     }
@@ -238,6 +240,7 @@ fn check_parameterized_edges() {
         Output {
             edge: "nullable".into(),
             parameter_name: "x".into(),
+            parameter_docs: None,
             parameter_type: "Int".into(),
             parameter_default: Some(
                 serde_json::to_string(&TransparentValue::from(FieldValue::NULL))
@@ -247,12 +250,14 @@ fn check_parameterized_edges() {
         Output {
             edge: "nonNullable".into(),
             parameter_name: "x".into(),
+            parameter_docs: None,
             parameter_type: "Int!".into(),
             parameter_default: None,
         },
         Output {
             edge: "nonNullableDefault".into(),
             parameter_name: "x".into(),
+            parameter_docs: None,
             parameter_type: "Int!".into(),
             parameter_default: Some(
                 serde_json::to_string(&TransparentValue::from(FieldValue::Int64(5)))
@@ -262,6 +267,7 @@ fn check_parameterized_edges() {
         Output {
             edge: "string".into(),
             parameter_name: "y".into(),
+            parameter_docs: None,
             parameter_type: "String!".into(),
             parameter_default: Some(
                 serde_json::to_string(&TransparentValue::from(FieldValue::String("abc".into())))
@@ -271,12 +277,39 @@ fn check_parameterized_edges() {
         Output {
             edge: "list".into(),
             parameter_name: "z".into(),
+            parameter_docs: None,
             parameter_type: "[String]!".into(),
             parameter_default: Some(
                 serde_json::to_string(&TransparentValue::from(FieldValue::List(
                     vec![FieldValue::NULL, FieldValue::String("abc".into())].into(),
                 )))
                 .expect("failed to serialize"),
+            ),
+        },
+        Output {
+            edge: "documented".into(),
+            parameter_name: "x".into(),
+            parameter_docs: "Single docs line".to_string().into(),
+            parameter_type: "Int".into(),
+            parameter_default: Some(
+                serde_json::to_string(&TransparentValue::from(FieldValue::NULL))
+                    .expect("failed to serialize"),
+            ),
+        },
+        Output {
+            edge: "documented".into(),
+            parameter_name: "y".into(),
+            parameter_docs: "\
+Multiple docs lines
+
+With a line break in the middle
+and continuous text after it."
+                .to_string()
+                .into(),
+            parameter_type: "String".into(),
+            parameter_default: Some(
+                serde_json::to_string(&TransparentValue::from(FieldValue::NULL))
+                    .expect("failed to serialize"),
             ),
         },
     ];
