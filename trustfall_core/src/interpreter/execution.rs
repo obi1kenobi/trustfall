@@ -399,18 +399,19 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
         Some(fold_elements)
     } else {
         let collected = match min_fold_count_limit {
-            // If we have a min_fold_count_limit then it is safe to .take(min_fold_count_limit)
-            // because it will take at most min_fold_count_limit elements, and if the iterator has
-            // fewer items then it will just take all of them.
+            // In this optimization we do not need to collect the entire fold if we can decide
+            // that the user never expects to observe the length in the entire fold, therefore
+            // performing less work.
             //
             // This optimization requires that the user can never observe that we didn't fully
-            // compute the entire `@fold`. This is only possible if the fold has no outputs and
-            // the user does not have output the count of elements in the fold.
+            // compute the entire `@fold`. This is only possible if the fold has no outputs,
+            // the user does not output the count of elements in the fold, and the user does
+            // not use any of the filters that require knowing the exact count of elements
+            // in the fold.
             //
-            // Additionally, we only apply this optimization if we don't have an upper bound,
-            // in the form of max_fold_count_limit, because if we dont have a required upperbound
-            // can we stop at the lower bound, if we are required to observe whether we hit the
-            // upperbound, it's no longer safe to stop at the lower bound.
+            // When we do `iterator.take(*min_fold_count_limit)`, this statement takes at most
+            // `min_fold_count_limit` elements, however if we have less the iterator can stop
+            // early.
             Some(min_fold_count_limit) if no_outputs_in_fold && !has_output_on_fold_count => {
                 iterator.take(*min_fold_count_limit).collect()
             }
