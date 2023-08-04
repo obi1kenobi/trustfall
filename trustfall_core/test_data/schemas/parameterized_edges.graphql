@@ -21,4 +21,17 @@ type Vertex {
     string(y: String! = "abc"): Vertex
 
     list(z: [String]! = [null, "abc"]): Vertex
+
+    documented(
+        "Single docs line"
+        x: Int
+
+        """
+        Multiple docs lines
+
+        With a line break in the middle
+        and continuous text after it.
+        """
+        y: String
+    ): Vertex
 }
