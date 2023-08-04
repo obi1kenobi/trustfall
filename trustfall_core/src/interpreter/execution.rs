@@ -241,8 +241,8 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     }))
 }
 
-/// Takes a FieldValue and returns a positive usize. If the FieldValue is a Null,
-/// returns None.
+/// Extracts numeric [`FieldValue`] into a `usize`, clamping negative numbers to 0.
+/// Returns `None` on `FieldValue::Null`, and panics otherwise.
 fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
     match field_value {
         FieldValue::Int64(num) => {
