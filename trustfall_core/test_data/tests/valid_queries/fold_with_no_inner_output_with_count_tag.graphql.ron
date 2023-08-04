@@ -12,10 +12,10 @@ TestGraphQLQuery (
         ... on Composite {
             composite_value: value @output
 
-            primeFactor @fold @transform(op: "count") @filter(op: ">=", value: ["$min_primes"]) @tag(name: "number_of_prime_factors")
+            primeFactor @fold @transform(op: "count") @filter(op: ">=", value: ["$min_primes"]) @tag(name: "primes")
 
             divisor {
-                divisor_that_is_equal_to_number_of_prime_factors: value @filter(op: "=", value: ["%number_of_prime_factors"]) @output
+                prime_factors: value @filter(op: "=", value: ["%primes"]) @output
             }
         }
     }
