@@ -22,18 +22,13 @@ Ok(TestIRQuery(
           eid: Eid(1),
           from_vid: Vid(1),
           to_vid: Vid(2),
-          edge_name: "multiple",
-          parameters: EdgeParameters(
-            contents: {
-              "max": Int64(5),
-            },
-          ),
+          edge_name: "primeFactor",
           component: IRQueryComponent(
             root: Vid(2),
             vertices: {
               Vid(2): IRVertex(
                 vid: Vid(2),
-                type_name: "Composite",
+                type_name: "Prime",
               ),
             },
           ),

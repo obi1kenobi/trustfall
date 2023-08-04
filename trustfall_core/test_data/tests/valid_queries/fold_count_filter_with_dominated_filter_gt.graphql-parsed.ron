@@ -41,10 +41,7 @@ Ok(TestParsedGraphQLQuery(
             line: 7,
             column: 13,
           ),
-          name: "multiple",
-          arguments: {
-            "max": Int64(5),
-          },
+          name: "primeFactor",
           fold: Some(FoldGroup(
             fold: FoldDirective(),
             transform: Some(TransformGroup(
@@ -66,7 +63,7 @@ Ok(TestParsedGraphQLQuery(
             line: 7,
             column: 13,
           ),
-          name: "multiple",
+          name: "primeFactor",
           transform_group: Some(TransformGroup(
             transform: TransformDirective(
               kind: Count,

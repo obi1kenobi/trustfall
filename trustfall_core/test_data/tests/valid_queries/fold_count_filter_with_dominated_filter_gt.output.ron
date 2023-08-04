@@ -7,9 +7,5 @@ TestInterpreterOutputData(
       vid: Vid(1),
     ),
   },
-  results: [
-    {
-      "value": Int64(30),
-    },
-  ],
+  results: [],
 )
