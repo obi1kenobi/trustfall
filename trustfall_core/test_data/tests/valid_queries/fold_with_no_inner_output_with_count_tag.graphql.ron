@@ -4,7 +4,7 @@ TestGraphQLQuery (
     // full iterator in order to calculate length.
     //
     // It is important that we do not `@output` anything inside the fold or `@output` the count for the purpose of this test
-    // which is to make sure that we do not change any behavior when we have a `@tag` to a `@fold` statement that can observe
+    // which is to make sure that we do not change any behavior when we have a `@tag` on a `@fold` statement that can observe
     // the count of elements in the fold.
     query: r#"
 {
