@@ -366,17 +366,18 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
     has_output_on_fold_count: bool,
     has_tag_on_fold_count: bool,
 ) -> Option<Vec<DataContext<Vertex>>> {
-    // We do not apply the min_fold_count_limit optimization if we have an upper bound,
-    // in the form of max_fold_count_limit, because if we have a required upperbound,
-    // then we can't stop at the lower bound, if we are required to observe whether we hit the
-    // upperbound, it's no longer safe to stop at the lower bound.
+    // If we must collect the fold up to our upperbound of `max_fold_count_limit`,
+    // then we won't use our lowerbound of `min_fold_count_limit`, as by definition
+    // the upperbound will be larger than the lowerbound.
     if let Some(max_fold_count_limit) = max_fold_count_limit {
-        // Queries that do not observe the fold count nor any fold contents may be able to
-        // be optimized by only partially expanding the fold, just enough to check any filters
-        // that may be applied to the fold count.
-        //
-        // For example, if `@filter(op: ">", value: ["$ten"])` is our only filter on the count
-        // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
+        // If this fold has more than `max_fold_count_limit` elements,
+        // it will get filtered out by a post-fold filter.
+        // Pulling elements from `iterator` causes computations and data fetches to happen,
+        // and as an optimization we'd like to stop pulling elements as soon as possible.
+        // If we are able to pull more than `max_fold_count_limit + 1` elements,
+        // we know that this fold is going to get filtered out, so we might as well
+        // stop materializing its elements early. Limit the max allocation size since
+        // it might not always be fully used.
         let mut fold_elements = Vec::with_capacity((*max_fold_count_limit).min(16));
 
         let mut stopped_early = false;
@@ -398,19 +399,12 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
         Some(fold_elements)
     } else {
         let collected = match min_fold_count_limit {
-            // In this optimization we do not need to collect the entire fold if we can decide
-            // that the user never expects to observe the length in the entire fold, therefore
-            // performing less work.
+            // Queries that do not observe the fold count nor any fold contents may be able to
+            // be optimized by only partially expanding the fold, just enough to check any filters
+            // that may be applied to the fold count.
             //
-            // This optimization requires that the user can never observe that we didn't fully
-            // compute the entire `@fold`. This is only possible if the fold has no outputs,
-            // the user does not output the count of elements in the fold, and the user does
-            // not use any of the filters that require knowing the exact count of elements
-            // in the fold.
-            //
-            // When we do `iterator.take(*min_fold_count_limit)`, this statement takes at most
-            // `min_fold_count_limit` elements, however if we have less the iterator can stop
-            // early.
+            // For example, if `@filter(op: ">", value: ["$ten"])` is our only filter on the count
+            // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
             Some(min_fold_count_limit)
                 if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count =>
             {
