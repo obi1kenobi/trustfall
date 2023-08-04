@@ -242,6 +242,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
 }
 
 /// Takes a FieldValue and produces a usize clamped between 0 and `usize::MAX`.
+/// Only expected to take Null or a finite number type such as Int64, Uint64.
 fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
     match field_value {
         FieldValue::Int64(num) => {
@@ -250,12 +251,14 @@ fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
         FieldValue::Uint64(num) => {
             Some(usize::try_from(*num).expect("i64 can be converted to usize"))
         }
+        FieldValue::Null => None,
         FieldValue::Float64(_)
         | FieldValue::List(_)
         | FieldValue::Enum(_)
         | FieldValue::Boolean(_)
-        | FieldValue::String(_)
-        | FieldValue::Null => None,
+        | FieldValue::String(_) => {
+            panic!("got field value {field_value:#?} in usize_from_field_value which should only ever get Int64, Uint64, or Null")
+        }
     }
 }
 
