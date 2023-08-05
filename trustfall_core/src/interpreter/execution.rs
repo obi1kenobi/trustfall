@@ -271,8 +271,6 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
-            // Equals and OneOf must be visited here as they are not visited
-            // in `get_min_fold_count_limit`
             Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
             | Operation::LessThanOrEqual(
                 FoldSpecificFieldKind::Count,
@@ -328,8 +326,6 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
-            // We do not need to visit Equals and OneOf here,
-            // since those will be handled by `get_max_fold_count_limit`
             Operation::GreaterThanOrEqual(
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
