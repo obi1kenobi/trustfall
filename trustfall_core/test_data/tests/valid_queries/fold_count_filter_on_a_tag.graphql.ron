@@ -9,30 +9,18 @@ TestGraphQLQuery (
     schema_name: "numbers",
     query: r#"
 {
-    Number(min: 6, max: 6) {
-        ... on Composite {
-
-            value @output
-
-            predecessor { # five
-                predecessor { # four
-                    predecessor { # three
-                        predecessor { # two
-                            predecessor { # one
-                                value @tag(name: "one")
-                            }
-                        }
-                    }
-                }
-            }
-
+    Two {
+        value @tag(name: "two")
+        multiple(max: 3) {
+            value @filter(op: "=", value: ["$six"]) @output
             primeFactor @fold @transform(op: "count")
-                        @filter(op: "<", value: ["%one"])
                         @filter(op: ">=", value: ["$zero"])
+                        @filter(op: "<", value: ["%two"])
         }
     }
 }"#,
     arguments: {
         "zero": Uint64(0),
+        "six": Uint64(6),
     },
 )

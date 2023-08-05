@@ -6,175 +6,119 @@ Ok(TestParsedGraphQLQuery(
         line: 3,
         column: 5,
       ),
-      name: "Number",
-      arguments: {
-        "max": Int64(6),
-        "min": Int64(6),
-      },
+      name: "Two",
     ),
     root_field: FieldNode(
       position: Pos(
         line: 3,
         column: 5,
       ),
-      name: "Number",
-      coerced_to: Some("Composite"),
+      name: "Two",
       connections: [
         (FieldConnection(
           position: Pos(
-            line: 6,
-            column: 13,
+            line: 4,
+            column: 9,
           ),
           name: "value",
         ), FieldNode(
           position: Pos(
-            line: 6,
-            column: 13,
+            line: 4,
+            column: 9,
           ),
           name: "value",
-          output: [
-            OutputDirective(),
+          tag: [
+            TagDirective(
+              name: Some("two"),
+            ),
           ],
         )),
         (FieldConnection(
           position: Pos(
-            line: 8,
-            column: 13,
+            line: 5,
+            column: 9,
           ),
-          name: "predecessor",
+          name: "multiple",
+          arguments: {
+            "max": Int64(3),
+          },
         ), FieldNode(
           position: Pos(
-            line: 8,
-            column: 13,
+            line: 5,
+            column: 9,
           ),
-          name: "predecessor",
+          name: "multiple",
           connections: [
             (FieldConnection(
               position: Pos(
-                line: 9,
-                column: 17,
+                line: 6,
+                column: 13,
               ),
-              name: "predecessor",
+              name: "value",
             ), FieldNode(
               position: Pos(
-                line: 9,
-                column: 17,
+                line: 6,
+                column: 13,
               ),
-              name: "predecessor",
-              connections: [
-                (FieldConnection(
-                  position: Pos(
-                    line: 10,
-                    column: 21,
-                  ),
-                  name: "predecessor",
-                ), FieldNode(
-                  position: Pos(
-                    line: 10,
-                    column: 21,
-                  ),
-                  name: "predecessor",
-                  connections: [
-                    (FieldConnection(
-                      position: Pos(
-                        line: 11,
-                        column: 25,
-                      ),
-                      name: "predecessor",
-                    ), FieldNode(
-                      position: Pos(
-                        line: 11,
-                        column: 25,
-                      ),
-                      name: "predecessor",
-                      connections: [
-                        (FieldConnection(
-                          position: Pos(
-                            line: 12,
-                            column: 29,
-                          ),
-                          name: "predecessor",
-                        ), FieldNode(
-                          position: Pos(
-                            line: 12,
-                            column: 29,
-                          ),
-                          name: "predecessor",
-                          connections: [
-                            (FieldConnection(
-                              position: Pos(
-                                line: 13,
-                                column: 33,
-                              ),
-                              name: "value",
-                            ), FieldNode(
-                              position: Pos(
-                                line: 13,
-                                column: 33,
-                              ),
-                              name: "value",
-                              tag: [
-                                TagDirective(
-                                  name: Some("one"),
-                                ),
-                              ],
-                            )),
-                          ],
-                        )),
-                      ],
-                    )),
-                  ],
-                )),
-              ],
-            )),
-          ],
-        )),
-        (FieldConnection(
-          position: Pos(
-            line: 20,
-            column: 13,
-          ),
-          name: "primeFactor",
-          fold: Some(FoldGroup(
-            fold: FoldDirective(),
-            transform: Some(TransformGroup(
-              transform: TransformDirective(
-                kind: Count,
-              ),
+              name: "value",
               filter: [
                 FilterDirective(
-                  operation: LessThan((), TagRef("one")),
-                ),
-                FilterDirective(
-                  operation: GreaterThanOrEqual((), VariableRef("zero")),
+                  operation: Equals((), VariableRef("six")),
                 ),
               ],
+              output: [
+                OutputDirective(),
+              ],
             )),
-          )),
-        ), FieldNode(
-          position: Pos(
-            line: 20,
-            column: 13,
-          ),
-          name: "primeFactor",
-          transform_group: Some(TransformGroup(
-            transform: TransformDirective(
-              kind: Count,
-            ),
-            filter: [
-              FilterDirective(
-                operation: LessThan((), TagRef("one")),
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
               ),
-              FilterDirective(
-                operation: GreaterThanOrEqual((), VariableRef("zero")),
+              name: "primeFactor",
+              fold: Some(FoldGroup(
+                fold: FoldDirective(),
+                transform: Some(TransformGroup(
+                  transform: TransformDirective(
+                    kind: Count,
+                  ),
+                  filter: [
+                    FilterDirective(
+                      operation: GreaterThanOrEqual((), VariableRef("zero")),
+                    ),
+                    FilterDirective(
+                      operation: LessThan((), TagRef("two")),
+                    ),
+                  ],
+                )),
+              )),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
               ),
-            ],
-          )),
+              name: "primeFactor",
+              transform_group: Some(TransformGroup(
+                transform: TransformDirective(
+                  kind: Count,
+                ),
+                filter: [
+                  FilterDirective(
+                    operation: GreaterThanOrEqual((), VariableRef("zero")),
+                  ),
+                  FilterDirective(
+                    operation: LessThan((), TagRef("two")),
+                  ),
+                ],
+              )),
+            )),
+          ],
         )),
       ],
     ),
   ),
   arguments: {
+    "six": Uint64(6),
     "zero": Uint64(0),
   },
 ))
