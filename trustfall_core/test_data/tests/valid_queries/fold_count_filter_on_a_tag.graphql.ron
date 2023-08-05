@@ -1,0 +1,38 @@
+TestGraphQLQuery (
+    // This test ensures that we do not ignore filters that should
+    // disable an optimization in which we only compute part of a
+    // fold.
+    //
+    // This test should result in no results. However, if we partially
+    // compute the fold ignoring the `>=` filter, we will get a result
+    // of `{ "value": 6 }`.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 6, max: 6) {
+        ... on Composite {
+
+            value @output
+
+            predecessor { # five
+                predecessor { # four
+                    predecessor { # three
+                        predecessor { # two
+                            predecessor { # one
+                                value @tag(name: "one")
+                            }
+                        }
+                    }
+                }
+            }
+
+            primeFactor @fold @transform(op: "count")
+                        @filter(op: "<", value: ["%one"])
+                        @filter(op: ">=", value: ["$zero"])
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Uint64(0),
+    },
+)
