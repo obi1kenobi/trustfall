@@ -510,24 +510,19 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let no_outputs_in_fold = fold.component.outputs.is_empty();
     let has_output_on_fold_count =
         fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
-    let has_tag_on_fold_count = parent_component
-        .vertices
-        .values()
-        .flat_map(|vertex| {
-            vertex.filters.iter().filter(|filter| {
-                let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) =
-                    filter.right()
-                else {
-                    return false;
-                };
+    let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
+        vertex.filters.iter().any(|filter| {
+            let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) =
+                filter.right()
+            else {
+                return false;
+            };
 
-                tagged_fold_count.fold_root_vid == fold.to_vid
-                    && tagged_fold_count.fold_eid == fold.eid
-                    && tagged_fold_count.kind == FoldSpecificFieldKind::Count
-            })
+            tagged_fold_count.fold_root_vid == fold.to_vid
+                && tagged_fold_count.fold_eid == fold.eid
+                && tagged_fold_count.kind == FoldSpecificFieldKind::Count
         })
-        .next()
-        .is_some();
+    });
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
