@@ -905,6 +905,11 @@ fn make_vertex<'schema, 'query>(
         errors.push(FrontendError::UnsupportedEdgeFilter(field_node.name.as_ref().to_owned()));
     }
 
+    if let Some(first_tag) = field_node.tag.first() {
+        // TODO: If @tag on edges is allowed, tweak this.
+        errors.push(FrontendError::UnsupportedEdgeTag(field_node.name.as_ref().to_owned()));
+    }
+
     let (type_name, coerced_from_type) = match field_node.coerced_to.clone().map_or_else(
         || {
             Result::<(Arc<str>, Option<Arc<str>>), FrontendError>::Ok((
