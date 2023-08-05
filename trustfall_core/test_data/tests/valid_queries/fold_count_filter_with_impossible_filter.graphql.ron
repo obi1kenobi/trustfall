@@ -1,0 +1,21 @@
+TestGraphQLQuery (
+    // Ensure that we properly handle two filters that together are impossible
+    // on the count of a folded edge.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count")
+                        @filter(op: ">", value: ["$six"])
+                        @filter(op: "<", value: ["$five"])
+        }
+    }
+}"#,
+    arguments: {
+        "five": Uint64(5),
+        "six": Uint64(6),
+    },
+)
