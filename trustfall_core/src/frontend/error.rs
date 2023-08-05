@@ -58,6 +58,9 @@ pub enum FrontendError {
     #[error("Found an edge with an unsupported @filter directive: {0}")]
     UnsupportedEdgeFilter(String),
 
+    #[error("Found an edge with an unsupported @tag directive: {0}")]
+    UnsupportedEdgeTag(String),
+
     #[error("Found an unsupported {1} directive on an edge with @fold: {0}")]
     UnsupportedDirectiveOnFoldedEdge(String, String),
 
