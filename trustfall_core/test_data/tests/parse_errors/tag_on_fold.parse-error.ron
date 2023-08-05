@@ -1,0 +1,4 @@
+Err(UnsupportedDirectivePosition("@tag", "this directive cannot appear after a @fold directive", Pos(
+  line: 6,
+  column: 27,
+)))
