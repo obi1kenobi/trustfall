@@ -343,7 +343,7 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
-                Some(variable_value + 1)
+                Some(variable_value.saturating_add(1))
             }
             _ => None,
         };
