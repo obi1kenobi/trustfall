@@ -341,10 +341,8 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                         .expect("for field value to be coercible to usize");
                 Some(variable_value.saturating_add(1))
             }
-            // This optimization is only valid if we know that every
-            // filter applied to the folded element count is a comparison
-            // that we can determine the number of elements needed to satisfy
-            // the filter.
+            // If we don't know how many elements of the fold are required
+            // to satisfy this filter, fail early.
             _ => return None,
         };
 
