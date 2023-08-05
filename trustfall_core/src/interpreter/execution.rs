@@ -512,9 +512,9 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
         fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
     let has_tag_on_fold_count = parent_component
         .vertices
-        .iter()
+        .values()
         .flat_map(|x| {
-            x.1.filters.iter().filter(|x| {
+            x.filters.iter().filter(|x| {
                 let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) = x.right()
                 else {
                     return false;
