@@ -20,10 +20,26 @@ Ok(TestParsedGraphQLQuery(
             line: 4,
             column: 9,
           ),
-          name: "successor",
+          name: "value",
         ), FieldNode(
           position: Pos(
             line: 4,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "successor",
+        ), FieldNode(
+          position: Pos(
+            line: 5,
             column: 9,
           ),
           name: "successor",

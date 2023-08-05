@@ -3,6 +3,7 @@ TestGraphQLQuery (
     query: r#"
 {
     Four {
+        value @output
         successor @tag(name: "five")
     }
 }"#,
