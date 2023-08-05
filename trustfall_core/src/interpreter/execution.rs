@@ -362,9 +362,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
     mut iterator: ContextIterator<'query, Vertex>,
     max_fold_count_limit: &Option<usize>,
     min_fold_count_limit: &Option<usize>,
-    no_outputs_in_fold: bool,
-    has_output_on_fold_count: bool,
-    has_tag_on_fold_count: bool,
+    safe_to_skip_part_of_fold: bool,
 ) -> Option<Vec<DataContext<Vertex>>> {
     // If we must collect the fold up to our upperbound of `max_fold_count_limit`,
     // then we won't use our lowerbound of `min_fold_count_limit`, as by definition
@@ -405,9 +403,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
             //
             // For example, if `@filter(op: ">", value: ["$ten"])` is our only filter on the count
             // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
-            Some(min_fold_count_limit)
-                if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count =>
-            {
+            Some(min_fold_count_limit) if safe_to_skip_part_of_fold => {
                 iterator.take(*min_fold_count_limit).collect()
             }
             // We weren't able to find any early-termination condition for materializing the fold,
@@ -523,6 +519,8 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                 && tagged_fold_count.kind == FoldSpecificFieldKind::Count
         })
     });
+    let safe_to_skip_part_of_fold =
+        no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count;
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
@@ -550,9 +548,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                 computed_iterator,
                 &max_fold_size,
                 &min_fold_size,
-                no_outputs_in_fold,
-                has_output_on_fold_count,
-                has_tag_on_fold_count,
+                safe_to_skip_part_of_fold,
             )?)
         } else {
             None
