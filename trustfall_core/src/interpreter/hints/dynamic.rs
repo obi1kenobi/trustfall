@@ -1,7 +1,5 @@
 use std::{fmt::Debug, ops::Bound, sync::Arc};
 
-use async_graphql_parser::types::Type;
-
 use crate::{
     interpreter::{
         execution::{
@@ -12,7 +10,10 @@ use crate::{
         Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
         VertexIterator,
     },
-    ir::{ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation},
+    ir::{
+        ty::Type, ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent,
+        Operation,
+    },
 };
 
 use super::CandidateValue;

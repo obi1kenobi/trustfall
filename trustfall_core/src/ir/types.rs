@@ -1,8 +1,7 @@
 use std::fmt::Debug;
 
-use async_graphql_parser::types::{BaseType, Type};
-
 use super::{
+    ty::{InnerType, Type},
     Argument, ContextField, FieldRef, FieldValue, FoldSpecificField, FoldSpecificFieldKind,
     LocalField, VariableRef,
 };
@@ -95,29 +94,22 @@ impl NamedTypedValue for Argument {
     }
 }
 
-pub(crate) fn are_base_types_equal_ignoring_nullability(left: &BaseType, right: &BaseType) -> bool {
-    match (left, right) {
-        (BaseType::Named(l), BaseType::Named(r)) => l == r,
-        (BaseType::List(l), BaseType::List(r)) => {
-            are_base_types_equal_ignoring_nullability(&l.base, &r.base)
+pub(crate) fn are_base_types_equal_ignoring_nullability(left: &Type, right: &Type) -> bool {
+    match (left.value(), right.value()) {
+        // If both are named types, check if the names are equal.
+        (InnerType::NameOfType(a), InnerType::NameOfType(b)) => a == b,
+        // If both don't have named types, they are both lists, compare the inner types.
+        (InnerType::ListInnerType(a), InnerType::ListInnerType(b)) => {
+            are_base_types_equal_ignoring_nullability(&a, &b)
         }
-        (BaseType::Named(_), BaseType::List(_)) | (BaseType::List(_), BaseType::Named(_)) => false,
+        _ => false,
     }
 }
 
-pub(crate) fn is_base_type_orderable(operand_type: &BaseType) -> bool {
-    match operand_type {
-        BaseType::Named(name) => {
-            name == "Int" || name == "Float" || name == "String" || name == "DateTime"
-        }
-        BaseType::List(l) => is_base_type_orderable(&l.base),
-    }
-}
-
-pub(crate) fn get_base_named_type(ty: &Type) -> &str {
-    match &ty.base {
-        BaseType::Named(n) => n.as_ref(),
-        BaseType::List(l) => get_base_named_type(l.as_ref()),
+pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
+    match operand_type.value() {
+        InnerType::NameOfType(name) => name == "Int" || name == "Float" || name == "String",
+        InnerType::ListInnerType(inner_type) => is_base_type_orderable(&inner_type),
     }
 }
 
@@ -135,25 +127,24 @@ pub(crate) fn get_base_named_type(ty: &Type) -> &str {
 pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -> bool {
     // If the parent type is non-nullable, all its subtypes must be non-nullable as well.
     // If the parent type is nullable, it can have both nullable and non-nullable subtypes.
-    if !parent_type.nullable && maybe_subtype.nullable {
+    if !parent_type.is_nullable() && maybe_subtype.is_nullable() {
         return false;
     }
 
-    match (&parent_type.base, &maybe_subtype.base) {
-        (BaseType::Named(parent), BaseType::Named(subtype)) => parent == subtype,
-        (BaseType::List(parent_type), BaseType::List(maybe_subtype)) => {
-            is_scalar_only_subtype(parent_type, maybe_subtype)
+    match (parent_type.value(), maybe_subtype.value()) {
+        (InnerType::NameOfType(parent), InnerType::NameOfType(subtype)) => parent == subtype,
+        (InnerType::ListInnerType(parent_type), InnerType::ListInnerType(maybe_subtype)) => {
+            is_scalar_only_subtype(&parent_type, &maybe_subtype)
         }
-        (BaseType::Named(..), BaseType::List(..)) | (BaseType::List(..), BaseType::Named(..)) => {
-            false
-        }
+        (InnerType::NameOfType(_), InnerType::ListInnerType(_))
+        | (InnerType::ListInnerType(_), InnerType::NameOfType(_)) => false,
     }
 }
 
 /// For two types, return a type that is a subtype of both, or None if no such type exists.
 /// For example:
 /// ```rust
-/// use async_graphql_parser::types::Type;
+/// use trustfall_core::ir::ty::Type;
 /// use trustfall_core::ir::types::intersect_types;
 ///
 /// let left = Type::new("[String]!").unwrap();
@@ -166,19 +157,21 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
 /// assert_eq!(None, result);
 /// ```
 pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
-    let nullable = left.nullable && right.nullable;
+    let nullable = left.is_nullable() && right.is_nullable();
 
-    match (&left.base, &right.base) {
-        (BaseType::Named(l), BaseType::Named(r)) => {
+    match (&left.value(), &right.value()) {
+        (InnerType::NameOfType(l), InnerType::NameOfType(r)) => {
             if l == r {
-                Some(Type { base: left.base.clone(), nullable })
+                Some(Type::new_named_type(l, nullable))
             } else {
                 None
             }
         }
-        (BaseType::List(left), BaseType::List(right)) => intersect_types(left, right)
-            .map(|inner| Type { base: BaseType::List(Box::new(inner)), nullable }),
-        (BaseType::Named(_), BaseType::List(_)) | (BaseType::List(_), BaseType::Named(_)) => None,
+        (InnerType::ListInnerType(left), InnerType::ListInnerType(right)) => {
+            intersect_types(left, right).map(|inner| Type::new_list_type(inner, nullable))
+        }
+        (InnerType::NameOfType(_), InnerType::ListInnerType(_))
+        | (InnerType::ListInnerType(_), InnerType::NameOfType(_)) => None,
     }
 }
 
@@ -186,7 +179,7 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
 ///
 /// In particular, mixed integer types in a list are considered valid for types like `[Int]`.
 /// ```rust
-/// use async_graphql_parser::types::Type;
+/// use trustfall_core::ir::ty::Type;
 /// use trustfall_core::ir::{FieldValue, types::is_argument_type_valid};
 ///
 /// let variable_type = Type::new("[Int]").unwrap();
@@ -201,32 +194,32 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
     match argument_value {
         FieldValue::Null => {
             // This is a valid value only if this layer is nullable.
-            variable_type.nullable
+            variable_type.is_nullable()
         }
         FieldValue::Int64(_) | FieldValue::Uint64(_) => {
             // This is a valid value only if the type is Int, ignoring nullability.
-            matches!(&variable_type.base, BaseType::Named(n) if n == "Int")
+            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "Int")
         }
         FieldValue::Float64(_) => {
             // This is a valid value only if the type is Float, ignoring nullability.
-            matches!(&variable_type.base, BaseType::Named(n) if n == "Float")
+            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "Float")
         }
         FieldValue::String(_) => {
             // This is a valid value only if the type is String, ignoring nullability.
-            matches!(&variable_type.base, BaseType::Named(n) if n == "String")
+            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "String")
         }
         FieldValue::Boolean(_) => {
             // This is a valid value only if the type is Boolean, ignoring nullability.
-            matches!(&variable_type.base, BaseType::Named(n) if n == "Boolean")
+            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "Boolean")
         }
         FieldValue::List(nested_values) => {
             // This is a valid value only if the type is a list, and all the inner elements
             // are valid instances of the type inside the list.
-            match &variable_type.base {
-                BaseType::List(inner) => {
-                    nested_values.iter().all(|value| is_argument_type_valid(inner.as_ref(), value))
+            match &variable_type.value() {
+                InnerType::ListInnerType(inner) => {
+                    nested_values.iter().all(|value| is_argument_type_valid(inner, value))
                 }
-                BaseType::Named(_) => false,
+                InnerType::NameOfType(_) => false,
             }
         }
         FieldValue::Enum(_) => todo!(),
@@ -235,10 +228,9 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
 
 #[cfg(test)]
 mod tests {
-    use async_graphql_parser::types::Type;
     use itertools::Itertools;
 
-    use crate::ir::{types::is_argument_type_valid, FieldValue};
+    use crate::ir::{ty::Type, types::is_argument_type_valid, FieldValue};
 
     #[test]
     fn null_values_are_only_valid_for_nullable_types() {
@@ -249,10 +241,8 @@ mod tests {
             Type::new("[Int!]").unwrap(),
             Type::new("[[Int!]!]").unwrap(),
         ];
-        let non_nullable_types = nullable_types
-            .iter()
-            .map(|t| Type { base: t.base.clone(), nullable: false })
-            .collect_vec();
+        let non_nullable_types =
+            nullable_types.iter().map(|t| t.with_nullability(false)).collect_vec();
 
         for nullable_type in &nullable_types {
             assert!(is_argument_type_valid(nullable_type, &FieldValue::Null), "{}", nullable_type);

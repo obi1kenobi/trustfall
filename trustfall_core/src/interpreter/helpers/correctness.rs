@@ -1,12 +1,10 @@
 use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
-use async_graphql_parser::types::Type;
-
 use crate::{
     interpreter::{Adapter, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo},
     ir::{
-        ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent, IRVertex,
-        TransparentValue, Vid,
+        ty::Type, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent,
+        IRVertex, TransparentValue, Vid,
     },
     schema::{Schema, SchemaAdapter},
     TryIntoStruct,

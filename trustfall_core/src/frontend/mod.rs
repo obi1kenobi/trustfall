@@ -5,10 +5,9 @@ use std::{
 };
 
 use async_graphql_parser::{
-    types::{BaseType, ExecutableDocument, FieldDefinition, Type, TypeDefinition, TypeKind},
+    types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
     Positioned,
 };
-use async_graphql_value::Name;
 use smallvec::SmallVec;
 
 use crate::{
@@ -17,12 +16,12 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
+        ty::{from_type, InnerType, Type},
         types::{intersect_types, is_argument_type_valid, NamedTypedValue},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
         LocalField, Operation, Recursive, TransformationKind, VariableRef, Vid,
-        TYPENAME_META_FIELD, TYPENAME_META_FIELD_ARC, TYPENAME_META_FIELD_NAME,
-        TYPENAME_META_FIELD_TYPE,
+        TYPENAME_META_FIELD, TYPENAME_META_FIELD_ARC,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -72,13 +71,13 @@ pub fn parse_doc(schema: &Schema, document: &ExecutableDocument) -> Result<IRQue
 fn get_field_name_and_type_from_schema<'a>(
     defined_fields: &'a [Positioned<FieldDefinition>],
     field_node: &FieldNode,
-) -> (&'a Name, Arc<str>, Arc<str>, &'a Type) {
+) -> (&'a str, Arc<str>, Arc<str>, Type) {
     if field_node.name.as_ref() == TYPENAME_META_FIELD {
         return (
-            &TYPENAME_META_FIELD_NAME,
+            TYPENAME_META_FIELD,
             TYPENAME_META_FIELD_ARC.clone(),
             TYPENAME_META_FIELD_ARC.clone(),
-            &TYPENAME_META_FIELD_TYPE,
+            Type::new("String!").unwrap(),
         );
     }
 
@@ -93,7 +92,12 @@ fn get_field_name_and_type_from_schema<'a>(
             } else {
                 pre_coercion_type_name.clone()
             };
-            return (field_name, pre_coercion_type_name, post_coercion_type_name, field_raw_type);
+            return (
+                field_name,
+                pre_coercion_type_name,
+                post_coercion_type_name,
+                from_type(field_raw_type),
+            );
         }
     }
 
@@ -162,7 +166,7 @@ fn make_edge_parameters(
 
                         // The default value must be a valid type for the parameter,
                         // otherwise the schema itself is invalid.
-                        assert!(is_argument_type_valid(&arg.node.ty.node, &value));
+                        assert!(is_argument_type_valid(&from_type(&arg.node.ty.node), &value));
 
                         value
                     })
@@ -176,7 +180,7 @@ fn make_edge_parameters(
             }
             Some(value) => {
                 // Type-check the supplied value against the schema.
-                if !is_argument_type_valid(&arg.node.ty.node, value) {
+                if !is_argument_type_valid(&from_type(&arg.node.ty.node), value) {
                     errors.push(FrontendError::InvalidEdgeParameterType(
                         arg_name.to_string(),
                         edge_definition.name.node.to_string(),
@@ -223,7 +227,7 @@ fn make_edge_parameters(
 
 fn infer_variable_type(
     property_name: &str,
-    property_type: &Type,
+    property_type: Type,
     operation: &Operation<(), OperatorArgument>,
 ) -> Result<Type, Box<FilterTypeError>> {
     match operation {
@@ -244,31 +248,32 @@ fn infer_variable_type(
             // Using a "null" valued variable doesn't make sense as a comparison.
             // However, [[1], [2], null] is a valid value to use in the comparison, since
             // there are definitely values that it is smaller than or bigger than.
-            Ok(Type { base: property_type.base.clone(), nullable: false })
+            Ok(property_type.with_nullability(false))
         }
         Operation::Contains(..) | Operation::NotContains(..) => {
             // To be able to check whether the property's value contains the operand,
             // the property needs to be a list. If it's not a list, this is a bad filter.
-            let inner_type = match &property_type.base {
-                BaseType::Named(_) => {
+            let value = property_type.value();
+            let inner_type = match value {
+                InnerType::NameOfType(_) => {
                     return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
                         operation.operation_name().to_string(),
                         property_name.to_string(),
                         property_type.to_string(),
                     )))
                 }
-                BaseType::List(inner) => inner.as_ref(),
+                InnerType::ListInnerType(inner) => inner,
             };
 
             // We're trying to see if a list of element contains our element, so its type
             // is whatever is inside the list -- nullable or not.
-            Ok(inner_type.clone())
+            Ok(inner_type)
         }
         Operation::OneOf(..) | Operation::NotOneOf(..) => {
             // Whatever the property's type is, the argument must be a non-nullable list of
             // the same type, so that the elements of that list may be checked for equality
             // against that property's value.
-            Ok(Type { base: BaseType::List(Box::new(property_type.clone())), nullable: false })
+            Ok(Type::new_list_type(property_type.clone(), false))
         }
         Operation::HasPrefix(..)
         | Operation::NotHasPrefix(..)
@@ -279,7 +284,7 @@ fn infer_variable_type(
         | Operation::RegexMatches(..)
         | Operation::NotRegexMatches(..) => {
             // Filtering operations involving strings only take non-nullable strings as inputs.
-            Ok(Type { base: BaseType::Named(Name::new("String")), nullable: false })
+            Ok(Type::new_named_type("String", false))
         }
         Operation::IsNull(..) | Operation::IsNotNull(..) => {
             // These are unary operations, there's no place where a variable can be used.
@@ -324,7 +329,7 @@ fn make_filter_expr<LeftT: NamedTypedValue>(
                         variable_name: var_name.clone(),
                         variable_type: infer_variable_type(
                             left_operand.named(),
-                            left_operand.typed(),
+                            left_operand.typed().clone(),
                             &filter_directive.operation,
                         )
                         .map_err(|e| *e)?,
@@ -396,7 +401,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
     let starting_vid = vid_maker.next().unwrap();
 
     let root_parameters = make_edge_parameters(
-        get_edge_definition_from_schema(schema, schema.query_type_name(), root_field_name.as_ref()),
+        get_edge_definition_from_schema(schema, schema.query_type_name(), root_field_name),
         &query.root_connection.arguments,
     );
 
@@ -447,7 +452,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
 
     if errors.is_empty() {
         Ok(IRQuery {
-            root_name: root_field_name.as_ref().to_owned().into(),
+            root_name: root_field_name.into(),
             root_parameters: root_parameters.unwrap(),
             root_component: root_component.into(),
             variables,
@@ -607,7 +612,7 @@ where
     #[allow(clippy::type_complexity)]
     let mut properties: BTreeMap<
         (Vid, Arc<str>),
-        (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
+        (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>),
     > = Default::default();
 
     output_handler.begin_subcomponent();
@@ -875,13 +880,10 @@ fn get_recurse_implicit_coercion(
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::type_complexity)]
-fn make_vertex<'schema, 'query>(
-    schema: &'schema Schema,
+fn make_vertex<'query>(
+    schema: &Schema,
     property_names_by_vertex: &BTreeMap<Vid, Vec<Arc<str>>>,
-    properties: &BTreeMap<
-        (Vid, Arc<str>),
-        (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
-    >,
+    properties: &BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
     tags: &mut TagHandler,
     component_path: &ComponentPath,
     vid: Vid,
@@ -973,10 +975,7 @@ fn fill_in_vertex_data<'schema, 'query, V, E>(
     edges: &mut BTreeMap<Eid, (Vid, Vid, &'query FieldConnection)>,
     folds: &mut BTreeMap<Eid, Arc<IRFold>>,
     property_names_by_vertex: &mut BTreeMap<Vid, Vec<Arc<str>>>,
-    properties: &mut BTreeMap<
-        (Vid, Arc<str>),
-        (Arc<str>, &'schema Type, SmallVec<[&'query FieldNode; 1]>),
-    >,
+    properties: &mut BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
     component_path: &mut ComponentPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
@@ -1095,11 +1094,11 @@ where
             output_handler.end_nested_scope(next_vid);
         } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
             || schema.scalars.contains_key(subfield_post_coercion_type.as_ref())
-            || subfield_name.as_ref() == TYPENAME_META_FIELD
+            || subfield_name == TYPENAME_META_FIELD
         {
             // Processing a property.
 
-            let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
+            let subfield_name: Arc<str> = subfield_name.into();
             let key = (current_vid, subfield_name.clone());
             properties
                 .entry(key)
@@ -1114,7 +1113,7 @@ where
                         .or_default()
                         .push(subfield_name.clone());
 
-                    (subfield_name, subfield_raw_type, SmallVec::from([subfield]))
+                    (subfield_name, subfield_raw_type.clone(), SmallVec::from([subfield]))
                 });
 
             for output_directive in &subfield.output {
@@ -1161,7 +1160,7 @@ where
                 let tag_field = ContextField {
                     vertex_id: current_vid,
                     field_name: subfield.name.clone(),
-                    field_type: subfield_raw_type.to_owned(),
+                    field_type: subfield_raw_type.clone(),
                 };
 
                 // TODO: handle tags on non-fold-related transformed fields here
@@ -1172,7 +1171,7 @@ where
                 }
             }
         } else {
-            unreachable!("field name: {}", subfield_name.as_ref());
+            unreachable!("field name: {}", subfield_name);
         }
     }
 

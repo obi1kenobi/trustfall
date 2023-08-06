@@ -5,13 +5,13 @@ use std::{
     sync::Arc,
 };
 
-use async_graphql_parser::types::{BaseType, Type};
 use serde::{Deserialize, Serialize};
 
 use crate::util::BTreeMapTryInsertExt;
 
 use super::{
-    types::is_scalar_only_subtype, Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid,
+    ty::Type, types::is_scalar_only_subtype, Argument, Eid, IREdge, IRFold, IRQuery,
+    IRQueryComponent, Vid,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,8 +29,6 @@ pub struct IndexedQuery {
 pub struct Output {
     pub name: Arc<str>,
 
-    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
-    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub value_type: Type,
 
     pub vid: Vid,
@@ -101,13 +99,10 @@ fn get_output_type(
 ) -> Type {
     let mut wrapped_output_type = field_type.clone();
     if component_optional_vertices.contains(&output_at) {
-        wrapped_output_type.nullable = true;
+        wrapped_output_type = wrapped_output_type.with_nullability(true);
     }
     for is_fold_optional in are_folds_optional.iter().rev() {
-        wrapped_output_type = Type {
-            base: BaseType::List(Box::new(wrapped_output_type)),
-            nullable: *is_fold_optional,
-        };
+        wrapped_output_type = Type::new_list_type(wrapped_output_type, *is_fold_optional);
     }
     wrapped_output_type
 }

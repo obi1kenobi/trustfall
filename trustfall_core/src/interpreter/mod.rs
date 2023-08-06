@@ -1,12 +1,12 @@
 use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
-use async_graphql_parser::types::Type;
 use itertools::Itertools;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     ir::{
-        types::is_argument_type_valid, EdgeParameters, Eid, FieldRef, FieldValue, IndexedQuery, Vid,
+        ty::Type, types::is_argument_type_valid, EdgeParameters, Eid, FieldRef, FieldValue,
+        IndexedQuery, Vid,
     },
     util::BTreeMapTryInsertExt,
 };
