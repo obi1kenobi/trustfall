@@ -195,8 +195,8 @@ jobs:
       - name: Check Exported API
         run: |
           cargo install --locked cargo-check-external-types
-          cargo +nightly check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
-          cargo +nightly check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
+          cargo check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
+          cargo check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
 
   rust-tests:
     name: Run tests
