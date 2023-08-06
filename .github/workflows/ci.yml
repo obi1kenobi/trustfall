@@ -28,6 +28,7 @@ jobs:
       - python-tests
       - wasm-tests
       - js-lint
+      - exported-api
     if: ${{ success() || failure() }}  # Run this job even if a dependency has failed.
     steps:
       - name: Job outcomes
@@ -39,6 +40,7 @@ jobs:
           echo "wasm-tests: ${{ needs.wasm-tests.result }}"
           echo "js-lint: ${{ needs.js-lint.result }}"
           echo "rust-rustdoc-wasm: ${{ needs.rust-rustdoc-wasm.result }}"
+          echo "exported-api: ${{ needs.exported-api.result }}"
 
       # Fail this required job if any of its dependent jobs have failed.
       #
@@ -58,6 +60,8 @@ jobs:
       - if: ${{ needs.js-lint.result != 'success' }}
         run: exit 1
       - if: ${{ needs.rust-rustdoc-wasm.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.exported-api.result != 'success' }}
         run: exit 1
 
   python-tests:
@@ -171,6 +175,28 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --all-features --no-deps --document-private-items
+
+  exported-api:
+    name: Check lint and rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "nightly-2023-05-31"
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check Exported API
+        run: |
+          cargo install --locked cargo-check-external-types
+          cargo +nightly check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
+          cargo +nightly check-external-types --all-features --config trustfall_core/external-types.toml --manifest-path trustfall_core/Cargo.toml
 
   rust-tests:
     name: Run tests
