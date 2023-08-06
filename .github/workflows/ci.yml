@@ -177,7 +177,7 @@ jobs:
         run: cargo doc --workspace --all-features --no-deps --document-private-items
 
   exported-api:
-    name: Check lint and rustfmt
+    name: Check for new exported types
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -196,7 +196,7 @@ jobs:
         run: |
           cargo install --locked cargo-check-external-types
           cargo +nightly check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
-          cargo +nightly check-external-types --all-features --config trustfall_core/external-types.toml --manifest-path trustfall_core/Cargo.toml
+          cargo +nightly check-external-types --all-features --config trustfall/external-types.toml --manifest-path trustfall/Cargo.toml
 
   rust-tests:
     name: Run tests
