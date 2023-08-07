@@ -12,7 +12,7 @@ concurrency:
 
 env:
   RUST_BACKTRACE: 1
-  CARGO_TERM_COLOR: never
+  CARGO_TERM_COLOR: always
 
 jobs:
   ci-everything:
