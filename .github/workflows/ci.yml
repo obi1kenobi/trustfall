@@ -105,8 +105,6 @@ jobs:
           cd pytrustfall
           poetry install --no-interaction --no-root
 
-      - uses: r7kamura/rust-problem-matchers@v1
-
       - name: maturin build and test
         run: |
           cd pytrustfall
@@ -185,8 +183,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       # Test all crates except trustfall_stubgen,
       # which is only tested if it has changed since its tests are a bit long.
@@ -305,8 +301,6 @@ jobs:
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: Run cargo test and wasm-pack tests
         run: |
