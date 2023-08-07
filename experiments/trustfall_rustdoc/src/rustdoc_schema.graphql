@@ -403,6 +403,11 @@ type Impl implements Item {
   Methods defined in this impl.
   """
   method: [Method!]
+
+  """
+  Constants associated with this type that are defined in this impl.
+  """
+  associated_constant: [AssociatedConstant!]
 }
 
 """
@@ -436,7 +441,22 @@ type Trait implements Item & Importable {
   """
   method: [Method!]
 
+  """
+  Traits whose implementation is a prerequisite for implementing this trait.
+  """
   supertrait: [ImplementedTrait!]
+
+  """
+  Types associated with the implementation of this trait.
+
+  For example: in the `Iterator` trait, `Iterator::Item` is an associated type.
+  """
+  associated_type: [AssociatedType!]
+
+  """
+  Constants associated with this type that are defined in this impl.
+  """
+  associated_constant: [AssociatedConstant!]
 }
 
 """
@@ -552,6 +572,78 @@ type Method implements Item & FunctionLike {
 }
 
 """
+Common supertype of `Constant` and `Static`.
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+"""
+interface GlobalValue implements Item & Importable {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/struct.Constant.html
+"""
+type Constant implements Item & Importable & GlobalValue {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/enum.ItemEnum.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/struct.Static.html
+"""
+type Static implements Item & Importable & GlobalValue {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # own properties
+  mutable: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+}
+
+"""
 A specific attribute applied to an Item.
 """
 type Attribute {
@@ -627,4 +719,107 @@ type ImplementedTrait {
   In `impl Foo<u64> for Bar`, this refers to `trait Foo<T>`.
   """
   trait: Trait
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.ItemEnum.html#variant.AssocType
+"""
+type AssociatedType implements Item {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+
+  """
+  The name of the associated type.
+
+  For example:
+  ```rust
+  trait Iterator {
+      type Item;  // `"Item"` is the name of the associated type
+  }
+  ```
+  """
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # properties for AssociatedType
+  """
+  Whether the type is defined to have a default value.
+
+  For example:
+  ```rust
+  trait IntIterator {
+      type Item = i64;  // by default, the associated type is `i64` so this property is `true`.
+  }
+  ```
+
+  Associated type defaults are currently unstable: https://github.com/rust-lang/rust/issues/29661
+  """
+  has_default: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+}
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.ItemEnum.html#variant.AssocConst
+"""
+type AssociatedConstant implements Item {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+
+  """
+  The name of the associated constant.
+
+  For example:
+  ```rust
+  trait BatchIterator {
+    const SIZE: usize;  // `"SIZE"` is the name of the associated constant
+  }
+  ```
+  """
+  name: String
+  docs: String
+  attrs: [String!]!
+  visibility_limit: String!
+
+  # properties for AssociatedConstant
+  """
+  The constant's default value, if any, as a Rust literal, expression, or `"_"`.
+
+  For example:
+  ```rust
+  trait BatchIterator<const MIN: usize> {
+    const SIZE: usize = 16;  // `"16"` is the default
+
+    // `"\"batch\""` is the default, including escaped quotes
+    const LOG_AS: &'static str = "batch";
+
+    // "MIN" is the default, referring to the other constant's name
+    const MIN_SIZE: usize = MIN;
+  }
+  ```
+
+  If the associated constant is on a type's inherent impl, the default
+  is always required to be set.
+
+  If the associated constant is set to be equal to another constant,
+  the default holds the name of that other constant.
+
+  If the associated constant is set by evaluating a `const` expression,
+  such as `2 + 2` or a `const fn` call, rustdoc's current behavior is
+  to show a default value of `"_"` instead of evaluating
+  the constant value or including the full expression.
+  """
+  default: String
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
 }

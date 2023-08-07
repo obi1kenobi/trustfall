@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    // This query should fail to parse due to using `@tag`
+    // on an edge, as `@tag` is only valid on properties.
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        value @output
+        successor @tag(name: "five")
+    }
+}"#,
+    arguments: {},
+)

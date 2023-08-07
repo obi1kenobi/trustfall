@@ -63,14 +63,9 @@ fn coerce_if_needed<'query, AdapterT: Adapter<'query>>(
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     match vertex.coerced_from_type.as_ref() {
         None => iterator,
-        Some(coerced_from) => perform_coercion(
-            adapter,
-            carrier,
-            vertex,
-            coerced_from,
-            &vertex.type_name,
-            iterator,
-        ),
+        Some(coerced_from) => {
+            perform_coercion(adapter, carrier, vertex, coerced_from, &vertex.type_name, iterator)
+        }
     }
 }
 
@@ -191,14 +186,8 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     let mut query = carrier.query.take().expect("query was not returned");
 
     let root_component = query.indexed_query.ir_query.root_component.clone();
-    let mut output_names: Vec<Arc<str>> = query
-        .indexed_query
-        .ir_query
-        .root_component
-        .outputs
-        .keys()
-        .cloned()
-        .collect();
+    let mut output_names: Vec<Arc<str>> =
+        query.indexed_query.ir_query.root_component.outputs.keys().cloned().collect();
     output_names.sort_unstable(); // to ensure deterministic resolve_property() ordering
 
     let mut output_iterator = iterator;
@@ -238,11 +227,8 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
             &context.values
         );
 
-        let mut output: BTreeMap<Arc<str>, FieldValue> = output_names
-            .iter()
-            .cloned()
-            .zip(context.values.drain(..))
-            .collect();
+        let mut output: BTreeMap<Arc<str>, FieldValue> =
+            output_names.iter().cloned().zip(context.values.drain(..)).collect();
 
         for ((_, output_name), output_value) in context.folded_values {
             let existing = output.insert(output_name, output_value.into());
@@ -255,17 +241,34 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     }))
 }
 
+/// Extracts numeric [`FieldValue`] into a `usize`, clamping negative numbers to 0.
+/// Returns `None` on `FieldValue::Null`, and panics otherwise.
+fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
+    match field_value {
+        FieldValue::Int64(num) => {
+            Some(usize::try_from(*num.max(&0)).expect("i64 can be converted to usize"))
+        }
+        FieldValue::Uint64(num) => {
+            Some(usize::try_from(*num).expect("i64 can be converted to usize"))
+        }
+        FieldValue::Null => None,
+        FieldValue::Float64(_)
+        | FieldValue::List(_)
+        | FieldValue::Enum(_)
+        | FieldValue::Boolean(_)
+        | FieldValue::String(_) => {
+            panic!("got field value {field_value:#?} in usize_from_field_value which should only ever get Int64, Uint64, or Null")
+        }
+    }
+}
+
 /// If this IRFold has a filter on the folded element count, and that filter imposes
 /// a max size that can be statically determined, return that max size so it can
 /// be used for further optimizations. Otherwise, return None.
 fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
-    let query_arguments = &carrier
-        .query
-        .as_ref()
-        .expect("query was not returned")
-        .arguments;
+    let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
         let next_limit = match post_fold_filter {
             Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
@@ -273,11 +276,15 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 FoldSpecificFieldKind::Count,
                 Argument::Variable(var_ref),
             ) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
             Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
-                let variable_value = query_arguments[&var_ref.variable_name].as_usize().unwrap();
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
                 // saturating_sub() here is a safeguard against underflow: in principle,
                 // we shouldn't see a comparison for "< 0", but if we do regardless, we'd prefer to
                 // saturate to 0 rather than wrapping around. This check is an optimization and
@@ -287,7 +294,13 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
             }
             Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
                 match &query_arguments[&var_ref.variable_name] {
-                    FieldValue::List(v) => v.iter().map(|x| x.as_usize().unwrap()).max(),
+                    FieldValue::List(v) => v
+                        .iter()
+                        .map(|x| {
+                            usize_from_field_value(x)
+                                .expect("for field value to be coercible to usize")
+                        })
+                        .max(),
                     _ => unreachable!(),
                 }
             }
@@ -304,10 +317,53 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     result
 }
 
+/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// a min size that can be statically determined, return that min size so it can
+/// be used for further optimizations. Otherwise, return None.
+fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
+    let mut result: Option<usize> = None;
+
+    let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
+    for post_fold_filter in fold.post_filters.iter() {
+        let next_limit = match post_fold_filter {
+            Operation::GreaterThanOrEqual(
+                FoldSpecificFieldKind::Count,
+                Argument::Variable(var_ref),
+            ) => {
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
+                Some(variable_value)
+            }
+            Operation::GreaterThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+                let variable_value =
+                    usize_from_field_value(&query_arguments[&var_ref.variable_name])
+                        .expect("for field value to be coercible to usize");
+                Some(variable_value.saturating_add(1))
+            }
+            // If we don't know how many elements of the fold are required
+            // to satisfy this filter, fail early.
+            _ => return None,
+        };
+
+        match (result, next_limit) {
+            (None, _) => result = next_limit,
+            (Some(l), Some(r)) if l < r => result = next_limit,
+            _ => {}
+        }
+    }
+
+    result
+}
+
 fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
     mut iterator: ContextIterator<'query, Vertex>,
     max_fold_count_limit: &Option<usize>,
+    min_fold_count_limit: &Option<usize>,
 ) -> Option<Vec<DataContext<Vertex>>> {
+    // If we must collect the fold up to our upperbound of `max_fold_count_limit`,
+    // then we won't use our lowerbound of `min_fold_count_limit`, as by definition
+    // the upperbound will be larger than the lowerbound.
     if let Some(max_fold_count_limit) = max_fold_count_limit {
         // If this fold has more than `max_fold_count_limit` elements,
         // it will get filtered out by a post-fold filter.
@@ -315,8 +371,9 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
         // and as an optimization we'd like to stop pulling elements as soon as possible.
         // If we are able to pull more than `max_fold_count_limit + 1` elements,
         // we know that this fold is going to get filtered out, so we might as well
-        // stop materializing its elements early.
-        let mut fold_elements = Vec::with_capacity(*max_fold_count_limit);
+        // stop materializing its elements early. Limit the max allocation size since
+        // it might not always be fully used.
+        let mut fold_elements = Vec::with_capacity((*max_fold_count_limit).min(16));
 
         let mut stopped_early = false;
         for _ in 0..*max_fold_count_limit {
@@ -336,9 +393,16 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
 
         Some(fold_elements)
     } else {
-        // We weren't able to find any early-termination condition for materializing the fold,
-        // so materialize the whole thing and return it.
-        Some(iterator.collect())
+        let collected = match min_fold_count_limit {
+            // Some queries may be able to be optimized by only partially expanding the fold,
+            // just enough to check any filters that may be applied to the fold count.
+            Some(min_fold_count_limit) => iterator.take(*min_fold_count_limit).collect(),
+            // We weren't able to find any early-termination condition for materializing the fold,
+            // so materialize the whole thing and return it.
+            _ => iterator.collect(),
+        };
+
+        Some(collected)
     }
 }
 
@@ -382,9 +446,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                     } else {
                         TaggedValue::NonexistentOptional
                     };
-                    context
-                        .imported_tags
-                        .insert(cloned_field.clone(), tag_value);
+                    context.imported_tags.insert(cloned_field.clone(), tag_value);
                     context
                 }));
             }
@@ -431,6 +493,41 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let fold_component = fold.component.clone();
     let fold_eid = fold.eid;
     let max_fold_size = get_max_fold_count_limit(carrier, fold.as_ref());
+
+    // Queries that do not observe the fold count nor any fold contents may be able to
+    // be optimized by only partially expanding the fold, just enough to check any filters
+    // that may be applied to the fold count.
+    //
+    // For example, if `@filter(op: ">", value: ["$ten"])` is our only filter on the count
+    // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
+    let min_fold_size =
+        if let Some(min_fold_size) = get_min_fold_count_limit(carrier, fold.as_ref()) {
+            let no_outputs_in_fold = fold.component.outputs.is_empty();
+            let has_output_on_fold_count =
+                fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
+            let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
+                vertex.filters.iter().any(|filter| {
+                    let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) =
+                        filter.right()
+                    else {
+                        return false;
+                    };
+
+                    tagged_fold_count.fold_root_vid == fold.to_vid
+                        && tagged_fold_count.fold_eid == fold.eid
+                        && tagged_fold_count.kind == FoldSpecificFieldKind::Count
+                })
+            });
+
+            if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
+                Some(min_fold_size)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
         let imported_tags = context.imported_tags.clone();
@@ -454,15 +551,12 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
         let fold_elements = if fold_exists {
             // N.B.: Note the `?` at the end here!
             //       This lets us early-discard folds that failed a post-processing filter.
-            Some(collect_fold_elements(computed_iterator, &max_fold_size)?)
+            Some(collect_fold_elements(computed_iterator, &max_fold_size, &min_fold_size)?)
         } else {
             None
         };
 
-        context
-            .folded_contexts
-            .insert_or_error(fold_eid, fold_elements)
-            .unwrap();
+        context.folded_contexts.insert_or_error(fold_eid, fold_elements).unwrap();
 
         // Remove no-longer-needed imported tags.
         for imported_tag in &moved_fold.imported_tags {
@@ -509,13 +603,11 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
             // If the @fold is inside an @optional that doesn't exist,
             // its outputs should be `null` rather than empty lists (the usual for empty folds).
             // Transformed outputs should also be `null` rather than their usual transformed defaults.
-            let value = fold_elements
-                .as_ref()
-                .map(|elements| match fold_specific_field {
-                    FoldSpecificFieldKind::Count => {
-                        ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
-                    }
-                });
+            let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
+                FoldSpecificFieldKind::Count => {
+                    ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+                }
+            });
             ctx.folded_values
                 .insert_or_error((fold_eid, output_name.clone()), value)
                 .expect("this fold output was already computed");
@@ -523,11 +615,8 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
 
         // Prepare empty vectors for all the outputs from this @fold component.
         // If the fold-root vertex didn't exist, the default is `null` instead.
-        let default_value = if fold_elements.is_some() {
-            Some(ValueOrVec::Vec(vec![]))
-        } else {
-            None
-        };
+        let default_value =
+            if fold_elements.is_some() { Some(ValueOrVec::Vec(vec![])) } else { None };
         let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
             .iter()
             .map(|output| ((fold_eid, output.clone()), default_value.clone()))
@@ -535,10 +624,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
 
         // Don't bother trying to resolve property values on this @fold when it's empty.
         // Skip the adapter resolve_property() calls and add the empty output values directly.
-        let fold_contains_elements = fold_elements
-            .as_ref()
-            .map(|e| !e.is_empty())
-            .unwrap_or(false);
+        let fold_contains_elements = fold_elements.as_ref().map(|e| !e.is_empty()).unwrap_or(false);
         if !fold_contains_elements {
             // We need to make sure any outputs from any nested @fold components (recursively)
             // are set to the default value (empty list if the @fold existed and was empty,
@@ -556,11 +642,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
         } else {
             // Iterate through the elements of the fold and get the values we need.
             let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> = Box::new(
-                fold_elements
-                    .as_ref()
-                    .expect("fold did not contain elements")
-                    .clone()
-                    .into_iter(),
+                fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter(),
             );
             for output_name in output_names.iter() {
                 // This is a slimmed-down version of computing a context field:
@@ -620,13 +702,10 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
 
         let prior_folded_values_count = ctx.folded_values.len();
         let new_folded_values_count = folded_values.len();
-        ctx.folded_values.extend(folded_values.into_iter());
+        ctx.folded_values.extend(folded_values);
 
         // Ensure the merged maps had disjoint keys.
-        assert_eq!(
-            ctx.folded_values.len(),
-            prior_folded_values_count + new_folded_values_count
-        );
+        assert_eq!(ctx.folded_values.len(), prior_folded_values_count + new_folded_values_count);
 
         ctx
     });
@@ -643,14 +722,8 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let local_field = filter.left();
-    let field_iterator = compute_local_field(
-        adapter,
-        carrier,
-        component,
-        current_vid,
-        local_field,
-        iterator,
-    );
+    let field_iterator =
+        compute_local_field(adapter, carrier, component, current_vid, local_field, iterator);
 
     apply_filter(
         adapter,
@@ -974,14 +1047,8 @@ fn perform_entry_into_new_vertex<'query, AdapterT: Adapter<'query>>(
     let vertex_id = vertex.vid;
     let mut iterator = coerce_if_needed(adapter, carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
-        iterator = apply_local_field_filter(
-            adapter,
-            carrier,
-            component,
-            vertex_id,
-            filter_expr,
-            iterator,
-        );
+        iterator =
+            apply_local_field_filter(adapter, carrier, component, vertex_id, filter_expr, iterator);
     }
     Box::new(iterator.map(move |mut x| {
         x.record_vertex(vertex_id);
@@ -1027,10 +1094,8 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
         recursion_iterator,
     );
 
-    let edge_endpoint_type = expanding_to
-        .coerced_from_type
-        .as_ref()
-        .unwrap_or(&expanding_to.type_name);
+    let edge_endpoint_type =
+        expanding_to.coerced_from_type.as_ref().unwrap_or(&expanding_to.type_name);
     let recursing_from = recursive.coerce_to.as_ref().unwrap_or(edge_endpoint_type);
 
     for _ in 2..=max_depth {
@@ -1049,13 +1114,16 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
             // This coercion is unusual since it doesn't discard elements that can't be coerced.
             // This is because we still want to produce those elements, and we simply want to
             // not continue recursing deeper through them since they don't have the edge we need.
-            recursion_iterator = Box::new(coercion_iter.map(|(ctx, can_coerce)| {
-                if can_coerce {
-                    ctx
-                } else {
-                    ctx.ensure_suspended()
-                }
-            }));
+            recursion_iterator =
+                Box::new(coercion_iter.map(
+                    |(ctx, can_coerce)| {
+                        if can_coerce {
+                            ctx
+                        } else {
+                            ctx.ensure_suspended()
+                        }
+                    },
+                ));
         }
 
         recursion_iterator = perform_one_recursive_edge_expansion(
@@ -1155,10 +1223,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
                     // The "self" vertex has already been moved out, so use the neighbor base context
                     // as the starting point for constructing a new context.
                     return Some(
-                        self.neighbor_base
-                            .as_ref()
-                            .unwrap()
-                            .split_and_move_to_vertex(Some(vertex)),
+                        self.neighbor_base.as_ref().unwrap().split_and_move_to_vertex(Some(vertex)),
                     );
                 }
             } else {
@@ -1205,14 +1270,10 @@ fn unpack_piggyback_inner<Vertex: Debug + Clone>(
 fn post_process_recursive_expansion<'query, Vertex: Clone + Debug + 'query>(
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
-    Box::new(
-        iterator
-            .flat_map(|context| unpack_piggyback(context))
-            .map(|context| {
-                assert!(context.piggyback.is_none());
-                context.ensure_unsuspended()
-            }),
-    )
+    Box::new(iterator.flat_map(|context| unpack_piggyback(context)).map(|context| {
+        assert!(context.piggyback.is_none());
+        context.ensure_unsuspended()
+    }))
 }
 
 #[cfg(test)]
@@ -1246,10 +1307,8 @@ mod tests {
         let check_data = fs::read_to_string(check_path).unwrap();
         let expected_output_data: TestInterpreterOutputData = ron::from_str(&check_data).unwrap();
 
-        let indexed_query: IndexedQuery = test_query
-            .ir_query
-            .try_into()
-            .expect("failed to create IndexedQuery");
+        let indexed_query: IndexedQuery =
+            test_query.ir_query.try_into().expect("failed to create IndexedQuery");
         assert_eq!(expected_output_data.outputs, indexed_query.outputs);
     }
 
@@ -1266,11 +1325,8 @@ mod tests {
         let test_query: TestIRQueryResult = ron::from_str(&input_data).unwrap();
         let test_query = test_query.unwrap();
 
-        let arguments: BTreeMap<Arc<str>, FieldValue> = test_query
-            .arguments
-            .into_iter()
-            .map(|(k, v)| (Arc::from(k), v))
-            .collect();
+        let arguments: BTreeMap<Arc<str>, FieldValue> =
+            test_query.arguments.into_iter().map(|(k, v)| (Arc::from(k), v)).collect();
 
         let indexed_query: IndexedQuery = test_query.ir_query.try_into().unwrap();
         let constructed_test_item = InterpretedQuery::from_query_and_arguments(
@@ -1305,12 +1361,8 @@ mod tests {
 
         impl<I: Iterator> VariableChunkIterator<I> {
             fn new(iter: I, chunk_sequence: u64) -> Self {
-                let mut value = Self {
-                    iter,
-                    buffer: VecDeque::with_capacity(4),
-                    chunk_sequence,
-                    offset: 0,
-                };
+                let mut value =
+                    Self { iter, buffer: VecDeque::with_capacity(4), chunk_sequence, offset: 0 };
 
                 // Eagerly advancing the input iterator is important because that's how we repro:
                 // https://github.com/obi1kenobi/trustfall/issues/205
@@ -1341,8 +1393,7 @@ mod tests {
                     let next = self.iter.next();
                     if next.is_some() {
                         let elements_to_buffer = self.next_chunk_size() - 1;
-                        self.buffer
-                            .extend(self.iter.by_ref().take(elements_to_buffer));
+                        self.buffer.extend(self.iter.by_ref().take(elements_to_buffer));
                     }
                     next
                 }
@@ -1379,8 +1430,7 @@ mod tests {
                 drop(batch_sequences_ref);
 
                 let inner =
-                    self.adapter
-                        .resolve_starting_vertices(edge_name, parameters, resolve_info);
+                    self.adapter.resolve_starting_vertices(edge_name, parameters, resolve_info);
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
@@ -1470,20 +1520,12 @@ mod tests {
                 Arc::new(input_data.ir_query.try_into().unwrap());
             assert_eq!(&output_data.outputs, &indexed_query.outputs);
 
-            let arguments = Arc::new(
-                input_data
-                    .arguments
-                    .into_iter()
-                    .map(|(k, v)| (k.into(), v))
-                    .collect(),
-            );
-            let adapter = Arc::new(VariableBatchingAdapter::new(
-                NumbersAdapter::new(),
-                batch_sequences,
-            ));
-            let actual_results: Vec<_> = interpret_ir(adapter, indexed_query, arguments)
-                .unwrap()
-                .collect();
+            let arguments =
+                Arc::new(input_data.arguments.into_iter().map(|(k, v)| (k.into(), v)).collect());
+            let adapter =
+                Arc::new(VariableBatchingAdapter::new(NumbersAdapter::new(), batch_sequences));
+            let actual_results: Vec<_> =
+                interpret_ir(adapter, indexed_query, arguments).unwrap().collect();
 
             assert_eq!(output_data.results, actual_results);
         }

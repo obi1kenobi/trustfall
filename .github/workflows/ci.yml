@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    # Needed so we can run it manually
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,6 +24,7 @@ jobs:
       - lint
       - rust-tests
       - rust-fuzz
+      - rust-rustdoc-wasm
       - python-tests
       - wasm-tests
       - js-lint
@@ -35,6 +38,7 @@ jobs:
           echo "python-tests: ${{ needs.python-tests.result }}"
           echo "wasm-tests: ${{ needs.wasm-tests.result }}"
           echo "js-lint: ${{ needs.js-lint.result }}"
+          echo "rust-rustdoc-wasm: ${{ needs.rust-rustdoc-wasm.result }}"
 
       # Fail this required job if any of its dependent jobs have failed.
       #
@@ -52,6 +56,8 @@ jobs:
       - if: ${{ needs.wasm-tests.result != 'success' }}
         run: exit 1
       - if: ${{ needs.js-lint.result != 'success' }}
+        run: exit 1
+      - if: ${{ needs.rust-rustdoc-wasm.result != 'success' }}
         run: exit 1
 
   python-tests:
@@ -173,7 +179,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Install rust
         uses: dtolnay/rust-toolchain@stable
@@ -182,10 +188,26 @@ jobs:
 
       - uses: r7kamura/rust-problem-matchers@v1
 
-      # Test everything except trustfall_stubgen,
-      # which is only tested at release time since its tests are a bit long.
+      # Test all crates except trustfall_stubgen,
+      # which is only tested if it has changed since its tests are a bit long.
+      #
+      # `--all-targets` also tests example and bench targets, but explicitly excludes doctests.
+      # We'll test doctests separately in their own step.
+      # https://github.com/rust-lang/cargo/issues/6669
       - name: cargo test
         run: cargo test --workspace --all-targets --all-features --exclude trustfall_stubgen
+
+      # Run doctests separately, since `--all-targets` above explicitly excludes doctests.
+      # https://github.com/rust-lang/cargo/issues/6669
+      - name: run doctests
+        run: cargo test --workspace --all-features --doc
+
+      - name: test trustfall_stubgen if it has changed
+        run: |
+          git fetch origin main
+
+          # `git diff --quiet` exits non-zero if there are changes
+          git diff --quiet HEAD origin/main -- ./trustfall_stubgen || (cd trustfall_stubgen/ && cargo test --all-features)
 
   rust-fuzz:
     name: Check fuzz targets
@@ -202,6 +224,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ./trustfall_core/fuzz
 
       - uses: r7kamura/rust-problem-matchers@v1
 
@@ -221,6 +246,44 @@ jobs:
         run: |
           cd trustfall_core/fuzz
           cargo doc --workspace --all-features --no-deps --document-private-items
+
+  rust-rustdoc-wasm:
+    name: Check rustdoc WASM target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ./experiments/trustfall_rustdoc
+
+      - uses: r7kamura/rust-problem-matchers@v1
+
+      - name: cargo clippy
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo clippy --all-features --all-targets -- -D warnings --allow deprecated
+
+      - name: cargo fmt
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo fmt -- --check
+
+      - name: cargo doc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo doc --all-features --no-deps --document-private-items
 
   wasm-tests:
     name: WASM tests
@@ -418,7 +481,7 @@ jobs:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   attempt-publish-trustfall-derive:
-    name: publish trustfall
+    name: publish trustfall_derive
     if: github.ref == 'refs/heads/main'
     needs:
       - pre-publish-checks

@@ -1,4 +1,7 @@
+[workspace]
+
 [package]
+publish = false
 name = "trustfall_rustdoc"
 version = "0.1.0"
 edition = "2021"
@@ -16,9 +19,9 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 clap = { version = "3.2.8", features = ["derive"] }
-trustfall_core = { path = "../../trustfall_core" }
-trustfall_wasm = { path = "../../trustfall_wasm" }
-trustfall-rustdoc-adapter = { version = ">=26.1.0,<26.2.0" }
+trustfall_core = { version = "0.5.1" }
+trustfall_wasm = { git = "https://github.com/obi1kenobi/trustfall.git", rev = "trustfall-v0.5.1" }
+trustfall-rustdoc-adapter = { version = ">=26.1.4,<26.2.0" }
 serde_json = "1.0.82"
 anyhow = "1.0.58"
 wasm-bindgen = "0.2.80"
@@ -35,3 +38,7 @@ gloo-utils = { version = "0.1.6", features = ["serde"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.30"
+
+[patch.crates-io]
+trustfall = { git = "https://github.com/obi1kenobi/trustfall.git", rev = "trustfall-v0.5.1" }
+trustfall_core = { git = "https://github.com/obi1kenobi/trustfall.git", rev = "trustfall-v0.5.1" }

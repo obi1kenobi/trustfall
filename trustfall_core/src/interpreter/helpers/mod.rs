@@ -4,6 +4,13 @@ use crate::{ir::FieldValue, schema::Schema};
 
 use super::{ContextIterator, ContextOutcomeIterator, Typename, VertexIterator};
 
+mod correctness;
+
+#[cfg(test)]
+mod tests;
+
+pub use correctness::check_adapter_invariants;
+
 /// Helper for implementing [`BasicAdapter::resolve_property`] and equivalents.
 ///
 /// Takes a property-resolver function and applies it over each of the vertices
@@ -219,7 +226,9 @@ macro_rules! field_property {
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
     ($conversion:ident, $field:ident) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let vertex = vertex.$conversion().expect("conversion failed");
+            let vertex = vertex.$conversion().unwrap_or_else(|| {
+                panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
+            });
             vertex.$field.clone().into()
         }
     };
@@ -227,7 +236,10 @@ macro_rules! field_property {
     // Use the field's name inside the block.
     ($conversion:ident, $field:ident, $b:block) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let $field = &vertex.$conversion().expect("conversion failed").$field;
+            let $field = &vertex
+                .$conversion()
+                .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
+                .$field;
             $b
         }
     };
@@ -298,7 +310,9 @@ macro_rules! accessor_property {
     // (such as `fn as_foo() -> Option<&Foo>`) before using the accessor.
     ($conversion:ident, $accessor:ident) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let vertex = vertex.$conversion().expect("conversion failed");
+            let vertex = vertex.$conversion().unwrap_or_else(|| {
+                panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
+            });
             vertex.$accessor().clone().into()
         }
     };
@@ -307,7 +321,10 @@ macro_rules! accessor_property {
     // and is available as such inside the block.
     ($conversion:ident, $accessor:ident, $b:block) => {
         |vertex| -> $crate::ir::value::FieldValue {
-            let $accessor = vertex.$conversion().expect("conversion failed").$accessor();
+            let $accessor = vertex
+                .$conversion()
+                .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
+                .$accessor();
             $b
         }
     };
@@ -392,60 +409,5 @@ pub fn resolve_typename<'a, Vertex: Typename + Debug + Clone + 'a>(
             None => (ctx, FieldValue::Null),
             Some(..) => (ctx, type_name.clone()),
         }))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fmt::Debug;
-
-    use crate::{
-        interpreter::{helpers::resolve_typename, DataContext, Typename},
-        ir::FieldValue,
-        schema::Schema,
-    };
-
-    #[test]
-    fn typename_resolved_statically() {
-        #[derive(Debug, Clone)]
-        enum Vertex {
-            Variant,
-        }
-
-        impl Typename for Vertex {
-            fn typename(&self) -> &'static str {
-                unreachable!("typename() was called, so __typename was not resolved statically")
-            }
-        }
-
-        let schema = Schema::parse(
-            "\
-schema {
-    query: RootSchemaQuery
-}
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
-directive @tag(name: String) on FIELD
-directive @output(name: String) on FIELD
-directive @optional on FIELD
-directive @recurse(depth: Int!) on FIELD
-directive @fold on FIELD
-directive @transform(op: String!) on FIELD
-
-type RootSchemaQuery {
-    Vertex: Vertex!
-}
-
-type Vertex {
-    field: Int
-}",
-        )
-        .expect("failed to parse schema");
-        let contexts = Box::new(std::iter::once(DataContext::new(Some(Vertex::Variant))));
-
-        let outputs: Vec<_> = resolve_typename(contexts, &schema, "Vertex")
-            .map(|(_ctx, value)| value)
-            .collect();
-
-        assert_eq!(vec![FieldValue::from("Vertex")], outputs);
     }
 }

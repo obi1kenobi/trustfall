@@ -283,7 +283,7 @@ pub fn test_execute_query_with_traversal_and_coercion() {
 
     let actual_results = run_numbers_query(query, args).expect("query and args were not valid");
 
-    let expected_results = vec![
+    let expected_results = [
         btreemap! {
             String::from("value") => JsFieldValue::Integer(2),
             String::from("next") => JsFieldValue::Integer(3),
@@ -302,5 +302,5 @@ pub fn test_execute_query_with_traversal_and_coercion() {
         },
     ];
 
-    assert_eq!(expected_results, actual_results);
+    assert_eq!(expected_results.as_slice(), actual_results);
 }

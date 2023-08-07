@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     io::Write,
     path::Path,
     sync::{Arc, OnceLock},
@@ -10,6 +10,8 @@ use quote::quote;
 use regex::Regex;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
+use crate::util::{escaped_rust_name, parse_import, to_lower_snake_case, upper_case_variant_name};
+
 use super::{
     adapter_creator::make_adapter_file, edges_creator::make_edges_file,
     entrypoints_creator::make_entrypoints_file, properties_creator::make_properties_file,
@@ -18,13 +20,14 @@ use super::{
 /// Given a schema, make a Rust adapter stub for it in the given directory.
 ///
 /// Generated code structure:
-/// - adapter/mod.rs         connects everything together
-/// - adapter/schema.graphql contains the schema for the adapter
-/// - adapter/adapter.rs     contains the adapter implementation
-/// - adapter/vertex.rs      contains the vertex type definition
-/// - adapter/entrypoints.rs contains the entry points where all queries must start
-/// - adapter/properties.rs  contains the property implementations
-/// - adapter/edges.rs       contains the edge implementations
+/// - adapter/mod.rs          connects everything together
+/// - adapter/schema.graphql  contains the schema for the adapter
+/// - adapter/adapter_impl.rs contains the adapter implementation
+/// - adapter/vertex.rs       contains the vertex type definition
+/// - adapter/entrypoints.rs  contains the entry points where all queries must start
+/// - adapter/properties.rs   contains the property implementations
+/// - adapter/edges.rs        contains the edge implementations
+/// - adapter/tests.rs        contains test code
 ///
 /// # Example
 /// ```no_run
@@ -49,6 +52,9 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
 
     let mut entrypoint_match_arms = proc_macro2::TokenStream::new();
 
+    ensure_no_vertex_name_conflicts(&querying_schema, schema_adapter.clone());
+    ensure_no_field_name_conflicts_on_vertex_type(&querying_schema, schema_adapter.clone());
+
     make_vertex_file(&querying_schema, schema_adapter.clone(), &mut stub.vertex);
     make_entrypoints_file(
         &querying_schema,
@@ -56,19 +62,15 @@ pub fn generate_rust_stub(schema: &str, target: &Path) -> anyhow::Result<()> {
         &mut stub.entrypoints,
         &mut entrypoint_match_arms,
     );
-    make_properties_file(
-        &querying_schema,
-        schema_adapter.clone(),
-        &mut stub.properties,
-    );
+    make_properties_file(&querying_schema, schema_adapter.clone(), &mut stub.properties);
     make_edges_file(&querying_schema, schema_adapter.clone(), &mut stub.edges);
-
     make_adapter_file(
         &querying_schema,
         schema_adapter.clone(),
-        &mut stub.adapter,
+        &mut stub.adapter_impl,
         entrypoint_match_arms,
     );
+    make_tests_file(&mut stub.tests);
 
     stub.write_to_directory(target)
 }
@@ -125,7 +127,6 @@ impl RustFile {
         static PATTERN: OnceLock<Regex> = OnceLock::new();
         let pattern =
             PATTERN.get_or_init(|| Regex::new("([^{])\n    (pub|fn|use)").expect("invalid regex"));
-
         let pretty_item =
             prettyplease::unparse(&syn::parse_str(&item.to_string()).expect("not valid Rust"));
         let postprocessed = pattern.replace_all(&pretty_item, "$1\n\n    $2");
@@ -261,11 +262,12 @@ fn write_import_subtree<W: std::io::Write>(
 struct AdapterStub<'a> {
     mod_: RustFile,
     schema: &'a str,
-    adapter: RustFile,
+    adapter_impl: RustFile,
     vertex: RustFile,
     entrypoints: RustFile,
     properties: RustFile,
     edges: RustFile,
+    tests: RustFile,
 }
 
 impl<'a> AdapterStub<'a> {
@@ -273,25 +275,30 @@ impl<'a> AdapterStub<'a> {
         let mut mod_ = RustFile::default();
 
         mod_.top_level_items.push(quote! {
-            mod adapter;
+            mod adapter_impl;
             mod vertex;
             mod entrypoints;
             mod properties;
             mod edges;
         });
         mod_.top_level_items.push(quote! {
-            pub use adapter::Adapter;
+            #[cfg(test)]
+            mod tests;
+        });
+        mod_.top_level_items.push(quote! {
+            pub use adapter_impl::Adapter;
             pub use vertex::Vertex;
         });
 
         Self {
             mod_,
             schema,
-            adapter: Default::default(),
+            adapter_impl: Default::default(),
             vertex: Default::default(),
             entrypoints: Default::default(),
             properties: Default::default(),
             edges: Default::default(),
+            tests: Default::default(),
         }
     }
 
@@ -308,8 +315,8 @@ impl<'a> AdapterStub<'a> {
         self.mod_.write_to_file(path_buf.as_path())?;
         path_buf.pop();
 
-        path_buf.push("adapter.rs");
-        self.adapter.write_to_file(path_buf.as_path())?;
+        path_buf.push("adapter_impl.rs");
+        self.adapter_impl.write_to_file(path_buf.as_path())?;
         path_buf.pop();
 
         path_buf.push("vertex.rs");
@@ -328,8 +335,29 @@ impl<'a> AdapterStub<'a> {
         self.edges.write_to_file(path_buf.as_path())?;
         path_buf.pop();
 
+        path_buf.push("tests.rs");
+        self.tests.write_to_file(path_buf.as_path())?;
+        path_buf.pop();
+
         Ok(())
     }
+}
+
+fn make_tests_file(tests_file: &mut RustFile) {
+    tests_file
+        .external_imports
+        .insert(parse_import("trustfall::provider::check_adapter_invariants"));
+
+    tests_file.internal_imports.insert(parse_import("super::Adapter"));
+
+    tests_file.top_level_items.push(quote! {
+        #[test]
+        fn adapter_satisfies_trustfall_invariants() {
+            let adapter = Adapter::new();
+            let schema = Adapter::schema();
+            check_adapter_invariants(schema, adapter);
+        }
+    });
 }
 
 fn make_vertex_file(
@@ -353,14 +381,11 @@ fn make_vertex_file(
     let mut variants = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|x| {
-            x.try_into_struct::<ResultRow>()
-                .expect("invalid conversion")
-        })
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
     for row in rows {
-        let name = &row.name;
+        let name = &escaped_rust_name(upper_case_variant_name(&row.name));
         let ident = syn::Ident::new(name.as_str(), proc_macro2::Span::call_site());
         variants.extend(quote! {
             #ident(()),
@@ -368,6 +393,7 @@ fn make_vertex_file(
     }
 
     let vertex = quote! {
+        #[non_exhaustive]
         #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
         pub enum Vertex {
             #variants
@@ -375,4 +401,87 @@ fn make_vertex_file(
     };
 
     vertex_file.top_level_items.push(vertex);
+}
+
+fn ensure_no_vertex_name_conflicts(querying_schema: &Schema, adapter: Arc<SchemaAdapter<'_>>) {
+    let query = r#"
+{
+    VertexType {
+        name @output
+    }
+}"#;
+    let variables: BTreeMap<String, String> = Default::default();
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct ResultRow {
+        name: String,
+    }
+
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
+        .expect("invalid query")
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
+        .collect();
+    rows.sort_unstable();
+
+    let mut uniq: HashMap<String, String> = HashMap::new();
+
+    for row in rows {
+        let name = row.name.clone();
+        // we normalize to lower snake case here, however in vertex name we capitalize this name instead
+        // it doesn't really matter though because the important one is just to normalize to the same capitalization scheme
+        let converted = escaped_rust_name(to_lower_snake_case(&name));
+        let v = uniq.insert(converted, name);
+        if let Some(v) = v {
+            panic!(
+                "cannot generate adapter for a schema containing both '{}' and '{}' vertices, consider renaming one of them",
+                v, &row.name
+            );
+        }
+    }
+}
+
+fn ensure_no_field_name_conflicts_on_vertex_type(
+    querying_schema: &Schema,
+    adapter: Arc<SchemaAdapter<'_>>,
+) {
+    let query = r#"
+{
+    VertexType {
+        name @output
+        edge_: edge @fold {
+            names: name @output
+        }
+        property_: property @fold {
+            names: name @output
+        }
+    }
+}"#;
+    let variables: BTreeMap<String, String> = Default::default();
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+    struct ResultRow {
+        name: String,
+        edge_names: Vec<String>,
+        property_names: Vec<String>,
+    }
+
+    let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
+        .expect("invalid query")
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
+        .collect();
+    rows.sort_unstable();
+
+    for row in &rows {
+        let mut uniq: HashMap<String, String> = HashMap::new();
+
+        for field_name in row.edge_names.iter().chain(row.property_names.iter()) {
+            let converted = escaped_rust_name(to_lower_snake_case(field_name));
+            if let Some(v) = uniq.insert(converted, field_name.clone()) {
+                panic!(
+                    "cannot generate adapter for a schema containing both '{}' and '{}' as field names on vertex '{}', consider renaming one of them",
+                    v, &field_name, &row.name
+                );
+            }
+        }
+    }
 }

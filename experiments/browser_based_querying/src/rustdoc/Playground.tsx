@@ -6,7 +6,7 @@ import { StringParam, useQueryParam, withDefault } from 'use-query-params';
 import { AsyncValue } from '../types';
 import TrustfallPlayground from '../TrustfallPlayground';
 import rustdocSchema from '../../../trustfall_rustdoc/src/rustdoc_schema.graphql';
-import { RustdocWorkerResponse } from './types';
+import { RustdocWorkerMessage, RustdocWorkerResponse } from './types';
 import parseExample from '../utils/parseExample';
 import structNamesAndSpans from '../../example_queries/rustdoc/struct_names_and_spans.example';
 import iterStructs from '../../example_queries/rustdoc/iter_structs.example';
@@ -15,6 +15,9 @@ import enumsWithTupleVariants from '../../example_queries/rustdoc/enums_with_tup
 import itemsWithAllowedLints from '../../example_queries/rustdoc/items_with_allowed_lints.example';
 import structsImportableByMultiplePaths from '../../example_queries/rustdoc/structs_importable_by_multiple_paths.example';
 import traitsWithSupertraits from '../../example_queries/rustdoc/traits_with_supertraits.example';
+import traitsWithAssociatedTypes from '../../example_queries/rustdoc/traits_with_associated_types.example';
+import traitAssociatedConsts from '../../example_queries/rustdoc/trait_associated_consts.example';
+import typeAssociatedConsts from '../../example_queries/rustdoc/type_associated_consts.example';
 
 const RUSTDOC_SCHEMA = buildSchema(rustdocSchema);
 
@@ -47,21 +50,29 @@ const EXAMPLE_OPTIONS: { name: string; value: [string, string] }[] = [
     name: 'Traits With Supertraits',
     value: parseExample(traitsWithSupertraits),
   },
+  {
+    name: 'Traits With Associated Types',
+    value: parseExample(traitsWithAssociatedTypes),
+  },
+  {
+    name: 'Traits With Associated Constants',
+    value: parseExample(traitAssociatedConsts),
+  },
+  {
+    name: 'Structs And Enums With Associated Constants',
+    value: parseExample(typeAssociatedConsts),
+  },
 ];
 
-import crateNames from '../rustdocCrates';
-
-const fmtCrateName = (name: string): string => {
-  const split = name.split('-');
-  return `${split.slice(0, split.length - 1).join('-')} (${split[split.length - 1]})`;
-};
+import rustdocCrates from '../rustdocCrates';
 
 interface CrateOption {
   label: string;
   value: string;
+  source: 'crates.io' | 'rustc';
 }
 
-const CRATE_OPTIONS = crateNames.map((name) => ({ label: fmtCrateName(name), value: name }));
+const CRATE_OPTIONS = rustdocCrates as CrateOption[];
 
 const CrateParam = withDefault(StringParam, 'itertools-0.10.4')
 
@@ -190,12 +201,15 @@ export default function Rustdoc(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (queryWorker && workerReady && selectedCrate && selectedCrate != '') {
+    const selection = CRATE_OPTIONS.find((option) => option.value === selectedCrate) ?? null;
+    if (queryWorker && workerReady && selectedCrate && selection) {
       setAsyncLoadedCrate({ status: 'pending' });
-      queryWorker.postMessage({
+      const msg: RustdocWorkerMessage = {
         op: 'load-crate',
-        name: selectedCrate,
-      });
+        name: selection.value,
+        source: selection.source,
+      };
+      queryWorker.postMessage(msg);
     } else {
       setAsyncLoadedCrate(null);
     }

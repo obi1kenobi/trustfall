@@ -3,7 +3,7 @@
 Given a Trustfall schema, autogenerate a high-quality Rust adapter stub
 fully wired up with all types, properties, and edges referenced in the schema.
 
-First, install the CLI with: `cargo install --locked trustfall_stubgen --features cli`
+First, install the CLI with: `cargo install --locked trustfall_stubgen`
 Then generate Trustfall adapter stubs for your schema with:
 ```
 trustfall_stubgen --schema <your_schema.graphql> --target <output_directory>
@@ -22,6 +22,7 @@ The generated Trustfall adapter stub has the following structure:
 | adapter/entrypoints.rs | contains the entry points where all queries must start |
 | adapter/properties.rs  | contains the property implementations                  |
 | adapter/edges.rs       | contains the edge implementations                      |
+| adapter/tests.rs       | contains test code                                     |
 
 See an example of
 [a generated adapter stub](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_stubgen/test_data/expected_outputs/hackernews/adapter)

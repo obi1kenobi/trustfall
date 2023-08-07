@@ -11,7 +11,6 @@ members = [
     "demo-hytradboi",
     "experiments/schemaless",
     "experiments/schemaless_wasm",
-    "experiments/trustfall_rustdoc",
 ]
 resolver = "2"
 
@@ -19,11 +18,26 @@ resolver = "2"
 edition = "2021"
 rust-version = "1.65"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
+license = "Apache-2.0"
 
-# Some of the experiment crates use Trustfall as an "external" dependency:
-# they use a crate defined outside this repo that depends on Trustfall.
-# This makes it difficult to use the local Trustfall together with the external one;
-# patch all Trustfall uses to use the internal ones until we find a better solution.
-[patch.crates-io]
-trustfall = { path = "./trustfall" }
-trustfall_core = { path = "./trustfall_core" }
+[workspace.dependencies]
+# The dependencies below are part of our public API.
+# Bumping a major version here requires our own major version bump.
+anyhow = "1.0.71"
+async-graphql-parser = "2.11.3"
+async-graphql-value = "2.11.3"
+serde = "1.0.164"
+serde_json = "1.0.96"
+thiserror = "1.0.30"
+regex = "1.9.1"
+
+# The dependencies below are internal-only.
+# Bumping major versions here should be safe.
+itertools = "0.11.0"
+once_cell = "1.17"
+ron = "0.8.0"
+similar-asserts = "1.4.2"
+maplit = "1.0.2"
+syn = "2.0"
+quote = "1.0"
+proc-macro2 = "1.0.51"

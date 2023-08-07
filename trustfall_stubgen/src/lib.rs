@@ -5,7 +5,7 @@
 //!
 //! First, install the CLI with: `cargo install --locked trustfall_stubgen --features cli`
 //! Then generate Trustfall adapter stubs for your schema with:
-//! ```
+//! ```text
 //! trustfall_stubgen --schema <your_schema.graphql> --target <output_directory>
 //! ```
 //! Under the hood this directly calls the [`generate_rust_stub`] function from this crate.
@@ -14,15 +14,15 @@
 //!
 //! The generated Trustfall adapter stub has the following structure:
 //!
-//! | file name              | purpose                                                |
-//! | ---------------------- | ------------------------------------------------------ |
-//! | adapter/mod.rs         | connects everything together                           |
-//! | adapter/schema.graphql | contains the schema for the adapter                    |
-//! | adapter/adapter.rs     | contains the adapter implementation                    |
-//! | adapter/vertex.rs      | contains the vertex type definition                    |
-//! | adapter/entrypoints.rs | contains the entry points where all queries must start |
-//! | adapter/properties.rs  | contains the property implementations                  |
-//! | adapter/edges.rs       | contains the edge implementations                      |
+//! | file name               | purpose                                                |
+//! | ----------------------- | ------------------------------------------------------ |
+//! | adapter/mod.rs          | connects everything together                           |
+//! | adapter/schema.graphql  | contains the schema for the adapter                    |
+//! | adapter/adapter_impl.rs | contains the adapter implementation                    |
+//! | adapter/vertex.rs       | contains the vertex type definition                    |
+//! | adapter/entrypoints.rs  | contains the entry points where all queries must start |
+//! | adapter/properties.rs   | contains the property implementations                  |
+//! | adapter/edges.rs        | contains the edge implementations                      |
 //!
 //! See an example of
 //! [a generated adapter stub](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_stubgen/test_data/expected_outputs/hackernews/adapter)

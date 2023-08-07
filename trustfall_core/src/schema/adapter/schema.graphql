@@ -18,6 +18,29 @@ type RootSchemaQuery {
     method for adapters over this schema.
     """
     Entrypoint: [Edge!]!
+
+    """
+    Information about the schema itself.
+    """
+    Schema: Schema!
+}
+
+"""
+Query the contents of Trustfall schemas: their vertex types, properties, edges, etc.
+"""
+type Schema {
+    """
+    All types of vertices present in this schema.
+    """
+    vertex_type: [VertexType!]!
+
+    """
+    The entry point edges at which querying may begin.
+
+    Corresponds to the valid edge names for the `resolve_starting_vertices()`
+    method for adapters over this schema.
+    """
+    entrypoint: [Edge!]!
 }
 
 """
@@ -28,6 +51,11 @@ type VertexType {
     The name of the vertex type.
     """
     name: String!
+
+    """
+    Documentation associated with this vertex type.
+    """
+    docs: String
 
     """
     True if this vertex is an interface (may have subtypes),
@@ -72,6 +100,11 @@ type Property {
     name: String!
 
     """
+    Documentation associated with this property.
+    """
+    docs: String
+
+    """
     The string representation of the property's type.
 
     For example:
@@ -91,6 +124,11 @@ type Edge {
     The name of the edge.
     """
     name: String!
+
+    """
+    Documentation associated with this edge.
+    """
+    docs: String
 
     """
     True if one vertex may have multiple instances of this edge,
@@ -124,6 +162,11 @@ type EdgeParameter {
     name: String!
 
     """
+    Documentation associated with this edge.
+    """
+    docs: String
+
+    """
     The string representation of the parameter's type.
 
     For example:
@@ -133,4 +176,18 @@ type EdgeParameter {
     - `[String!]!` for non-nullable list of non-nullable strings
     """
     type: String!
+
+    """
+    The JSON serialized representation of this parameter's default value, if any.
+
+    Nullable parameters have a default value of `null`, which is serialized here as `"null"`.
+    Schemas may also declare default values explicitly. Non-nullable parameters without a default
+    value will have a null value in this field.
+
+    For example:
+    - In `edge(x: Int! = 5)`, the default for `x` is JSON serialized here as `"5"`.
+    - In `edge(x: String! = "abc"), the default for `x` is JSON serialized as `"\"abc\"".
+    - In `edge(x: [String] = [null, "abc"]), the default for `x` is `"[null,\"abc\"]"`.
+    """
+    default: String
 }

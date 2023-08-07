@@ -1,4 +1,4 @@
-error: unexpected arguments found, did you mean `#[trustfall(skip_conversion)]`?
+error: unexpected attribute, did you mean `#[trustfall(skip_conversion)]`?
  --> tests/ui/invalid_attr_unexpected_assignment.rs:6:5
   |
 6 |     #[trustfall(skip_conversion = "yes")]

@@ -254,31 +254,19 @@ impl<T: Clone> Range<&T> {
             Bound::Included(b) => Bound::Included(b.clone()),
             Bound::Excluded(b) => Bound::Excluded(b.clone()),
         };
-        Range {
-            start,
-            end,
-            null_included: self.null_included,
-        }
+        Range { start, end, null_included: self.null_included }
     }
 }
 
 impl<T> Range<T> {
     /// The full, unbounded range of values.
     pub const fn full() -> Range<T> {
-        Self {
-            start: Bound::Unbounded,
-            end: Bound::Unbounded,
-            null_included: true,
-        }
+        Self { start: Bound::Unbounded, end: Bound::Unbounded, null_included: true }
     }
 
     /// The full range of values, except null.
     pub const fn full_non_null() -> Range<T> {
-        Self {
-            start: Bound::Unbounded,
-            end: Bound::Unbounded,
-            null_included: false,
-        }
+        Self { start: Bound::Unbounded, end: Bound::Unbounded, null_included: false }
     }
 
     /// Converts from `&Range<T>` to `Range<&T>`.
@@ -305,11 +293,7 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
             }
             Bound::Unbounded => {}
         }
-        Self {
-            start,
-            end,
-            null_included,
-        }
+        Self { start, end, null_included }
     }
 
     pub(super) fn with_start(start: Bound<T>, null_included: bool) -> Self {
@@ -319,11 +303,7 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
             }
             Bound::Unbounded => {}
         }
-        Self {
-            start,
-            end: Bound::Unbounded,
-            null_included,
-        }
+        Self { start, end: Bound::Unbounded, null_included }
     }
 
     pub(super) fn with_end(end: Bound<T>, null_included: bool) -> Self {
@@ -333,11 +313,7 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
             }
             Bound::Unbounded => {}
         }
-        Self {
-            start: Bound::Unbounded,
-            end,
-            null_included,
-        }
+        Self { start: Bound::Unbounded, end, null_included }
     }
 
     pub(super) fn intersect(&mut self, other: Range<T>) {
@@ -494,28 +470,16 @@ mod tests {
             (Impossible, Impossible, Impossible),
             (Impossible, Single(&one), Impossible),
             (Impossible, Multiple(vec![&one, &two]), Impossible),
-            (
-                Impossible,
-                Range(R::with_start(Bound::Included(&one), true)),
-                Impossible,
-            ),
+            (Impossible, Range(R::with_start(Bound::Included(&one), true)), Impossible),
             //
             // Intersecting Impossible into anything produces Imposssible.
             (Single(&one), Impossible, Impossible),
             (Multiple(vec![&one, &two]), Impossible, Impossible),
-            (
-                Range(R::with_start(Bound::Included(&one), true)),
-                Impossible,
-                Impossible,
-            ),
+            (Range(R::with_start(Bound::Included(&one), true)), Impossible, Impossible),
             //
             // Intersecting null into non-null, or vice versa, produces Impossible.
             (Single(&FieldValue::NULL), Single(&one), Impossible),
-            (
-                Single(&FieldValue::NULL),
-                Multiple(vec![&one, &two]),
-                Impossible,
-            ),
+            (Single(&FieldValue::NULL), Multiple(vec![&one, &two]), Impossible),
             (
                 Single(&FieldValue::NULL),
                 Range(R::with_start(Bound::Included(&one), false)),
@@ -526,23 +490,11 @@ mod tests {
             (Single(&one), Single(&two), Impossible),
             (Single(&one), Multiple(vec![&two, &three]), Impossible),
             (Multiple(vec![&one, &two]), Single(&three), Impossible),
-            (
-                Multiple(vec![&one, &two]),
-                Multiple(vec![&three, &four]),
-                Impossible,
-            ),
+            (Multiple(vec![&one, &two]), Multiple(vec![&three, &four]), Impossible),
             //
             // Intersecting values with a non-overlapping range produces Impossible.
-            (
-                Single(&one),
-                Range(R::with_start(Bound::Excluded(&one), true)),
-                Impossible,
-            ),
-            (
-                Single(&one),
-                Range(R::with_start(Bound::Included(&two), false)),
-                Impossible,
-            ),
+            (Single(&one), Range(R::with_start(Bound::Excluded(&one), true)), Impossible),
+            (Single(&one), Range(R::with_start(Bound::Included(&two), false)), Impossible),
             (
                 Multiple(vec![&two, &three]),
                 Range(R::with_end(Bound::Included(&one), true)),
@@ -559,16 +511,8 @@ mod tests {
             (Single(&one), Single(&one), Single(&one)),
             (Multiple(vec![&one, &two]), Single(&one), Single(&one)),
             (Single(&one), Multiple(vec![&one, &two]), Single(&one)),
-            (
-                Single(&one),
-                Range(R::with_start(Bound::Included(&one), false)),
-                Single(&one),
-            ),
-            (
-                Single(&one),
-                Range(R::with_end(Bound::Excluded(&two), false)),
-                Single(&one),
-            ),
+            (Single(&one), Range(R::with_start(Bound::Included(&one), false)), Single(&one)),
+            (Single(&one), Range(R::with_end(Bound::Excluded(&two), false)), Single(&one)),
             //
             // Intersecting null into multiple or a range that contains null produces null.
             (
@@ -650,17 +594,9 @@ mod tests {
                 Range(R::new(Bound::Included(&two), Bound::Included(&three), true)),
             ),
             (
-                Range(R::new(
-                    Bound::Included(&one),
-                    Bound::Included(&three),
-                    false,
-                )),
+                Range(R::new(Bound::Included(&one), Bound::Included(&three), false)),
                 Range(R::new(Bound::Included(&two), Bound::Included(&four), true)),
-                Range(R::new(
-                    Bound::Included(&two),
-                    Bound::Included(&three),
-                    false,
-                )),
+                Range(R::new(Bound::Included(&two), Bound::Included(&three), false)),
             ),
             (
                 Range(R::new(Bound::Included(&one), Bound::Excluded(&three), true)),
@@ -668,31 +604,15 @@ mod tests {
                 Range(R::new(Bound::Included(&two), Bound::Excluded(&three), true)),
             ),
             (
-                Range(R::new(
-                    Bound::Included(&one),
-                    Bound::Included(&three),
-                    false,
-                )),
+                Range(R::new(Bound::Included(&one), Bound::Included(&three), false)),
                 Range(R::new(Bound::Excluded(&two), Bound::Included(&four), true)),
-                Range(R::new(
-                    Bound::Excluded(&two),
-                    Bound::Included(&three),
-                    false,
-                )),
+                Range(R::new(Bound::Excluded(&two), Bound::Included(&three), false)),
             ),
             //
             // Intersecting overlapping multiple values (or multiple + range)
             // can produce either a Single or a Multiple, depending on the overlap size.
-            (
-                Multiple(vec![&one, &two]),
-                Multiple(vec![&two, &three]),
-                Single(&two),
-            ),
-            (
-                Multiple(vec![&two, &three]),
-                Multiple(vec![&one, &two]),
-                Single(&two),
-            ),
+            (Multiple(vec![&one, &two]), Multiple(vec![&two, &three]), Single(&two)),
+            (Multiple(vec![&two, &three]), Multiple(vec![&one, &two]), Single(&two)),
             (
                 Multiple(vec![&two, &three]),
                 Multiple(vec![&one, &two, &three, &four]),
@@ -730,17 +650,11 @@ mod tests {
         for (original, intersected, expected) in test_cases {
             let mut base = original.clone();
             base.intersect(intersected.clone());
-            assert_eq!(
-                expected, base,
-                "{original:?} + {intersected:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{original:?} + {intersected:?} = {base:?} != {expected:?}");
 
             let mut base = intersected.clone();
             base.intersect(original.clone());
-            assert_eq!(
-                expected, base,
-                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{intersected:?} + {original:?} = {base:?} != {expected:?}");
         }
     }
 
@@ -783,10 +697,7 @@ mod tests {
             }
         }
 
-        for (original, intersected) in larger_ranges
-            .into_iter()
-            .cartesian_product(smaller_ranges.into_iter())
-        {
+        for (original, intersected) in larger_ranges.into_iter().cartesian_product(smaller_ranges) {
             let mut expected = intersected.clone();
             if let Range(r) = &mut expected {
                 if let Range(r2) = &original {
@@ -800,17 +711,11 @@ mod tests {
 
             let mut base = original.clone();
             base.intersect(intersected.clone());
-            assert_eq!(
-                expected, base,
-                "{original:?} + {intersected:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{original:?} + {intersected:?} = {base:?} != {expected:?}");
 
             let mut base = intersected.clone();
             base.intersect(original.clone());
-            assert_eq!(
-                expected, base,
-                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{intersected:?} + {original:?} = {base:?} != {expected:?}");
         }
     }
 
@@ -839,10 +744,7 @@ mod tests {
         for (original, intersected, expected) in test_cases {
             let mut base = original.clone();
             base.intersect(intersected.clone());
-            assert_eq!(
-                expected, base,
-                "{original:?} + {intersected:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{original:?} + {intersected:?} = {base:?} != {expected:?}");
         }
     }
 
@@ -868,16 +770,8 @@ mod tests {
                 Multiple(vec![&one, &three]),
             ),
             (Multiple(vec![&one, &two]), &two, Single(&one)),
-            (
-                Multiple(vec![&one, &FieldValue::NULL]),
-                &one,
-                Single(&FieldValue::NULL),
-            ),
-            (
-                Multiple(vec![&one, &FieldValue::NULL]),
-                &FieldValue::NULL,
-                Single(&one),
-            ),
+            (Multiple(vec![&one, &FieldValue::NULL]), &one, Single(&FieldValue::NULL)),
+            (Multiple(vec![&one, &FieldValue::NULL]), &FieldValue::NULL, Single(&one)),
             (Single(&one), &one, Impossible),
             (Single(&FieldValue::NULL), &FieldValue::NULL, Impossible),
             (All, &FieldValue::NULL, Range(R::full_non_null())),
@@ -924,14 +818,7 @@ mod tests {
             (Range(R::with_start(Bound::Excluded(&two), false)), &two),
             (Range(R::with_end(Bound::Included(&one), false)), &two),
             (Range(R::with_end(Bound::Excluded(&one), false)), &one),
-            (
-                Range(R::new(
-                    Bound::Included(&one),
-                    Bound::Included(&three),
-                    false,
-                )),
-                &two,
-            ),
+            (Range(R::new(Bound::Included(&one), Bound::Included(&three), false)), &two),
         ];
 
         for (candidate, excluded) in test_data {
@@ -954,11 +841,7 @@ mod tests {
         let unsigned_two = FieldValue::Uint64(2);
         let test_data = [
             (Single(&signed_one), &unsigned_one, Impossible),
-            (
-                Multiple(vec![&signed_one, &signed_two]),
-                &unsigned_one,
-                Single(&signed_two),
-            ),
+            (Multiple(vec![&signed_one, &signed_two]), &unsigned_one, Single(&signed_two)),
             (
                 Range(R::with_start(Bound::Included(&signed_one), true)),
                 &unsigned_one,
@@ -970,11 +853,7 @@ mod tests {
                 Range(R::with_end(Bound::Excluded(&signed_one), true)),
             ),
             (Single(&unsigned_one), &signed_one, Impossible),
-            (
-                Multiple(vec![&unsigned_one, &unsigned_two]),
-                &signed_one,
-                Single(&unsigned_two),
-            ),
+            (Multiple(vec![&unsigned_one, &unsigned_two]), &signed_one, Single(&unsigned_two)),
             (
                 Range(R::with_start(Bound::Included(&unsigned_one), true)),
                 &signed_one,
@@ -1012,60 +891,39 @@ mod tests {
                 Range(R::new(Bound::Included(&one), Bound::Included(&one), true)),
                 Multiple(vec![&FieldValue::NULL, &one]),
             ),
-            (
-                Range(R::new(Bound::Included(&one), Bound::Included(&one), false)),
-                Single(&one),
-            ),
+            (Range(R::new(Bound::Included(&one), Bound::Included(&one), false)), Single(&one)),
             (
                 Range(R::new(Bound::Included(&one), Bound::Excluded(&one), true)),
                 Single(&FieldValue::NULL),
             ),
-            (
-                Range(R::new(Bound::Included(&one), Bound::Excluded(&one), false)),
-                Impossible,
-            ),
+            (Range(R::new(Bound::Included(&one), Bound::Excluded(&one), false)), Impossible),
             (
                 Range(R::new(Bound::Included(&two), Bound::Included(&one), true)),
                 Single(&FieldValue::NULL),
             ),
-            (
-                Range(R::new(Bound::Included(&two), Bound::Included(&one), false)),
-                Impossible,
-            ),
+            (Range(R::new(Bound::Included(&two), Bound::Included(&one), false)), Impossible),
             (
                 Range(R::new(Bound::Excluded(&two), Bound::Included(&one), true)),
                 Single(&FieldValue::NULL),
             ),
-            (
-                Range(R::new(Bound::Excluded(&two), Bound::Included(&one), false)),
-                Impossible,
-            ),
+            (Range(R::new(Bound::Excluded(&two), Bound::Included(&one), false)), Impossible),
             (
                 Range(R::new(Bound::Included(&two), Bound::Excluded(&one), true)),
                 Single(&FieldValue::NULL),
             ),
-            (
-                Range(R::new(Bound::Included(&two), Bound::Excluded(&one), false)),
-                Impossible,
-            ),
+            (Range(R::new(Bound::Included(&two), Bound::Excluded(&one), false)), Impossible),
             (
                 Range(R::new(Bound::Excluded(&two), Bound::Excluded(&one), true)),
                 Single(&FieldValue::NULL),
             ),
-            (
-                Range(R::new(Bound::Excluded(&two), Bound::Excluded(&one), false)),
-                Impossible,
-            ),
+            (Range(R::new(Bound::Excluded(&two), Bound::Excluded(&one), false)), Impossible),
         ];
 
         for (unnormalized, expected) in test_cases {
             let mut base = unnormalized.clone();
             base.normalize();
 
-            assert_eq!(
-                expected, base,
-                "{unnormalized:?}.normalize() = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{unnormalized:?}.normalize() = {base:?} != {expected:?}");
         }
     }
 
@@ -1080,16 +938,8 @@ mod tests {
         let test_cases = [
             //
             // Causing a Multiple to lose all its elements turns it into Impossible
-            (
-                Multiple(vec![&one, &two, &three]),
-                Single(&four),
-                Impossible,
-            ),
-            (
-                Multiple(vec![&one, &two]),
-                Multiple(vec![&three, &four]),
-                Impossible,
-            ),
+            (Multiple(vec![&one, &two, &three]), Single(&four), Impossible),
+            (Multiple(vec![&one, &two]), Multiple(vec![&three, &four]), Impossible),
             (
                 Multiple(vec![&one, &two]),
                 Range(R::with_start(Bound::Included(&three), true)),
@@ -1107,16 +957,8 @@ mod tests {
             ),
             //
             // Causing a Multiple to lose all but one of its elements turns it into Single
-            (
-                Multiple(vec![&one, &two, &three]),
-                Single(&two),
-                Single(&two),
-            ),
-            (
-                Multiple(vec![&one, &two, &three]),
-                Multiple(vec![&two, &four]),
-                Single(&two),
-            ),
+            (Multiple(vec![&one, &two, &three]), Single(&two), Single(&two)),
+            (Multiple(vec![&one, &two, &three]), Multiple(vec![&two, &four]), Single(&two)),
             (
                 Multiple(vec![&two, &three, &FieldValue::NULL]),
                 Range(R::with_end(Bound::Included(&two), false)),
@@ -1132,17 +974,11 @@ mod tests {
         for (original, intersected, expected) in test_cases {
             let mut base = original.clone();
             base.intersect(intersected.clone());
-            assert_eq!(
-                expected, base,
-                "{original:?} + {intersected:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{original:?} + {intersected:?} = {base:?} != {expected:?}");
 
             let mut base = intersected.clone();
             base.intersect(original.clone());
-            assert_eq!(
-                expected, base,
-                "{intersected:?} + {original:?} = {base:?} != {expected:?}"
-            );
+            assert_eq!(expected, base, "{intersected:?} + {original:?} = {base:?} != {expected:?}");
         }
     }
 
@@ -1162,11 +998,7 @@ mod tests {
             let unsigned_one = FieldValue::Uint64(1);
             let unsigned_three = FieldValue::Uint64(3);
             let test_data = [
-                Range(R::new(
-                    Bound::Excluded(&signed_one),
-                    Bound::Excluded(&signed_three),
-                    false,
-                )),
+                Range(R::new(Bound::Excluded(&signed_one), Bound::Excluded(&signed_three), false)),
                 Range(R::new(
                     Bound::Excluded(&unsigned_one),
                     Bound::Excluded(&unsigned_three),
@@ -1202,22 +1034,10 @@ mod tests {
                 (Range(R::full_non_null()), &FieldValue::Int64(i64::MAX)),
                 (Range(R::full_non_null()), &FieldValue::Uint64(u64::MIN)),
                 (Range(R::full_non_null()), &FieldValue::Uint64(u64::MAX)),
-                (
-                    Range(R::with_start(Bound::Excluded(&signed_one), false)),
-                    &signed_two,
-                ),
-                (
-                    Range(R::with_start(Bound::Excluded(&unsigned_one), false)),
-                    &unsigned_two,
-                ),
-                (
-                    Range(R::with_end(Bound::Excluded(&signed_two), false)),
-                    &signed_one,
-                ),
-                (
-                    Range(R::with_end(Bound::Excluded(&unsigned_two), false)),
-                    &unsigned_one,
-                ),
+                (Range(R::with_start(Bound::Excluded(&signed_one), false)), &signed_two),
+                (Range(R::with_start(Bound::Excluded(&unsigned_one), false)), &unsigned_two),
+                (Range(R::with_end(Bound::Excluded(&signed_two), false)), &signed_one),
+                (Range(R::with_end(Bound::Excluded(&unsigned_two), false)), &unsigned_one),
                 (
                     Range(R::new(
                         Bound::Included(&unsigned_one),

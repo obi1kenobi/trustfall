@@ -62,7 +62,7 @@ type GitHubRepository implements Repository & Webpage {
     owner: String!
     name: String!
     fullName: String!
-    # lastModified: DateTime!
+    lastModified: Int!  # in seconds since epoch
 
     workflows: [GitHubWorkflow!]
     # rootDirectory: Directory

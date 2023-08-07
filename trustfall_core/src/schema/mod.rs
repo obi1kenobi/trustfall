@@ -142,14 +142,20 @@ directive @transform(op: String!) on FIELD
 
                     match &node.kind {
                         TypeKind::Scalar => {
-                            scalars
-                                .insert_or_error(type_name.clone(), node.clone())
-                                .unwrap();
+                            scalars.insert_or_error(type_name.clone(), node.clone()).unwrap();
                         }
                         TypeKind::Object(_) | TypeKind::Interface(_) => {
-                            vertex_types
-                                .insert_or_error(type_name.clone(), node.clone())
-                                .unwrap();
+                            match vertex_types.insert_or_error(type_name.clone(), node.clone()) {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    let type_or_interface_name = err.entry.key();
+                                    return Err(
+                                        InvalidSchemaError::DuplicateTypeOrInterfaceDefinition(
+                                            type_or_interface_name.to_string(),
+                                        ),
+                                    );
+                                }
+                            }
                         }
                         TypeKind::Enum(_) => unimplemented!(),
                         TypeKind::Union(_) => unimplemented!(),
@@ -167,9 +173,18 @@ directive @transform(op: String!) on FIELD
                             let field_node = field.node;
                             let field_name = Arc::from(field_node.name.node.to_string());
 
-                            fields
+                            match fields
                                 .insert_or_error((type_name.clone(), field_name), field_node)
-                                .unwrap();
+                            {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    let (key, value) = err.entry.key();
+                                    return Err(InvalidSchemaError::DuplicateFieldDefinition(
+                                        key.to_string(),
+                                        value.to_string(),
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
@@ -177,12 +192,8 @@ directive @transform(op: String!) on FIELD
         }
 
         let schema = schema.expect("Schema definition was not present.");
-        let query_type_name = schema
-            .query
-            .as_ref()
-            .expect("No query type was declared in the schema")
-            .node
-            .as_ref();
+        let query_type_name =
+            schema.query.as_ref().expect("No query type was declared in the schema").node.as_ref();
         let query_type_definition = vertex_types
             .get(query_type_name)
             .expect("The query type set in the schema object was never defined.");
@@ -193,29 +204,29 @@ directive @transform(op: String!) on FIELD
 
         let mut errors = vec![];
         if let Err(e) = check_required_transitive_implementations(&vertex_types) {
-            errors.extend(e.into_iter());
+            errors.extend(e);
         }
         if let Err(e) = check_field_type_narrowing(&vertex_types, &fields) {
-            errors.extend(e.into_iter());
+            errors.extend(e);
         }
         if let Err(e) = check_fields_required_by_interface_implementations(&vertex_types, &fields) {
-            errors.extend(e.into_iter());
+            errors.extend(e);
         }
         if let Err(e) =
             check_type_and_property_and_edge_invariants(query_type_definition, &vertex_types)
         {
-            errors.extend(e.into_iter());
+            errors.extend(e);
         }
         if let Err(e) =
             check_root_query_type_invariants(query_type_definition, &query_type, &vertex_types)
         {
-            errors.extend(e.into_iter());
+            errors.extend(e);
         }
 
         let field_origins = match get_field_origins(&vertex_types) {
             Ok(field_origins) => {
                 if let Err(e) = check_ambiguous_field_origins(&fields, &field_origins) {
-                    errors.extend(e.into_iter());
+                    errors.extend(e);
                 }
                 Some(field_origins)
             }
@@ -252,9 +263,7 @@ directive @transform(op: String!) on FIELD
 
         Some(self.vertex_types.iter().filter_map(move |(name, defn)| {
             if name.as_ref() == type_name
-                || get_vertex_type_implements(defn)
-                    .iter()
-                    .any(|x| x.node.as_ref() == type_name)
+                || get_vertex_type_implements(defn).iter().any(|x| x.node.as_ref() == type_name)
             {
                 Some(name.as_ref())
             } else {
@@ -342,11 +351,7 @@ fn check_type_and_property_and_edge_invariants(
                         type_name.to_string(),
                         field_defn.name.node.to_string(),
                         field_type.to_string(),
-                        field_defn
-                            .arguments
-                            .iter()
-                            .map(|x| x.node.name.node.to_string())
-                            .collect(),
+                        field_defn.arguments.iter().map(|x| x.node.name.node.to_string()).collect(),
                     ));
                 }
             } else if vertex_types.contains_key(base_named_type) {
@@ -519,10 +524,8 @@ fn check_required_transitive_implementations(
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
     for (type_name, type_defn) in vertex_types {
-        let implementations: BTreeSet<&str> = get_vertex_type_implements(type_defn)
-            .iter()
-            .map(|x| x.node.as_ref())
-            .collect();
+        let implementations: BTreeSet<&str> =
+            get_vertex_type_implements(type_defn).iter().map(|x| x.node.as_ref()).collect();
 
         // Check the `implements` portion of the type definition.
         for implements_type in implementations.iter().copied() {
@@ -582,7 +585,9 @@ fn check_fields_required_by_interface_implementations(
 
         for implementation in implementations {
             let implementation = implementation.node.as_ref();
-            let Some(impl_defn) = vertex_types.get(implementation) else { continue; };
+            let Some(impl_defn) = vertex_types.get(implementation) else {
+                continue;
+            };
 
             for field in get_vertex_type_fields(impl_defn) {
                 let field_name = field.node.name.node.as_ref();
@@ -665,10 +670,7 @@ fn check_field_type_narrowing(
                             field_name.to_owned(),
                             type_name.to_string(),
                             implementation.to_owned(),
-                            missing_parameters
-                                .into_iter()
-                                .map(ToOwned::to_owned)
-                                .collect_vec(),
+                            missing_parameters.into_iter().map(ToOwned::to_owned).collect_vec(),
                         ));
                     }
 
@@ -684,10 +686,7 @@ fn check_field_type_narrowing(
                             field_name.to_owned(),
                             type_name.to_string(),
                             implementation.to_owned(),
-                            unexpected_parameters
-                                .into_iter()
-                                .map(ToOwned::to_owned)
-                                .collect_vec(),
+                            unexpected_parameters.into_iter().map(ToOwned::to_owned).collect_vec(),
                         ));
                     }
 
@@ -789,13 +788,13 @@ fn get_field_origins(
         let mut implemented_fields: BTreeMap<&str, FieldOrigin> = Default::default();
         for implemented_interface in implements {
             let implemented_interface = implemented_interface.node.as_ref();
-            let Some(implemented_defn) = vertex_types.get(implemented_interface) else { continue; };
+            let Some(implemented_defn) = vertex_types.get(implemented_interface) else {
+                continue;
+            };
             let parent_fields = get_vertex_type_fields(implemented_defn);
             for field in parent_fields {
-                let parent_field_origin = &field_origins[&(
-                    Arc::from(implemented_interface),
-                    Arc::from(field.node.name.node.as_ref()),
-                )];
+                let parent_field_origin = &field_origins
+                    [&(Arc::from(implemented_interface), Arc::from(field.node.name.node.as_ref()))];
 
                 implemented_fields
                     .entry(field.node.name.node.as_ref())
@@ -905,9 +904,6 @@ mod tests {
 
         let mut number_subtypes = schema.subtypes("Number").unwrap().collect_vec();
         number_subtypes.sort_unstable();
-        assert_eq!(
-            vec!["Composite", "Neither", "Number", "Prime"],
-            number_subtypes
-        );
+        assert_eq!(vec!["Composite", "Neither", "Number", "Prime"], number_subtypes);
     }
 }

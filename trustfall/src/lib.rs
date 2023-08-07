@@ -47,8 +47,8 @@ pub mod provider {
 
     // Helpers for common operations when building adapters.
     pub use trustfall_core::interpreter::helpers::{
-        resolve_coercion_using_schema, resolve_coercion_with, resolve_neighbors_with,
-        resolve_property_with, resolve_typename,
+        check_adapter_invariants, resolve_coercion_using_schema, resolve_coercion_with,
+        resolve_neighbors_with, resolve_property_with, resolve_typename,
     };
     pub use trustfall_core::{accessor_property, field_property};
 
@@ -74,16 +74,7 @@ pub fn execute_query<'vertex>(
     variables: BTreeMap<impl Into<Arc<str>>, impl Into<FieldValue>>,
 ) -> anyhow::Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex>> {
     let parsed_query = trustfall_core::frontend::parse(schema, query)?;
-    let vars = Arc::new(
-        variables
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect(),
-    );
+    let vars = Arc::new(variables.into_iter().map(|(k, v)| (k.into(), v.into())).collect());
 
-    Ok(trustfall_core::interpreter::execution::interpret_ir(
-        adapter,
-        parsed_query,
-        vars,
-    )?)
+    Ok(trustfall_core::interpreter::execution::interpret_ir(adapter, parsed_query, vars)?)
 }

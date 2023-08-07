@@ -1,0 +1,37 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+directive @transform(op: String!) on FIELD
+
+type RootSchemaQuery {
+    Vertex: Vertex!
+}
+
+type Vertex {
+    nullable(x: Int): Vertex
+    nonNullable(x: Int!): Vertex
+    nonNullableDefault(x: Int! = 5): Vertex
+
+    string(y: String! = "abc"): Vertex
+
+    list(z: [String]! = [null, "abc"]): Vertex
+
+    documented(
+        "Single docs line"
+        x: Int
+
+        """
+        Multiple docs lines
+
+        With a line break in the middle
+        and continuous text after it.
+        """
+        y: String
+    ): Vertex
+}

@@ -9,10 +9,7 @@ use super::generate_rust_stub;
 /// Write the given contents to a file, asserting that the file did not previously exist.
 fn write_new_file(path: &Path, contents: &str) {
     match path.try_exists() {
-        Ok(true) => panic!(
-            "file at path unexpectedly already exists: {}",
-            path.display()
-        ),
+        Ok(true) => panic!("file at path unexpectedly already exists: {}", path.display()),
         Ok(false) => std::fs::write(path, contents).expect("failed to write file"),
         Err(e) => panic!("{e}"),
     }
@@ -28,7 +25,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [dependencies]
-trustfall = "0.5.0"
+trustfall = "*"
 
 [workspace]
 "#;
@@ -44,9 +41,12 @@ mod adapter;
     lib_rs_path.push("lib.rs");
     write_new_file(lib_rs_path.as_path(), lib_rs);
 
+    // Run `cargo test --no-run` over the generated code.
+    // This is like a `cargo check` but includes `#[cfg(test)]` code as well.
     let output = Command::new("cargo")
         .current_dir(path)
-        .arg("check")
+        .arg("test")
+        .arg("--no-run")
         .output()
         .expect("failed to execute process");
 
@@ -77,25 +77,19 @@ fn get_relevant_files_from_dir(path: &Path) -> BTreeMap<PathBuf, PathBuf> {
     let mut dir_glob = path.to_path_buf();
     dir_glob.push("**");
     dir_glob.push("*");
-    dbg!(&dir_glob);
 
     glob::glob(dir_glob.to_str().expect("failed to convert path to &str"))
         .expect("failed to list dir")
         .filter_map(|res| {
-            let pathbuf = dbg!(res.expect("failed to check file"));
+            let pathbuf = res.expect("failed to check file");
             if !pathbuf.is_file() {
                 return None;
             }
 
-            let extension = pathbuf
-                .extension()
-                .and_then(|x| x.to_str())
-                .unwrap_or_default();
+            let extension = pathbuf.extension().and_then(|x| x.to_str()).unwrap_or_default();
             if matches!(extension, "rs" | "graphql") {
                 let mut matched_filepath = pathbuf.to_str().expect("failed to make str");
-                matched_filepath = matched_filepath
-                    .strip_prefix("./")
-                    .unwrap_or(matched_filepath);
+                matched_filepath = matched_filepath.strip_prefix("./").unwrap_or(matched_filepath);
 
                 let key = matched_filepath
                     .strip_prefix(&base)
@@ -121,10 +115,7 @@ fn assert_generated_code_is_unchanged(test_dir: &Path, expected_dir: &Path) {
     let mut missing_expected_files = expected_files.clone();
     missing_expected_files.retain(|k, _| !test_files.contains_key(k));
 
-    for key in test_files
-        .keys()
-        .filter(|k| expected_files.contains_key(*k))
-    {
+    for key in test_files.keys().filter(|k| expected_files.contains_key(*k)) {
         let expected_filepath = &expected_files[key];
         let test_filepath = &test_files[key];
         println!("{expected_filepath:?} {test_filepath:?}");
@@ -135,10 +126,7 @@ fn assert_generated_code_is_unchanged(test_dir: &Path, expected_dir: &Path) {
         similar_asserts::assert_eq!(expected, actual);
     }
 
-    assert!(
-        unexpected_files.is_empty(),
-        "unexpected files found: {unexpected_files:?}"
-    );
+    assert!(unexpected_files.is_empty(), "unexpected files found: {unexpected_files:?}");
     assert!(
         missing_expected_files.is_empty(),
         "expected files were missing: {missing_expected_files:?}"
@@ -165,6 +153,43 @@ fn test_schema(name: &str) {
 }
 
 #[test]
-fn test_hackernews_schema() {
+fn hackernews_schema() {
     test_schema("hackernews")
+}
+
+#[test]
+fn use_reserved_rust_names_in_schema() {
+    test_schema("use_reserved_rust_names_in_schema");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' vertices, consider renaming one of them"
+)]
+fn use_type_and_typeunderscore_edge_names() {
+    test_schema("use_type_and_typeunderscore_edge_names");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type_' and 'Type' as field names on vertex 'Type', consider renaming one of them"
+)]
+fn vertextype_with_type_and_typeunderscore_edge_and_property() {
+    test_schema("vertextype_with_type_and_typeunderscore_edge_and_property");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' as field names on vertex 'Type', consider renaming one of them"
+)]
+fn vertextype_with_type_and_typeunderscore_edges() {
+    test_schema("vertextype_with_type_and_typeunderscore_edges");
+}
+
+#[test]
+#[should_panic(
+    expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' as field names on vertex 'Type', consider renaming one of them"
+)]
+fn vertextype_with_type_and_typeunderscore_properties() {
+    test_schema("vertextype_with_type_and_typeunderscore_properties");
 }

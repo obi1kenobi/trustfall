@@ -41,8 +41,7 @@ impl<'a> TagHandler<'a> {
         field: FieldRef,
         path: &ComponentPath,
     ) -> Result<(), BTreeMapOccupiedError<'_, &'a str, TagEntry<'a>>> {
-        self.tags
-            .insert_or_error(name, TagEntry::new(name, field, path.clone()))?;
+        self.tags.insert_or_error(name, TagEntry::new(name, field, path.clone()))?;
 
         Ok(())
     }
@@ -63,10 +62,8 @@ impl<'a> TagHandler<'a> {
         use_path: &ComponentPath,
         use_vid: Vid,
     ) -> Result<&TagEntry, TagLookupError> {
-        let entry = self
-            .tags
-            .get(name)
-            .ok_or_else(|| TagLookupError::UndefinedTag(name.to_string()))?;
+        let entry =
+            self.tags.get(name).ok_or_else(|| TagLookupError::UndefinedTag(name.to_string()))?;
 
         if entry.path.is_parent(use_path) {
             match &entry.field {
@@ -89,10 +86,8 @@ impl<'a> TagHandler<'a> {
 
                 // The -1 in the index calculation is because the root component
                 // cannot import tags -- it has no parent component to import from.
-                let (component_root, imported_tags) = self
-                    .component_imported_tags
-                    .get_mut(entry.path.len() - 1)
-                    .unwrap();
+                let (component_root, imported_tags) =
+                    self.component_imported_tags.get_mut(entry.path.len() - 1).unwrap();
                 assert_eq!(*component_root, importing_component_root);
                 imported_tags.push(entry.field.clone());
             }
@@ -107,12 +102,8 @@ impl<'a> TagHandler<'a> {
     }
 
     pub(super) fn finish(self) -> Result<(), BTreeSet<&'a str>> {
-        let unused_tags: BTreeSet<_> = self
-            .tags
-            .keys()
-            .copied()
-            .filter(|x| !self.used_tags.contains(x))
-            .collect();
+        let unused_tags: BTreeSet<_> =
+            self.tags.keys().copied().filter(|x| !self.used_tags.contains(x)).collect();
         if unused_tags.is_empty() {
             Ok(())
         } else {

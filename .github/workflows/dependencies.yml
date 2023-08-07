@@ -20,17 +20,22 @@ defaults:
   run:
     shell: bash
 env:
-  PR_TITLE: Weekly `cargo update`
-  PR_MESSAGE: |
-    Automation to keep dependencies in `Cargo.lock` current.
+  MAIN_CARGO_PR_TITLE: Weekly `cargo update` of primary dependencies
+  MAIN_CARGO_PR_MESSAGE: |
+    Automation to keep dependencies in the primary `Cargo.lock` current.
 
     The following is the output from `cargo update`:
-  COMMIT_MESSAGE: "cargo update \n\n"
+  FUZZ_CARGO_PR_TITLE: Weekly `cargo update` of fuzzing dependencies
+  FUZZ_CARGO_PR_MESSAGE: |
+    Automation to keep dependencies in the fuzzing `Cargo.lock` current.
+
+    The following is the output from `cargo update`:
+  CARGO_COMMIT_MESSAGE: "cargo update \n\n"
 
 jobs:
-  update:
+  update-main-cargo:
     if: github.repository_owner == 'obi1kenobi'
-    name: update dependencies
+    name: update main dependencies
     runs-on: ubuntu-latest
     steps:
       - name: checkout the source code
@@ -43,27 +48,29 @@ jobs:
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
-        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+        run: CARGO_TERM_COLOR=never cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v3
         with:
-          name: Cargo-lock
+          name: main-Cargo-lock
           path: Cargo.lock
           retention-days: 1
 
       - name: upload cargo-update log artifact for use in PR
         uses: actions/upload-artifact@v3
         with:
-          name: cargo-updates
+          name: main-cargo-updates
           path: cargo_update.log
           retention-days: 1
 
-  pr:
+  pr-main-cargo:
     if: github.repository_owner == 'obi1kenobi'
-    name: open or amend PR
-    needs: update
+    name: open or amend PR (main)
+    needs: update-main-cargo
     runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: main_cargo_update
     permissions:
       contents: write
       pull-requests: write
@@ -76,20 +83,20 @@ jobs:
       - name: download Cargo.lock from update job
         uses: actions/download-artifact@v3
         with:
-          name: Cargo-lock
+          name: main-Cargo-lock
       - name: download cargo-update log from update job
         uses: actions/download-artifact@v3
         with:
-          name: cargo-updates
+          name: main-cargo-updates
 
       - name: craft PR body and commit message
         run: |
           set -euo pipefail
 
-          echo "${COMMIT_MESSAGE}" > commit.txt
+          echo "${CARGO_COMMIT_MESSAGE}" > commit.txt
           cat cargo_update.log >> commit.txt
 
-          echo "${PR_MESSAGE}" > body.md
+          echo "${MAIN_CARGO_PR_MESSAGE}" > body.md
           echo '```txt' >> body.md
           cat cargo_update.log >> body.md
           echo '```' >> body.md
@@ -100,38 +107,185 @@ jobs:
 
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git switch --force-create cargo_update
+          git switch --force-create "$BRANCH_NAME"
           git add ./Cargo.lock
+          DIFF="$(git diff --staged)"
+          if [[ "$DIFF" == "" ]]; then
+            echo "Cargo.lock was not changed, bailing out and not making a PR"
+            exit 1
+          fi
           git commit --no-verify --file=commit.txt
 
       - name: push
         run: |
           set -euo pipefail
-          git push --no-verify --force --set-upstream origin cargo_update
+          git push --no-verify --force --set-upstream origin "$BRANCH_NAME"
 
       - name: edit existing open pull request
         id: edit
         # Don't fail job if we need to open new PR
         continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # We have to use a Personal Access Token (PAT) here.
+          # PRs opened from a workflow using the standard `GITHUB_TOKEN` in GitHub Actions
+          # do not automatically trigger more workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+          GITHUB_TOKEN: ${{ secrets.DEPS_UPDATER_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           # Exit with error if PR is closed
-          STATE="$(gh pr view cargo_update --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+          STATE="$(gh pr view "$BRANCH_NAME" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
           if [[ "$STATE" != "OPEN" ]]; then
             exit 1
           fi
 
-          gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY"
+          gh pr edit "$BRANCH_NAME" --title "${MAIN_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY"
 
       - name: open new pull request
         # Only run if there wasn't an existing PR
         if: steps.edit.outcome != 'success'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # We have to use a Personal Access Token (PAT) here.
+          # PRs opened from a workflow using the standard `GITHUB_TOKEN` in GitHub Actions
+          # do not automatically trigger more workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+          GITHUB_TOKEN: ${{ secrets.DEPS_UPDATER_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
-          gh pr merge --squash --auto --delete-branch
+          gh pr create --title "${MAIN_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
+
+      - name: set PR to auto-merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --auto --delete-branch
+
+  update-fuzz-cargo:
+    if: github.repository_owner == 'obi1kenobi'
+    name: update fuzz dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo update
+        # Remove first line that always just says "Updating crates.io index"
+        run: |
+          cd trustfall_core/fuzz/
+          CARGO_TERM_COLOR=never cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+
+      - name: upload Cargo.lock artifact for use in PR
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-Cargo-lock
+          path: trustfall_core/fuzz/Cargo.lock
+          retention-days: 1
+
+      - name: upload cargo-update log artifact for use in PR
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-cargo-updates
+          path: trustfall_core/fuzz/cargo_update.log
+          retention-days: 1
+
+  pr-fuzz-cargo:
+    if: github.repository_owner == 'obi1kenobi'
+    name: open or amend PR (fuzz)
+    needs: update-fuzz-cargo
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: fuzz_cargo_update
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      - name: download Cargo.lock from update job
+        uses: actions/download-artifact@v3
+        with:
+          name: fuzz-Cargo-lock
+          path: trustfall_core/fuzz/
+      - name: download cargo-update log from update job
+        uses: actions/download-artifact@v3
+        with:
+          name: fuzz-cargo-updates
+
+      - name: craft PR body and commit message
+        run: |
+          set -euo pipefail
+
+          echo "${CARGO_COMMIT_MESSAGE}" > commit.txt
+          cat cargo_update.log >> commit.txt
+
+          echo "${FUZZ_CARGO_PR_TITLE}" > body.md
+          echo '```txt' >> body.md
+          cat cargo_update.log >> body.md
+          echo '```' >> body.md
+
+      - name: commit
+        run: |
+          set -euo pipefail
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --force-create "$BRANCH_NAME"
+          git add ./trustfall_core/fuzz/Cargo.lock
+          DIFF="$(git diff --staged)"
+          if [[ "$DIFF" == "" ]]; then
+            echo "Cargo.lock was not changed, bailing out and not making a PR"
+            exit 1
+          fi
+          git commit --no-verify --file=commit.txt
+
+      - name: push
+        run: |
+          set -euo pipefail
+          git push --no-verify --force --set-upstream origin "$BRANCH_NAME"
+
+      - name: edit existing open pull request
+        id: edit
+        # Don't fail job if we need to open new PR
+        continue-on-error: true
+        env:
+          # We have to use a Personal Access Token (PAT) here.
+          # PRs opened from a workflow using the standard `GITHUB_TOKEN` in GitHub Actions
+          # do not automatically trigger more workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+          GITHUB_TOKEN: ${{ secrets.DEPS_UPDATER_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Exit with error if PR is closed
+          STATE="$(gh pr view "$BRANCH_NAME" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+          if [[ "$STATE" != "OPEN" ]]; then
+            exit 1
+          fi
+
+          gh pr edit "$BRANCH_NAME" --title "${FUZZ_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY"
+
+      - name: open new pull request
+        # Only run if there wasn't an existing PR
+        if: steps.edit.outcome != 'success'
+        env:
+          # We have to use a Personal Access Token (PAT) here.
+          # PRs opened from a workflow using the standard `GITHUB_TOKEN` in GitHub Actions
+          # do not automatically trigger more workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+          GITHUB_TOKEN: ${{ secrets.DEPS_UPDATER_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr create --title "${FUZZ_CARGO_PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
+
+      - name: set PR to auto-merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --auto --delete-branch

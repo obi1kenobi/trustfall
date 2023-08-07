@@ -1,13 +1,13 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, sync::Arc};
 
 /// IR of the values of Trustfall fields.
 use async_graphql_value::{ConstValue, Number, Value};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Values of fields in Trustfall.
 ///
 /// For version that is serialized as an untagged enum, see [TransparentValue].
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum FieldValue {
     // Order may matter here! Deserialization, if ever configured for untagged serialization,
@@ -17,16 +17,20 @@ pub enum FieldValue {
     // and prioritize exact integers over lossy floats.
     #[default]
     Null,
-    /// AKA integer
+
+    /// Together with `Uint64`, corresponds to schemas' `Int` type.
     Int64(i64),
+
+    /// Together with `Int64`, corresponds to schemas' `Int` type.
     Uint64(u64),
-    /// AKA Float, and also not allowed to be NaN
+
+    /// Corresponds to schemas' `Float` type. Not allowed to be NaN or infinite.
     Float64(f64),
-    String(String),
+
+    String(Arc<str>),
     Boolean(bool),
-    DateTimeUtc(DateTime<Utc>),
-    Enum(String),
-    List(Vec<FieldValue>),
+    Enum(Arc<str>),
+    List(Arc<[FieldValue]>),
 }
 
 impl FieldValue {
@@ -43,6 +47,7 @@ impl Default for &FieldValue {
 ///
 /// Same as [FieldValue], but serialized as an untagged enum,
 /// which may be more suitable e.g. when serializing to JSON.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TransparentValue {
@@ -53,14 +58,20 @@ pub enum TransparentValue {
     // and prioritize exact integers over lossy floats.
     #[default]
     Null,
-    Int64(i64), // AKA Integer
+
+    /// Together with `Uint64`, corresponds to schemas' `Int` type.
+    Int64(i64),
+
+    /// Together with `Int64`, corresponds to schemas' `Int` type.
     Uint64(u64),
-    Float64(f64), // AKA Float, and also not allowed to be NaN
-    String(String),
+
+    /// Corresponds to schemas' `Float` type. Not allowed to be NaN or infinite.
+    Float64(f64),
+
+    String(Arc<str>),
     Boolean(bool),
-    DateTimeUtc(DateTime<Utc>),
-    Enum(String),
-    List(Vec<TransparentValue>),
+    Enum(Arc<str>),
+    List(Arc<[TransparentValue]>),
 }
 
 impl From<FieldValue> for TransparentValue {
@@ -72,11 +83,10 @@ impl From<FieldValue> for TransparentValue {
             FieldValue::Float64(x) => TransparentValue::Float64(x),
             FieldValue::String(x) => TransparentValue::String(x),
             FieldValue::Boolean(x) => TransparentValue::Boolean(x),
-            FieldValue::DateTimeUtc(x) => TransparentValue::DateTimeUtc(x),
             FieldValue::Enum(x) => TransparentValue::Enum(x),
-            FieldValue::List(x) => {
-                TransparentValue::List(x.into_iter().map(|v| v.into()).collect())
-            }
+            FieldValue::List(x) => TransparentValue::List(
+                x.iter().map(|v| v.clone().into()).collect::<Vec<_>>().into(),
+            ),
         }
     }
 }
@@ -90,10 +100,9 @@ impl From<TransparentValue> for FieldValue {
             TransparentValue::Float64(x) => FieldValue::Float64(x),
             TransparentValue::String(x) => FieldValue::String(x),
             TransparentValue::Boolean(x) => FieldValue::Boolean(x),
-            TransparentValue::DateTimeUtc(x) => FieldValue::DateTimeUtc(x),
             TransparentValue::Enum(x) => FieldValue::Enum(x),
             TransparentValue::List(x) => {
-                FieldValue::List(x.into_iter().map(|v| v.into()).collect())
+                FieldValue::List(x.iter().map(|v| v.clone().into()).collect::<Vec<_>>().into())
             }
         }
     }
@@ -109,9 +118,8 @@ impl FieldValue {
             Self::Float64(..) => 3,
             Self::String(..) => 4,
             Self::Boolean(..) => 5,
-            Self::DateTimeUtc(..) => 6,
-            Self::Enum(..) => 7,
-            Self::List(..) => 8,
+            Self::Enum(..) => 6,
+            Self::List(..) => 7,
         }
     }
 
@@ -123,7 +131,6 @@ impl FieldValue {
             | FieldValue::Float64(_)
             | FieldValue::String(_)
             | FieldValue::Boolean(_)
-            | FieldValue::DateTimeUtc(_)
             | FieldValue::List(_)
             | FieldValue::Enum(_) => None,
         }
@@ -137,7 +144,6 @@ impl FieldValue {
             | FieldValue::Float64(_)
             | FieldValue::String(_)
             | FieldValue::Boolean(_)
-            | FieldValue::DateTimeUtc(_)
             | FieldValue::List(_)
             | FieldValue::Enum(_) => None,
         }
@@ -151,7 +157,6 @@ impl FieldValue {
             | FieldValue::Float64(_)
             | FieldValue::String(_)
             | FieldValue::Boolean(_)
-            | FieldValue::DateTimeUtc(_)
             | FieldValue::List(_)
             | FieldValue::Enum(_) => None,
         }
@@ -166,7 +171,14 @@ impl FieldValue {
 
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            FieldValue::String(s) => Some(s.as_str()),
+            FieldValue::String(s) => Some(s.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_arc_str(&self) -> Option<&Arc<str>> {
+        match self {
+            FieldValue::String(s) => Some(s),
             _ => None,
         }
     }
@@ -180,14 +192,16 @@ impl FieldValue {
 
     pub fn as_slice(&self) -> Option<&[FieldValue]> {
         match self {
-            FieldValue::List(l) => Some(l.as_slice()),
+            FieldValue::List(l) => Some(l.as_ref()),
             _ => None,
         }
     }
 
-    #[deprecated(since = "0.4.0", note = "renamed to `as_vec_with()`")]
-    pub fn as_vec<'a, T>(&'a self, inner: impl Fn(&'a FieldValue) -> Option<T>) -> Option<Vec<T>> {
-        self.as_vec_with(inner)
+    pub fn as_arc_slice(&self) -> Option<&Arc<[FieldValue]>> {
+        match self {
+            FieldValue::List(l) => Some(l),
+            _ => None,
+        }
     }
 
     pub fn as_vec_with<'a, T>(
@@ -214,7 +228,6 @@ impl FieldValue {
             }
             (Self::String(l0), Self::String(r0)) => l0 == r0,
             (Self::Boolean(l0), Self::Boolean(r0)) => l0 == r0,
-            (Self::DateTimeUtc(l0), Self::DateTimeUtc(r0)) => l0 == r0,
             (Self::List(l0), Self::List(r0)) => l0 == r0,
             (Self::Enum(l0), Self::Enum(r0)) => l0 == r0,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
@@ -256,7 +269,6 @@ impl PartialOrd for FieldValue {
                 }
                 (Self::String(l0), Self::String(r0)) => l0.partial_cmp(r0),
                 (Self::Boolean(l0), Self::Boolean(r0)) => l0.partial_cmp(r0),
-                (Self::DateTimeUtc(l0), Self::DateTimeUtc(r0)) => l0.partial_cmp(r0),
                 (Self::List(l0), Self::List(r0)) => l0.partial_cmp(r0),
                 (Self::Enum(l0), Self::Enum(r0)) => l0.partial_cmp(r0),
                 _ => self.discriminant().partial_cmp(&other.discriminant()),
@@ -285,15 +297,21 @@ impl AsRef<FieldValue> for FieldValue {
     }
 }
 
+impl From<Arc<str>> for FieldValue {
+    fn from(v: Arc<str>) -> Self {
+        Self::String(v)
+    }
+}
+
 impl From<String> for FieldValue {
     fn from(v: String) -> Self {
-        Self::String(v)
+        Self::String(v.into())
     }
 }
 
 impl From<&String> for FieldValue {
     fn from(v: &String) -> Self {
-        Self::String(v.clone())
+        Self::String(v.clone().into())
     }
 }
 
@@ -363,12 +381,6 @@ macro_rules! impl_field_value_from_uint {
 
 impl_field_value_from_int!(i8 i16 i32 i64);
 impl_field_value_from_uint!(u8 u16 u32 u64);
-
-impl From<DateTime<Utc>> for FieldValue {
-    fn from(v: DateTime<Utc>) -> Self {
-        Self::DateTimeUtc(v)
-    }
-}
 
 impl TryFrom<Option<f32>> for FieldValue {
     type Error = (f32, &'static str);
@@ -448,17 +460,14 @@ impl TryFrom<Value> for FieldValue {
         match value {
             Value::Null => Ok(Self::Null),
             Value::Number(n) => convert_number_to_field_value(&n),
-            Value::String(s) => Ok(Self::String(s)),
+            Value::String(s) => Ok(Self::String(s.into())),
             Value::Boolean(b) => Ok(Self::Boolean(b)),
-            Value::List(l) => l
-                .into_iter()
-                .map(Self::try_from)
-                .collect::<Result<Self, _>>(),
+            Value::List(l) => l.into_iter().map(Self::try_from).collect::<Result<Self, _>>(),
             Value::Enum(n) => {
                 // We have an enum value, so we know the variant name but the variant on its own
                 // doesn't tell us the name of the enum type it belongs in. We'll have to determine
                 // the name of the enum type from context. For now, it's None.
-                Ok(Self::Enum(n.to_string()))
+                Ok(Self::Enum(n.to_string().into()))
             }
             Value::Binary(_) => Err(String::from("Binary values are not supported")),
             Value::Variable(_) => Err(String::from("Cannot use a variable reference")),
@@ -481,38 +490,30 @@ mod tests {
 
     #[test]
     fn test_field_value_into() {
-        let test_data: Vec<(FieldValue, FieldValue)> = vec![
-            (123i64.into(), FieldValue::Int64(123)),
-            (123u64.into(), FieldValue::Uint64(123)),
-            (Option::<i64>::Some(123i64).into(), FieldValue::Int64(123)),
-            (Option::<u64>::Some(123u64).into(), FieldValue::Uint64(123)),
-            (
-                FiniteF64::try_from(3.15).unwrap().into(),
-                FieldValue::Float64(3.15),
-            ),
-            (false.into(), FieldValue::Boolean(false)),
-            ("a &str".into(), FieldValue::String("a &str".to_string())),
-            (
-                "a String".to_string().into(),
-                FieldValue::String("a String".to_string()),
-            ),
-            (
-                (&"a &String".to_string()).into(),
-                FieldValue::String("a &String".to_string()),
-            ),
-            (Option::<i64>::None.into(), FieldValue::Null),
-            (
-                vec![1, 2].into(),
-                FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)]),
-            ),
-            (
-                vec!["a String".to_string()].as_slice().into(),
-                FieldValue::List(vec![FieldValue::String("a String".to_string())]),
-            ),
-        ];
-
-        for (actual_value, expected_value) in test_data {
-            assert_eq!(actual_value, expected_value);
+        #[track_caller]
+        fn test(value: impl Into<FieldValue>, expected: FieldValue) {
+            assert_eq!(value.into(), expected);
         }
+
+        test(false, FieldValue::Boolean(false));
+
+        test(123i64, FieldValue::Int64(123));
+        test(123u64, FieldValue::Uint64(123));
+
+        test(None::<i64>, FieldValue::Null);
+        test(Some::<i64>(123), FieldValue::Int64(123));
+        test(Some::<u64>(123), FieldValue::Uint64(123));
+
+        test(FiniteF64::try_from(3.15).unwrap(), FieldValue::Float64(3.15));
+
+        test("a &str", FieldValue::String("a &str".into()));
+        test("a String".to_string(), FieldValue::String("a String".into()));
+
+        test(vec![1, 2], FieldValue::List(vec![FieldValue::Int64(1), FieldValue::Int64(2)].into()));
+
+        test(
+            ["a String".to_string()].as_slice(),
+            FieldValue::List(vec![FieldValue::String("a String".to_string().into())].into()),
+        );
     }
 }

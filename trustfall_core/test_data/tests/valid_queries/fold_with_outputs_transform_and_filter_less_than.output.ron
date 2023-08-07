@@ -1,0 +1,16 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "prime": Output(
+      name: "prime",
+      value_type: "[Int]!",
+      vid: Vid(2),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [],
+)

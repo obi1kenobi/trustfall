@@ -4,7 +4,10 @@ use maplit::btreemap;
 use quote::quote;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
-use crate::edges_creator::{prepare_call_parameters, FnCall};
+use crate::{
+    edges_creator::{prepare_call_parameters, FnCall},
+    util::escaped_rust_name,
+};
 
 use super::{
     root::RustFile,
@@ -41,49 +44,36 @@ pub(super) fn make_entrypoints_file(
 
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|x| {
-            x.try_into_struct::<ResultRow>()
-                .expect("invalid conversion")
-        })
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
     for row in rows {
-        let parameters: Vec<_> = row
-            .parameter_name
-            .into_iter()
-            .zip(row.parameter_type.into_iter())
-            .collect();
+        let parameters: Vec<_> =
+            row.parameter_name.into_iter().zip(row.parameter_type.into_iter()).collect();
 
         let (match_arm, entrypoint_fn) = make_entrypoint_fn(&row.name, &parameters);
         entrypoints_file.top_level_items.push(entrypoint_fn);
         entrypoints_match_arms.extend(match_arm);
     }
 
-    entrypoints_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::VertexIterator"));
-    entrypoints_file
-        .external_imports
-        .insert(parse_import("trustfall::provider::ResolveInfo"));
+    entrypoints_file.external_imports.insert(parse_import("trustfall::provider::VertexIterator"));
+    entrypoints_file.external_imports.insert(parse_import("trustfall::provider::ResolveInfo"));
 
-    entrypoints_file
-        .internal_imports
-        .insert(parse_import("super::vertex::Vertex"));
+    entrypoints_file.internal_imports.insert(parse_import("super::vertex::Vertex"));
 }
 
 fn make_entrypoint_fn(
     entrypoint: &str,
     parameters: &[(String, String)],
 ) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
-    let FnCall {
-        fn_params,
-        fn_args,
-        fn_arg_prep,
-    } = prepare_call_parameters(parameters, |parameter_name| {
-        format!("failed to find parameter '{parameter_name}' when resolving '{entrypoint}' starting vertices")
-    });
+    let FnCall { fn_params, fn_args, fn_arg_prep } = prepare_call_parameters(
+        parameters,
+        |parameter_name| {
+            format!("failed to find parameter '{parameter_name}' when resolving '{entrypoint}' starting vertices")
+        },
+    );
 
-    let entrypoint_fn_name = to_lower_snake_case(entrypoint);
+    let entrypoint_fn_name = escaped_rust_name(to_lower_snake_case(entrypoint));
     let ident = syn::Ident::new(&entrypoint_fn_name, proc_macro2::Span::call_site());
     let todo_msg =
         format!("implement resolving starting vertices for entrypoint edge '{entrypoint}'");

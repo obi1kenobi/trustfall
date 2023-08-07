@@ -8,9 +8,10 @@ use crate::{
     accessor_property, field_property,
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+        CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        Typename, VertexInfo, VertexIterator,
     },
-    ir::{types::get_base_named_type, EdgeParameters, FieldValue},
+    ir::{types::get_base_named_type, EdgeParameters, FieldValue, TransparentValue},
 };
 
 use super::Schema;
@@ -63,9 +64,7 @@ impl<'a> SchemaAdapter<'a> {
     /// Make an adapter for querying the given Trustfall schema.
     #[inline(always)]
     pub fn new(schema_to_query: &'a Schema) -> Self {
-        Self {
-            schema: schema_to_query,
-        }
+        Self { schema: schema_to_query }
     }
 
     /// A schema that describes Trustfall schemas.
@@ -76,12 +75,52 @@ impl<'a> SchemaAdapter<'a> {
     }
 }
 
+fn vertex_type_iter(
+    schema: &Schema,
+    vertex_type_name: Option<CandidateValue<FieldValue>>,
+) -> VertexIterator<'_, SchemaVertex<'_>> {
+    let root_query_type = schema.query_type_name();
+
+    if let Some(CandidateValue::Single(FieldValue::String(name))) = vertex_type_name {
+        let neighbors = schema
+            .vertex_types
+            .get(name.as_ref())
+            .filter(move |v| v.name.node != root_query_type)
+            .into_iter()
+            .map(|defn| SchemaVertex::VertexType(VertexType::new(defn)));
+
+        Box::new(neighbors)
+    } else if let Some(CandidateValue::Multiple(possibilities)) = vertex_type_name {
+        let neighbors = possibilities.into_iter().filter_map(move |name| {
+            schema
+                .vertex_types
+                .get(name.as_arc_str().expect("vertex type name was not a string"))
+                .and_then(move |defn| {
+                    (defn.name.node != root_query_type)
+                        .then(|| SchemaVertex::VertexType(VertexType::new(defn)))
+                })
+        });
+        Box::new(neighbors)
+    } else {
+        Box::new(schema.vertex_types.values().filter_map(move |v| {
+            (v.name.node != root_query_type).then(|| SchemaVertex::VertexType(VertexType::new(v)))
+        }))
+    }
+}
+
+fn entrypoints_iter(schema: &Schema) -> VertexIterator<'_, SchemaVertex<'_>> {
+    Box::new(
+        schema.query_type.fields.iter().map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
+    )
+}
+
 #[derive(Debug, Clone)]
 pub enum SchemaVertex<'a> {
     VertexType(VertexType<'a>),
     Property(Property<'a>),
     Edge(Edge<'a>),
     EdgeParameter(EdgeParameter<'a>),
+    Schema,
 }
 
 impl<'a> SchemaVertex<'a> {
@@ -118,6 +157,19 @@ impl<'a> SchemaVertex<'a> {
     }
 }
 
+impl<'a> Typename for SchemaVertex<'a> {
+    #[inline(always)]
+    fn typename(&self) -> &'static str {
+        match self {
+            SchemaVertex::VertexType(..) => "VertexType",
+            SchemaVertex::Property(..) => "Property",
+            SchemaVertex::Edge(..) => "Edge",
+            SchemaVertex::EdgeParameter(..) => "EdgeParameter",
+            SchemaVertex::Schema => "Schema",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VertexType<'a> {
     defn: &'a TypeDefinition,
@@ -135,6 +187,11 @@ impl<'a> VertexType<'a> {
     }
 
     #[inline(always)]
+    fn docs(&self) -> Option<&'a str> {
+        self.defn.description.as_ref().map(|x| x.node.as_str())
+    }
+
+    #[inline(always)]
     fn is_interface(&self) -> bool {
         matches!(self.defn.kind, TypeKind::Interface(..))
     }
@@ -144,17 +201,19 @@ impl<'a> VertexType<'a> {
 pub struct Property<'a> {
     parent: &'a TypeDefinition,
     name: &'a str,
+    docs: Option<&'a str>,
     type_: &'a Type,
 }
 
 impl<'a> Property<'a> {
     #[inline(always)]
-    fn new(parent: &'a TypeDefinition, name: &'a str, type_: &'a Type) -> Self {
-        Self {
-            parent,
-            name,
-            type_,
-        }
+    fn new(
+        parent: &'a TypeDefinition,
+        name: &'a str,
+        docs: Option<&'a str>,
+        type_: &'a Type,
+    ) -> Self {
+        Self { parent, name, docs, type_ }
     }
 }
 
@@ -172,6 +231,11 @@ impl<'a> Edge<'a> {
     #[inline(always)]
     fn name(&self) -> &'a str {
         &self.defn.name.node
+    }
+
+    #[inline(always)]
+    fn docs(&self) -> Option<&'a str> {
+        self.defn.description.as_ref().map(|x| x.node.as_str())
     }
 
     #[inline(always)]
@@ -202,6 +266,11 @@ impl<'a> EdgeParameter<'a> {
     }
 
     #[inline(always)]
+    fn docs(&self) -> Option<&'a str> {
+        self.defn.description.as_ref().map(|pos| pos.node.as_str())
+    }
+
+    #[inline(always)]
     fn type_(&self) -> String {
         self.defn.ty.node.to_string()
     }
@@ -214,23 +283,15 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         &self,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
-        _resolve_info: &ResolveInfo,
+        resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "VertexType" => {
-                let root_query_type = self.schema.query_type_name();
-                Box::new(self.schema.vertex_types.values().filter_map(move |v| {
-                    (v.name.node != root_query_type)
-                        .then(|| SchemaVertex::VertexType(VertexType::new(v)))
-                }))
+                let name = resolve_info.statically_required_property("name");
+                vertex_type_iter(self.schema, name.map(|x| x.cloned()))
             }
-            "Entrypoint" => Box::new(Box::new(
-                self.schema
-                    .query_type
-                    .fields
-                    .iter()
-                    .map(|field| SchemaVertex::Edge(Edge::new(&field.node))),
-            )),
+            "Entrypoint" => entrypoints_iter(self.schema),
+            "Schema" => Box::new(std::iter::once(SchemaVertex::Schema)),
             _ => unreachable!("unexpected starting edge: {edge_name}"),
         }
     }
@@ -242,9 +303,14 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+        if property_name.as_ref() == "__typename" {
+            return resolve_property_with(contexts, |vertex| vertex.typename().into());
+        }
+
         match type_name.as_ref() {
             "VertexType" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, accessor_property!(as_vertex_type, name)),
+                "docs" => resolve_property_with(contexts, accessor_property!(as_vertex_type, docs)),
                 "is_interface" => resolve_property_with(
                     contexts,
                     accessor_property!(as_vertex_type, is_interface),
@@ -253,6 +319,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             },
             "Property" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, field_property!(as_property, name)),
+                "docs" => resolve_property_with(contexts, field_property!(as_property, docs)),
                 "type" => resolve_property_with(
                     contexts,
                     field_property!(as_property, type_, { type_.to_string().into() }),
@@ -261,6 +328,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             },
             "Edge" => match property_name.as_ref() {
                 "name" => resolve_property_with(contexts, accessor_property!(as_edge, name)),
+                "docs" => resolve_property_with(contexts, accessor_property!(as_edge, docs)),
                 "to_many" => resolve_property_with(contexts, accessor_property!(as_edge, to_many)),
                 "at_least_one" => {
                     resolve_property_with(contexts, accessor_property!(as_edge, at_least_one))
@@ -271,9 +339,33 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 "name" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, name))
                 }
+                "docs" => {
+                    resolve_property_with(contexts, accessor_property!(as_edge_parameter, docs))
+                }
                 "type" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, type_))
                 }
+                "default" => resolve_property_with(contexts, |vertex| {
+                    let vertex = vertex.as_edge_parameter().expect("not an EdgeParameter");
+                    vertex
+                        .defn
+                        .default_value
+                        .as_ref()
+                        .map(|v| {
+                            let value = &v.node;
+                            value.clone().try_into().expect("failed to convert ConstValue")
+                        })
+                        .or_else(|| {
+                            // Nullable edge parameters have an implicit default value of `null`.
+                            vertex.defn.ty.node.nullable.then_some(FieldValue::NULL)
+                        })
+                        .map(|value| {
+                            let transparent = TransparentValue::from(value);
+                            serde_json::to_string(&transparent)
+                                .expect("serde_json failed to serialize value")
+                        })
+                        .into()
+                }),
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             _ => unreachable!("unexpected type name: {type_name}"),
@@ -286,7 +378,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
-        _resolve_info: &ResolveEdgeInfo,
+        resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         let schema = self.schema;
         match type_name.as_ref() {
@@ -328,6 +420,32 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     )
                 }),
                 _ => unreachable!("unexpected edge name on type {type_name}: {edge_name}"),
+            },
+            "Schema" => match edge_name.as_ref() {
+                "vertex_type" => {
+                    let schema = self.schema;
+                    let destination = resolve_info.destination();
+
+                    // The `Schema` vertex is a singleton -- there can only be one instance of it.
+                    // So this hint can only be used once, and we don't want to clone it needlessly.
+                    // Take it from this option and assert that it hasn't been taken more than once.
+                    let mut vertex_type_name =
+                        Some(destination.statically_required_property("name").map(|x| x.cloned()));
+
+                    resolve_neighbors_with(contexts, move |_| {
+                        vertex_type_iter(
+                            schema,
+                            vertex_type_name.take().expect(
+                                "found more than one Schema vertex when resolving vertex_type",
+                            ),
+                        )
+                    })
+                }
+                "entrypoint" => {
+                    let schema = self.schema;
+                    resolve_neighbors_with(contexts, move |_| entrypoints_iter(schema))
+                }
+                _ => unreachable!("unexpected property name on type {type_name}: {edge_name}"),
             },
             _ => unreachable!("unexpected type name: {type_name}"),
         }
@@ -399,6 +517,7 @@ fn resolve_vertex_type_property_edge<'a>(
             Some(SchemaVertex::Property(Property::new(
                 parent_defn,
                 field.name.node.as_str(),
+                field.description.as_ref().map(|x| x.node.as_str()),
                 field_ty,
             )))
         } else {

@@ -6,6 +6,7 @@ use super::vertex::Vertex;
 
 static SCHEMA: OnceLock<Schema> = OnceLock::new();
 
+#[non_exhaustive]
 #[derive(Debug)]
 pub struct Adapter {}
 
@@ -17,6 +18,10 @@ impl Adapter {
             .get_or_init(|| {
                 Schema::parse(Self::SCHEMA_TEXT).expect("not a valid schema")
             })
+    }
+
+    pub fn new() -> Self {
+        Self {}
     }
 }
 

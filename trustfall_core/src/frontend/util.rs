@@ -24,9 +24,7 @@ pub(super) struct ComponentPath {
 
 impl ComponentPath {
     pub(super) fn new(starting_vid: Vid) -> Self {
-        Self {
-            path: vec![starting_vid],
-        }
+        Self { path: vec![starting_vid] }
     }
 
     #[inline(always)]

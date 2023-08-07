@@ -103,44 +103,26 @@ fn mixed_variants() {
     let second = TwoVariants::Second(["fixed", "strings"], vec![1, 2]);
     assert_eq!("Second", second.typename());
     assert_eq!(None, second.as_first());
-    assert_eq!(
-        Some((&["fixed", "strings"], &vec![1, 2])),
-        second.as_second()
-    );
+    assert_eq!(Some((&["fixed", "strings"], &vec![1, 2])), second.as_second());
 }
 
 #[test]
 fn struct_variant() {
     #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum TwoVariants {
-        FirstVariant {
-            snake_case: String,
-        },
-        SecondVariant {
-            a: i64,
-            b: [&'static str; 2],
-            c: Vec<usize>,
-        },
+        FirstVariant { snake_case: String },
+        SecondVariant { a: i64, b: [&'static str; 2], c: Vec<usize> },
     }
 
-    let first = TwoVariants::FirstVariant {
-        snake_case: "value".into(),
-    };
+    let first = TwoVariants::FirstVariant { snake_case: "value".into() };
     assert_eq!("FirstVariant", first.typename());
     assert_eq!(Some(&("value".into())), first.as_first_variant());
     assert_eq!(None, first.as_second_variant());
 
-    let second = TwoVariants::SecondVariant {
-        a: 42,
-        b: ["fixed", "strings"],
-        c: vec![1, 2],
-    };
+    let second = TwoVariants::SecondVariant { a: 42, b: ["fixed", "strings"], c: vec![1, 2] };
     assert_eq!("SecondVariant", second.typename());
     assert_eq!(None, second.as_first_variant());
-    assert_eq!(
-        Some((&42, &["fixed", "strings"], &vec![1, 2])),
-        second.as_second_variant()
-    );
+    assert_eq!(Some((&42, &["fixed", "strings"], &vec![1, 2])), second.as_second_variant());
 }
 
 #[test]

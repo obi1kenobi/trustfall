@@ -39,10 +39,9 @@ use trustfall_core::{
 };
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
-    let schema_text = fs::read_to_string(format!(
-        "../trustfall_core/test_data/schemas/{schema_name}.graphql",
-    ))
-    .unwrap();
+    let schema_text =
+        fs::read_to_string(format!("../trustfall_core/test_data/schemas/{schema_name}.graphql",))
+            .unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
     Schema::new(schema_document).unwrap()
 }
@@ -116,11 +115,7 @@ where
 {
     let query: Arc<IndexedQuery> = Arc::new(test_query.ir_query.clone().try_into().unwrap());
     let arguments: Arc<BTreeMap<_, _>> = Arc::new(
-        test_query
-            .arguments
-            .iter()
-            .map(|(k, v)| (Arc::from(k.to_owned()), v.clone()))
-            .collect(),
+        test_query.arguments.iter().map(|(k, v)| (Arc::from(k.to_owned()), v.clone())).collect(),
     );
 
     let outputs = query.outputs.clone();
@@ -141,11 +136,8 @@ where
                 );
             }
 
-            let data = TestInterpreterOutputData {
-                schema_name: test_query.schema_name,
-                outputs,
-                results,
-            };
+            let data =
+                TestInterpreterOutputData { schema_name: test_query.schema_name, outputs, results };
 
             println!("{}", serialize_to_ron(&data));
         }
@@ -181,17 +173,11 @@ fn trace_with_adapter<'a, AdapterT>(
 {
     let query = Arc::new(test_query.ir_query.clone().try_into().unwrap());
     let arguments: Arc<BTreeMap<_, _>> = Arc::new(
-        test_query
-            .arguments
-            .iter()
-            .map(|(k, v)| (Arc::from(k.to_owned()), v.clone()))
-            .collect(),
+        test_query.arguments.iter().map(|(k, v)| (Arc::from(k.to_owned()), v.clone())).collect(),
     );
 
-    let tracer = Rc::new(RefCell::new(Trace::new(
-        test_query.ir_query.clone(),
-        test_query.arguments,
-    )));
+    let tracer =
+        Rc::new(RefCell::new(Trace::new(test_query.ir_query.clone(), test_query.arguments)));
     let mut adapter_tap = Arc::new(AdapterTap::new(adapter, tracer));
 
     let execution_result = execution::interpret_ir(adapter_tap.clone(), query, arguments);
@@ -204,10 +190,7 @@ fn trace_with_adapter<'a, AdapterT>(
             );
 
             let trace = Arc::make_mut(&mut adapter_tap).clone().finish();
-            let data = TestInterpreterOutputTrace {
-                schema_name: test_query.schema_name,
-                trace,
-            };
+            let data = TestInterpreterOutputTrace { schema_name: test_query.schema_name, trace };
 
             println!("{}", serialize_to_ron(&data));
         }
@@ -223,11 +206,7 @@ fn trace(path: &str) {
     let test_query = test_query_result.unwrap();
 
     let mut outputs_path = PathBuf::from_str(path).unwrap();
-    let ir_file_name = outputs_path
-        .file_name()
-        .expect("not a file")
-        .to_str()
-        .unwrap();
+    let ir_file_name = outputs_path.file_name().expect("not a file").to_str().unwrap();
     let outputs_file_name = ir_file_name.replace(".ir.ron", ".output.ron");
     outputs_path.pop();
     outputs_path.push(&outputs_file_name);

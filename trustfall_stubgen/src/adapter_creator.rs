@@ -23,20 +23,15 @@ pub(super) fn make_adapter_file(
     };
 
     let adapter_defn = quote! {
+        #[non_exhaustive]
         #[derive(Debug)]
         pub struct Adapter {}
     };
 
-    adapter_file
-        .builtin_imports
-        .insert(parse_import("std::sync::OnceLock"));
-    adapter_file
-        .external_imports
-        .insert(parse_import("trustfall::Schema"));
+    adapter_file.builtin_imports.insert(parse_import("std::sync::OnceLock"));
+    adapter_file.external_imports.insert(parse_import("trustfall::Schema"));
 
-    adapter_file
-        .internal_imports
-        .insert(parse_import("super::vertex::Vertex"));
+    adapter_file.internal_imports.insert(parse_import("super::vertex::Vertex"));
 
     let adapter_impl = quote! {
         impl Adapter {
@@ -44,6 +39,10 @@ pub(super) fn make_adapter_file(
 
             pub fn schema() -> &'static Schema {
                 SCHEMA.get_or_init(|| Schema::parse(Self::SCHEMA_TEXT).expect("not a valid schema"))
+            }
+
+            pub fn new() -> Self {
+                Self {}
             }
         }
     };
@@ -143,18 +142,13 @@ fn emit_property_handling(
     let mut arms = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|x| {
-            x.try_into_struct::<ResultRow>()
-                .expect("invalid conversion")
-        })
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
     for row in rows {
         let name = &row.name;
-        let ident = syn::Ident::new(
-            &property_resolver_fn_name(name),
-            proc_macro2::Span::call_site(),
-        );
+        let ident =
+            syn::Ident::new(&property_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
             #name => super::properties::#ident(contexts, property_name.as_ref(), resolve_info),
         });
@@ -208,18 +202,13 @@ fn emit_edge_handling(
     let mut arms = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|x| {
-            x.try_into_struct::<ResultRow>()
-                .expect("invalid conversion")
-        })
+        .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
     for row in rows {
         let name = &row.name;
-        let ident = syn::Ident::new(
-            &type_edge_resolver_fn_name(name),
-            proc_macro2::Span::call_site(),
-        );
+        let ident =
+            syn::Ident::new(&type_edge_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
             #name => super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info),
         });
@@ -258,9 +247,7 @@ fn emit_coercion_handling(
     external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
     external_imports.insert(parse_import("trustfall::provider::ResolveInfo"));
-    external_imports.insert(parse_import(
-        "trustfall::provider::resolve_coercion_using_schema",
-    ));
+    external_imports.insert(parse_import("trustfall::provider::resolve_coercion_using_schema"));
 
     quote! {
         fn resolve_coercion(

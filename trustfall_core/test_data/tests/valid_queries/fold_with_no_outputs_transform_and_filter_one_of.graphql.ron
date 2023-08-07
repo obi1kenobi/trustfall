@@ -1,0 +1,23 @@
+TestGraphQLQuery (
+    // In this test, we only need to partially evaluate the fold, as no fields are observed though @output
+    // and the count is not observed through @output
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            value @output
+
+            primeFactor @fold @transform(op: "count") @filter(op: "one_of", value: ["$min_primes_count"]) {
+                __typename
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "min_primes_count": List([
+            Uint64(1),
+            Uint64(0),
+        ])
+    },
+)
