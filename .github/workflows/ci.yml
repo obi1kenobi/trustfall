@@ -160,7 +160,7 @@ jobs:
       - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-features --all-targets -- -D warnings --allow deprecated
+        run: cargo clippy --workspace --all-features --all-targets --no-deps -- -D warnings --allow deprecated
 
       - name: cargo fmt
         run: cargo fmt -- --check
@@ -229,7 +229,7 @@ jobs:
       - name: cargo clippy
         run: |
           cd trustfall_core/fuzz
-          cargo clippy --workspace --all-features --all-targets -- -D warnings --allow deprecated
+          cargo clippy --workspace --all-features --all-targets --no-deps -- -D warnings --allow deprecated
 
       - name: cargo fmt
         run: |
@@ -267,7 +267,7 @@ jobs:
       - name: cargo clippy
         run: |
           cd experiments/trustfall_rustdoc
-          cargo clippy --all-features --all-targets -- -D warnings --allow deprecated
+          cargo clippy --all-features --all-targets --no-deps -- -D warnings --allow deprecated
 
       - name: cargo fmt
         run: |
