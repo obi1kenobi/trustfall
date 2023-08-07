@@ -168,7 +168,7 @@ jobs:
       - name: cargo doc
         env:
           RUSTDOCFLAGS: -D warnings
-        run: cargo doc --workspace --all-features --no-deps --document-private-items
+        run: cargo doc --workspace --all-features --no-deps --document-private-items --document-hidden-items
 
   rust-tests:
     name: Run tests
@@ -241,7 +241,7 @@ jobs:
           RUSTDOCFLAGS: -D warnings
         run: |
           cd trustfall_core/fuzz
-          cargo doc --workspace --all-features --no-deps --document-private-items
+          cargo doc --workspace --all-features --no-deps --document-private-items --document-hidden-items
 
   rust-rustdoc-wasm:
     name: Check rustdoc WASM target
@@ -279,7 +279,7 @@ jobs:
           RUSTDOCFLAGS: -D warnings
         run: |
           cd experiments/trustfall_rustdoc
-          cargo doc --all-features --no-deps --document-private-items
+          cargo doc --all-features --no-deps --document-private-items --document-hidden-items
 
   wasm-tests:
     name: WASM tests
