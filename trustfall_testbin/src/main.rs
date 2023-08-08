@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![forbid(unused_lifetimes)]
 
-use anyhow::Context;
+use anyhow::Context as _;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet},
