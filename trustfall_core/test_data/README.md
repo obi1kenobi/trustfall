@@ -81,10 +81,10 @@ They are useful when you slightly modified a `*.graphql.ron` and want to update 
 files based on that.
 
 The scripts named `create_*` receive as input a list of `graphql.ron` files and generate 
-all need files for a given test case. For example, `create_frontend_error_data.sh` will
-create `*.graphql-parsed.ron` and `*.frontend-error.ron` file.
+all needed files for a given test case. For example, `create_frontend_error_data.sh` will
+create `*.graphql-parsed.ron` and `*.frontend-error.ron` files.
 
-If I want to create a new valid query test, I can run:
+If you want to create a new valid query test, you can run:
 `./create_valid_query_data.sh ../trustfall_core/test_data/tests/valid_queries/my_test.graphql.ron`.
 
-Scripts must be run inside the `scripts folder`.
+Scripts must be run inside the `scripts` folder.
