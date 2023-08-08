@@ -12,3 +12,16 @@ index ac159d132d095a789b966627d315f4238c79ab60..f598939d97f7dfbeff8b784df6854448
      }
      return [];
  }
+diff --git a/esm/interface/getDiagnostics.js b/esm/interface/getDiagnostics.js
+index 38a10439b1a5d7e7adbdd3e16c743a9cedff9dab..74a01eb4984b2df1dc3e3bfc7eabac55b9557e0c 100644
+--- a/esm/interface/getDiagnostics.js
++++ b/esm/interface/getDiagnostics.js
+@@ -90,7 +90,7 @@ export function getRange(location, queryText) {
+     const lines = queryText.split('\n');
+     invariant(lines.length >= location.line, 'Query text must have more lines than where the error happened');
+     let stream = null;
+-    for (let i = 0; i < location.line; i++) {
++    for (let i = 0; i <= location.line; i++) {
+         stream = new CharacterStream(lines[i]);
+         while (!stream.eol()) {
+             const style = parser.token(stream, state);
