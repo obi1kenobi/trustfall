@@ -81,7 +81,8 @@
   "packageManager": "pnpm@8.2.0",
   "pnpm": {
     "patchedDependencies": {
-      "monaco-editor@0.20.0": "patches/monaco-editor@0.20.0.patch"
+      "monaco-editor@0.20.0": "patches/monaco-editor@0.20.0.patch",
+      "graphql-language-service@5.1.7": "patches/graphql-language-service@5.1.7.patch"
     }
   }
 }

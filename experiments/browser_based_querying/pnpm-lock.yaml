@@ -1,6 +1,9 @@
 lockfileVersion: '6.0'
 
 patchedDependencies:
+  graphql-language-service@5.1.7:
+    hash: a4xuzor6qnqeq6olhuku6xptv4
+    path: patches/graphql-language-service@5.1.7.patch
   monaco-editor@0.20.0:
     hash: fukf5wsi2vbckp3eem27ivltze
     path: patches/monaco-editor@0.20.0.patch
@@ -722,7 +725,7 @@ packages:
       copy-to-clipboard: 3.3.3
       framer-motion: 6.5.1(react-dom@18.1.0)(react@18.1.0)
       graphql: 16.7.1
-      graphql-language-service: 5.1.7(graphql@16.7.1)
+      graphql-language-service: 5.1.7(patch_hash=a4xuzor6qnqeq6olhuku6xptv4)(graphql@16.7.1)
       markdown-it: 12.3.2
       react: 18.1.0
       react-dom: 18.1.0(react@18.1.0)
@@ -2569,7 +2572,7 @@ packages:
       '@codemirror/language': 6.0.0
       codemirror: 5.65.14
       graphql: 16.7.1
-      graphql-language-service: 5.1.7(graphql@16.7.1)
+      graphql-language-service: 5.1.7(patch_hash=a4xuzor6qnqeq6olhuku6xptv4)(graphql@16.7.1)
     dev: false
 
   /codemirror@5.65.14:
@@ -3566,7 +3569,7 @@ packages:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
     dev: true
 
-  /graphql-language-service@5.1.7(graphql@16.7.1):
+  /graphql-language-service@5.1.7(patch_hash=a4xuzor6qnqeq6olhuku6xptv4)(graphql@16.7.1):
     resolution: {integrity: sha512-xkawYMJeoNYGhT+SpSH3c2qf6HpGHQ/duDmrseVHBpVCrXAiGnliXGSCC4jyMGgZQ05GytsZ12p0nUo7s6lSSw==}
     hasBin: true
     peerDependencies:
@@ -3576,6 +3579,7 @@ packages:
       nullthrows: 1.1.1
       vscode-languageserver-types: 3.17.3
     dev: false
+    patched: true
 
   /graphql-ws@5.14.0(graphql@16.7.1):
     resolution: {integrity: sha512-itrUTQZP/TgswR4GSSYuwWUzrE/w5GhbwM2GX3ic2U7aw33jgEsayfIlvaj7/GcIvZgNMzsPTrE5hqPuFUiE5g==}
@@ -4313,7 +4317,7 @@ packages:
       prettier: ^2.8.0 || ^3.0.0
     dependencies:
       graphql: 16.7.1
-      graphql-language-service: 5.1.7(graphql@16.7.1)
+      graphql-language-service: 5.1.7(patch_hash=a4xuzor6qnqeq6olhuku6xptv4)(graphql@16.7.1)
       monaco-editor: 0.20.0(patch_hash=fukf5wsi2vbckp3eem27ivltze)
       picomatch-browser: 2.2.6
       prettier: 2.6.2
