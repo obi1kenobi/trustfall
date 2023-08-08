@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 #![forbid(unused_lifetimes)]
 
+use anyhow::Context;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet},
@@ -39,9 +40,10 @@ use trustfall_core::{
 };
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
-    let schema_text =
-        fs::read_to_string(format!("../trustfall_core/test_data/schemas/{schema_name}.graphql",))
-            .unwrap();
+    let schema_path = format!("../trustfall_core/test_data/schemas/{schema_name}.graphql",);
+    let schema_text = fs::read_to_string(&schema_path)
+        .context(format!("failed to read schema from {schema_path}"))
+        .unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
     Schema::new(schema_document).unwrap()
 }

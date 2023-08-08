@@ -67,3 +67,24 @@ or produce a specified error ([`schema_errors`](./tests/schema_errors/) director
 The naming scheme for schema files and their corresponding expected errors is
 similar to the one for queries: schemas are named like `X.graphql` while their
 errors are named `X.schema-error.ron`.
+
+## Recreating the test files
+
+Under [`scripts`](../../scripts) there are bash scripts to create the  `ron` files.
+In general, the scripts named `recreate_*` work as a "pipeline" where they take the 
+output of a previous script and generate a `ron` file. For example
+`recreate_all_parsed_graphql.sh` takes all `*.graphql.ron` files under 
+`trustfall_core/test_data/tests/valid_queries` and generates `*.graphql-parsed.ron`.
+While `recreate_all_ir.sh` takes all `*.graphql-parsed.ron` and generates the `*.ir.ron`.
+
+They are useful when you slightly modified a `*.graphql.ron` and want to update the other
+files based on that.
+
+The scripts named `create_*` receive as input a list of `graphql.ron` files and generate 
+all need files for a given test case. For example, `create_frontend_error_data.sh` will
+create `*.graphql-parsed.ron` and `*.frontend-error.ron` file.
+
+If I want to create a new valid query test, I can run:
+`./create_valid_query_data.sh ../trustfall_core/test_data/tests/valid_queries/my_test.graphql.ron`.
+
+Scripts must be run inside the `scripts folder`.
