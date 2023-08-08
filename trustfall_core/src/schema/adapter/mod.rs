@@ -266,6 +266,11 @@ impl<'a> EdgeParameter<'a> {
     }
 
     #[inline(always)]
+    fn docs(&self) -> Option<&'a str> {
+        self.defn.description.as_ref().map(|pos| pos.node.as_str())
+    }
+
+    #[inline(always)]
     fn type_(&self) -> String {
         self.defn.ty.node.to_string()
     }
@@ -333,6 +338,9 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "EdgeParameter" => match property_name.as_ref() {
                 "name" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, name))
+                }
+                "docs" => {
+                    resolve_property_with(contexts, accessor_property!(as_edge_parameter, docs))
                 }
                 "type" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, type_))

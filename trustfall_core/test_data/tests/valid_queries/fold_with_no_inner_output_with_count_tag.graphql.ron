@@ -1,0 +1,26 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This @fold statement needs to evaluate because the @tag forces us to observe the
+    // full iterator in order to calculate length.
+    //
+    // It is important that we do not `@output` anything inside the fold or `@output` the count for the purpose of this test
+    // which is to make sure that we do not change any behavior when we have a `@tag` on a `@fold` statement that can observe
+    // the count of elements in the fold.
+    query: r#"
+{
+    Number(min: 30, max: 30) {
+        ... on Composite {
+            composite_value: value @output
+
+            primeFactor @fold @transform(op: "count") @filter(op: ">=", value: ["$min_primes"]) @tag(name: "primes")
+
+            divisor {
+                prime_factors: value @filter(op: "=", value: ["%primes"]) @output
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "min_primes": Uint64(2)
+    },
+)

@@ -162,6 +162,11 @@ type EdgeParameter {
     name: String!
 
     """
+    Documentation associated with this edge.
+    """
+    docs: String
+
+    """
     The string representation of the parameter's type.
 
     For example:
