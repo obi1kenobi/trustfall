@@ -70,10 +70,10 @@ errors are named `X.schema-error.ron`.
 
 ## Recreating the test files
 
-Under [`scripts`](../../scripts) there are bash scripts to create the  `ron` files.
-In general, the scripts named `recreate_*` work as a "pipeline" where they take the 
+Under [`scripts`](../../scripts) there are bash scripts to create the `ron` files.
+In general, the scripts named `recreate_*` work as a "pipeline" where they take the
 output of a previous script and generate a `ron` file. For example
-`recreate_all_parsed_graphql.sh` takes all `*.graphql.ron` files under 
+`recreate_all_parsed_graphql.sh` takes all `*.graphql.ron` files under
 `trustfall_core/test_data/tests/valid_queries` and generates `*.graphql-parsed.ron`.
 While `recreate_all_ir.sh` takes all `*.graphql-parsed.ron` and generates the `*.ir.ron`.
 
