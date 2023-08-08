@@ -74,8 +74,10 @@ Under [`scripts`](../../scripts) there are bash scripts to create the `ron` file
 In general, the scripts named `recreate_*` work as a "pipeline" where they take the
 output of a previous script and generate a `ron` file. For example
 `recreate_all_parsed_graphql.sh` takes all `*.graphql.ron` files under
-`trustfall_core/test_data/tests/valid_queries` and generates `*.graphql-parsed.ron`.
-While `recreate_all_ir.sh` takes all `*.graphql-parsed.ron` and generates the `*.ir.ron`.
+`trustfall_core/test_data/tests/valid_queries`, `trustfall_core/test_data/tests/execution_errors`,
+and `trustfall_core/test_data/tests/frontend_errors` and generates `*.graphql-parsed.ron` on
+those folders. While `recreate_all_ir.sh` takes all `*.graphql-parsed.ron`and generates
+the `*.ir.ron`.
 
 They are useful when you slightly modified a `*.graphql.ron` and want to update the other
 files based on that.
