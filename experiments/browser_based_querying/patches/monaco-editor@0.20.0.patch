@@ -1,0 +1,16 @@
+diff --git a/esm/vs/editor/standalone/common/monarch/monarchLexer.js b/esm/vs/editor/standalone/common/monarch/monarchLexer.js
+index c03a0595b046c66b020e020a9d8b4a9dee6b66c8..72004197b5c348aa27e802f9db9e82e0d0f307d8 100644
+--- a/esm/vs/editor/standalone/common/monarch/monarchLexer.js
++++ b/esm/vs/editor/standalone/common/monarch/monarchLexer.js
+@@ -589,9 +589,9 @@ var MonarchTokenizer = /** @class */ (function () {
+                         }
+                     }
+                 }
+-                if (action.log && typeof (action.log) === 'string') {
++                /*if (action.log && typeof (action.log) === 'string') {
+                     monarchCommon.log(this._lexer, this._lexer.languageId + ': ' + monarchCommon.substituteMatches(this._lexer, action.log, matched, matches, state));
+-                }
++                }*/
+             }
+             // check result
+             if (result === null) {
