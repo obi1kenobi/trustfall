@@ -9,8 +9,12 @@ See the `example_queries` directory for some example queries to run. Live demo h
 ## Development
 
 - Install the version of node and `npm`.
-- `npm install` to install dependencies
-- `npm run build:trustfall` to build the `trustfall_wasm` crate to WASM, saved in the git-ignored `www2` directory.
-- `npm run build:rustdoc` to build the `trustfall_rustdoc` crate to WASM
-- `npm start` to build and run the local server
+-  In order to install dependencies:
+```bash
+corepack enable
+pnpm i
+```
+- `pnpm run build:trustfall` to build the `trustfall_wasm` crate to WASM, saved in the git-ignored `www2` directory.
+- `pnpm run build:rustdoc` to build the `trustfall_rustdoc` crate to WASM
+- `pnpm start` to build and run the local server
 - Open a browser to `http://localhost:8000/hackernews` or `http://localhost:8000/rustdoc` and enjoy!
