@@ -5,7 +5,7 @@ patchedDependencies:
     hash: zxuugdg7sxjooprjpczseyyrqi
     path: patches/graphql-language-service@5.1.7.patch
   monaco-editor@0.20.0:
-    hash: fukf5wsi2vbckp3eem27ivltze
+    hash: uf5fj7h4rxeihd5auffjnde5pu
     path: patches/monaco-editor@0.20.0.patch
 
 dependencies:
@@ -47,7 +47,7 @@ dependencies:
     version: 13.0.1
   monaco-editor:
     specifier: ^0.20.0
-    version: 0.20.0(patch_hash=fukf5wsi2vbckp3eem27ivltze)
+    version: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
   monaco-graphql:
     specifier: ^1.2.0
     version: 1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.6.2)
@@ -4304,7 +4304,7 @@ packages:
     hasBin: true
     dev: true
 
-  /monaco-editor@0.20.0(patch_hash=fukf5wsi2vbckp3eem27ivltze):
+  /monaco-editor@0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu):
     resolution: {integrity: sha512-hkvf4EtPJRMQlPC3UbMoRs0vTAFAYdzFQ+gpMb8A+9znae1c43q8Mab9iVsgTcg/4PNiLGGn3SlDIa8uvK1FIQ==}
     dev: false
     patched: true
@@ -4318,7 +4318,7 @@ packages:
     dependencies:
       graphql: 16.7.1
       graphql-language-service: 5.1.7(patch_hash=zxuugdg7sxjooprjpczseyyrqi)(graphql@16.7.1)
-      monaco-editor: 0.20.0(patch_hash=fukf5wsi2vbckp3eem27ivltze)
+      monaco-editor: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
       picomatch-browser: 2.2.6
       prettier: 2.6.2
     dev: false

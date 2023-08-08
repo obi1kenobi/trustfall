@@ -1,5 +1,5 @@
 diff --git a/esm/vs/editor/standalone/common/monarch/monarchLexer.js b/esm/vs/editor/standalone/common/monarch/monarchLexer.js
-index c03a0595b046c66b020e020a9d8b4a9dee6b66c8..72004197b5c348aa27e802f9db9e82e0d0f307d8 100644
+index c03a0595b046c66b020e020a9d8b4a9dee6b66c8..4b026616f6eb4a1eea8fdf7b0dd1119462bf5fdf 100644
 --- a/esm/vs/editor/standalone/common/monarch/monarchLexer.js
 +++ b/esm/vs/editor/standalone/common/monarch/monarchLexer.js
 @@ -589,9 +589,9 @@ var MonarchTokenizer = /** @class */ (function () {
@@ -7,10 +7,11 @@ index c03a0595b046c66b020e020a9d8b4a9dee6b66c8..72004197b5c348aa27e802f9db9e82e0
                      }
                  }
 -                if (action.log && typeof (action.log) === 'string') {
-+                /*if (action.log && typeof (action.log) === 'string') {
-                     monarchCommon.log(this._lexer, this._lexer.languageId + ': ' + monarchCommon.substituteMatches(this._lexer, action.log, matched, matches, state));
+-                    monarchCommon.log(this._lexer, this._lexer.languageId + ': ' + monarchCommon.substituteMatches(this._lexer, action.log, matched, matches, state));
 -                }
-+                }*/
++                // if (action.log && typeof (action.log) === 'string') {
++                    // monarchCommon.log(this._lexer, this._lexer.languageId + ': ' + monarchCommon.substituteMatches(this._lexer, action.log, matched, matches, state));
++                // } // Stop logging messages like 'graphql: graphql: annotation token: @filter'
              }
              // check result
              if (result === null) {
