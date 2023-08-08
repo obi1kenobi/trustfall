@@ -11,8 +11,8 @@ See the `example_queries` directory for some example queries to run. Live demo h
 - Install the version of node and `npm`.
 -  In order to install dependencies:
 ```bash
-corepack enable
-pnpm i
+corepack enable # enable corepack through node which allows us to use pnpm
+pnpm install # install dependencies, similar to `npm install`, but we use `pnpm` to apply our patches too
 ```
 - `pnpm run build:trustfall` to build the `trustfall_wasm` crate to WASM, saved in the git-ignored `www2` directory.
 - `pnpm run build:rustdoc` to build the `trustfall_rustdoc` crate to WASM
