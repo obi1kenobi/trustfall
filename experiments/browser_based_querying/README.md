@@ -8,10 +8,21 @@ See the `example_queries` directory for some example queries to run. Live demo h
 
 ## Development
 
-- Install the version of node and `npm`.
+- Install the version of node with a version >= 16.13 and `npm`.
+- Since node v16.13, node ships corepack for managing other package managers, and we use pnpm, so to enable corepack run:
+
+```bash
+corepack enable
+```
+
+If you installed Node.js using Homebrew, you'll need to install corepack separately:
+
+```bash
+brew install corepack
+```
+
 -  In order to install dependencies:
 ```bash
-corepack enable # enable corepack through node which allows us to use pnpm
 pnpm install # install dependencies, similar to `npm install`, but we use `pnpm` to apply our patches too
 ```
 - `pnpm run build:trustfall` to build the `trustfall_wasm` crate to WASM, saved in the git-ignored `www2` directory.
