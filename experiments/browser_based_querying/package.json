@@ -30,18 +30,22 @@
   "dependencies": {
     "@emotion/react": "^11.9.0",
     "@emotion/styled": "^11.8.1",
+    "@graphiql/react": "^0.19.3",
     "@mui/icons-material": "^5.10.2",
     "@mui/lab": "^5.0.0-alpha.92",
     "@mui/material": "^5.8.0",
     "core-js": "^3.22.5",
     "detect-browser": "^5.3.0",
-    "graphiql": "^1.11.5",
+    "graphql": "^16.7.1",
+    "graphql-ws": "^5.14.0",
+    "html-entities": "^2.4.0",
+    "markdown-it": "^13.0.1",
     "monaco-editor": "^0.20.0",
     "monaco-graphql": "^1.2.0",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "react-reverse-portal": "^2.1.1",
-    "react-router-dom": "^6.3.0",
+    "react-router-dom": "^6.14.2",
     "use-query-params": "^2.0.0"
   },
   "devDependencies": {
@@ -67,7 +71,18 @@
     "typescript": "^4.7.4",
     "wasm-pack": "^0.12.0",
     "webpack": "^5.72.1",
-    "webpack-cli": "^4.9.2",
+    "webpack-cli": "^4.10.0",
     "webpack-dev-server": "^4.9.0"
+  },
+  "engines": {
+    "node": ">=16.13.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.2.0",
+  "pnpm": {
+    "patchedDependencies": {
+      "monaco-editor@0.20.0": "patches/monaco-editor@0.20.0.patch",
+      "graphql-language-service@5.1.7": "patches/graphql-language-service@5.1.7.patch"
+    }
   }
 }
