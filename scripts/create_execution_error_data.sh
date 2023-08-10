@@ -6,7 +6,17 @@ set -euo pipefail
 # Get the absolute path of the repo.
 REPO="$(git rev-parse --show-toplevel)"
 
+INPUT_FILES=()
+
 for INPUT_FILE in "$@"; do
+    # makes sure we are always using absolute path
+    INPUT_FILES+=("$(cd "$(dirname "$1")"; pwd)/$(basename "$1")")
+done
+
+# Move relative to the top of the repo, so this script can be run from anywhere.
+cd "$(git rev-parse --show-toplevel)/trustfall_testbin"
+
+for INPUT_FILE in $INPUT_FILES; do
     echo "> Starting on file $INPUT_FILE"
 
     DIR_NAME="$(dirname "$INPUT_FILE")"
