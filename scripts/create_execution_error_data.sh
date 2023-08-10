@@ -14,7 +14,7 @@ for INPUT_FILE in "$@"; do
 done
 
 # Move relative to the top of the repo, so this script can be run from anywhere.
-cd "$(git rev-parse --show-toplevel)/trustfall_testbin"
+cd "$REPO/trustfall_testbin"
 
 for INPUT_FILE in $INPUT_FILES; do
     echo "> Starting on file $INPUT_FILE"
