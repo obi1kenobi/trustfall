@@ -146,6 +146,68 @@ fn check_schema_then_vertex_type() {
 }
 
 #[test]
+fn use_vertex_type_in_schema_edge_multiple_times() {
+    #[derive(Debug, PartialEq, Eq, serde::Deserialize, PartialOrd, Ord)]
+    struct Output {
+        name: String,
+        property: String,
+        other_vertices: u64,
+    }
+
+    let query = r#"
+{
+    Schema {
+        vertex_type {
+            name @filter(op: "one_of", value: ["$name"]) @output @tag
+
+            property {
+                property: name @output
+            }
+        }
+        vertex_type @fold @transform(op: "count") @output(name: "other_vertices") {
+            name @filter(op: "!=", value: ["%name"])
+        }
+    }
+}"#;
+    let args = btreemap! {
+        "name".into() => vec!["VertexType", "Property"].into(),
+    }
+    .into();
+    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+
+    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let mut rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
+        .expect("execution error")
+        .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
+        .collect::<Vec<_>>();
+    rows.sort_unstable();
+
+    assert_eq!(
+        rows,
+        vec![
+            Output { name: "Property".to_owned(), property: "docs".to_owned(), other_vertices: 4 },
+            Output { name: "Property".to_owned(), property: "name".to_owned(), other_vertices: 4 },
+            Output { name: "Property".to_owned(), property: "type".to_owned(), other_vertices: 4 },
+            Output {
+                name: "VertexType".to_owned(),
+                property: "docs".to_owned(),
+                other_vertices: 4
+            },
+            Output {
+                name: "VertexType".to_owned(),
+                property: "is_interface".to_owned(),
+                other_vertices: 4
+            },
+            Output {
+                name: "VertexType".to_owned(),
+                property: "name".to_owned(),
+                other_vertices: 4
+            }
+        ]
+    );
+}
+
+#[test]
 fn check_entrypoint_target_edges() {
     let query = r#"
 {
