@@ -14,6 +14,17 @@ use crate::{
 
 use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RequiredProperty {
+    pub name: Arc<str>,
+}
+
+impl RequiredProperty {
+    pub fn new(name: Arc<str>) -> Self {
+        Self { name }
+    }
+}
+
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait VertexInfo: super::sealed::__Sealed {
@@ -22,6 +33,8 @@ pub trait VertexInfo: super::sealed::__Sealed {
 
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
+
+    fn required_properties(&self) -> Vec<RequiredProperty>;
 
     /// Check whether the query demands this vertex property to have specific values:
     /// a single value, or one of a set or range of values. The candidate values
@@ -130,6 +143,57 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         } else {
             None
         }
+    }
+
+    /// required_properties returns an iterator over all properties needed
+    /// for this vertex.
+    fn required_properties(&self) -> Vec<RequiredProperty> {
+        let current_component = self.current_component();
+
+        let current_vertex = self.current_vertex();
+
+        // we need all output properties
+        let mut properties: Vec<RequiredProperty> = current_component
+            .outputs
+            .values()
+            .map(|c| RequiredProperty::new(c.field_name.clone()))
+            .collect::<Vec<RequiredProperty>>();
+
+        // extend with the edges from this vertex
+        properties.extend(
+            current_component
+                .edges
+                .values()
+                .map(|a| RequiredProperty::new(a.edge_name.clone()))
+                .collect::<Vec<RequiredProperty>>(),
+        );
+
+        properties.extend(
+            current_component
+                .folds
+                .values()
+                .map(|i| RequiredProperty::new(i.edge_name.clone()))
+                .collect::<Vec<RequiredProperty>>(),
+        );
+
+        // properties.extend(
+        //     current_component
+        //         .vertices
+        //         .values()
+        //         .filter(|v| v.vid != current_vertex.vid)
+        //         .map(|v| RequiredProperty::new(v.type_name.clone()))
+        //         .collect::<Vec<RequiredProperty>>(),
+        // );
+
+        properties.extend(
+            current_vertex
+                .filters
+                .iter()
+                .map(|f| RequiredProperty::new(f.left().field_name.clone()))
+                .collect::<Vec<RequiredProperty>>(),
+        );
+
+        properties
     }
 
     fn statically_required_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
