@@ -546,7 +546,7 @@ mod static_property_values {
     use std::ops::Bound;
 
     use crate::{
-        interpreter::hints::{CandidateValue, Range, vertex_info::RequiredProperty},
+        interpreter::hints::{vertex_info::RequiredProperty, CandidateValue, Range},
         ir::FieldValue,
     };
 
