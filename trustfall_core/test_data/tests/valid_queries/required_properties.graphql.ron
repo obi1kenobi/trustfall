@@ -12,10 +12,7 @@ TestGraphQLQuery (
         multiple(max: 5) {
             name @filter(op: "=", value: ["%name"])
         }
-
     }
-
-
 }"#,
     arguments: {
         "type": String("Prime"),
