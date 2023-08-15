@@ -14,6 +14,7 @@ use crate::{
 
 use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
 
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequiredProperty {
     pub name: Arc<str>,
