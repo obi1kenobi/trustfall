@@ -591,9 +591,8 @@ mod static_property_values {
                     assert_eq!(vid(1), info.vid());
 
                     assert_eq!(vec![RequiredProperty::new("value".into()),
-                                    RequiredProperty::new("multiple".into()),
-                                    RequiredProperty::new("predecessor".into()),
-                                    RequiredProperty::new("__typename".into())
+                                    RequiredProperty::new("__typename".into()),
+                                    RequiredProperty::new("name".into())
                                 ], info.required_properties().collect::<Vec<RequiredProperty>>());
                 })),
             }

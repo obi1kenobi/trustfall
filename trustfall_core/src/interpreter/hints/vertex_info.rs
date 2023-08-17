@@ -157,25 +157,9 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let mut properties: Vec<RequiredProperty> = current_component
             .outputs
             .values()
+            .filter(|c| c.vertex_id == current_vertex.vid)
             .map(|c| RequiredProperty::new(c.field_name.clone()))
             .collect::<Vec<RequiredProperty>>();
-
-        // extend with the edges from this vertex
-        properties.extend(
-            current_component
-                .edges
-                .values()
-                .map(|a| RequiredProperty::new(a.edge_name.clone()))
-                .collect::<Vec<RequiredProperty>>(),
-        );
-
-        properties.extend(
-            current_component
-                .folds
-                .values()
-                .map(|i| RequiredProperty::new(i.edge_name.clone()))
-                .collect::<Vec<RequiredProperty>>(),
-        );
 
         // properties.extend(
         //     current_component
@@ -192,6 +176,29 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                 .iter()
                 .map(|f| RequiredProperty::new(f.left().field_name.clone()))
                 .collect::<Vec<RequiredProperty>>(),
+        );
+
+        properties.extend(
+            current_component
+                .vertices
+                .values()
+                .map(|v| {
+                    v.filters
+                        .iter()
+                        .filter(|f| match f.right() {
+                            Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                                current_vertex.vid == ctx.vertex_id
+                            }
+                            Some(Argument::Tag(FieldRef::FoldSpecificField(fsf))) => {
+                                current_vertex.vid == fsf.fold_root_vid
+                            }
+                            _ => false,
+                        })
+                        .map(|f| f.right().unwrap().as_tag().unwrap().field_name().into())
+                        .map(|f| RequiredProperty::new(f))
+                        .collect::<Vec<RequiredProperty>>()
+                })
+                .flatten(),
         );
 
         Box::new(properties.into_iter())
