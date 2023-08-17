@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{
     collections::BTreeMap,
     ops::{Bound, RangeBounds},
@@ -15,7 +16,7 @@ use crate::{
 use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
 
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RequiredProperty {
     pub name: Arc<str>,
 }
@@ -154,12 +155,12 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let current_vertex = self.current_vertex();
 
         // we need all output properties
-        let mut properties: Vec<RequiredProperty> = current_component
+        let mut properties: HashSet<RequiredProperty> = current_component
             .outputs
             .values()
             .filter(|c| c.vertex_id == current_vertex.vid)
             .map(|c| RequiredProperty::new(c.field_name.clone()))
-            .collect::<Vec<RequiredProperty>>();
+            .collect::<HashSet<RequiredProperty>>();
 
         properties.extend(
             current_vertex

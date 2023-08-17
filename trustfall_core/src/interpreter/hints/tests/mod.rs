@@ -543,6 +543,7 @@ fn recurse_then_nested_required_edge_depth_two() {
 }
 
 mod static_property_values {
+    use std::collections::HashSet;
     use std::ops::Bound;
 
     use crate::{
@@ -590,10 +591,11 @@ mod static_property_values {
                     assert!(info.coerced_to_type().is_none());
                     assert_eq!(vid(1), info.vid());
 
-                    assert_eq!(vec![RequiredProperty::new("value".into()),
-                                    RequiredProperty::new("__typename".into()),
-                                    RequiredProperty::new("name".into())
-                                ], info.required_properties().collect::<Vec<RequiredProperty>>());
+                    assert_eq!(hashset![
+                                    RequiredProperty::new("name".into()),
+                                    RequiredProperty::new("value".into()),
+                                    RequiredProperty::new("__typename".into())
+                                ], info.required_properties().collect::<HashSet<RequiredProperty>>());
                 })),
             }
             .into(),
