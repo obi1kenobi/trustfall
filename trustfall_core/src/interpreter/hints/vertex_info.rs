@@ -195,7 +195,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                             _ => false,
                         })
                         .map(|f| f.right().unwrap().as_tag().unwrap().field_name().into())
-                        .map(|f| RequiredProperty::new(f))
+                        .map(RequiredProperty::new)
                         .collect::<Vec<RequiredProperty>>()
                 })
                 .flatten(),
