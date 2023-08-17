@@ -161,15 +161,6 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             .map(|c| RequiredProperty::new(c.field_name.clone()))
             .collect::<Vec<RequiredProperty>>();
 
-        // properties.extend(
-        //     current_component
-        //         .vertices
-        //         .values()
-        //         .filter(|v| v.vid != current_vertex.vid)
-        //         .map(|v| RequiredProperty::new(v.type_name.clone()))
-        //         .collect::<Vec<RequiredProperty>>(),
-        // );
-
         properties.extend(
             current_vertex
                 .filters
