@@ -173,16 +173,16 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         properties.extend(current_component.vertices.values().flat_map(|v| {
             v.filters
                 .iter()
-                .filter(|f| match f.right() {
+                .filter_map(|f| match f.right() {
                     Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
-                        current_vertex.vid == ctx.vertex_id
+                        if current_vertex.vid == ctx.vertex_id {
+                            Some(ctx.field_name.clone().into())
+                        } else {
+                            None
+                        }
                     }
-                    Some(Argument::Tag(FieldRef::FoldSpecificField(fsf))) => {
-                        current_vertex.vid == fsf.fold_root_vid
-                    }
-                    _ => false,
+                    _ => None,
                 })
-                .map(|f| f.right().unwrap().as_tag().unwrap().field_name().into())
                 .map(RequiredProperty::new)
                 .collect::<Vec<RequiredProperty>>()
         }));
