@@ -36,7 +36,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
 
-    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty>>;
+    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_>;
 
     /// Check whether the query demands this vertex property to have specific values:
     /// a single value, or one of a set or range of values. The candidate values
@@ -149,34 +149,31 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 
     /// required_properties returns an iterator over all properties needed
     /// for this vertex.
-    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty>> {
+    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_> {
         let current_component = self.current_component();
 
         let current_vertex = self.current_vertex();
 
-        // we need all output properties
-        let mut properties: HashSet<RequiredProperty> = current_component
+        let properties = current_component
             .outputs
             .values()
             .filter(|c| c.vertex_id == current_vertex.vid)
-            .map(|c| RequiredProperty::new(c.field_name.clone()))
-            .collect::<HashSet<RequiredProperty>>();
+            .map(|c| RequiredProperty::new(c.field_name.clone()));
 
-        properties.extend(
+        let properties = properties.chain(
             current_vertex
                 .filters
                 .iter()
-                .map(|f| RequiredProperty::new(f.left().field_name.clone()))
-                .collect::<Vec<RequiredProperty>>(),
+                .map(|f| RequiredProperty::new(f.left().field_name.clone())),
         );
 
-        properties.extend(current_component.vertices.values().flat_map(|v| {
+        let properties = properties.chain(current_component.vertices.values().flat_map(|v| {
             v.filters
                 .iter()
                 .filter_map(|f| match f.right() {
                     Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
                         if current_vertex.vid == ctx.vertex_id {
-                            Some(ctx.field_name.clone().into())
+                            Some(ctx.field_name.clone())
                         } else {
                             None
                         }
@@ -184,10 +181,10 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                     _ => None,
                 })
                 .map(RequiredProperty::new)
-                .collect::<Vec<RequiredProperty>>()
         }));
 
-        Box::new(properties.into_iter())
+        let mut seen_property = HashSet::new();
+        Box::new(properties.filter(move |r| seen_property.insert(r.name.clone())))
     }
 
     fn statically_required_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
