@@ -35,7 +35,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
 
-    fn required_properties(&self) -> Vec<RequiredProperty>;
+    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty>>;
 
     /// Check whether the query demands this vertex property to have specific values:
     /// a single value, or one of a set or range of values. The candidate values
@@ -148,7 +148,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 
     /// required_properties returns an iterator over all properties needed
     /// for this vertex.
-    fn required_properties(&self) -> Vec<RequiredProperty> {
+    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty>> {
         let current_component = self.current_component();
 
         let current_vertex = self.current_vertex();
@@ -194,7 +194,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                 .collect::<Vec<RequiredProperty>>(),
         );
 
-        properties
+        Box::new(properties.into_iter())
     }
 
     fn statically_required_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {

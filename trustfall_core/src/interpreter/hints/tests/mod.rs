@@ -594,7 +594,7 @@ mod static_property_values {
                                     RequiredProperty::new("multiple".into()),
                                     RequiredProperty::new("predecessor".into()),
                                     RequiredProperty::new("__typename".into())
-                                ], info.required_properties());
+                                ], info.required_properties().collect::<Vec<RequiredProperty>>());
                 })),
             }
             .into(),
