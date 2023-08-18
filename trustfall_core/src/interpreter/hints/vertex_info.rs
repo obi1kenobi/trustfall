@@ -15,6 +15,7 @@ use crate::{
 
 use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
 
+/// Represents a required property of a specific vertex
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RequiredProperty {
