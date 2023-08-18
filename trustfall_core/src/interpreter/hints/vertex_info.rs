@@ -36,6 +36,15 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
 
+    /// Return all properties required for the current vertex, including: output, filtered, and
+    /// tagged properties. It's guaranteed that each property will only show once in the iterator,
+    /// so even if a property is been used as a filter and output, it will only show once.
+    ///
+    /// There is no guaranteed order.
+    ///
+    /// This can be specially useful for adapters doing network calls. For example, if the adapter
+    /// is using a relational database, it can retrieve the name of all properties and
+    /// only request those columns from the table.
     fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_>;
 
     /// Check whether the query demands this vertex property to have specific values:
@@ -147,8 +156,6 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         }
     }
 
-    /// required_properties returns an iterator over all properties needed
-    /// for this vertex.
     fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_> {
         let current_component = self.current_component();
 
