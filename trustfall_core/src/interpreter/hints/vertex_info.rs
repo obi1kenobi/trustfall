@@ -43,7 +43,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
     ///
     /// There is no guaranteed order.
     ///
-    /// This can be specially useful for adapters doing network calls. For example, if the adapter
+    /// This can be especially useful for adapters doing network calls. For example, if the adapter
     /// is using a relational database, it can retrieve the name of all properties and
     /// only request those columns from the table.
     fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_>;
