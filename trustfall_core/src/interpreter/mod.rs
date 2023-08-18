@@ -24,7 +24,7 @@ pub mod trace;
 
 pub use hints::{
     CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,
-    ResolveEdgeInfo, ResolveInfo, VertexInfo,
+    RequiredProperty, ResolveEdgeInfo, ResolveInfo, VertexInfo,
 };
 
 /// An iterator of vertices representing data points we are querying.
