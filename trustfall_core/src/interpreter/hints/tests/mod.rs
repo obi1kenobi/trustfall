@@ -606,8 +606,8 @@ mod static_property_values {
     }
 
     #[test]
-    fn required_properties_with_fold_test() {
-        let input_name = "required_properties_list_fold";
+    fn required_properties_with_output_and_filter() {
+        let input_name = "required_properties_filter_and_output";
 
         let adapter = TestAdapter {
             on_starting_vertices: btreemap! {
