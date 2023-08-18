@@ -606,6 +606,31 @@ mod static_property_values {
     }
 
     #[test]
+    fn required_properties_with_fold_test() {
+        let input_name = "required_properties_list_fold";
+
+        let adapter = TestAdapter {
+            on_starting_vertices: btreemap! {
+                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|info| {
+                    assert!(info.coerced_to_type().is_none());
+                    assert_eq!(vid(1), info.vid());
+
+                    assert_eq!(vec![
+                                    RequiredProperty::new("value".into()),
+                                    RequiredProperty::new("vowelsInName".into()),
+                                    RequiredProperty::new("__typename".into()),
+                                ], info.required_properties().collect::<Vec<RequiredProperty>>());
+                })),
+            }
+            .into(),
+            ..Default::default()
+        };
+
+        let adapter = run_query(adapter, input_name);
+        assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
+    }
+
+    #[test]
     fn typename_filter() {
         let input_name = "typename_filter";
 
