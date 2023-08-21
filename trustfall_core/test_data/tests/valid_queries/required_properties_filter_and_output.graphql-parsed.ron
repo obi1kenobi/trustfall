@@ -1,0 +1,84 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(2),
+        "min": Int64(1),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "__typename",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "__typename",
+          filter: [
+            FilterDirective(
+              operation: Equals((), VariableRef("type")),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "value",
+          filter: [
+            FilterDirective(
+              operation: Equals((), VariableRef("val")),
+            ),
+          ],
+          output: [
+            OutputDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "vowelsInName",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "vowelsInName",
+          output: [
+            OutputDirective(),
+          ],
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "type": String("Prime"),
+    "val": Int64(7),
+  },
+))
