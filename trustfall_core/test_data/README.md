@@ -89,4 +89,3 @@ create `*.graphql-parsed.ron` and `*.frontend-error.ron` files.
 If you want to create a new valid query test, you can run:
 `./create_valid_query_data.sh ../trustfall_core/test_data/tests/valid_queries/my_test.graphql.ron`.
 
-Scripts must be run inside the `scripts` folder.

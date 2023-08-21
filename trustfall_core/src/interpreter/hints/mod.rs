@@ -16,7 +16,7 @@ mod vertex_info;
 
 pub use candidates::{CandidateValue, Range};
 pub use dynamic::DynamicallyResolvedValue;
-pub use vertex_info::VertexInfo;
+pub use vertex_info::{RequiredProperty, VertexInfo};
 
 /// Contains overall information about the query being executed, such as its outputs and variables.
 #[non_exhaustive]
