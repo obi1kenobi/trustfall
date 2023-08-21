@@ -109,6 +109,12 @@ pub enum FrontendError {
     #[error("The query failed to validate against the schema: {0}")]
     ValidationError(#[from] ValidationError),
 
+    #[error(
+        "The field \"{0}\" is a property but the query uses @fold.\
+     Only edges can be used with @fold."
+    )]
+    FoldOnProperty(String),
+
     #[error("Unexpected error: {0}")]
     OtherError(String),
 }

@@ -1,0 +1,11 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        value @output
+        vowelsInName @fold
+    }
+}"#,
+    arguments: {},
+)

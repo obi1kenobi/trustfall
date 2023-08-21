@@ -1009,7 +1009,6 @@ where
             subfield_post_coercion_type,
             subfield_raw_type,
         ) = get_field_name_and_type_from_schema(defined_fields, subfield);
-
         if schema.vertex_types.contains_key(subfield_post_coercion_type.as_ref()) {
             // Processing an edge.
 
@@ -1103,6 +1102,11 @@ where
             || subfield_name.as_ref() == TYPENAME_META_FIELD
         {
             // Processing a property.
+
+            // @fold is not allowed on a property
+            if let Some(fold_group) = &connection.fold {
+                errors.push(FrontendError::FoldOnProperty(subfield.name.to_string()));
+            }
 
             let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
             let key = (current_vid, subfield_name.clone());
