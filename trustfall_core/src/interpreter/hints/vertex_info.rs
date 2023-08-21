@@ -39,7 +39,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
 
     /// Return all properties required for the current vertex, including: output, filtered, and
     /// tagged properties. It's guaranteed that each property will only show once in the iterator,
-    /// so even if a property is been used as a filter and output, it will only show once.
+    /// so even if a property has been used as a filter and output, it will only show once.
     ///
     /// There is no guaranteed order.
     ///
