@@ -1105,7 +1105,10 @@ where
 
             // @fold is not allowed on a property
             if let Some(fold_group) = &connection.fold {
-                errors.push(FrontendError::FoldOnProperty(subfield.name.to_string()));
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@fold".into(),
+                    subfield.name.to_string(),
+                ));
             }
 
             let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();

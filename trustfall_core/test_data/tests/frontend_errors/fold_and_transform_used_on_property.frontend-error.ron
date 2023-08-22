@@ -1,1 +1,1 @@
-Err(FoldOnProperty("vowelsInName"))
+Err(UnsupportedDirectiveOnProperty("@fold", "vowelsInName"))

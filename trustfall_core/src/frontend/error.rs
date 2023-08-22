@@ -32,6 +32,11 @@ pub enum FrontendError {
     TagUsedOutsideItsFoldedSubquery(String, String),
 
     #[error(
+        "It's not allowed to apply \"{0}\" to a property, but it was applied to \"{1}\" property ."
+    )]
+    UnsupportedDirectiveOnProperty(String, String),
+
+    #[error(
         "One or more tags were defined in the query but were never used. Please remove these \
         unused @tag directives. Unused tag names: {0:?}"
     )]
@@ -108,12 +113,6 @@ pub enum FrontendError {
 
     #[error("The query failed to validate against the schema: {0}")]
     ValidationError(#[from] ValidationError),
-
-    #[error(
-        "The field \"{0}\" is a property but the query uses @fold.\
-     Only edges can be used with @fold."
-    )]
-    FoldOnProperty(String),
 
     #[error("Unexpected error: {0}")]
     OtherError(String),
