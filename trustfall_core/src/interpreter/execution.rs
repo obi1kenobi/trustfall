@@ -1522,6 +1522,8 @@ mod tests {
 
             let arguments =
                 Arc::new(input_data.arguments.into_iter().map(|(k, v)| (k.into(), v)).collect());
+
+            #[allow(clippy::arc_with_non_send_sync)]
             let adapter =
                 Arc::new(VariableBatchingAdapter::new(NumbersAdapter::new(), batch_sequences));
             let actual_results: Vec<_> =

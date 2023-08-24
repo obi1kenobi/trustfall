@@ -36,7 +36,7 @@ export function testQuery() {
 schema {
     query: RootSchemaQuery
 }
-directive @filter(op: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+directive @filter(op: String!, value: [String!]) repeatable on FIELD | INLINE_FRAGMENT
 directive @tag(name: String) on FIELD
 directive @output(name: String) on FIELD
 directive @optional on FIELD
