@@ -37,8 +37,8 @@ Ok(TestParsedGraphQLQuery(
             column: 9,
           ),
           name: "vowelsInName",
-          fold: Some(FoldGroup(
-            fold: FoldDirective(),
+          recurse: Some(RecurseDirective(
+            depth: 3,
           )),
         ), FieldNode(
           position: Pos(
