@@ -1104,7 +1104,7 @@ where
             // Processing a property.
 
             // @fold is not allowed on a property
-            if let Some(_) = &connection.fold {
+            if connection.fold.is_some() {
                 errors.push(FrontendError::UnsupportedDirectiveOnProperty(
                     "@fold".into(),
                     subfield.name.to_string(),
@@ -1112,15 +1112,15 @@ where
             }
 
             // @optional is not allowed on a property
-            if let Some(_) = &connection.optional {
+            if connection.optional.is_some() {
                 errors.push(FrontendError::UnsupportedDirectiveOnProperty(
                     "@optional".into(),
                     subfield.name.to_string(),
                 ));
             }
 
-            // @optional is not allowed on a property
-            if let Some(_) = &connection.recurse {
+            // @recurse is not allowed on a property
+            if connection.recurse.is_some() {
                 errors.push(FrontendError::UnsupportedDirectiveOnProperty(
                     "@optional".into(),
                     subfield.name.to_string(),
