@@ -4,7 +4,7 @@ TestGraphQLQuery (
 {
     Two {
         value @output
-        vowelsInName @fold
+        vowelsInName @recurse
     }
 }"#,
     arguments: {},
