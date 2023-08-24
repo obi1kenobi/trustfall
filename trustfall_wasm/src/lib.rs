@@ -92,6 +92,7 @@ pub fn execute_query(
 
     let query = trustfall_core::frontend::parse(schema, query).map_err(|e| format!("{e}"))?;
 
+    #[allow(clippy::arc_with_non_send_sync)]
     let wrapped_adapter = Arc::new(AdapterShim::new(adapter));
 
     let results_iter =
