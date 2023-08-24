@@ -32,11 +32,6 @@ pub enum FrontendError {
     TagUsedOutsideItsFoldedSubquery(String, String),
 
     #[error(
-        "It's not allowed to apply \"{0}\" to a property, but it was applied to \"{1}\" property ."
-    )]
-    UnsupportedDirectiveOnProperty(String, String),
-
-    #[error(
         "One or more tags were defined in the query but were never used. Please remove these \
         unused @tag directives. Unused tag names: {0:?}"
     )]
@@ -56,6 +51,9 @@ pub enum FrontendError {
 
     #[error("Incompatible types encountered in @filter: {0}")]
     FilterTypeError(#[from] FilterTypeError),
+
+    #[error("Found {0} applied to \"{1}\" property, this directive can only be applied to edges.")]
+    UnsupportedDirectiveOnProperty(String, String),
 
     #[error("Found an edge with an @output directive, this is not supported: {0}")]
     UnsupportedEdgeOutput(String),
