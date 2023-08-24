@@ -1009,7 +1009,6 @@ where
             subfield_post_coercion_type,
             subfield_raw_type,
         ) = get_field_name_and_type_from_schema(defined_fields, subfield);
-
         if schema.vertex_types.contains_key(subfield_post_coercion_type.as_ref()) {
             // Processing an edge.
 
@@ -1103,6 +1102,30 @@ where
             || subfield_name.as_ref() == TYPENAME_META_FIELD
         {
             // Processing a property.
+
+            // @fold is not allowed on a property
+            if connection.fold.is_some() {
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@fold".into(),
+                    subfield.name.to_string(),
+                ));
+            }
+
+            // @optional is not allowed on a property
+            if connection.optional.is_some() {
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@optional".into(),
+                    subfield.name.to_string(),
+                ));
+            }
+
+            // @recurse is not allowed on a property
+            if connection.recurse.is_some() {
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@optional".into(),
+                    subfield.name.to_string(),
+                ));
+            }
 
             let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
             let key = (current_vid, subfield_name.clone());
