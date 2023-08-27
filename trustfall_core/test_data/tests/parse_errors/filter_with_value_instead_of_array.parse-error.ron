@@ -1,4 +1,4 @@
-Err(InappropriateTypeForDirectiveArgument("@filter", "value", Pos(
+Err(FilterExpectsListNotString("=", "$zero", Pos(
   line: 4,
   column: 39,
 )))
