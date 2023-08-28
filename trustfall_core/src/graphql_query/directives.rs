@@ -72,6 +72,11 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
         {
             let value_list = match &value_argument.node {
                 Value::List(list) => Ok(list),
+                Value::String(argument_value) => Err(ParseError::FilterExpectsListNotString(
+                    op.to_owned(),
+                    argument_value.to_owned(),
+                    value_argument.pos,
+                )),
                 _ => Err(ParseError::InappropriateTypeForDirectiveArgument(
                     "@filter".to_owned(),
                     "value".to_owned(),

@@ -24,6 +24,12 @@ pub enum ParseError {
     #[error("Directive {0} received value of inappropriate type for argument {1}")]
     InappropriateTypeForDirectiveArgument(String, String, Pos),
 
+    #[error(
+        "Value argument in @filter directive is a string instead of a list. \
+        Did you mean to put '@filter(op: \"{0}\", value: [\"{1}\"])' instead?"
+    )]
+    FilterExpectsListNotString(String, String, Pos),
+
     #[error("Field {0} received an invalid value for argument {1}: {2}")]
     InvalidFieldArgument(String, String, Value, Pos),
 
