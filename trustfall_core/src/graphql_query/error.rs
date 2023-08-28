@@ -25,7 +25,7 @@ pub enum ParseError {
     InappropriateTypeForDirectiveArgument(String, String, Pos),
 
     #[error(
-        "Directive @filter received a string instead of a list. \
+        "Value argument in @filter directive is a string instead of a list. \
         Did you mean to put '@filter(op: \"{0}\", value: [\"{1}\"])' instead?"
     )]
     FilterExpectsListNotString(String, String, Pos),
