@@ -1,0 +1,4 @@
+Err(OtherError("Filter argument is empty after \'$\' prefix.", Pos(
+  line: 4,
+  column: 39,
+)))

@@ -87,8 +87,8 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                     .iter()
                     .map(|v| match v {
                         Value::String(s) => {
-                            let name = if s.starts_with('$') || s.starts_with('%') {
-                                s.split_at(1).1
+                            let (prefix, name) = if s.starts_with('$') || s.starts_with('%') {
+                                s.split_at(1)
                             } else {
                                 return Err(ParseError::OtherError(
                                     format!("Filter argument was expected to start with '$' or '%' but did not: {s}"),
@@ -96,8 +96,12 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                                 ));
                             };
 
-                            // Empty names handled above already.
-                            assert!(!name.is_empty());
+                            if name.is_empty() {
+                                return Err(ParseError::OtherError(
+                                    format!("Filter argument is empty after '{}' prefix.", prefix),
+                                    value_argument.pos,
+                                ));
+                            }
 
                             let first_char = name.chars().next().unwrap();
                             if  !first_char.is_ascii_alphabetic() && first_char != '_' {
