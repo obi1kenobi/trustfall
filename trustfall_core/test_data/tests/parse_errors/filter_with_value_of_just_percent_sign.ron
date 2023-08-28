@@ -1,0 +1,11 @@
+TestGraphQLQuery (
+    // Purposefully use a string of just '%' to ensure that we handle that.
+    schema_name: "numbers",
+    query: r#"
+{
+    Zero {
+        value @filter(op: "=", value: ["%"])
+    }
+}"#,
+    arguments: {},
+)
