@@ -1,6 +1,9 @@
 TestGraphQLQuery (
-    // The `value` in a filter expects an array with a single value instead of
+    // The `value` in a filter expects an array with a single string instead of
     // just a single value.
+    //
+    // This test explicitly checks this using a variable reference (a string prefixed
+    // by a dollar sign).
     schema_name: "numbers",
     query: r#"
 {
