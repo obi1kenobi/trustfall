@@ -145,10 +145,33 @@ impl Type {
         self.modifiers.nullable()
     }
 
+    /// Returns whether the type is a list or not.
+    ///
+    /// # Example
+    /// ```
+    /// use trustfall_core::ir::ty::Type;
+    ///
+    /// let non_null_int_arr = Type::new("[Int!]").unwrap();
+    /// assert_eq!(non_null_int_arr.is_list(), true);
+    ///
+    /// let non_null_int = Type::new("Int!").unwrap();
+    /// assert_eq!(non_null_int.is_list(), false);
+    /// ```
     pub fn is_list(&self) -> bool {
         self.modifiers.is_list()
     }
 
+    /// Returns the type inside the outermost list of this type if it is a list, otherwise returns `None`.
+    ///
+    /// # Example
+    /// ```
+    /// use trustfall_core::ir::ty::Type;
+    ///
+    /// let non_null_int_arr = Type::new("[Int!]").unwrap();
+    /// let non_null_int = Type::new("Int!").unwrap();
+    /// assert_eq!(non_null_int_arr.as_list(), Some(non_null_int.clone()));
+    /// assert_eq!(non_null_int.as_list(), None);
+    /// ```
     pub fn as_list(&self) -> Option<Self> {
         Some(Self { base: Arc::clone(&self.base), modifiers: self.modifiers.as_list()? })
     }
@@ -168,6 +191,7 @@ impl Type {
         &self.base
     }
 
+    /// Convert a [`GQLType`] to a [`Type`].
     pub(crate) fn from_type(ty: &GQLType) -> Type {
         let mut base = &ty.base;
 
