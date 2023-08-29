@@ -211,8 +211,11 @@ impl Type {
             base = &ty_inside_list.base;
         }
 
-        let BaseType::Named(name) = base else {unreachable!("should be impossible to get a non-named type after looping through all list types")};
-
+        let BaseType::Named(name) = base else {
+            unreachable!(
+                "should be impossible to get a non-named type after looping through all list types"
+            )
+        };
         Type { base: name.to_string().into(), modifiers: Modifiers { mask } }
     }
 }
