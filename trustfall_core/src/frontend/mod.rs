@@ -1128,7 +1128,7 @@ where
                 ));
             }
 
-            let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
+            let subfield_name: Arc<str> = subfield_name.into();
             let key = (current_vid, subfield_name.clone());
             properties
                 .entry(key)
