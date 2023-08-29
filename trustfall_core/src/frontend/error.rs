@@ -52,11 +52,17 @@ pub enum FrontendError {
     #[error("Incompatible types encountered in @filter: {0}")]
     FilterTypeError(#[from] FilterTypeError),
 
+    #[error("Found {0} applied to \"{1}\" property, which is not supported since that directive can only be applied to edges.")]
+    UnsupportedDirectiveOnProperty(String, String),
+
     #[error("Found an edge with an @output directive, this is not supported: {0}")]
     UnsupportedEdgeOutput(String),
 
     #[error("Found an edge with an unsupported @filter directive: {0}")]
     UnsupportedEdgeFilter(String),
+
+    #[error("Found an edge with an unsupported @tag directive: {0}")]
+    UnsupportedEdgeTag(String),
 
     #[error("Found an unsupported {1} directive on an edge with @fold: {0}")]
     UnsupportedDirectiveOnFoldedEdge(String, String),

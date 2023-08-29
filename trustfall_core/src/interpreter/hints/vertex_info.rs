@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{
     collections::BTreeMap,
     ops::{Bound, RangeBounds},
@@ -14,6 +15,19 @@ use crate::{
 
 use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
 
+/// Represents a required property of a specific vertex
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RequiredProperty {
+    pub name: Arc<str>,
+}
+
+impl RequiredProperty {
+    pub fn new(name: Arc<str>) -> Self {
+        Self { name }
+    }
+}
+
 /// Information about what the currently-executing query needs at a specific vertex.
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait VertexInfo: super::sealed::__Sealed {
@@ -22,6 +36,17 @@ pub trait VertexInfo: super::sealed::__Sealed {
 
     /// The type coercion (`... on SomeType`) applied by the query at this vertex, if any.
     fn coerced_to_type(&self) -> Option<&Arc<str>>;
+
+    /// Return all properties required for the current vertex, including: output, filtered, and
+    /// tagged properties. It's guaranteed that each property will only show once in the iterator,
+    /// so even if a property has been used as a filter and output, it will only show once.
+    ///
+    /// There is no guaranteed order.
+    ///
+    /// This can be especially useful for adapters doing network calls. For example, if the adapter
+    /// is using a relational database, it can retrieve the name of all properties and
+    /// only request those columns from the table.
+    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_>;
 
     /// Check whether the query demands this vertex property to have specific values:
     /// a single value, or one of a set or range of values. The candidate values
@@ -130,6 +155,44 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         } else {
             None
         }
+    }
+
+    fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_> {
+        let current_component = self.current_component();
+
+        let current_vertex = self.current_vertex();
+
+        let properties = current_component
+            .outputs
+            .values()
+            .filter(|c| c.vertex_id == current_vertex.vid)
+            .map(|c| RequiredProperty::new(c.field_name.clone()));
+
+        let properties = properties.chain(
+            current_vertex
+                .filters
+                .iter()
+                .map(|f| RequiredProperty::new(f.left().field_name.clone())),
+        );
+
+        let properties = properties.chain(current_component.vertices.values().flat_map(|v| {
+            v.filters
+                .iter()
+                .filter_map(|f| match f.right() {
+                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                        if current_vertex.vid == ctx.vertex_id {
+                            Some(ctx.field_name.clone())
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .map(RequiredProperty::new)
+        }));
+
+        let mut seen_property = HashSet::new();
+        Box::new(properties.filter(move |r| seen_property.insert(r.name.clone())))
     }
 
     fn statically_required_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {

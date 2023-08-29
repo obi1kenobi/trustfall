@@ -10,7 +10,7 @@ directive @filter(
     List of string operands for the operator.
     """
     value: [String!]
-) on FIELD | INLINE_FRAGMENT
+) repeatable on FIELD | INLINE_FRAGMENT
 directive @tag(
     """
     Name to apply to the given property field.

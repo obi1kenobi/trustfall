@@ -422,19 +422,13 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     let schema = self.schema;
                     let destination = resolve_info.destination();
 
-                    // The `Schema` vertex is a singleton -- there can only be one instance of it.
-                    // So this hint can only be used once, and we don't want to clone it needlessly.
-                    // Take it from this option and assert that it hasn't been taken more than once.
-                    let mut vertex_type_name =
-                        Some(destination.statically_required_property("name").map(|x| x.cloned()));
+                    // `.cloned()` to get rid of reference, so we can own it when we need to move it later
+                    let vertex_type_name =
+                        destination.statically_required_property("name").map(|x| x.cloned());
 
                     resolve_neighbors_with(contexts, move |_| {
-                        vertex_type_iter(
-                            schema,
-                            vertex_type_name.take().expect(
-                                "found more than one Schema vertex when resolving vertex_type",
-                            ),
-                        )
+                        // `.clone()` each time as we may have multiple "vertex_type" edges
+                        vertex_type_iter(schema, vertex_type_name.clone())
                     })
                 }
                 "entrypoint" => {

@@ -909,6 +909,11 @@ fn make_vertex<'query>(
         errors.push(FrontendError::UnsupportedEdgeFilter(field_node.name.as_ref().to_owned()));
     }
 
+    if let Some(first_tag) = field_node.tag.first() {
+        // TODO: If @tag on edges is allowed, tweak this.
+        errors.push(FrontendError::UnsupportedEdgeTag(field_node.name.as_ref().to_owned()));
+    }
+
     let (type_name, coerced_from_type) = match field_node.coerced_to.clone().map_or_else(
         || {
             Result::<(Arc<str>, Option<Arc<str>>), FrontendError>::Ok((
@@ -1005,7 +1010,6 @@ where
             subfield_post_coercion_type,
             subfield_raw_type,
         ) = get_field_name_and_type_from_schema(defined_fields, subfield);
-
         if schema.vertex_types.contains_key(subfield_post_coercion_type.as_ref()) {
             // Processing an edge.
 
@@ -1100,7 +1104,31 @@ where
         {
             // Processing a property.
 
-            let subfield_name: Arc<str> = subfield_name.into();
+            // @fold is not allowed on a property
+            if connection.fold.is_some() {
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@fold".into(),
+                    subfield.name.to_string(),
+                ));
+            }
+
+            // @optional is not allowed on a property
+            if connection.optional.is_some() {
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@optional".into(),
+                    subfield.name.to_string(),
+                ));
+            }
+
+            // @recurse is not allowed on a property
+            if connection.recurse.is_some() {
+                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+                    "@optional".into(),
+                    subfield.name.to_string(),
+                ));
+            }
+
+            let subfield_name: Arc<str> = subfield_name.as_ref().to_owned().into();
             let key = (current_vid, subfield_name.clone());
             properties
                 .entry(key)

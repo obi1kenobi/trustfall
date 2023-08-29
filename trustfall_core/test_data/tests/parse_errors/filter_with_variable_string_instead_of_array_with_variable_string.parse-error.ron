@@ -1,0 +1,4 @@
+Err(FilterExpectsListNotString("=", "$zero", Pos(
+  line: 4,
+  column: 39,
+)))

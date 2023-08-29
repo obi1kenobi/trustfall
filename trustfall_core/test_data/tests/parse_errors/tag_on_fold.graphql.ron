@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    // This test ensures that an `@fold` after an `@tag` is a parse error.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 5) {
+        value @output
+
+        primeFactor @fold @tag {
+            value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

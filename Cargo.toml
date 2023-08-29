@@ -24,9 +24,9 @@ license = "Apache-2.0"
 # The dependencies below are part of our public API.
 # Bumping a major version here requires our own major version bump.
 anyhow = "1.0.71"
-async-graphql-parser = "2.11.3"
-async-graphql-value = "2.11.3"
-serde = "1.0.164"
+async-graphql-parser = "6.0.4"
+async-graphql-value = "6.0.4"
+serde = "1.0.185"
 serde_json = "1.0.96"
 thiserror = "1.0.30"
 regex = "1.9.1"
