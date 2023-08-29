@@ -30,7 +30,7 @@ pub enum CandidateValue<T> {
 
 impl<T: Clone> CandidateValue<&T> {
     /// Converts from `CandidateValue<&T>` to `CandidateValue<T>`.
-    pub fn cloned(&self) -> CandidateValue<T> {
+    pub(crate) fn cloned(&self) -> CandidateValue<T> {
         match self {
             CandidateValue::Impossible => CandidateValue::Impossible,
             CandidateValue::Single(s) => CandidateValue::Single((*s).clone()),
