@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 
 use super::{
-    ty::{InnerType, Type},
-    Argument, ContextField, FieldRef, FieldValue, FoldSpecificField, FoldSpecificFieldKind,
-    LocalField, VariableRef,
+    ty::Type, Argument, ContextField, FieldRef, FieldValue, FoldSpecificField,
+    FoldSpecificFieldKind, LocalField, VariableRef,
 };
 
 pub trait NamedTypedValue: Debug + Clone + PartialEq + Eq {
@@ -95,22 +94,12 @@ impl NamedTypedValue for Argument {
 }
 
 pub(crate) fn are_base_types_equal_ignoring_nullability(left: &Type, right: &Type) -> bool {
-    match (left.value(), right.value()) {
-        // If both are named types, check if the names are equal.
-        (InnerType::NameOfType(a), InnerType::NameOfType(b)) => a == b,
-        // If both don't have named types, they are both lists, compare the inner types.
-        (InnerType::ListInnerType(a), InnerType::ListInnerType(b)) => {
-            are_base_types_equal_ignoring_nullability(&a, &b)
-        }
-        _ => false,
-    }
+    left.base_named_type() == right.base_named_type()
 }
 
 pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
-    match operand_type.value() {
-        InnerType::NameOfType(name) => name == "Int" || name == "Float" || name == "String",
-        InnerType::ListInnerType(inner_type) => is_base_type_orderable(&inner_type),
-    }
+    let name = operand_type.base_named_type();
+    name == "Int" || name == "Float" || name == "String"
 }
 
 /// Check for scalar-only subtyping.
@@ -131,13 +120,10 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
         return false;
     }
 
-    match (parent_type.value(), maybe_subtype.value()) {
-        (InnerType::NameOfType(parent), InnerType::NameOfType(subtype)) => parent == subtype,
-        (InnerType::ListInnerType(parent_type), InnerType::ListInnerType(maybe_subtype)) => {
-            is_scalar_only_subtype(&parent_type, &maybe_subtype)
-        }
-        (InnerType::NameOfType(_), InnerType::ListInnerType(_))
-        | (InnerType::ListInnerType(_), InnerType::NameOfType(_)) => false,
+    match (parent_type.as_list(), maybe_subtype.as_list()) {
+        (Some(parent), Some(maybe_subtype)) => is_scalar_only_subtype(&parent, &maybe_subtype),
+        (None, None) => parent_type.base_named_type() == maybe_subtype.base_named_type(),
+        _ => false,
     }
 }
 
@@ -159,19 +145,18 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
 pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
     let nullable = left.is_nullable() && right.is_nullable();
 
-    match (&left.value(), &right.value()) {
-        (InnerType::NameOfType(l), InnerType::NameOfType(r)) => {
-            if l == r {
-                Some(Type::new_named_type(l, nullable))
+    match (left.as_list(), right.as_list()) {
+        (None, None) => {
+            if left.base_named_type() == right.base_named_type() {
+                Some(Type::new_named_type(left.base_named_type(), nullable))
             } else {
                 None
             }
         }
-        (InnerType::ListInnerType(left), InnerType::ListInnerType(right)) => {
-            intersect_types(left, right).map(|inner| Type::new_list_type(inner, nullable))
+        (Some(left), Some(right)) => {
+            intersect_types(&left, &right).map(|inner| Type::new_list_type(inner, nullable))
         }
-        (InnerType::NameOfType(_), InnerType::ListInnerType(_))
-        | (InnerType::ListInnerType(_), InnerType::NameOfType(_)) => None,
+        _ => None,
     }
 }
 
@@ -198,28 +183,27 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
         }
         FieldValue::Int64(_) | FieldValue::Uint64(_) => {
             // This is a valid value only if the type is Int, ignoring nullability.
-            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "Int")
+            !variable_type.is_list() && variable_type.base_named_type() == "Int"
         }
         FieldValue::Float64(_) => {
             // This is a valid value only if the type is Float, ignoring nullability.
-            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "Float")
+            !variable_type.is_list() && variable_type.base_named_type() == "Float"
         }
         FieldValue::String(_) => {
             // This is a valid value only if the type is String, ignoring nullability.
-            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "String")
+            !variable_type.is_list() && variable_type.base_named_type() == "String"
         }
         FieldValue::Boolean(_) => {
             // This is a valid value only if the type is Boolean, ignoring nullability.
-            matches!(variable_type.value(), InnerType::NameOfType(n) if n == "Boolean")
+            !variable_type.is_list() && variable_type.base_named_type() == "Boolean"
         }
         FieldValue::List(nested_values) => {
             // This is a valid value only if the type is a list, and all the inner elements
             // are valid instances of the type inside the list.
-            match &variable_type.value() {
-                InnerType::ListInnerType(inner) => {
-                    nested_values.iter().all(|value| is_argument_type_valid(inner, value))
-                }
-                InnerType::NameOfType(_) => false,
+            if let Some(list) = variable_type.as_list() {
+                nested_values.iter().all(|value| is_argument_type_valid(&list, value))
+            } else {
+                false
             }
         }
         FieldValue::Enum(_) => todo!(),

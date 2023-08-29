@@ -21,7 +21,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::{
-    ty::{from_type, InnerType},
+    ty::from_type,
     types::{is_argument_type_valid, is_scalar_only_subtype},
 };
 use crate::util::{BTreeMapTryInsertExt, HashMapTryInsertExt};
@@ -402,18 +402,14 @@ fn check_type_and_property_and_edge_invariants(
 
                     // Check that the edge field doesn't have
                     // a list-of-list or more nested list type.
-                    match &field_type.value() {
-                        InnerType::NameOfType(_) => {}
-                        InnerType::ListInnerType(inner) => match &inner.value() {
-                            InnerType::NameOfType(_) => {}
-                            InnerType::ListInnerType(_) => {
-                                errors.push(InvalidSchemaError::InvalidEdgeType(
-                                    type_name.to_string(),
-                                    field_defn.name.node.to_string(),
-                                    field_type.to_string(),
-                                ));
-                            }
-                        },
+                    if let Some(inner_list) = field_type.as_list() {
+                        if inner_list.is_list() {
+                            errors.push(InvalidSchemaError::InvalidEdgeType(
+                                type_name.to_string(),
+                                field_defn.name.node.to_string(),
+                                field_type.to_string(),
+                            ));
+                        }
                     }
                 }
             } else {

@@ -1,22 +1,35 @@
 use core::fmt::{self, Formatter};
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
-use async_graphql_parser::types::{
-    BaseType::{self, List, Named},
-    Type as GQLType,
-};
-use async_graphql_value::Name;
+use async_graphql_parser::types::{BaseType, Type as GQLType};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
-    ty: GQLType,
+    base: Arc<str>,
+    modifiers: InlineModifiers,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum InnerType<'a> {
-    NameOfType(&'a str),
-    ListInnerType(Type),
+struct InlineModifiers {
+    mask: u64, // space for ~30 levels of list nesting
+}
+
+impl InlineModifiers {
+    const NON_NULLABLE_MASK: u64 = 1;
+    const LIST_MASK: u64 = 2;
+
+    fn is_nullable(&self) -> bool {
+        (self.mask & Self::NON_NULLABLE_MASK) == 0
+    }
+
+    fn is_list(&self) -> bool {
+        (self.mask & Self::LIST_MASK) != 0
+    }
+
+    fn as_list(&self) -> Option<InlineModifiers> {
+        self.is_list().then_some(InlineModifiers { mask: self.mask >> 2 })
+    }
 }
 
 /// A backing-storage independent immutable representation of a GraphQL type.
@@ -30,9 +43,11 @@ impl Type {
     ///
     /// let ty = Type::new("[String!]!").unwrap();
     /// assert_eq!(ty.to_string(), "[String!]!");
+    ///
+    /// assert_eq!(Type::new("[String!]").unwrap().to_string(), "[String!]");
     /// ```
-    pub fn new(ty: &str) -> Option<Type> {
-        Some(Type { ty: GQLType::new(ty)? })
+    pub fn new(ty: &str) -> Option<Self> {
+        Some(from_type(&GQLType::new(ty)?))
     }
 
     /// Creates an individual [`Type`], not a list.
@@ -47,11 +62,16 @@ impl Type {
     /// assert_eq!(ty.to_string(), "String!");
     /// assert_eq!(ty, Type::new("String!").unwrap());
     /// ```
-    pub fn new_named_type(base_type_name: &str, nullable: bool) -> Type {
-        Type { ty: GQLType { base: BaseType::Named(Name::new(base_type_name)), nullable } }
+    pub fn new_named_type(base_type_name: &str, nullable: bool) -> Self {
+        Self {
+            base: base_type_name.to_string().into(),
+            modifiers: InlineModifiers {
+                mask: if nullable { 0 } else { InlineModifiers::NON_NULLABLE_MASK },
+            },
+        }
     }
 
-    /// Creates a new list [`Type`] from an individual [`Type`].
+    /// Creates a new list layer on a [`Type`].
     ///
     /// # Example
     /// ```
@@ -66,8 +86,14 @@ impl Type {
     /// assert_eq!(ty.to_string(), "[String!]");
     /// assert_eq!(ty, Type::new("[String!]").unwrap());
     /// ```
-    pub fn new_list_type(inner_type: Type, nullable: bool) -> Type {
-        Type { ty: GQLType { base: BaseType::List(Box::new(inner_type.ty)), nullable } }
+    pub fn new_list_type(inner_type: Self, nullable: bool) -> Self {
+        let mut new_mask = (inner_type.modifiers.mask << 2) | InlineModifiers::LIST_MASK;
+
+        if !nullable {
+            new_mask |= InlineModifiers::NON_NULLABLE_MASK;
+        }
+
+        Self { base: inner_type.base, modifiers: InlineModifiers { mask: new_mask } }
     }
 
     /// Returns a new type that is the same as this one, but with the passed nullability.
@@ -84,8 +110,14 @@ impl Type {
     /// // The original type is unchanged.
     /// assert_eq!(nullable_ty.is_nullable(), true);
     /// ```
-    pub fn with_nullability(&self, nullable: bool) -> Type {
-        Type { ty: GQLType { base: self.ty.base.clone(), nullable } }
+    pub fn with_nullability(&self, nullable: bool) -> Self {
+        let mut new = self.clone();
+        if nullable {
+            new.modifiers.mask &= !InlineModifiers::NON_NULLABLE_MASK;
+        } else {
+            new.modifiers.mask |= InlineModifiers::NON_NULLABLE_MASK;
+        }
+        new
     }
 
     /// Returns whether this type is nullable, at the top level, see example.
@@ -101,28 +133,16 @@ impl Type {
     /// assert_eq!(nullable_ty.is_nullable(), false); // the `Int` is nonnullable
     /// ```
     pub fn is_nullable(&self) -> bool {
-        self.ty.nullable
+        println!("{:b} : nullable={}", self.modifiers.mask, self.modifiers.is_nullable());
+        self.modifiers.is_nullable()
     }
 
-    /// Returns an [`InnerType`] which represents the inner value of the type.
-    /// If the type is a list, the inner type is the type of the list's elements.
-    ///
-    /// # Example
-    /// ```
-    /// use trustfall_core::ir::ty::{*};
-    ///
-    /// let individual_ty = Type::new("Int!").unwrap();
-    /// assert!(matches!(individual_ty.value(), InnerType::NameOfType("Int")));
-    ///
-    /// let list_ty = Type::new("[Int!]!").unwrap();
-    /// let inner_ty_for_assert = Type::new("Int!").unwrap();
-    /// assert!(matches!(list_ty.value(), InnerType::ListInnerType(inner_ty) if inner_ty == inner_ty_for_assert));
-    /// ```
-    pub fn value(&self) -> InnerType<'_> {
-        match &self.ty.base {
-            Named(n) => InnerType::NameOfType(n),
-            List(ty) => InnerType::ListInnerType(Type { ty: (**ty).clone() }),
-        }
+    pub fn is_list(&self) -> bool {
+        self.modifiers.is_list()
+    }
+
+    pub fn as_list(&self) -> Option<Self> {
+        Some(Self { base: Arc::clone(&self.base), modifiers: self.modifiers.as_list()? })
     }
 
     /// Returns the type of the elements of the first individual type found inside this type.
@@ -137,21 +157,43 @@ impl Type {
     /// let string_ty = Type::new("String!").unwrap();
     /// assert_eq!(string_ty.base_named_type(), "String");
     pub fn base_named_type(&self) -> &str {
-        let mut value = &self.ty.base;
-        while let BaseType::List(l) = value {
-            value = &l.base;
-        }
-
-        match value {
-            Named(n) => n,
-            List(_) => unreachable!("while loop should not have stopped on a list"),
-        }
+        &self.base
     }
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.ty)
+        // left
+        {
+            let mut current = Some(self.modifiers.clone());
+            while let Some(mods) = current {
+                if mods.is_list() {
+                    write!(f, "[")?;
+                }
+                current = mods.as_list();
+            }
+        }
+
+        write!(f, "{}", self.base)?;
+
+        let mut builder = String::new();
+
+        // right
+        {
+            let mut current = Some(self.modifiers.clone());
+            while let Some(mods) = current {
+                if !mods.is_nullable() {
+                    builder.push('!');
+                }
+                if mods.is_list() {
+                    builder.push(']');
+                }
+                current = mods.as_list();
+            }
+            write!(f, "{}", builder.chars().rev().collect::<String>())?;
+        }
+
+        Ok(())
     }
 }
 
@@ -160,7 +202,7 @@ impl Serialize for Type {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.ty.to_string())
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -192,12 +234,34 @@ impl<'de> Deserialize<'de> for Type {
     }
 }
 
-impl<'a> PartialEq<&'a Type> for Type {
-    fn eq(&self, other: &&'a Type) -> bool {
-        self.ty == other.ty
+pub(crate) fn from_type(ty: &GQLType) -> Type {
+    let mut base = &ty.base;
+
+    let mut mask = if ty.nullable { 0 } else { InlineModifiers::NON_NULLABLE_MASK };
+
+    let mut i = 0;
+
+    while let BaseType::List(ty_inside_list) = base {
+        mask |= InlineModifiers::LIST_MASK << i;
+        i += 2;
+        if !ty_inside_list.nullable {
+            mask |= InlineModifiers::NON_NULLABLE_MASK << i;
+        }
+        base = &ty_inside_list.base;
     }
+
+    let BaseType::Named(name) = base else {unreachable!("should be impossible to get a non-named type after looping through all list types")};
+
+    Type { base: name.to_string().into(), modifiers: InlineModifiers { mask } }
 }
 
-pub(crate) fn from_type(ty: &GQLType) -> Type {
-    Type { ty: ty.clone() }
+#[cfg(test)]
+mod test {
+    use crate::ir::ty::Type;
+
+    #[test]
+    fn do_test() {
+        let ty = Type::new("[String!]!").unwrap();
+        assert_eq!(ty.to_string(), "[String!]!");
+    }
 }

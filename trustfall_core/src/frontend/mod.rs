@@ -16,7 +16,7 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        ty::{from_type, InnerType, Type},
+        ty::{from_type, Type},
         types::{intersect_types, is_argument_type_valid, NamedTypedValue},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
@@ -253,16 +253,15 @@ fn infer_variable_type(
         Operation::Contains(..) | Operation::NotContains(..) => {
             // To be able to check whether the property's value contains the operand,
             // the property needs to be a list. If it's not a list, this is a bad filter.
-            let value = property_type.value();
-            let inner_type = match value {
-                InnerType::NameOfType(_) => {
-                    return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
-                        operation.operation_name().to_string(),
-                        property_name.to_string(),
-                        property_type.to_string(),
-                    )))
-                }
-                InnerType::ListInnerType(inner) => inner,
+            // let value = property_type.value();
+            let inner_type = if let Some(list) = property_type.as_list() {
+                list
+            } else {
+                return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
+                    operation.operation_name().to_string(),
+                    property_name.to_string(),
+                    property_type.to_string(),
+                )));
             };
 
             // We're trying to see if a list of element contains our element, so its type

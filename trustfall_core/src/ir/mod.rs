@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-use self::ty::InnerType;
 pub use self::value::{FieldValue, TransparentValue};
 use self::{
     ty::Type,
@@ -700,15 +699,14 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
             Operation::Contains(_, _) | Operation::NotContains(_, _) => {
                 // The left-hand operand needs to be a list, ignoring nullability.
                 // The right-hand operand may be anything, if considered individually.
-                let inner_type = match left_type.value() {
-                    InnerType::ListInnerType(ty) => Ok(ty),
-                    InnerType::NameOfType(_) => {
-                        Err(vec![FilterTypeError::ListFilterOperationOnNonListField(
-                            self.operation_name().to_string(),
-                            left.named().to_string(),
-                            left_type.to_string(),
-                        )])
-                    }
+                let inner_type = if let Some(list) = left_type.as_list() {
+                    Ok(list)
+                } else {
+                    Err(vec![FilterTypeError::ListFilterOperationOnNonListField(
+                        self.operation_name().to_string(),
+                        left.named().to_string(),
+                        left_type.to_string(),
+                    )])
                 }?;
 
                 let right_type = right_type.unwrap();
@@ -737,21 +735,20 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 // The right-hand operand needs to be a list, ignoring nullability.
                 // The left-hand operand may be anything, if considered individually.
                 let right_type = right_type.unwrap();
-                let inner_type = match right_type.value() {
-                    InnerType::ListInnerType(ty) => Ok(ty),
-                    InnerType::NameOfType(_) => {
-                        // The right argument must be a tag at this point. If it is not a tag
-                        // and the second .unwrap() below panics, then our type inference
-                        // has inferred an incorrect type for the variable in the argument.
-                        let tag = right.unwrap().as_tag().unwrap();
+                let inner_type = if let Some(list) = right_type.as_list() {
+                    Ok(list)
+                } else {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
 
-                        Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
-                            self.operation_name().to_string(),
-                            tag_name.unwrap().to_string(),
-                            tag.field_name().to_string(),
-                            tag.field_type().to_string(),
-                        )])
-                    }
+                    Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
+                        self.operation_name().to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
+                    )])
                 }?;
 
                 // However, the type inside the right-hand list must be equal,
@@ -785,31 +782,27 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 let mut errors = vec![];
 
                 // Both operands need to be strings, ignoring nullability.
-                match left_type.value() {
-                    InnerType::NameOfType(ty) if ty == "String" => {}
-                    _ => {
-                        errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
-                            self.operation_name().to_string(),
-                            left.named().to_string(),
-                            left_type.to_string(),
-                        ));
-                    }
-                };
+                if left_type.is_list() || left_type.base_named_type() != "String" {
+                    errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
+                        self.operation_name().to_string(),
+                        left.named().to_string(),
+                        left_type.to_string(),
+                    ));
+                }
 
-                match right_type.unwrap().value() {
-                    InnerType::NameOfType(ty) if ty == "String" => {}
-                    _ => {
-                        // The right argument must be a tag at this point. If it is not a tag
-                        // and the second .unwrap() below panics, then our type inference
-                        // has inferred an incorrect type for the variable in the argument.
-                        let tag = right.unwrap().as_tag().unwrap();
-                        errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
-                            self.operation_name().to_string(),
-                            tag_name.unwrap().to_string(),
-                            tag.field_name().to_string(),
-                            tag.field_type().to_string(),
-                        ));
-                    }
+
+                // The right argument must be a tag at this point. If it is not a tag
+                // and the second .unwrap() below panics, then our type inference
+                // has inferred an incorrect type for the variable in the argument.
+                let right_type = right_type.unwrap();
+                if right_type.is_list() || right_type.base_named_type() != "String" {
+                    let tag = right.unwrap().as_tag().unwrap();
+                    errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
+                        self.operation_name().to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
+                    ));
                 }
 
                 if errors.is_empty() {
