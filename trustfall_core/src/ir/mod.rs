@@ -606,7 +606,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
         match self {
             Operation::IsNull(_) | Operation::IsNotNull(_) => {
                 // Checking non-nullable types for null or non-null is pointless.
-                if left_type.is_nullable() {
+                if left_type.nullable() {
                     Ok(())
                 } else {
                     Err(vec![FilterTypeError::NonNullableTypeFilteredForNullability(
@@ -789,7 +789,6 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                         left_type.to_string(),
                     ));
                 }
-
 
                 // The right argument must be a tag at this point. If it is not a tag
                 // and the second .unwrap() below panics, then our type inference

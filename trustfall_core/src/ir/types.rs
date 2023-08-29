@@ -116,7 +116,7 @@ pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
 pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -> bool {
     // If the parent type is non-nullable, all its subtypes must be non-nullable as well.
     // If the parent type is nullable, it can have both nullable and non-nullable subtypes.
-    if !parent_type.is_nullable() && maybe_subtype.is_nullable() {
+    if !parent_type.nullable() && maybe_subtype.nullable() {
         return false;
     }
 
@@ -143,7 +143,7 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
 /// assert_eq!(None, result);
 /// ```
 pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
-    let nullable = left.is_nullable() && right.is_nullable();
+    let nullable = left.nullable() && right.nullable();
 
     match (left.as_list(), right.as_list()) {
         (None, None) => {
@@ -179,7 +179,7 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
     match argument_value {
         FieldValue::Null => {
             // This is a valid value only if this layer is nullable.
-            variable_type.is_nullable()
+            variable_type.nullable()
         }
         FieldValue::Int64(_) | FieldValue::Uint64(_) => {
             // This is a valid value only if the type is Int, ignoring nullability.
