@@ -7,15 +7,15 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
     base: Arc<str>,
-    modifiers: InlineModifiers,
+    modifiers: Modifiers,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct InlineModifiers {
+struct Modifiers {
     mask: u64, // space for ~30 levels of list nesting
 }
 
-impl InlineModifiers {
+impl Modifiers {
     const NON_NULLABLE_MASK: u64 = 1;
     const LIST_MASK: u64 = 2;
     const MAX_LIST_DEPTH: u64 = 30;
@@ -30,8 +30,8 @@ impl InlineModifiers {
         (self.mask & Self::LIST_MASK) != 0
     }
 
-    fn as_list(&self) -> Option<InlineModifiers> {
-        self.is_list().then_some(InlineModifiers { mask: self.mask >> 2 })
+    fn as_list(&self) -> Option<Modifiers> {
+        self.is_list().then_some(Modifiers { mask: self.mask >> 2 })
     }
 
     fn at_max_list_depth(&self) -> bool {
@@ -72,9 +72,7 @@ impl Type {
     pub fn new_named_type(base_type_name: &str, nullable: bool) -> Self {
         Self {
             base: base_type_name.to_string().into(),
-            modifiers: InlineModifiers {
-                mask: if nullable { 0 } else { InlineModifiers::NON_NULLABLE_MASK },
-            },
+            modifiers: Modifiers { mask: if nullable { 0 } else { Modifiers::NON_NULLABLE_MASK } },
         }
     }
 
@@ -98,13 +96,13 @@ impl Type {
             panic!("too many nested lists");
         }
 
-        let mut new_mask = (inner_type.modifiers.mask << 2) | InlineModifiers::LIST_MASK;
+        let mut new_mask = (inner_type.modifiers.mask << 2) | Modifiers::LIST_MASK;
 
         if !nullable {
-            new_mask |= InlineModifiers::NON_NULLABLE_MASK;
+            new_mask |= Modifiers::NON_NULLABLE_MASK;
         }
 
-        Self { base: inner_type.base, modifiers: InlineModifiers { mask: new_mask } }
+        Self { base: inner_type.base, modifiers: Modifiers { mask: new_mask } }
     }
 
     /// Returns a new type that is the same as this one, but with the passed nullability.
@@ -124,9 +122,9 @@ impl Type {
     pub fn with_nullability(&self, nullable: bool) -> Self {
         let mut new = self.clone();
         if nullable {
-            new.modifiers.mask &= !InlineModifiers::NON_NULLABLE_MASK;
+            new.modifiers.mask &= !Modifiers::NON_NULLABLE_MASK;
         } else {
-            new.modifiers.mask |= InlineModifiers::NON_NULLABLE_MASK;
+            new.modifiers.mask |= Modifiers::NON_NULLABLE_MASK;
         }
         new
     }
@@ -248,39 +246,39 @@ impl<'de> Deserialize<'de> for Type {
 pub(crate) fn from_type(ty: &GQLType) -> Type {
     let mut base = &ty.base;
 
-    let mut mask = if ty.nullable { 0 } else { InlineModifiers::NON_NULLABLE_MASK };
+    let mut mask = if ty.nullable { 0 } else { Modifiers::NON_NULLABLE_MASK };
 
     let mut i = 0;
 
     while let BaseType::List(ty_inside_list) = base {
-        mask |= InlineModifiers::LIST_MASK << i;
+        mask |= Modifiers::LIST_MASK << i;
         i += 2;
-        if i > InlineModifiers::MAX_LIST_DEPTH * 2 {
+        if i > Modifiers::MAX_LIST_DEPTH * 2 {
             panic!("too many nested lists");
         }
         if !ty_inside_list.nullable {
-            mask |= InlineModifiers::NON_NULLABLE_MASK << i;
+            mask |= Modifiers::NON_NULLABLE_MASK << i;
         }
         base = &ty_inside_list.base;
     }
 
     let BaseType::Named(name) = base else {unreachable!("should be impossible to get a non-named type after looping through all list types")};
 
-    Type { base: name.to_string().into(), modifiers: InlineModifiers { mask } }
+    Type { base: name.to_string().into(), modifiers: Modifiers { mask } }
 }
 
 #[cfg(test)]
 mod test {
     use crate::ir::ty::Type;
 
-    use super::InlineModifiers;
+    use super::Modifiers;
 
     #[test]
     fn max_allowed_nested_lists() {
         let my_str = format!(
             "{}String{}",
-            "[".repeat(InlineModifiers::MAX_LIST_DEPTH as usize),
-            "]".repeat(InlineModifiers::MAX_LIST_DEPTH as usize)
+            "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
+            "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
         let constructed_type = Type::new(&my_str).unwrap().modifiers;
         assert!(constructed_type.at_max_list_depth());
@@ -291,8 +289,8 @@ mod test {
     fn too_many_nested_lists_via_type_new() {
         let my_str = format!(
             "{}String!{}",
-            "[".repeat(InlineModifiers::MAX_LIST_DEPTH as usize + 1),
-            "]".repeat(InlineModifiers::MAX_LIST_DEPTH as usize + 1)
+            "[".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1),
+            "]".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1)
         );
         Type::new(&my_str).unwrap();
     }
@@ -301,7 +299,7 @@ mod test {
     #[should_panic(expected = "too many nested lists")]
     fn too_many_nested_lists_via_new_list_type() {
         let mut constructed_type = Type::new_named_type("String", false);
-        for _ in 0..=InlineModifiers::MAX_LIST_DEPTH + 1 {
+        for _ in 0..=Modifiers::MAX_LIST_DEPTH + 1 {
             constructed_type = Type::new_list_type(constructed_type, false);
         }
     }
