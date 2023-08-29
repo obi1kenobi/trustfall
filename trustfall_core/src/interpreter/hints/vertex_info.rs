@@ -286,7 +286,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let initial_candidate = self
             .statically_required_property(property)
             .unwrap_or_else(|| {
-                if first_filter.left().field_type.is_nullable() {
+                if first_filter.left().field_type.nullable() {
                     CandidateValue::All
                 } else {
                     CandidateValue::Range(Range::full_non_null())
@@ -397,7 +397,7 @@ fn compute_statically_known_candidate<'a, 'b>(
     relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
 ) -> Option<CandidateValue<&'b FieldValue>> {
-    let is_subject_field_nullable = field.field_type.is_nullable();
+    let is_subject_field_nullable = field.field_type.nullable();
     super::filters::candidate_from_statically_evaluated_filters(
         relevant_filters,
         query_variables,
