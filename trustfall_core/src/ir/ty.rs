@@ -23,7 +23,7 @@ impl Modifiers {
     // represents the most far left list bit that can be set before adding a new list will overflow
     const MAX_LIST_DEPTH_MASK: u64 = Self::LIST_MASK << ((Self::MAX_LIST_DEPTH - 1) * 2); // - 1 because we start shifted over once.
 
-    fn is_nullable(&self) -> bool {
+    fn nullable(&self) -> bool {
         (self.mask & Self::NON_NULLABLE_MASK) == 0
     }
 
@@ -112,12 +112,12 @@ impl Type {
     /// use trustfall_core::ir::ty::Type;
     ///
     /// let nullable_ty = Type::new("Int").unwrap();
-    /// assert_eq!(nullable_ty.is_nullable(), true);
+    /// assert_eq!(nullable_ty.nullable(), true);
     /// let non_nullable_ty = nullable_ty.with_nullability(false);
-    /// assert_eq!(non_nullable_ty.is_nullable(), false);
+    /// assert_eq!(non_nullable_ty.nullable(), false);
     ///
     /// // The original type is unchanged.
-    /// assert_eq!(nullable_ty.is_nullable(), true);
+    /// assert_eq!(nullable_ty.nullable(), true);
     /// ```
     pub fn with_nullability(&self, nullable: bool) -> Self {
         let mut new = self.clone();
@@ -136,14 +136,13 @@ impl Type {
     /// use trustfall_core::ir::ty::Type;
     ///
     /// let nullable_ty = Type::new("[Int!]").unwrap();
-    /// assert_eq!(nullable_ty.is_nullable(), true); // the list is nullable
+    /// assert_eq!(nullable_ty.nullable(), true); // the list is nullable
     ///
     /// let nullable_ty = Type::new("Int!").unwrap();
-    /// assert_eq!(nullable_ty.is_nullable(), false); // the `Int` is nonnullable
+    /// assert_eq!(nullable_ty.nullable(), false); // the `Int` is nonnullable
     /// ```
-    pub fn is_nullable(&self) -> bool {
-        println!("{:b} : nullable={}", self.modifiers.mask, self.modifiers.is_nullable());
-        self.modifiers.is_nullable()
+    pub fn nullable(&self) -> bool {
+        self.modifiers.nullable()
     }
 
     pub fn is_list(&self) -> bool {
@@ -215,7 +214,7 @@ impl Display for Type {
         {
             let mut current = Some(self.modifiers.clone());
             while let Some(mods) = current {
-                if !mods.is_nullable() {
+                if !mods.nullable() {
                     builder.push('!');
                 }
                 if mods.is_list() {
