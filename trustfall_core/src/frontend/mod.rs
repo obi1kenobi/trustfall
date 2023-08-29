@@ -16,7 +16,7 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        ty::{from_type, Type},
+        ty::Type,
         types::{intersect_types, is_argument_type_valid, NamedTypedValue},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
@@ -96,7 +96,7 @@ fn get_field_name_and_type_from_schema<'a>(
                 field_name,
                 pre_coercion_type_name,
                 post_coercion_type_name,
-                from_type(field_raw_type),
+                Type::from_type(field_raw_type),
             );
         }
     }
@@ -166,7 +166,10 @@ fn make_edge_parameters(
 
                         // The default value must be a valid type for the parameter,
                         // otherwise the schema itself is invalid.
-                        assert!(is_argument_type_valid(&from_type(&arg.node.ty.node), &value));
+                        assert!(is_argument_type_valid(
+                            &Type::from_type(&arg.node.ty.node),
+                            &value
+                        ));
 
                         value
                     })
@@ -180,7 +183,7 @@ fn make_edge_parameters(
             }
             Some(value) => {
                 // Type-check the supplied value against the schema.
-                if !is_argument_type_valid(&from_type(&arg.node.ty.node), value) {
+                if !is_argument_type_valid(&Type::from_type(&arg.node.ty.node), value) {
                     errors.push(FrontendError::InvalidEdgeParameterType(
                         arg_name.to_string(),
                         edge_definition.name.node.to_string(),

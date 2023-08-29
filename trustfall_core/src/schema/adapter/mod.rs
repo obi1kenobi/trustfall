@@ -11,10 +11,7 @@ use crate::{
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexInfo, VertexIterator,
     },
-    ir::{
-        ty::{from_type, Type},
-        EdgeParameters, FieldValue, TransparentValue,
-    },
+    ir::{ty::Type, EdgeParameters, FieldValue, TransparentValue},
 };
 
 use super::Schema;
@@ -398,7 +395,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "Edge" => match edge_name.as_ref() {
                 "target" => resolve_neighbors_with(contexts, move |vertex| {
                     let vertex = vertex.as_edge().expect("not an Edge");
-                    let edge_type = from_type(&vertex.defn.ty.node);
+                    let edge_type = Type::from_type(&vertex.defn.ty.node);
                     let target_type = edge_type.base_named_type();
                     Box::new(
                         schema
@@ -509,7 +506,7 @@ fn resolve_vertex_type_property_edge<'a>(
     let parent_defn = vertex.defn;
     Box::new(fields.iter().filter_map(move |p| {
         let field = &p.node;
-        let field_ty = from_type(&field.ty.node);
+        let field_ty = Type::from_type(&field.ty.node);
         let base_ty = field_ty.base_named_type();
 
         if !schema.vertex_types.contains_key(base_ty) {
@@ -535,7 +532,7 @@ fn resolve_vertex_type_edge_edge<'a>(
 
     Box::new(fields.iter().filter_map(move |p| {
         let field = &p.node;
-        let field_ty = from_type(&field.ty.node);
+        let field_ty = Type::from_type(&field.ty.node);
         let base_ty = field_ty.base_named_type();
 
         if schema.vertex_types.contains_key(base_ty) {

@@ -54,7 +54,7 @@ impl Type {
     /// assert_eq!(Type::new("[String!]").unwrap().to_string(), "[String!]");
     /// ```
     pub fn new(ty: &str) -> Option<Self> {
-        Some(from_type(&GQLType::new(ty)?))
+        Some(Self::from_type(&GQLType::new(ty)?))
     }
 
     /// Creates an individual [`Type`], not a list.
@@ -168,6 +168,30 @@ impl Type {
     pub fn base_named_type(&self) -> &str {
         &self.base
     }
+
+    pub(crate) fn from_type(ty: &GQLType) -> Type {
+        let mut base = &ty.base;
+
+        let mut mask = if ty.nullable { 0 } else { Modifiers::NON_NULLABLE_MASK };
+
+        let mut i = 0;
+
+        while let BaseType::List(ty_inside_list) = base {
+            mask |= Modifiers::LIST_MASK << i;
+            i += 2;
+            if i > Modifiers::MAX_LIST_DEPTH * 2 {
+                panic!("too many nested lists");
+            }
+            if !ty_inside_list.nullable {
+                mask |= Modifiers::NON_NULLABLE_MASK << i;
+            }
+            base = &ty_inside_list.base;
+        }
+
+        let BaseType::Named(name) = base else {unreachable!("should be impossible to get a non-named type after looping through all list types")};
+
+        Type { base: name.to_string().into(), modifiers: Modifiers { mask } }
+    }
 }
 
 impl Display for Type {
@@ -241,30 +265,6 @@ impl<'de> Deserialize<'de> for Type {
 
         deserializer.deserialize_str(TypeDeserializer)
     }
-}
-
-pub(crate) fn from_type(ty: &GQLType) -> Type {
-    let mut base = &ty.base;
-
-    let mut mask = if ty.nullable { 0 } else { Modifiers::NON_NULLABLE_MASK };
-
-    let mut i = 0;
-
-    while let BaseType::List(ty_inside_list) = base {
-        mask |= Modifiers::LIST_MASK << i;
-        i += 2;
-        if i > Modifiers::MAX_LIST_DEPTH * 2 {
-            panic!("too many nested lists");
-        }
-        if !ty_inside_list.nullable {
-            mask |= Modifiers::NON_NULLABLE_MASK << i;
-        }
-        base = &ty_inside_list.base;
-    }
-
-    let BaseType::Named(name) = base else {unreachable!("should be impossible to get a non-named type after looping through all list types")};
-
-    Type { base: name.to_string().into(), modifiers: Modifiers { mask } }
 }
 
 #[cfg(test)]

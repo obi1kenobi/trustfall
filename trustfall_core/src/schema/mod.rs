@@ -20,10 +20,8 @@ use itertools::Itertools;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::{
-    ty::from_type,
-    types::{is_argument_type_valid, is_scalar_only_subtype},
-};
+use crate::ir::ty::Type as OurType;
+use crate::ir::types::{is_argument_type_valid, is_scalar_only_subtype};
 use crate::util::{BTreeMapTryInsertExt, HashMapTryInsertExt};
 
 use self::error::InvalidSchemaError;
@@ -300,7 +298,7 @@ fn check_root_query_type_invariants(
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
     for field_defn in &query_type.fields {
-        let field_type = from_type(&field_defn.node.ty.node);
+        let field_type = OurType::from_type(&field_defn.node.ty.node);
         let base_named_type = field_type.base_named_type();
         if BUILTIN_SCALARS.contains(base_named_type) {
             errors.push(InvalidSchemaError::PropertyFieldOnRootQueryType(
@@ -346,7 +344,7 @@ fn check_type_and_property_and_edge_invariants(
                 ));
             }
 
-            let field_type = from_type(field_type);
+            let field_type = OurType::from_type(field_type);
 
             let base_named_type = field_type.base_named_type();
             if BUILTIN_SCALARS.contains(base_named_type) {
@@ -375,7 +373,10 @@ fn check_type_and_property_and_edge_invariants(
                             let param_type = &param_defn.node.ty.node;
                             match value.node.clone().try_into() {
                                 Ok(value) => {
-                                    if !is_argument_type_valid(&from_type(param_type), &value) {
+                                    if !is_argument_type_valid(
+                                        &OurType::from_type(param_type),
+                                        &value,
+                                    ) {
                                         errors.push(InvalidSchemaError::InvalidDefaultValueForFieldParameter(
                                             type_name.to_string(),
                                             field_defn.name.node.to_string(),
@@ -699,8 +700,8 @@ fn check_field_type_narrowing(
                             parent_field_parameters.get(field_parameter)
                         {
                             if !is_scalar_only_subtype(
-                                &from_type(field_type),
-                                &from_type(parent_field_type),
+                                &OurType::from_type(field_type),
+                                &OurType::from_type(parent_field_type),
                             ) {
                                 errors.push(InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
                                     field_name.to_owned(),
