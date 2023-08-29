@@ -4,6 +4,7 @@ use std::{fmt::Display, sync::Arc};
 use async_graphql_parser::types::{BaseType, Type as GQLType};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+/// A backing-storage independent immutable representation of a GraphQL type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
     base: Arc<str>,
@@ -39,7 +40,6 @@ impl Modifiers {
     }
 }
 
-/// A backing-storage independent immutable representation of a GraphQL type.
 impl Type {
     /// Creates a new [`Type`] from a string.
     /// Returns `None` if the string is not a valid GraphQL type.
