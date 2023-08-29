@@ -61,7 +61,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// In contrast, filters relying the value of a `@tag` do not produce
     /// statically-required values, since the `@tag` value must be computed at runtime.
     /// For this case, see the [`VertexInfo::dynamically_required_property()`] method.
-    fn statically_required_property(&self, name: &str) -> Option<CandidateValue<&FieldValue>>;
+    fn statically_required_property(&self, name: &str) -> Option<CandidateValue<FieldValue>>;
 
     /// Check whether the query demands this vertex property to have specific values:
     /// a single value, or one of a set or range of values. The candidate values
@@ -195,7 +195,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         Box::new(properties.filter(move |r| seen_property.insert(r.name.clone())))
     }
 
-    fn statically_required_property(&self, property: &str) -> Option<CandidateValue<&FieldValue>> {
+    fn statically_required_property(&self, property: &str) -> Option<CandidateValue<FieldValue>> {
         if self.non_binding_filters() {
             // This `VertexInfo` is in a place where the filters applied to fields
             // don't actually constrain their value in the usual way that lends itself
@@ -225,10 +225,11 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let field = relevant_filters.peek()?.left();
 
         let candidate =
-            compute_statically_known_candidate(field, relevant_filters, query_variables);
+            compute_statically_known_candidate(field, relevant_filters, query_variables)
+                .map(|x| x.cloned());
         debug_assert!(
             // Ensure we never return a range variant with a completely unrestricted range.
-            candidate.as_ref().unwrap_or(&CandidateValue::All) != &CandidateValue::Range(Range::full()),
+            candidate.clone().unwrap_or(CandidateValue::All) != CandidateValue::Range(Range::full()),
             "caught returning a range variant with a completely unrestricted range; it should have been CandidateValue::All instead"
         );
 
@@ -283,16 +284,13 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         // Early-return in case there are no filters that apply here.
         let first_filter = relevant_filters.first()?;
 
-        let initial_candidate = self
-            .statically_required_property(property)
-            .unwrap_or_else(|| {
-                if first_filter.left().field_type.nullable {
-                    CandidateValue::All
-                } else {
-                    CandidateValue::Range(Range::full_non_null())
-                }
-            })
-            .cloned();
+        let initial_candidate = self.statically_required_property(property).unwrap_or_else(|| {
+            if first_filter.left().field_type.nullable {
+                CandidateValue::All
+            } else {
+                CandidateValue::Range(Range::full_non_null())
+            }
+        });
 
         // Right now, this API only supports materializing the constraint from a single tag.
         // Choose which @filter to choose as the one providing the value.

@@ -567,7 +567,7 @@ mod static_property_values {
 
                     assert_eq!(None, info.statically_required_property("name"));
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(3))),
+                        Some(CandidateValue::Single(FieldValue::Int64(3))),
                         info.statically_required_property("value"),
                     );
                 })),
@@ -642,7 +642,7 @@ mod static_property_values {
 
                     assert_eq!(None, info.statically_required_property("value"));
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::String("Prime".into()))),
+                        Some(CandidateValue::Single(FieldValue::String("Prime".into()))),
                         info.statically_required_property("__typename"),
                     );
                 })),
@@ -667,8 +667,8 @@ mod static_property_values {
 
                     assert_eq!(
                         Some(CandidateValue::Multiple(vec![
-                            &"fourteen".into(),
-                            &"fifteen".into(),
+                            "fourteen".into(),
+                            "fifteen".into(),
                         ])),
                         info.statically_required_property("name"),
                     );
@@ -693,7 +693,7 @@ mod static_property_values {
                     assert_eq!(vid(1), info.vid());
 
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_end(Bound::Excluded(&FieldValue::Int64(9)), true))),
+                        Some(CandidateValue::Range(Range::with_end(Bound::Excluded(FieldValue::Int64(9)), true))),
                         info.statically_required_property("value"),
                     );
                 })),
@@ -716,7 +716,7 @@ mod static_property_values {
                     assert_eq!(vid(1), info.vid());
 
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_end(Bound::Included(&FieldValue::Int64(8)), true))),
+                        Some(CandidateValue::Range(Range::with_end(Bound::Included(FieldValue::Int64(8)), true))),
                         info.statically_required_property("value"),
                     );
                 })),
@@ -743,7 +743,7 @@ mod static_property_values {
 
                     assert_eq!(vid(2), neighbor.vid());
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(25)), true))),
+                        Some(CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(25)), true))),
                         neighbor.statically_required_property("value"),
                     );
                 })),
@@ -758,7 +758,7 @@ mod static_property_values {
                     let neighbor = info.destination();
                     assert_eq!(vid(2), neighbor.vid());
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(25)), true))),
+                        Some(CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(25)), true))),
                         neighbor.statically_required_property("value"),
                     );
                 }))
@@ -786,7 +786,7 @@ mod static_property_values {
 
                     assert_eq!(vid(2), neighbor.vid());
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_start(Bound::Included(&FieldValue::Int64(24)), true))),
+                        Some(CandidateValue::Range(Range::with_start(Bound::Included(FieldValue::Int64(24)), true))),
                         neighbor.statically_required_property("value"),
                     );
                 })),
@@ -801,7 +801,7 @@ mod static_property_values {
                     let neighbor = info.destination();
                     assert_eq!(vid(2), neighbor.vid());
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_start(Bound::Included(&FieldValue::Int64(24)), true))),
+                        Some(CandidateValue::Range(Range::with_start(Bound::Included(FieldValue::Int64(24)), true))),
                         neighbor.statically_required_property("value"),
                     );
                 }))
@@ -834,7 +834,7 @@ mod static_property_values {
                     // are the starting vertex and the neighbors, so the filter is binding
                     // to all neighboring vertices.
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(6))),
+                        Some(CandidateValue::Single(FieldValue::Int64(6))),
                         neighbor.statically_required_property("value"),
                     );
                 })),
@@ -851,7 +851,7 @@ mod static_property_values {
                     // are the starting vertex and the neighbors, so the filter is binding
                     // to all neighboring vertices.
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(6))),
+                        Some(CandidateValue::Single(FieldValue::Int64(6))),
                         destination.statically_required_property("value"),
                     );
                 })),
@@ -1081,7 +1081,7 @@ mod static_property_values {
                     // Here the value *is* statically known, since the `@optional`
                     // has already been resolved in a prior step.
                     assert_eq!(
-                        Some(CandidateValue::Range(Range::with_start(Bound::Excluded(&FieldValue::Int64(1)), true)),),
+                        Some(CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),),
                         destination.statically_required_property("value"),
                     );
                 })),
@@ -1146,7 +1146,7 @@ mod static_property_values {
                     // Here the value *is* statically known, since the property value can
                     // affect which vertices this edge is resolved to.
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(1))),
+                        Some(CandidateValue::Single(FieldValue::Int64(1))),
                         destination.statically_required_property("value"),
                     );
                 })),
@@ -1182,7 +1182,7 @@ mod static_property_values {
                     // ensures that at least one such value must exist, or else vertices
                     // from the currently-resolved edge will be discarded.
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(1))),
+                        Some(CandidateValue::Single(FieldValue::Int64(1))),
                         next_neighbor.statically_required_property("value"),
                     );
                 })),
@@ -1201,7 +1201,7 @@ mod static_property_values {
                     // ensures that at least one such value must exist, or else vertices
                     // from the currently-resolved edge will be discarded.
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(1))),
+                        Some(CandidateValue::Single(FieldValue::Int64(1))),
                         next_neighbor.statically_required_property("value"),
                     );
                 })),
@@ -1213,7 +1213,7 @@ mod static_property_values {
                     // Here the value is also statically known, since the property is local
                     // to the edge being resolved.
                     assert_eq!(
-                        Some(CandidateValue::Single(&FieldValue::Int64(1))),
+                        Some(CandidateValue::Single(FieldValue::Int64(1))),
                         destination.statically_required_property("value"),
                     );
                 })),

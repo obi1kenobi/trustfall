@@ -28,19 +28,6 @@ pub enum CandidateValue<T> {
     All,
 }
 
-impl<T> CandidateValue<T> {
-    /// Converts from `&CandidateValue<T>` to `CandidateValue<&T>`.
-    pub fn as_ref(&self) -> CandidateValue<&T> {
-        match self {
-            CandidateValue::Impossible => CandidateValue::Impossible,
-            CandidateValue::Single(s) => CandidateValue::Single(s),
-            CandidateValue::Multiple(mult) => CandidateValue::Multiple(mult.iter().collect()),
-            CandidateValue::Range(r) => CandidateValue::Range(r.as_ref()),
-            CandidateValue::All => CandidateValue::All,
-        }
-    }
-}
-
 impl<T: Clone> CandidateValue<&T> {
     /// Converts from `CandidateValue<&T>` to `CandidateValue<T>`.
     pub fn cloned(&self) -> CandidateValue<T> {
