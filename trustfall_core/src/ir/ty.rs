@@ -36,7 +36,7 @@ impl Modifiers {
     }
 
     fn at_max_list_depth(&self) -> bool {
-        (self.mask & (Self::MAX_LIST_DEPTH_MASK)) == (Self::MAX_LIST_DEPTH_MASK)
+        (self.mask & Self::MAX_LIST_DEPTH_MASK) == Self::MAX_LIST_DEPTH_MASK
     }
 }
 
