@@ -300,33 +300,75 @@ mod test {
     use super::Modifiers;
 
     #[test]
-    fn max_allowed_nested_lists() {
-        let my_str = format!(
+    fn max_allowed_nested_lists_mask_representation() {
+        let type_str = format!(
             "{}String{}",
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
-        let constructed_type = Type::new(&my_str).unwrap().modifiers;
-        assert!(constructed_type.at_max_list_depth());
+        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        assert_eq!(
+            format!("{:b}", type_modifiers.mask),
+            "101010101010101010101010101010101010101010101010101010101010"
+        );
+    }
+
+    #[test]
+    fn max_allowed_nested_lists_is_at_max_list_depth() {
+        let type_str = format!(
+            "{}String{}",
+            "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
+            "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
+        );
+        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        assert!(type_modifiers.at_max_list_depth());
     }
 
     #[test]
     #[should_panic(expected = "too many nested lists")]
     fn too_many_nested_lists_via_type_new() {
-        let my_str = format!(
+        let type_str = format!(
             "{}String!{}",
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1)
         );
-        Type::new(&my_str).unwrap();
+        Type::new(&type_str); // will panic during modifier mask creation
     }
 
     #[test]
     #[should_panic(expected = "too many nested lists")]
     fn too_many_nested_lists_via_new_list_type() {
         let mut constructed_type = Type::new_named_type("String", false);
-        for _ in 0..=Modifiers::MAX_LIST_DEPTH + 1 {
+        for _ in 0..=Modifiers::MAX_LIST_DEPTH {
             constructed_type = Type::new_list_type(constructed_type, false);
         }
+
+        Type::new_list_type(constructed_type, false); // will panic during new modifier mask creation
+                                                      // for new list type
+    }
+
+    #[test]
+    fn max_allowed_nested_lists_with_nonnull_on_last_list_mask_representation() {
+        let type_str = format!(
+            "{}String{}!",
+            "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
+            "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
+        );
+        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        assert_eq!(
+            format!("{:b}", type_modifiers.mask),
+            "101010101010101010101010101010101010101010101010101010101011"
+        );
+    }
+
+    #[test]
+    fn max_allowed_nested_lists_with_non_null_on_every_list_and_inner_type() {
+        let type_str = format!(
+            "{}String!{}",
+            "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
+            "]!".repeat(Modifiers::MAX_LIST_DEPTH as usize)
+        );
+        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        assert!(type_modifiers.at_max_list_depth());
     }
 }
