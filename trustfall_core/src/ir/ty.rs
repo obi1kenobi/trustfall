@@ -362,6 +362,20 @@ mod test {
     }
 
     #[test]
+    fn max_allowed_nested_lists_with_nonnull_on_innermost_type_mask_representation() {
+        let type_str = format!(
+            "{}String!{}",
+            "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
+            "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
+        );
+        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        assert_eq!(
+            format!("{:b}", type_modifiers.mask),
+            "1101010101010101010101010101010101010101010101010101010101010"
+        );
+    }
+
+    #[test]
     fn max_allowed_nested_lists_with_non_null_on_every_list_and_inner_type() {
         let type_str = format!(
             "{}String!{}",
