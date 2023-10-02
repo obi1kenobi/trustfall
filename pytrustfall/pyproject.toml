@@ -37,7 +37,7 @@ authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 python = "^3.9"
 
 [tool.poetry.dev-dependencies]
-maturin = "^0.12.5"
+maturin = "^1.2.3"
 pytest = "^6.2.5"
 black = "^22.10.0"
 
