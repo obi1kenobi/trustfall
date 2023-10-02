@@ -1,11 +1,11 @@
 [package]
 name = "trustfall_stubgen"
 version = "0.3.0"
-rust-version = "1.70"
 license = "Apache-2.0"
 description = "Generate a Trustfall adapter stub for a given schema."
 repository = "https://github.com/obi1kenobi/trustfall"
 readme = "../README.md"
+rust-version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
