@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, fmt::Debug};
 
 use crate::{ir::FieldValue, schema::Schema};
 
-use super::{ContextIterator, ContextOutcomeIterator, Typename, VertexIterator};
+use super::{ContextIterator, ContextOutcomeIterator, Typename, VertexIterator, AsVertex};
 
 mod correctness;
 
@@ -20,11 +20,11 @@ pub use correctness::check_adapter_invariants;
 /// [`accessor_property!`](crate::accessor_property) macros.
 ///
 /// [`BasicAdapter::resolve_property`]: super::basic_adapter::BasicAdapter::resolve_property
-pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
-    contexts: ContextIterator<'vertex, Vertex>,
+pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVertex<Vertex>>(
+    contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
-) -> ContextOutcomeIterator<'vertex, Vertex, FieldValue> {
-    Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
+) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex() {
         None => (ctx, FieldValue::Null),
         Some(vertex) => {
             let value = resolver(vertex);
@@ -39,12 +39,12 @@ pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// in the input context iterator, one at a time.
 ///
 /// [`BasicAdapter::resolve_neighbors`]: super::basic_adapter::BasicAdapter::resolve_neighbors
-pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex>(
-    contexts: ContextIterator<'vertex, Vertex>,
+pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVertex<Vertex>>(
+    contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'vertex,
-) -> ContextOutcomeIterator<'vertex, Vertex, VertexIterator<'vertex, Vertex>> {
+) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Vertex>> {
     Box::new(contexts.map(move |ctx| {
-        match ctx.active_vertex.as_ref() {
+        match ctx.active_vertex() {
             None => {
                 // rustc needs a bit of help with the type inference here,
                 // due to the Box<dyn Iterator> conversion.
@@ -85,11 +85,11 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
 /// and checks if it's equal or a subtype of the coercion target type.
 ///
 /// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
-pub fn resolve_coercion_using_schema<'vertex, Vertex: Debug + Clone + Typename + 'vertex>(
-    contexts: ContextIterator<'vertex, Vertex>,
+pub fn resolve_coercion_using_schema<'vertex, Vertex: Debug + Clone + Typename + 'vertex, V: AsVertex<Vertex>>(
+    contexts: ContextIterator<'vertex, V>,
     schema: &'vertex Schema,
     coerce_to_type: &str,
-) -> ContextOutcomeIterator<'vertex, Vertex, bool> {
+) -> ContextOutcomeIterator<'vertex, V, bool> {
     // If the vertex's typename is one of these types,
     // then the coercion's result is `true`.
     let subtypes: BTreeSet<_> = schema
@@ -97,7 +97,7 @@ pub fn resolve_coercion_using_schema<'vertex, Vertex: Debug + Clone + Typename +
         .unwrap_or_else(|| panic!("type {coerce_to_type} is not part of this schema"))
         .collect();
 
-    Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => (ctx, false),
         Some(vertex) => {
             let typename = vertex.typename();
@@ -384,11 +384,11 @@ macro_rules! accessor_property {
 /// a faster path.
 ///
 /// [`Adapter::resolve_property`]: super::Adapter::resolve_property
-pub fn resolve_typename<'a, Vertex: Typename + Debug + Clone + 'a>(
-    contexts: ContextIterator<'a, Vertex>,
+pub fn resolve_typename<'a, Vertex: Typename + Debug + Clone + 'a, V: AsVertex<Vertex>>(
+    contexts: ContextIterator<'a, V>,
     schema: &Schema,
     type_name: &str,
-) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
+) -> ContextOutcomeIterator<'a, V, FieldValue> {
     // `type_name` is the statically-known type. The vertices are definitely *at least* that type,
     // but could also be one of its subtypes. If there are no subtypes, they *must* be that type.
     let mut subtypes_iter = match schema.subtypes(type_name) {
@@ -400,7 +400,7 @@ pub fn resolve_typename<'a, Vertex: Typename + Debug + Clone + 'a>(
     // Is there a subtype that isn't the starting type itself?
     if subtypes_iter.any(|name| name != type_name) {
         // Subtypes exist, we have to check each vertex separately.
-        resolve_property_with(contexts, |vertex| vertex.typename().into())
+        resolve_property_with::<Vertex, V>(contexts, |vertex| vertex.typename().into())
     } else {
         // No other subtypes exist.
         // All vertices here must be of exactly `type_name` type.
