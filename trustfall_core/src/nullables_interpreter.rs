@@ -29,34 +29,34 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         unimplemented!()
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         unimplemented!()
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         unimplemented!()
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         unimplemented!()
     }
 }

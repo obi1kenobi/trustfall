@@ -24,7 +24,7 @@ pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVert
     contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
 ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
-    Box::new(contexts.map(move |ctx| match ctx.active_vertex() {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => (ctx, FieldValue::Null),
         Some(vertex) => {
             let value = resolver(vertex);
@@ -44,7 +44,7 @@ pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVer
     mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'vertex,
 ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Vertex>> {
     Box::new(contexts.map(move |ctx| {
-        match ctx.active_vertex() {
+        match ctx.active_vertex::<Vertex>() {
             None => {
                 // rustc needs a bit of help with the type inference here,
                 // due to the Box<dyn Iterator> conversion.
@@ -65,11 +65,11 @@ pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVer
 /// in the input context iterator, one at a time.
 ///
 /// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
-pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex>(
-    contexts: ContextIterator<'vertex, Vertex>,
+pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVertex<Vertex>>(
+    contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'vertex,
-) -> ContextOutcomeIterator<'vertex, Vertex, bool> {
-    Box::new(contexts.map(move |ctx| match ctx.active_vertex.as_ref() {
+) -> ContextOutcomeIterator<'vertex, V, bool> {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => (ctx, false),
         Some(vertex) => {
             let can_coerce = resolver(vertex);

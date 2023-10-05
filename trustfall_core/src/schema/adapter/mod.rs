@@ -9,7 +9,7 @@ use crate::{
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        Typename, VertexInfo, VertexIterator,
+        Typename, VertexInfo, VertexIterator, AsVertex,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue, TransparentValue},
 };
@@ -296,15 +296,15 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         if property_name.as_ref() == "__typename" {
-            return resolve_property_with(contexts, |vertex| vertex.typename().into());
+            return resolve_property_with::<Self::Vertex, V>(contexts, |vertex| vertex.typename().into());
         }
 
         match type_name.as_ref() {
@@ -372,14 +372,14 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         let schema = self.schema;
         match type_name.as_ref() {
             "VertexType" => match edge_name.as_ref() {
@@ -445,13 +445,13 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
     }
 
     #[allow(unused_variables)]
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         unreachable!("unexpected type coercion: {type_name} -> {coerce_to_type}")
     }
 }

@@ -1345,7 +1345,7 @@ mod tests {
         use crate::{
             interpreter::{
                 execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator,
-                ResolveEdgeInfo, ResolveInfo, VertexIterator,
+                ResolveEdgeInfo, ResolveInfo, VertexIterator, AsVertex,
             },
             ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
@@ -1434,13 +1434,13 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_property(
+            fn resolve_property<V: AsVertex<Self::Vertex>>(
                 &self,
-                contexts: ContextIterator<'a, Self::Vertex>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 property_name: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+            ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1454,14 +1454,14 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_neighbors(
+            fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
                 &self,
-                contexts: ContextIterator<'a, Self::Vertex>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 edge_name: &Arc<str>,
                 parameters: &EdgeParameters,
                 resolve_info: &ResolveEdgeInfo,
-            ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+            ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
             {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
@@ -1477,13 +1477,13 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_coercion(
+            fn resolve_coercion<V: AsVertex<Self::Vertex>>(
                 &self,
-                contexts: ContextIterator<'a, Self::Vertex>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 coerce_to_type: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+            ) -> ContextOutcomeIterator<'a, V, bool> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);

@@ -4,7 +4,7 @@ use super::{ResolveEdgeInfo, ResolveInfo};
 use crate::{
     interpreter::{
         execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator, VertexInfo,
-        VertexIterator,
+        VertexIterator, AsVertex,
     },
     ir::{Eid, FieldValue, Recursive, Vid},
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
@@ -87,13 +87,13 @@ impl<'a> Adapter<'a> for TestAdapter {
         self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &super::ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         let mut map_ref = self.on_property_resolver.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
             x.call(resolve_info);
@@ -102,14 +102,14 @@ impl<'a> Adapter<'a> for TestAdapter {
         self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &crate::ir::EdgeParameters,
         resolve_info: &super::ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         let mut map_ref = self.on_edge_resolver.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.eid()) {
             x.call(resolve_info);
@@ -118,13 +118,13 @@ impl<'a> Adapter<'a> for TestAdapter {
         self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &super::ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         let mut map_ref = self.on_type_coercion.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
             x.call(resolve_info);
@@ -1324,13 +1324,13 @@ mod dynamic_property_values {
             self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
         }
 
-        fn resolve_property(
+        fn resolve_property<V: AsVertex<Self::Vertex>>(
             &self,
-            mut contexts: ContextIterator<'static, Self::Vertex>,
+            mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
             property_name: &Arc<str>,
             resolve_info: &super::ResolveInfo,
-        ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+        ) -> ContextOutcomeIterator<'static, V, FieldValue> {
             let mut map_ref = self.on_property_resolver.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
                 contexts = x.call(&self.inner, contexts, resolve_info);
@@ -1339,14 +1339,14 @@ mod dynamic_property_values {
             self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
         }
 
-        fn resolve_neighbors(
+        fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
             &self,
-            mut contexts: ContextIterator<'static, Self::Vertex>,
+            mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
             edge_name: &Arc<str>,
             parameters: &crate::ir::EdgeParameters,
             resolve_info: &super::ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>>
+        ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>>
         {
             let mut map_ref = self.on_edge_resolver.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.eid()) {
@@ -1356,13 +1356,13 @@ mod dynamic_property_values {
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
         }
 
-        fn resolve_coercion(
+        fn resolve_coercion<V: AsVertex<Self::Vertex>>(
             &self,
-            mut contexts: ContextIterator<'static, Self::Vertex>,
+            mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
             coerce_to_type: &Arc<str>,
             resolve_info: &super::ResolveInfo,
-        ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+        ) -> ContextOutcomeIterator<'static, V, bool> {
             let mut map_ref = self.on_type_coercion.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
                 contexts = x.call(&self.inner, contexts, resolve_info);
