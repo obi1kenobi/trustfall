@@ -534,3 +534,23 @@ pub trait Adapter<'vertex> {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool>;
 }
+
+pub trait AsVertex<V> {
+    fn as_vertex(&self) -> Option<&V>;
+}
+
+pub trait Cast<V>: AsVertex<V> {
+    fn into_self(vertex: V) -> Self;
+}
+
+impl<V> AsVertex<V> for V {
+    fn as_vertex(&self) -> Option<&V> {
+        Some(self)
+    }
+}
+
+impl<V> Cast<V> for V {
+    fn into_self(vertex: Self) -> Self {
+        vertex
+    }
+}
