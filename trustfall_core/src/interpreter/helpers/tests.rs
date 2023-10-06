@@ -93,7 +93,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -107,7 +107,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -125,7 +125,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -161,7 +161,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -171,7 +171,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -193,7 +193,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -229,7 +229,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -239,7 +239,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -257,7 +257,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -313,7 +313,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     mut contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -329,7 +329,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -347,7 +347,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -386,7 +386,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -396,7 +396,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     mut contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -420,7 +420,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -457,7 +457,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -467,7 +467,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -485,7 +485,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     mut contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -545,7 +545,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -572,7 +572,7 @@ mod correctness {
                     }
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -590,7 +590,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -629,7 +629,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -639,7 +639,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -670,7 +670,7 @@ mod correctness {
                     }
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -709,7 +709,7 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property<V: AsVertex<Self::Vertex>>(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -719,7 +719,7 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
@@ -737,7 +737,7 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
                     contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,

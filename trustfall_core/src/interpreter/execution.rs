@@ -1434,7 +1434,7 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_property<V: AsVertex<Self::Vertex>>(
+            fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
                 contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
@@ -1454,7 +1454,7 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+            fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
                 contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
@@ -1477,7 +1477,7 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+            fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
                 contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,

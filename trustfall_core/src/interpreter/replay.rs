@@ -19,7 +19,7 @@ use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
     Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo,
-    VertexIterator,
+    VertexIterator, AsVertex,
 };
 
 #[derive(Clone, Debug)]
@@ -79,23 +79,24 @@ where
     }
 }
 
-struct TraceReaderResolvePropertiesIter<'trace, Vertex>
+struct TraceReaderResolvePropertiesIter<'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
 {
     exhausted: bool,
     parent_opid: Opid,
-    contexts: ContextIterator<'trace, Vertex>,
-    input_batch: VecDeque<DataContext<Vertex>>,
+    contexts: ContextIterator<'trace, V>,
+    input_batch: VecDeque<DataContext<V>>,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
 #[allow(unused_variables)]
-impl<'trace, Vertex> Iterator for TraceReaderResolvePropertiesIter<'trace, Vertex>
+impl<'trace, V, Vertex> Iterator for TraceReaderResolvePropertiesIter<'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'trace,
+    V: AsVertex<Vertex>,
 {
-    type Item = (DataContext<Vertex>, FieldValue);
+    type Item = (DataContext<V>, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -125,10 +126,10 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context, "at {input_op:?}");
+                    assert_eq!(context, &input_context.clone_as::<Vertex>(), "at {input_op:?}");
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
-                    assert_eq!(None, input_data, "at {input_op:?}");
+                    assert!(input_data.is_none(), "at {input_op:?}");
                 } else {
                     unreachable!();
                 }
@@ -140,11 +141,11 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveProperty(trace_context, value)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context, "at {next_op:?}");
+                assert_eq!(trace_context, &input_context.clone_as::<Vertex>(), "at {next_op:?}");
                 Some((input_context, value.clone()))
             }
             TraceOpContent::OutputIteratorExhausted => {
-                assert_eq!(None, self.input_batch.pop_front(), "at {next_op:?}");
+                assert!(self.input_batch.pop_front().is_none(), "at {next_op:?}");
                 self.exhausted = true;
                 None
             }
@@ -153,25 +154,27 @@ where
     }
 }
 
-struct TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
+struct TraceReaderResolveCoercionIter<'query, 'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
+    V: AsVertex<Vertex>,
     'trace: 'query,
 {
     exhausted: bool,
     parent_opid: Opid,
-    contexts: ContextIterator<'query, Vertex>,
-    input_batch: VecDeque<DataContext<Vertex>>,
+    contexts: ContextIterator<'query, V>,
+    input_batch: VecDeque<DataContext<V>>,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
 #[allow(unused_variables)]
-impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveCoercionIter<'query, 'trace, Vertex>
+impl<'query, 'trace, V, Vertex> Iterator for TraceReaderResolveCoercionIter<'query, 'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
+    V: AsVertex<Vertex>,
     'trace: 'query,
 {
-    type Item = (DataContext<Vertex>, bool);
+    type Item = (DataContext<V>, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -201,11 +204,11 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context, "at {input_op:?}");
+                    assert_eq!(context, &input_context.clone_as::<Vertex>(), "at {input_op:?}");
 
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
-                    assert_eq!(None, input_data, "at {input_op:?}");
+                    assert!(input_data.is_none(), "at {input_op:?}");
                 } else {
                     unreachable!();
                 }
@@ -217,11 +220,11 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(trace_context, can_coerce)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context, "at {next_op:?}");
+                assert_eq!(trace_context, &input_context.clone_as::<Vertex>(), "at {next_op:?}");
                 Some((input_context, *can_coerce))
             }
             TraceOpContent::OutputIteratorExhausted => {
-                assert_eq!(None, self.input_batch.pop_front(), "at {next_op:?}");
+                assert!(self.input_batch.pop_front().is_none(), "at {next_op:?}");
                 self.exhausted = true;
                 None
             }
@@ -230,24 +233,26 @@ where
     }
 }
 
-struct TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
+struct TraceReaderResolveNeighborsIter<'query, 'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
+    V: AsVertex<Vertex>,
     'trace: 'query,
 {
     exhausted: bool,
     parent_opid: Opid,
-    contexts: ContextIterator<'query, Vertex>,
-    input_batch: VecDeque<DataContext<Vertex>>,
+    contexts: ContextIterator<'query, V>,
+    input_batch: VecDeque<DataContext<V>>,
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
-impl<'query, 'trace, Vertex> Iterator for TraceReaderResolveNeighborsIter<'query, 'trace, Vertex>
+impl<'query, 'trace, V, Vertex> Iterator for TraceReaderResolveNeighborsIter<'query, 'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
+    V: AsVertex<Vertex>,
     'trace: 'query,
 {
-    type Item = (DataContext<Vertex>, VertexIterator<'query, Vertex>);
+    type Item = (DataContext<V>, VertexIterator<'query, Vertex>);
 
     fn next(&mut self) -> Option<Self::Item> {
         assert!(!self.exhausted);
@@ -277,11 +282,11 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context, "at {input_op:?}");
+                    assert_eq!(context, &input_context.clone_as::<Vertex>(), "at {input_op:?}");
 
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
-                    assert_eq!(None, input_data, "at {input_op:?}");
+                    assert!(input_data.is_none(), "at {input_op:?}");
                 } else {
                     unreachable!();
                 }
@@ -293,7 +298,7 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(trace_context)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context, "at {next_op:?}");
+                assert_eq!(trace_context, &input_context.clone_as::<Vertex>(), "at {next_op:?}");
 
                 let neighbors = Box::new(TraceReaderNeighborIter {
                     exhausted: false,
@@ -305,7 +310,7 @@ where
                 Some((input_context, neighbors))
             }
             TraceOpContent::OutputIteratorExhausted => {
-                assert_eq!(None, self.input_batch.pop_front(), "at {next_op:?}");
+                assert!(self.input_batch.pop_front().is_none(), "at {next_op:?}");
                 self.exhausted = true;
                 None
             }
@@ -390,13 +395,13 @@ where
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'trace>(
         &self,
-        contexts: ContextIterator<'trace, Self::Vertex>,
+        contexts: ContextIterator<'trace, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'trace, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'trace, V, FieldValue> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -420,14 +425,14 @@ where
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'trace>(
         &self,
-        contexts: ContextIterator<'trace, Self::Vertex>,
+        contexts: ContextIterator<'trace, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'trace, Self::Vertex, VertexIterator<'trace, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'trace, V, VertexIterator<'trace, Self::Vertex>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -451,13 +456,13 @@ where
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'trace>(
         &self,
-        contexts: ContextIterator<'trace, Self::Vertex>,
+        contexts: ContextIterator<'trace, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'trace, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'trace, V, bool> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);

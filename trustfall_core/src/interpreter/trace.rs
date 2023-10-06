@@ -13,7 +13,7 @@ use crate::{
 
 use super::{
     ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
-    VertexIterator,
+    VertexIterator, AsVertex,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -196,6 +196,11 @@ where
     })
 }
 
+// Tapping adapters must be done at top level, where the `<V>` generic on the resolver methods
+// is the same as `AdapterT::Vertex`.
+//
+// Otherwise, the recorded traces may not be possible to replay since they would be incomplete:
+// they only capture a portion of the execution, the rest of which is missing.
 impl<'vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, AdapterT>
 where
     AdapterT: Adapter<'vertex>,
@@ -236,13 +241,13 @@ where
         )
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveProperty(
@@ -273,7 +278,7 @@ where
             .map(move |context| {
                 tracer_ref_3
                     .borrow_mut()
-                    .record(TraceOpContent::YieldInto(context.clone()), Some(call_opid));
+                    .record(TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()), Some(call_opid));
                 context
             }),
         );
@@ -291,7 +296,7 @@ where
             .map(move |(context, value)| {
                 tracer_ref_5.borrow_mut().record(
                     TraceOpContent::YieldFrom(YieldValue::ResolveProperty(
-                        context.clone(),
+                        context.clone_as::<Self::Vertex>(),
                         value.clone(),
                     )),
                     Some(call_opid),
@@ -302,14 +307,14 @@ where
         )
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveNeighbors(
@@ -340,7 +345,7 @@ where
             .map(move |context| {
                 tracer_ref_3
                     .borrow_mut()
-                    .record(TraceOpContent::YieldInto(context.clone()), Some(call_opid));
+                    .record(TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()), Some(call_opid));
                 context
             }),
         );
@@ -363,7 +368,7 @@ where
             .map(move |(context, neighbor_iter)| {
                 let mut trace = tracer_ref_5.borrow_mut();
                 let outer_iterator_opid = trace.record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(context.clone())),
+                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(context.clone_as::<Self::Vertex>())),
                     Some(call_opid),
                 );
                 drop(trace);
@@ -395,13 +400,13 @@ where
         )
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'vertex, V, bool> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveCoercion(
@@ -432,7 +437,7 @@ where
             .map(move |context| {
                 tracer_ref_3
                     .borrow_mut()
-                    .record(TraceOpContent::YieldInto(context.clone()), Some(call_opid));
+                    .record(TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()), Some(call_opid));
                 context
             }),
         );
@@ -450,7 +455,7 @@ where
             .map(move |(context, can_coerce)| {
                 tracer_ref_5.borrow_mut().record(
                     TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(
-                        context.clone(),
+                        context.clone_as::<Self::Vertex>(),
                         can_coerce,
                     )),
                     Some(call_opid),

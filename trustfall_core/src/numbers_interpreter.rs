@@ -272,7 +272,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         }
     }
 
-    fn resolve_property<V: AsVertex<Self::Vertex>>(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -299,7 +299,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         }
     }
 
-    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -414,7 +414,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         }
     }
 
-    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,

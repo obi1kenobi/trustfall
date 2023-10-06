@@ -100,6 +100,23 @@ impl<Vertex> DataContext<Vertex> {
     }
 }
 
+impl<Vertex: Clone> DataContext<Vertex> {
+    pub(crate) fn clone_as<V: Clone>(&self) -> DataContext<V> where Vertex: AsVertex<V> {
+        DataContext {
+            active_vertex: self.active_vertex.as_ref().and_then(|v| v.as_vertex()).cloned(),
+            vertices: self.vertices.iter().map(|(k, v)| (*k, v.as_ref().and_then(|x| x.as_vertex()).cloned())).collect(),
+            values: self.values.clone(),
+            suspended_vertices: self.suspended_vertices.iter().map(|v| v.as_ref().and_then(|x| x.as_vertex()).cloned()).collect(),
+            folded_contexts: self.folded_contexts.iter().map(|(k, v)| {
+                (*k, v.as_ref().map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()))
+            }).collect(),
+            folded_values: self.folded_values.clone(),
+            piggyback: self.piggyback.as_ref().map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()),
+            imported_tags: self.imported_tags.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 enum ValueOrVec {
     Value(FieldValue),
@@ -449,7 +466,7 @@ pub trait Adapter<'vertex> {
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
     /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
-    fn resolve_property<V: AsVertex<Self::Vertex>>(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
         type_name: &Arc<str>,
@@ -481,7 +498,7 @@ pub trait Adapter<'vertex> {
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
-    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
         type_name: &Arc<str>,
@@ -526,7 +543,7 @@ pub trait Adapter<'vertex> {
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
-    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
         type_name: &Arc<str>,
@@ -535,7 +552,7 @@ pub trait Adapter<'vertex> {
     ) -> ContextOutcomeIterator<'vertex, V, bool>;
 }
 
-pub trait AsVertex<V> {
+pub trait AsVertex<V>: Debug + Clone {
     fn as_vertex(&self) -> Option<&V>;
 }
 
@@ -543,13 +560,13 @@ pub trait Cast<V>: AsVertex<V> {
     fn into_self(vertex: V) -> Self;
 }
 
-impl<V> AsVertex<V> for V {
+impl<V: Debug + Clone> AsVertex<V> for V {
     fn as_vertex(&self) -> Option<&V> {
         Some(self)
     }
 }
 
-impl<V> Cast<V> for V {
+impl<V: Debug + Clone> Cast<V> for V {
     fn into_self(vertex: Self) -> Self {
         vertex
     }

@@ -296,7 +296,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         }
     }
 
-    fn resolve_property<V: AsVertex<Self::Vertex>>(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -372,7 +372,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         }
     }
 
-    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -445,7 +445,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
     }
 
     #[allow(unused_variables)]
-    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,

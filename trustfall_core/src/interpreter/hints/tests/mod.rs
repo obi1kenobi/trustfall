@@ -87,7 +87,7 @@ impl<'a> Adapter<'a> for TestAdapter {
         self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
     }
 
-    fn resolve_property<V: AsVertex<Self::Vertex>>(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -102,7 +102,7 @@ impl<'a> Adapter<'a> for TestAdapter {
         self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
     }
 
-    fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -118,7 +118,7 @@ impl<'a> Adapter<'a> for TestAdapter {
         self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
     }
 
-    fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
         contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
@@ -1324,7 +1324,7 @@ mod dynamic_property_values {
             self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
         }
 
-        fn resolve_property<V: AsVertex<Self::Vertex>>(
+        fn resolve_property<V: AsVertex<Self::Vertex> + 'static>(
             &self,
             mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
@@ -1339,7 +1339,7 @@ mod dynamic_property_values {
             self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
         }
 
-        fn resolve_neighbors<V: AsVertex<Self::Vertex>>(
+        fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'static>(
             &self,
             mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
@@ -1356,7 +1356,7 @@ mod dynamic_property_values {
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
         }
 
-        fn resolve_coercion<V: AsVertex<Self::Vertex>>(
+        fn resolve_coercion<V: AsVertex<Self::Vertex> + 'static>(
             &self,
             mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
