@@ -16,8 +16,7 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        ty::Type,
-        types::{intersect_types, is_argument_type_valid, NamedTypedValue},
+        types::{intersect_types, is_argument_type_valid, NamedTypedValue, Type},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
         LocalField, Operation, Recursive, TransformationKind, VariableRef, Vid,

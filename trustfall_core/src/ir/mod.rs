@@ -1,7 +1,6 @@
 //! Trustfall intermediate representation (IR)
 
 mod indexed;
-pub mod ty;
 pub mod types;
 pub mod value;
 
@@ -15,11 +14,10 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-pub use self::value::{FieldValue, TransparentValue};
-use self::{
-    ty::Type,
-    types::{are_base_types_equal_ignoring_nullability, is_base_type_orderable, NamedTypedValue},
+use self::types::{
+    are_base_types_equal_ignoring_nullability, is_base_type_orderable, NamedTypedValue, Type,
 };
+pub use self::value::{FieldValue, TransparentValue};
 
 pub(crate) const TYPENAME_META_FIELD: &str = "__typename";
 

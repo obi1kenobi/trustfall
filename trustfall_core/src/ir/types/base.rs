@@ -1,14 +1,23 @@
-use core::fmt::{self, Formatter};
-use std::{fmt::Display, sync::Arc};
+use std::{fmt::Display, fmt::Formatter, sync::Arc};
 
 use async_graphql_parser::types::{BaseType, Type as GQLType};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
-/// A backing-storage independent immutable representation of a GraphQL type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// A representation of a Trustfall type, independent of which parser or query syntax we're using.
+/// Equivalent in expressiveness to GraphQL types, but not explicitly tied to a GraphQL library.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Type {
     base: Arc<str>,
     modifiers: Modifiers,
+}
+
+impl std::fmt::Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(&format!("Type (represents {self})"))
+            .field("base", &self.base)
+            .field("modifiers", &self.modifiers)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,8 +29,10 @@ impl Modifiers {
     const NON_NULLABLE_MASK: u64 = 1;
     const LIST_MASK: u64 = 2;
     const MAX_LIST_DEPTH: u64 = 30;
-    // represents the most far left list bit that can be set before adding a new list will overflow
-    const MAX_LIST_DEPTH_MASK: u64 = Self::LIST_MASK << ((Self::MAX_LIST_DEPTH - 1) * 2); // - 1 because we start shifted over once.
+
+    /// Represents the leftmost list bit that can be set before adding a new list will overflow.
+    /// `(Self::MAX_LIST_DEPTH - 1)` because we start shifted over once.
+    const MAX_LIST_DEPTH_MASK: u64 = Self::LIST_MASK << ((Self::MAX_LIST_DEPTH - 1) * 2);
 
     fn nullable(&self) -> bool {
         (self.mask & Self::NON_NULLABLE_MASK) == 0
@@ -46,7 +57,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let ty = Type::new("[String!]!").unwrap();
     /// assert_eq!(ty.to_string(), "[String!]!");
@@ -61,7 +72,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let nullable = false;
     /// let ty = Type::new_named_type("String", nullable);
@@ -69,9 +80,9 @@ impl Type {
     /// assert_eq!(ty.to_string(), "String!");
     /// assert_eq!(ty, Type::new("String!").unwrap());
     /// ```
-    pub fn new_named_type(base_type_name: &str, nullable: bool) -> Self {
+    pub fn new_named_type(base_type: &str, nullable: bool) -> Self {
         Self {
-            base: base_type_name.to_string().into(),
+            base: base_type.to_string().into(),
             modifiers: Modifiers { mask: if nullable { 0 } else { Modifiers::NON_NULLABLE_MASK } },
         }
     }
@@ -80,7 +91,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let inner_nullable = false;
     /// let inner_ty = Type::new_named_type("String", inner_nullable);
@@ -109,7 +120,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let nullable_ty = Type::new("Int").unwrap();
     /// assert_eq!(nullable_ty.nullable(), true);
@@ -133,7 +144,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let nullable_ty = Type::new("[Int!]").unwrap();
     /// assert_eq!(nullable_ty.nullable(), true); // the list is nullable
@@ -149,7 +160,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let non_null_int_arr = Type::new("[Int!]").unwrap();
     /// assert_eq!(non_null_int_arr.is_list(), true);
@@ -165,7 +176,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let non_null_int_arr = Type::new("[Int!]").unwrap();
     /// let non_null_int = Type::new("Int!").unwrap();
@@ -180,7 +191,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::ty::Type;
+    /// use trustfall_core::ir::types::Type;
     ///
     /// let int_list_ty = Type::new("[Int!]").unwrap();
     /// assert_eq!(int_list_ty.base_named_type(), "Int");
@@ -275,7 +286,7 @@ impl<'de> Deserialize<'de> for Type {
         impl<'de> Visitor<'de> for TypeDeserializer {
             type Value = Type;
 
-            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("GraphQL type")
             }
 
@@ -295,7 +306,7 @@ impl<'de> Deserialize<'de> for Type {
 
 #[cfg(test)]
 mod test {
-    use crate::ir::ty::Type;
+    use crate::ir::types::Type;
 
     use super::Modifiers;
 

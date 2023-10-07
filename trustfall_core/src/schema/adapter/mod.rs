@@ -11,7 +11,7 @@ use crate::{
         CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexInfo, VertexIterator,
     },
-    ir::{ty::Type, EdgeParameters, FieldValue, TransparentValue},
+    ir::{types::Type, EdgeParameters, FieldValue, TransparentValue},
 };
 
 use super::Schema;

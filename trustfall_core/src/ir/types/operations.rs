@@ -1,8 +1,11 @@
 use std::fmt::Debug;
 
 use super::{
-    ty::Type, Argument, ContextField, FieldRef, FieldValue, FoldSpecificField,
-    FoldSpecificFieldKind, LocalField, VariableRef,
+    super::{
+        Argument, ContextField, FieldRef, FieldValue, FoldSpecificField, FoldSpecificFieldKind,
+        LocalField, VariableRef,
+    },
+    Type,
 };
 
 pub trait NamedTypedValue: Debug + Clone + PartialEq + Eq {
@@ -94,7 +97,15 @@ impl NamedTypedValue for Argument {
 }
 
 pub(crate) fn are_base_types_equal_ignoring_nullability(left: &Type, right: &Type) -> bool {
-    left.base_named_type() == right.base_named_type()
+    if left.base_named_type() != right.base_named_type() {
+        return false;
+    }
+
+    match (left.as_list(), right.as_list()) {
+        (None, None) => true,
+        (Some(left), Some(right)) => are_base_types_equal_ignoring_nullability(&left, &right),
+        _ => false,
+    }
 }
 
 pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
@@ -130,8 +141,7 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
 /// For two types, return a type that is a subtype of both, or None if no such type exists.
 /// For example:
 /// ```rust
-/// use trustfall_core::ir::ty::Type;
-/// use trustfall_core::ir::types::intersect_types;
+/// use trustfall_core::ir::types::{Type, intersect_types};
 ///
 /// let left = Type::new("[String]!").unwrap();
 /// let right = Type::new("[String!]").unwrap();
@@ -164,8 +174,7 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
 ///
 /// In particular, mixed integer types in a list are considered valid for types like `[Int]`.
 /// ```rust
-/// use trustfall_core::ir::ty::Type;
-/// use trustfall_core::ir::{FieldValue, types::is_argument_type_valid};
+/// use trustfall_core::ir::{FieldValue, types::{Type, is_argument_type_valid}};
 ///
 /// let variable_type = Type::new("[Int]").unwrap();
 /// let argument_value = FieldValue::List([
@@ -214,7 +223,10 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
 mod tests {
     use itertools::Itertools;
 
-    use crate::ir::{ty::Type, types::is_argument_type_valid, FieldValue};
+    use crate::ir::{
+        types::{are_base_types_equal_ignoring_nullability, is_argument_type_valid, Type},
+        FieldValue,
+    };
 
     #[test]
     fn null_values_are_only_valid_for_nullable_types() {
@@ -400,6 +412,34 @@ mod tests {
                     "{non_matching_type} {value:?}",
                 );
             }
+        }
+    }
+
+    #[test]
+    fn base_types_equal_ignoring_nullability() {
+        let test_data = [
+            (Type::new("String"), Type::new("String"), true),
+            (Type::new("String!"), Type::new("String!"), true),
+            (Type::new("Int"), Type::new("Int!"), true),
+            (Type::new("Int!"), Type::new("Int"), true),
+            (Type::new("[String!]"), Type::new("[String]!"), true),
+            (Type::new("[String]"), Type::new("[String!]!"), true),
+            (Type::new("String"), Type::new("Int"), false),
+            (Type::new("String!"), Type::new("Int!"), false),
+            (Type::new("[String]"), Type::new("String"), false),
+            (Type::new("String"), Type::new("[String]"), false),
+            (Type::new("[String]!"), Type::new("String!"), false),
+            (Type::new("String!"), Type::new("[String!]"), false),
+        ];
+
+        for (left, right, expected) in test_data {
+            let left = left.expect("not a valid type");
+            let right = right.expect("not a valid type");
+            assert_eq!(
+                are_base_types_equal_ignoring_nullability(&left, &right,),
+                expected,
+                "{left} {right}"
+            );
         }
     }
 }

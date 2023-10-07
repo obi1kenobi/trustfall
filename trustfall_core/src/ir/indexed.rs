@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use crate::util::BTreeMapTryInsertExt;
 
 use super::{
-    ty::Type, types::is_scalar_only_subtype, Argument, Eid, IREdge, IRFold, IRQuery,
-    IRQueryComponent, Vid,
+    types::{is_scalar_only_subtype, Type},
+    Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

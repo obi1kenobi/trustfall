@@ -11,7 +11,7 @@ use crate::{
         VertexIterator,
     },
     ir::{
-        ty::Type, ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent,
+        types::Type, ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent,
         Operation,
     },
 };

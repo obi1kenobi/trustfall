@@ -5,8 +5,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     ir::{
-        ty::Type, types::is_argument_type_valid, EdgeParameters, Eid, FieldRef, FieldValue,
-        IndexedQuery, Vid,
+        types::{is_argument_type_valid, Type},
+        EdgeParameters, Eid, FieldRef, FieldValue, IndexedQuery, Vid,
     },
     util::BTreeMapTryInsertExt,
 };

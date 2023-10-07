@@ -413,7 +413,7 @@ mod tests {
         interpreter::hints::{
             vertex_info::compute_statically_known_candidate, CandidateValue, Range,
         },
-        ir::{ty::Type, Argument, FieldValue, LocalField, Operation, VariableRef},
+        ir::{types::Type, Argument, FieldValue, LocalField, Operation, VariableRef},
     };
 
     #[test]
