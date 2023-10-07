@@ -424,9 +424,9 @@ mod tests {
         let null: Arc<str> = Arc::from("null");
         let list: Arc<str> = Arc::from("my_list");
         let longer_list: Arc<str> = Arc::from("longer_list");
-        let nullable_int_type = Type::new("Int").unwrap();
-        let int_type = Type::new("Int!").unwrap();
-        let list_int_type = Type::new("[Int!]!").unwrap();
+        let nullable_int_type = Type::parse("Int").unwrap();
+        let int_type = Type::parse("Int!").unwrap();
+        let list_int_type = Type::parse("[Int!]!").unwrap();
 
         let first_var = Argument::Variable(VariableRef {
             variable_name: first.clone(),
@@ -603,7 +603,7 @@ mod tests {
     #[test]
     fn use_schema_to_exclude_null_from_range() {
         let first: Arc<str> = Arc::from("first");
-        let int_type = Type::new("Int!").unwrap();
+        let int_type = Type::parse("Int!").unwrap();
 
         let first_var = Argument::Variable(VariableRef {
             variable_name: first.clone(),

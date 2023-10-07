@@ -74,12 +74,12 @@ impl Type {
     /// ```
     /// use trustfall_core::ir::Type;
     ///
-    /// let ty = Type::new("[String!]!").unwrap();
+    /// let ty = Type::parse("[String!]!").unwrap();
     /// assert_eq!(ty.to_string(), "[String!]!");
     ///
-    /// assert_eq!(Type::new("[String!]").unwrap().to_string(), "[String!]");
+    /// assert_eq!(Type::parse("[String!]").unwrap().to_string(), "[String!]");
     /// ```
-    pub fn new(ty: &str) -> Result<Self, TypeParseError> {
+    pub fn parse(ty: &str) -> Result<Self, TypeParseError> {
         async_graphql_parser::types::Type::new(ty)
             .ok_or_else(|| TypeParseError { invalid_type: ty.to_string() })
             .map(|ty| Self::from_type(&ty))
@@ -95,7 +95,7 @@ impl Type {
     /// let ty = Type::new_named_type("String", nullable);
     ///
     /// assert_eq!(ty.to_string(), "String!");
-    /// assert_eq!(ty, Type::new("String!").unwrap());
+    /// assert_eq!(ty, Type::parse("String!").unwrap());
     /// ```
     pub fn new_named_type(base_type: &str, nullable: bool) -> Self {
         Self {
@@ -117,7 +117,7 @@ impl Type {
     /// let ty = Type::new_list_type(inner_ty, outer_nullable);
     ///
     /// assert_eq!(ty.to_string(), "[String!]");
-    /// assert_eq!(ty, Type::new("[String!]").unwrap());
+    /// assert_eq!(ty, Type::parse("[String!]").unwrap());
     /// ```
     pub fn new_list_type(inner_type: Self, nullable: bool) -> Self {
         if inner_type.modifiers.at_max_list_depth() {
@@ -139,7 +139,7 @@ impl Type {
     /// ```
     /// use trustfall_core::ir::Type;
     ///
-    /// let nullable_ty = Type::new("Int").unwrap();
+    /// let nullable_ty = Type::parse("Int").unwrap();
     /// assert_eq!(nullable_ty.nullable(), true);
     /// let non_nullable_ty = nullable_ty.with_nullability(false);
     /// assert_eq!(non_nullable_ty.nullable(), false);
@@ -163,10 +163,10 @@ impl Type {
     /// ```
     /// use trustfall_core::ir::Type;
     ///
-    /// let nullable_ty = Type::new("[Int!]").unwrap();
+    /// let nullable_ty = Type::parse("[Int!]").unwrap();
     /// assert_eq!(nullable_ty.nullable(), true); // the list is nullable
     ///
-    /// let nullable_ty = Type::new("Int!").unwrap();
+    /// let nullable_ty = Type::parse("Int!").unwrap();
     /// assert_eq!(nullable_ty.nullable(), false); // the `Int` is nonnullable
     /// ```
     pub fn nullable(&self) -> bool {
@@ -179,10 +179,10 @@ impl Type {
     /// ```
     /// use trustfall_core::ir::Type;
     ///
-    /// let non_null_int_arr = Type::new("[Int!]").unwrap();
+    /// let non_null_int_arr = Type::parse("[Int!]").unwrap();
     /// assert_eq!(non_null_int_arr.is_list(), true);
     ///
-    /// let non_null_int = Type::new("Int!").unwrap();
+    /// let non_null_int = Type::parse("Int!").unwrap();
     /// assert_eq!(non_null_int.is_list(), false);
     /// ```
     pub fn is_list(&self) -> bool {
@@ -195,8 +195,8 @@ impl Type {
     /// ```
     /// use trustfall_core::ir::Type;
     ///
-    /// let non_null_int_arr = Type::new("[Int!]").unwrap();
-    /// let non_null_int = Type::new("Int!").unwrap();
+    /// let non_null_int_arr = Type::parse("[Int!]").unwrap();
+    /// let non_null_int = Type::parse("Int!").unwrap();
     /// assert_eq!(non_null_int_arr.as_list(), Some(non_null_int.clone()));
     /// assert_eq!(non_null_int.as_list(), None);
     /// ```
@@ -210,10 +210,10 @@ impl Type {
     /// ```
     /// use trustfall_core::ir::Type;
     ///
-    /// let int_list_ty = Type::new("[Int!]").unwrap();
+    /// let int_list_ty = Type::parse("[Int!]").unwrap();
     /// assert_eq!(int_list_ty.base_type(), "Int");
     ///
-    /// let string_ty = Type::new("String!").unwrap();
+    /// let string_ty = Type::parse("String!").unwrap();
     /// assert_eq!(string_ty.base_type(), "String");
     pub fn base_type(&self) -> &str {
         &self.base
@@ -311,8 +311,7 @@ impl<'de> Deserialize<'de> for Type {
             where
                 E: serde::de::Error,
             {
-                Type::new(s)
-                    .map_err(|err| serde::de::Error::custom(err))
+                Type::parse(s).map_err(|err| serde::de::Error::custom(err))
             }
         }
 
@@ -333,7 +332,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
-        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        let type_modifiers = Type::parse(&type_str).unwrap().modifiers;
         assert_eq!(
             format!("{:b}", type_modifiers.mask),
             "101010101010101010101010101010101010101010101010101010101010"
@@ -347,7 +346,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
-        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        let type_modifiers = Type::parse(&type_str).unwrap().modifiers;
         assert!(type_modifiers.at_max_list_depth());
     }
 
@@ -359,7 +358,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1)
         );
-        let _ = Type::new(&type_str); // will panic during modifier mask creation
+        let _ = Type::parse(&type_str); // will panic during modifier mask creation
     }
 
     #[test]
@@ -381,7 +380,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
-        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        let type_modifiers = Type::parse(&type_str).unwrap().modifiers;
         assert_eq!(
             format!("{:b}", type_modifiers.mask),
             "101010101010101010101010101010101010101010101010101010101011"
@@ -395,7 +394,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
-        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        let type_modifiers = Type::parse(&type_str).unwrap().modifiers;
         assert_eq!(
             format!("{:b}", type_modifiers.mask),
             "1101010101010101010101010101010101010101010101010101010101010"
@@ -409,7 +408,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize),
             "]!".repeat(Modifiers::MAX_LIST_DEPTH as usize)
         );
-        let type_modifiers = Type::new(&type_str).unwrap().modifiers;
+        let type_modifiers = Type::parse(&type_str).unwrap().modifiers;
         assert!(type_modifiers.at_max_list_depth());
     }
 }

@@ -76,7 +76,7 @@ fn get_field_name_and_type_from_schema<'a>(
             TYPENAME_META_FIELD,
             TYPENAME_META_FIELD_ARC.clone(),
             TYPENAME_META_FIELD_ARC.clone(),
-            Type::new("String!").unwrap(),
+            Type::parse("String!").unwrap(),
         );
     }
 

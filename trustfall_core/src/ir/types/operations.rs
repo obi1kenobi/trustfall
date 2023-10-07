@@ -150,12 +150,12 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
 /// ```rust
 /// use trustfall_core::ir::types::{Type, intersect_types};
 ///
-/// let left = Type::new("[String]!").unwrap();
-/// let right = Type::new("[String!]").unwrap();
+/// let left = Type::parse("[String]!").unwrap();
+/// let right = Type::parse("[String!]").unwrap();
 /// let result = intersect_types(&left, &right);
-/// assert_eq!(Some(Type::new("[String!]!").unwrap()), result);
+/// assert_eq!(Some(Type::parse("[String!]!").unwrap()), result);
 ///
-/// let incompatible = Type::new("[Int]").unwrap();
+/// let incompatible = Type::parse("[Int]").unwrap();
 /// let result = intersect_types(&left, &incompatible);
 /// assert_eq!(None, result);
 /// ```
@@ -183,7 +183,7 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
 /// ```rust
 /// use trustfall_core::ir::{FieldValue, types::{Type, is_argument_type_valid}};
 ///
-/// let variable_type = Type::new("[Int]").unwrap();
+/// let variable_type = Type::parse("[Int]").unwrap();
 /// let argument_value = FieldValue::List([
 ///     FieldValue::Int64(-1),
 ///     FieldValue::Uint64(1),
@@ -238,11 +238,11 @@ mod tests {
     #[test]
     fn null_values_are_only_valid_for_nullable_types() {
         let nullable_types = [
-            Type::new("Int").unwrap(),
-            Type::new("String").unwrap(),
-            Type::new("Boolean").unwrap(),
-            Type::new("[Int!]").unwrap(),
-            Type::new("[[Int!]!]").unwrap(),
+            Type::parse("Int").unwrap(),
+            Type::parse("String").unwrap(),
+            Type::parse("Boolean").unwrap(),
+            Type::parse("[Int!]").unwrap(),
+            Type::parse("[[Int!]!]").unwrap(),
         ];
         let non_nullable_types =
             nullable_types.iter().map(|t| t.with_nullability(false)).collect_vec();
@@ -261,12 +261,12 @@ mod tests {
 
     #[test]
     fn int_values_are_valid_only_for_int_type_regardless_of_nullability() {
-        let matching_types = [Type::new("Int").unwrap(), Type::new("Int!").unwrap()];
+        let matching_types = [Type::parse("Int").unwrap(), Type::parse("Int!").unwrap()];
         let non_matching_types = [
-            Type::new("String").unwrap(),
-            Type::new("[Int!]").unwrap(),
-            Type::new("[Int!]!").unwrap(),
-            Type::new("[[Int!]!]").unwrap(),
+            Type::parse("String").unwrap(),
+            Type::parse("[Int!]").unwrap(),
+            Type::parse("[Int!]!").unwrap(),
+            Type::parse("[[Int!]!]").unwrap(),
         ];
         let values = [
             FieldValue::Int64(-42),
@@ -290,12 +290,12 @@ mod tests {
 
     #[test]
     fn string_values_are_valid_only_for_string_type_regardless_of_nullability() {
-        let matching_types = [Type::new("String").unwrap(), Type::new("String!").unwrap()];
+        let matching_types = [Type::parse("String").unwrap(), Type::parse("String!").unwrap()];
         let non_matching_types = [
-            Type::new("Int").unwrap(),
-            Type::new("[String!]").unwrap(),
-            Type::new("[String!]!").unwrap(),
-            Type::new("[[String!]!]").unwrap(),
+            Type::parse("Int").unwrap(),
+            Type::parse("[String!]").unwrap(),
+            Type::parse("[String!]!").unwrap(),
+            Type::parse("[[String!]!]").unwrap(),
         ];
         let values = [
             FieldValue::String("".into()), // empty string is not the same value as null
@@ -317,12 +317,12 @@ mod tests {
 
     #[test]
     fn boolean_values_are_valid_only_for_boolean_type_regardless_of_nullability() {
-        let matching_types = [Type::new("Boolean").unwrap(), Type::new("Boolean!").unwrap()];
+        let matching_types = [Type::parse("Boolean").unwrap(), Type::parse("Boolean!").unwrap()];
         let non_matching_types = [
-            Type::new("Int").unwrap(),
-            Type::new("[Boolean!]").unwrap(),
-            Type::new("[Boolean!]!").unwrap(),
-            Type::new("[[Boolean!]!]").unwrap(),
+            Type::parse("Int").unwrap(),
+            Type::parse("[Boolean!]").unwrap(),
+            Type::parse("[Boolean!]!").unwrap(),
+            Type::parse("[[Boolean!]!]").unwrap(),
         ];
         let values = [FieldValue::Boolean(false), FieldValue::Boolean(true)];
 
@@ -342,15 +342,15 @@ mod tests {
     #[test]
     fn list_types_correctly_check_contents_of_list() {
         let non_nullable_contents_matching_types =
-            vec![Type::new("[Int!]").unwrap(), Type::new("[Int!]!").unwrap()];
+            vec![Type::parse("[Int!]").unwrap(), Type::parse("[Int!]!").unwrap()];
         let nullable_contents_matching_types =
-            vec![Type::new("[Int]").unwrap(), Type::new("[Int]!").unwrap()];
+            vec![Type::parse("[Int]").unwrap(), Type::parse("[Int]!").unwrap()];
         let non_matching_types = [
-            Type::new("Int").unwrap(),
-            Type::new("Int!").unwrap(),
-            Type::new("[String!]").unwrap(),
-            Type::new("[String!]!").unwrap(),
-            Type::new("[[String!]!]").unwrap(),
+            Type::parse("Int").unwrap(),
+            Type::parse("Int!").unwrap(),
+            Type::parse("[String!]").unwrap(),
+            Type::parse("[String!]!").unwrap(),
+            Type::parse("[[String!]!]").unwrap(),
         ];
         let non_nullable_values = [
             FieldValue::List((1..3).map(FieldValue::Int64).collect_vec().into()),
@@ -425,18 +425,18 @@ mod tests {
     #[test]
     fn base_types_equal_ignoring_nullability() {
         let test_data = [
-            (Type::new("String"), Type::new("String"), true),
-            (Type::new("String!"), Type::new("String!"), true),
-            (Type::new("Int"), Type::new("Int!"), true),
-            (Type::new("Int!"), Type::new("Int"), true),
-            (Type::new("[String!]"), Type::new("[String]!"), true),
-            (Type::new("[String]"), Type::new("[String!]!"), true),
-            (Type::new("String"), Type::new("Int"), false),
-            (Type::new("String!"), Type::new("Int!"), false),
-            (Type::new("[String]"), Type::new("String"), false),
-            (Type::new("String"), Type::new("[String]"), false),
-            (Type::new("[String]!"), Type::new("String!"), false),
-            (Type::new("String!"), Type::new("[String!]"), false),
+            (Type::parse("String"), Type::parse("String"), true),
+            (Type::parse("String!"), Type::parse("String!"), true),
+            (Type::parse("Int"), Type::parse("Int!"), true),
+            (Type::parse("Int!"), Type::parse("Int"), true),
+            (Type::parse("[String!]"), Type::parse("[String]!"), true),
+            (Type::parse("[String]"), Type::parse("[String!]!"), true),
+            (Type::parse("String"), Type::parse("Int"), false),
+            (Type::parse("String!"), Type::parse("Int!"), false),
+            (Type::parse("[String]"), Type::parse("String"), false),
+            (Type::parse("String"), Type::parse("[String]"), false),
+            (Type::parse("[String]!"), Type::parse("String!"), false),
+            (Type::parse("String!"), Type::parse("[String!]"), false),
         ];
 
         for (left, right, expected) in test_data {
