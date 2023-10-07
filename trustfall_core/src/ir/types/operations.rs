@@ -131,9 +131,16 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
         return false;
     }
 
+    // If the base types don't match, there can't be a subtyping relationship here.
+    // Recall that callers are required to make sure only scalar / nested-lists-of-scalar types
+    // are passed into this function.
+    if parent_type.base_named_type() != maybe_subtype.base_named_type() {
+        return false;
+    }
+
     match (parent_type.as_list(), maybe_subtype.as_list()) {
+        (None, None) => true,
         (Some(parent), Some(maybe_subtype)) => is_scalar_only_subtype(&parent, &maybe_subtype),
-        (None, None) => parent_type.base_named_type() == maybe_subtype.base_named_type(),
         _ => false,
     }
 }
