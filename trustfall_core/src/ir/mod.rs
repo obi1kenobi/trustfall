@@ -14,10 +14,8 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-use self::types::{
-    are_base_types_equal_ignoring_nullability, is_base_type_orderable,
-};
-pub use self::types::{Type, NamedTypedValue};
+use self::types::{are_base_types_equal_ignoring_nullability, is_base_type_orderable};
+pub use self::types::{NamedTypedValue, Type};
 pub use self::value::{FieldValue, TransparentValue};
 
 pub(crate) const TYPENAME_META_FIELD: &str = "__typename";

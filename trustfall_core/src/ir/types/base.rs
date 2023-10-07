@@ -34,30 +34,33 @@ impl Modifiers {
     /// `(Self::MAX_LIST_DEPTH - 1)` because we start shifted over once.
     const MAX_LIST_DEPTH_MASK: u64 = Self::LIST_MASK << ((Self::MAX_LIST_DEPTH - 1) * 2);
 
+    #[inline]
     fn nullable(&self) -> bool {
         (self.mask & Self::NON_NULLABLE_MASK) == 0
     }
 
+    #[inline]
     fn is_list(&self) -> bool {
         (self.mask & Self::LIST_MASK) != 0
     }
 
+    #[inline]
     fn as_list(&self) -> Option<Modifiers> {
         self.is_list().then_some(Modifiers { mask: self.mask >> 2 })
     }
 
+    #[inline]
     fn at_max_list_depth(&self) -> bool {
         (self.mask & Self::MAX_LIST_DEPTH_MASK) == Self::MAX_LIST_DEPTH_MASK
     }
 }
 
 impl Type {
-    /// Creates a new [`Type`] from a string.
-    /// Returns `None` if the string is not a valid GraphQL type.
+    /// Parses a string type representation into a new [`Type`].
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let ty = Type::new("[String!]!").unwrap();
     /// assert_eq!(ty.to_string(), "[String!]!");
@@ -72,7 +75,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let nullable = false;
     /// let ty = Type::new_named_type("String", nullable);
@@ -91,7 +94,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let inner_nullable = false;
     /// let inner_ty = Type::new_named_type("String", inner_nullable);
@@ -120,7 +123,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let nullable_ty = Type::new("Int").unwrap();
     /// assert_eq!(nullable_ty.nullable(), true);
@@ -144,7 +147,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let nullable_ty = Type::new("[Int!]").unwrap();
     /// assert_eq!(nullable_ty.nullable(), true); // the list is nullable
@@ -160,7 +163,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let non_null_int_arr = Type::new("[Int!]").unwrap();
     /// assert_eq!(non_null_int_arr.is_list(), true);
@@ -176,7 +179,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let non_null_int_arr = Type::new("[Int!]").unwrap();
     /// let non_null_int = Type::new("Int!").unwrap();
@@ -191,7 +194,7 @@ impl Type {
     ///
     /// # Example
     /// ```
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let int_list_ty = Type::new("[Int!]").unwrap();
     /// assert_eq!(int_list_ty.base_named_type(), "Int");
@@ -306,7 +309,7 @@ impl<'de> Deserialize<'de> for Type {
 
 #[cfg(test)]
 mod test {
-    use crate::ir::types::Type;
+    use crate::ir::Type;
 
     use super::Modifiers;
 

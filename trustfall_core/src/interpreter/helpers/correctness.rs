@@ -3,8 +3,8 @@ use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 use crate::{
     interpreter::{Adapter, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo},
     ir::{
-        types::Type, ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery,
-        IRQueryComponent, IRVertex, TransparentValue, Vid,
+        ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent, IRVertex,
+        TransparentValue, Type, Vid,
     },
     schema::{Schema, SchemaAdapter},
     TryIntoStruct,
