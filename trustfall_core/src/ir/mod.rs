@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-use self::types::{are_base_types_equal_ignoring_nullability, is_base_type_orderable};
+use self::types::is_base_type_orderable;
 pub use self::types::{NamedTypedValue, Type};
 pub use self::value::{FieldValue, TransparentValue};
 
@@ -620,7 +620,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 // For the operands relative to each other, nullability doesn't matter,
                 // but the rest of the type must be the same.
                 let right_type = right_type.unwrap();
-                if are_base_types_equal_ignoring_nullability(left_type, right_type) {
+                if left_type.equal_ignoring_nullability(right_type) {
                     Ok(())
                 } else {
                     // The right argument must be a tag at this point. If it is not a tag
@@ -671,7 +671,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
 
                 // For the operands relative to each other, nullability doesn't matter,
                 // but the types must be equal to each other.
-                if !are_base_types_equal_ignoring_nullability(left_type, right_type) {
+                if !left_type.equal_ignoring_nullability(right_type) {
                     // The right argument must be a tag at this point. If it is not a tag
                     // and the second .unwrap() below panics, then our type inference
                     // has inferred an incorrect type for the variable in the argument.
@@ -710,7 +710,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
 
                 // However, the type inside the left-hand list must be equal,
                 // ignoring nullability, to the type of the right-hand operand.
-                if are_base_types_equal_ignoring_nullability(&inner_type, right_type) {
+                if inner_type.equal_ignoring_nullability(right_type) {
                     Ok(())
                 } else {
                     // The right argument must be a tag at this point. If it is not a tag
@@ -750,7 +750,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
 
                 // However, the type inside the right-hand list must be equal,
                 // ignoring nullability, to the type of the left-hand operand.
-                if are_base_types_equal_ignoring_nullability(left_type, &inner_type) {
+                if left_type.equal_ignoring_nullability(&inner_type) {
                     Ok(())
                 } else {
                     // The right argument must be a tag at this point. If it is not a tag

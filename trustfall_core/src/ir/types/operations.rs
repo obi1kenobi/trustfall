@@ -96,18 +96,6 @@ impl NamedTypedValue for Argument {
     }
 }
 
-pub(crate) fn are_base_types_equal_ignoring_nullability(left: &Type, right: &Type) -> bool {
-    if left.base_type() != right.base_type() {
-        return false;
-    }
-
-    match (left.as_list(), right.as_list()) {
-        (None, None) => true,
-        (Some(left), Some(right)) => are_base_types_equal_ignoring_nullability(&left, &right),
-        _ => false,
-    }
-}
-
 pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
     let name = operand_type.base_type();
     name == "Int" || name == "Float" || name == "String"
@@ -199,7 +187,7 @@ mod tests {
     use itertools::Itertools;
 
     use crate::ir::{
-        types::{are_base_types_equal_ignoring_nullability, is_argument_type_valid, Type},
+        types::{is_argument_type_valid, Type},
         FieldValue,
     };
 
@@ -387,34 +375,6 @@ mod tests {
                     "{non_matching_type} {value:?}",
                 );
             }
-        }
-    }
-
-    #[test]
-    fn base_types_equal_ignoring_nullability() {
-        let test_data = [
-            (Type::parse("String"), Type::parse("String"), true),
-            (Type::parse("String!"), Type::parse("String!"), true),
-            (Type::parse("Int"), Type::parse("Int!"), true),
-            (Type::parse("Int!"), Type::parse("Int"), true),
-            (Type::parse("[String!]"), Type::parse("[String]!"), true),
-            (Type::parse("[String]"), Type::parse("[String!]!"), true),
-            (Type::parse("String"), Type::parse("Int"), false),
-            (Type::parse("String!"), Type::parse("Int!"), false),
-            (Type::parse("[String]"), Type::parse("String"), false),
-            (Type::parse("String"), Type::parse("[String]"), false),
-            (Type::parse("[String]!"), Type::parse("String!"), false),
-            (Type::parse("String!"), Type::parse("[String!]"), false),
-        ];
-
-        for (left, right, expected) in test_data {
-            let left = left.expect("not a valid type");
-            let right = right.expect("not a valid type");
-            assert_eq!(
-                are_base_types_equal_ignoring_nullability(&left, &right,),
-                expected,
-                "{left} {right}"
-            );
         }
     }
 }

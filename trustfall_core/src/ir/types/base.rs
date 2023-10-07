@@ -280,6 +280,18 @@ impl Type {
             _ => None,
         }
     }
+
+    pub(crate) fn equal_ignoring_nullability(&self, other: &Self) -> bool {
+        if self.base_type() != other.base_type() {
+            return false;
+        }
+
+        match (self.as_list(), other.as_list()) {
+            (None, None) => true,
+            (Some(left), Some(right)) => left.equal_ignoring_nullability(&right),
+            _ => false,
+        }
+    }
 }
 
 impl Display for Type {
@@ -444,5 +456,32 @@ mod test {
         );
         let type_modifiers = Type::parse(&type_str).unwrap().modifiers;
         assert!(type_modifiers.at_max_list_depth());
+    }
+
+    #[test]
+    fn base_types_equal_ignoring_nullability() {
+        let test_data = [
+            (Type::parse("String"), Type::parse("String"), true),
+            (Type::parse("String!"), Type::parse("String!"), true),
+            (Type::parse("Int"), Type::parse("Int!"), true),
+            (Type::parse("[String!]"), Type::parse("[String]!"), true),
+            (Type::parse("[String]"), Type::parse("[String!]!"), true),
+            (Type::parse("String"), Type::parse("Int"), false),
+            (Type::parse("String!"), Type::parse("Int!"), false),
+            (Type::parse("[String]"), Type::parse("String"), false),
+            (Type::parse("[String]!"), Type::parse("String!"), false),
+            (Type::parse("[String!]"), Type::parse("String!"), false),
+        ];
+
+        for (left, right, expected) in test_data {
+            let left = left.expect("not a valid type");
+            let right = right.expect("not a valid type");
+            assert_eq!(left.equal_ignoring_nullability(&right), expected, "{left} {right}");
+            assert_eq!(
+                right.equal_ignoring_nullability(&left),
+                expected,
+                "commutativity violation in: {right} {left}"
+            );
+        }
     }
 }
