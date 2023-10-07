@@ -145,38 +145,6 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
     }
 }
 
-/// For two types, return a type that is a subtype of both, or None if no such type exists.
-/// For example:
-/// ```rust
-/// use trustfall_core::ir::types::{Type, intersect_types};
-///
-/// let left = Type::parse("[String]!").unwrap();
-/// let right = Type::parse("[String!]").unwrap();
-/// let result = intersect_types(&left, &right);
-/// assert_eq!(Some(Type::parse("[String!]!").unwrap()), result);
-///
-/// let incompatible = Type::parse("[Int]").unwrap();
-/// let result = intersect_types(&left, &incompatible);
-/// assert_eq!(None, result);
-/// ```
-pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
-    let nullable = left.nullable() && right.nullable();
-
-    match (left.as_list(), right.as_list()) {
-        (None, None) => {
-            if left.base_type() == right.base_type() {
-                Some(Type::new_named_type(left.base_type(), nullable))
-            } else {
-                None
-            }
-        }
-        (Some(left), Some(right)) => {
-            intersect_types(&left, &right).map(|inner| Type::new_list_type(inner, nullable))
-        }
-        _ => None,
-    }
-}
-
 /// Check if the given argument value is valid for the specified variable type.
 ///
 /// In particular, mixed integer types in a list are considered valid for types like `[Int]`.

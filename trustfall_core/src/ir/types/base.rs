@@ -246,6 +246,40 @@ impl Type {
         };
         Type { base: name.to_string().into(), modifiers: Modifiers { mask } }
     }
+
+    /// For two types, return a type that is a subtype of both, or None if no such type exists.
+    /// For example:
+    /// ```rust
+    /// use trustfall_core::ir::types::Type;
+    ///
+    /// let left = Type::parse("[String]!").unwrap();
+    /// let right = Type::parse("[String!]").unwrap();
+    /// let result = left.intersect(&right);
+    /// assert_eq!(Some(Type::parse("[String!]!").unwrap()), result);
+    ///
+    /// let incompatible = Type::parse("[Int]").unwrap();
+    /// let result = left.intersect(&incompatible);
+    /// assert_eq!(None, result);
+    /// ```
+    pub fn intersect(&self, other: &Self) -> Option<Self> {
+        if self.base_type() != other.base_type() {
+            return None;
+        }
+
+        self.intersect_impl(other)
+    }
+
+    fn intersect_impl(&self, other: &Self) -> Option<Self> {
+        let nullable = self.nullable() && other.nullable();
+
+        match (self.as_list(), other.as_list()) {
+            (None, None) => Some(Type::new_named_type(self.base_type(), nullable)),
+            (Some(left), Some(right)) => {
+                left.intersect_impl(&right).map(|inner| Type::new_list_type(inner, nullable))
+            }
+            _ => None,
+        }
+    }
 }
 
 impl Display for Type {

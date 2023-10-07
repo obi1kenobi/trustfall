@@ -16,7 +16,7 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        types::{intersect_types, is_argument_type_valid, NamedTypedValue, Type},
+        types::{is_argument_type_valid, NamedTypedValue, Type},
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
         FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
         LocalField, Operation, Recursive, TransformationKind, VariableRef, Vid,
@@ -508,7 +508,7 @@ fn fill_in_query_variables(
             .entry(vref.variable_name.clone())
             .or_insert_with(|| vref.variable_type.clone());
 
-        match intersect_types(existing_type, &vref.variable_type) {
+        match existing_type.intersect(&vref.variable_type) {
             Some(intersection) => {
                 *existing_type = intersection;
             }
