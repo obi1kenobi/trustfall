@@ -15,8 +15,9 @@ use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
 use self::types::{
-    are_base_types_equal_ignoring_nullability, is_base_type_orderable, NamedTypedValue, Type,
+    are_base_types_equal_ignoring_nullability, is_base_type_orderable,
 };
+pub use self::types::{Type, NamedTypedValue};
 pub use self::value::{FieldValue, TransparentValue};
 
 pub(crate) const TYPENAME_META_FIELD: &str = "__typename";
