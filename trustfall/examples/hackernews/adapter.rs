@@ -12,6 +12,7 @@ use trustfall::{
     },
     FieldValue,
 };
+use trustfall_core::interpreter::AsVertex;
 
 use crate::{vertex::Vertex, SCHEMA};
 
@@ -144,12 +145,12 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match (type_name, property_name) {
             // properties on Item and its implementers
             (type_name, "id") if self.item_subtypes.contains(type_name) => {
@@ -202,13 +203,13 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         edge_name: &str,
         _parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
                 let edge_resolver = |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
@@ -354,12 +355,12 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         _type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
     }
 }

@@ -28,12 +28,12 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
     ) -> trustfall::provider::VertexIterator<'static, Self::Vertex> {
         Box::new(std::iter::once(V::Variant(Value { name: String::from("Berit") })))
     }
-    fn resolve_property(
+    fn resolve_property<V: trustfall_core::interpreter::AsVertex<Self::Vertex> + 'static>(
         &self,
-        contexts: trustfall::provider::ContextIterator<'static, Self::Vertex>,
+        contexts: trustfall::provider::ContextIterator<'static, V>,
         type_name: &str,
         property_name: &str,
-    ) -> trustfall::provider::ContextOutcomeIterator<'static, Self::Vertex, trustfall::FieldValue>
+    ) -> trustfall::provider::ContextOutcomeIterator<'static, V, trustfall::FieldValue>
     {
         match (type_name, property_name) {
             ("Vertex", "name") => trustfall::provider::resolve_property_with(
@@ -48,26 +48,26 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: trustfall_core::interpreter::AsVertex<Self::Vertex> + 'static>(
         &self,
-        _contexts: trustfall::provider::ContextIterator<'static, Self::Vertex>,
+        _contexts: trustfall::provider::ContextIterator<'static, V>,
         _type_name: &str,
         _edge_name: &str,
         _parameters: &trustfall::provider::EdgeParameters,
     ) -> trustfall::provider::ContextOutcomeIterator<
         'static,
-        Self::Vertex,
+        V,
         trustfall::provider::VertexIterator<'static, Self::Vertex>,
     > {
         todo!("schema should not contain neighbors: Berit likes it that way")
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: trustfall_core::interpreter::AsVertex<Self::Vertex> + 'static>(
         &self,
-        _contexts: trustfall::provider::ContextIterator<'static, Self::Vertex>,
+        _contexts: trustfall::provider::ContextIterator<'static, V>,
         _type_name: &str,
         _coerce_to_type: &str,
-    ) -> trustfall::provider::ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> trustfall::provider::ContextOutcomeIterator<'static, V, bool> {
         todo!("there is only ever one Berit")
     }
 }
