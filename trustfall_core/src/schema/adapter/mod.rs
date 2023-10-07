@@ -396,7 +396,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                 "target" => resolve_neighbors_with(contexts, move |vertex| {
                     let vertex = vertex.as_edge().expect("not an Edge");
                     let edge_type = Type::from_type(&vertex.defn.ty.node);
-                    let target_type = edge_type.base_named_type();
+                    let target_type = edge_type.base_type();
                     Box::new(
                         schema
                             .vertex_types
@@ -501,7 +501,7 @@ fn resolve_vertex_type_property_edge<'a>(
     Box::new(fields.iter().filter_map(move |p| {
         let field = &p.node;
         let field_ty = Type::from_type(&field.ty.node);
-        let base_ty = field_ty.base_named_type();
+        let base_ty = field_ty.base_type();
 
         if !schema.vertex_types.contains_key(base_ty) {
             Some(SchemaVertex::Property(Property::new(
@@ -527,7 +527,7 @@ fn resolve_vertex_type_edge_edge<'a>(
     Box::new(fields.iter().filter_map(move |p| {
         let field = &p.node;
         let field_ty = Type::from_type(&field.ty.node);
-        let base_ty = field_ty.base_named_type();
+        let base_ty = field_ty.base_type();
 
         if schema.vertex_types.contains_key(base_ty) {
             Some(SchemaVertex::Edge(Edge::new(field)))

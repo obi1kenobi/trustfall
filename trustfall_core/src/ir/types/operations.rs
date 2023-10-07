@@ -97,7 +97,7 @@ impl NamedTypedValue for Argument {
 }
 
 pub(crate) fn are_base_types_equal_ignoring_nullability(left: &Type, right: &Type) -> bool {
-    if left.base_named_type() != right.base_named_type() {
+    if left.base_type() != right.base_type() {
         return false;
     }
 
@@ -109,7 +109,7 @@ pub(crate) fn are_base_types_equal_ignoring_nullability(left: &Type, right: &Typ
 }
 
 pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
-    let name = operand_type.base_named_type();
+    let name = operand_type.base_type();
     name == "Int" || name == "Float" || name == "String"
 }
 
@@ -134,7 +134,7 @@ pub(crate) fn is_scalar_only_subtype(parent_type: &Type, maybe_subtype: &Type) -
     // If the base types don't match, there can't be a subtyping relationship here.
     // Recall that callers are required to make sure only scalar / nested-lists-of-scalar types
     // are passed into this function.
-    if parent_type.base_named_type() != maybe_subtype.base_named_type() {
+    if parent_type.base_type() != maybe_subtype.base_type() {
         return false;
     }
 
@@ -164,8 +164,8 @@ pub fn intersect_types(left: &Type, right: &Type) -> Option<Type> {
 
     match (left.as_list(), right.as_list()) {
         (None, None) => {
-            if left.base_named_type() == right.base_named_type() {
-                Some(Type::new_named_type(left.base_named_type(), nullable))
+            if left.base_type() == right.base_type() {
+                Some(Type::new_named_type(left.base_type(), nullable))
             } else {
                 None
             }
@@ -199,19 +199,19 @@ pub fn is_argument_type_valid(variable_type: &Type, argument_value: &FieldValue)
         }
         FieldValue::Int64(_) | FieldValue::Uint64(_) => {
             // This is a valid value only if the type is Int, ignoring nullability.
-            !variable_type.is_list() && variable_type.base_named_type() == "Int"
+            !variable_type.is_list() && variable_type.base_type() == "Int"
         }
         FieldValue::Float64(_) => {
             // This is a valid value only if the type is Float, ignoring nullability.
-            !variable_type.is_list() && variable_type.base_named_type() == "Float"
+            !variable_type.is_list() && variable_type.base_type() == "Float"
         }
         FieldValue::String(_) => {
             // This is a valid value only if the type is String, ignoring nullability.
-            !variable_type.is_list() && variable_type.base_named_type() == "String"
+            !variable_type.is_list() && variable_type.base_type() == "String"
         }
         FieldValue::Boolean(_) => {
             // This is a valid value only if the type is Boolean, ignoring nullability.
-            !variable_type.is_list() && variable_type.base_named_type() == "Boolean"
+            !variable_type.is_list() && variable_type.base_type() == "Boolean"
         }
         FieldValue::List(nested_values) => {
             // This is a valid value only if the type is a list, and all the inner elements

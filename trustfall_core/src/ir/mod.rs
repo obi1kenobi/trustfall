@@ -781,7 +781,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 let mut errors = vec![];
 
                 // Both operands need to be strings, ignoring nullability.
-                if left_type.is_list() || left_type.base_named_type() != "String" {
+                if left_type.is_list() || left_type.base_type() != "String" {
                     errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
                         self.operation_name().to_string(),
                         left.named().to_string(),
@@ -793,7 +793,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 // and the second .unwrap() below panics, then our type inference
                 // has inferred an incorrect type for the variable in the argument.
                 let right_type = right_type.unwrap();
-                if right_type.is_list() || right_type.base_named_type() != "String" {
+                if right_type.is_list() || right_type.base_type() != "String" {
                     let tag = right.unwrap().as_tag().unwrap();
                     errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
                         self.operation_name().to_string(),

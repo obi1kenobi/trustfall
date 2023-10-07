@@ -198,7 +198,7 @@ impl Type {
     ///
     /// let string_ty = Type::new("String!").unwrap();
     /// assert_eq!(string_ty.base_named_type(), "String");
-    pub fn base_named_type(&self) -> &str {
+    pub fn base_type(&self) -> &str {
         &self.base
     }
 

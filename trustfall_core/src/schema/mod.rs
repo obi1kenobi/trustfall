@@ -302,7 +302,7 @@ fn check_root_query_type_invariants(
 
     for field_defn in &query_type.fields {
         let field_type = Type::from_type(&field_defn.node.ty.node);
-        let base_named_type = field_type.base_named_type();
+        let base_named_type = field_type.base_type();
         if BUILTIN_SCALARS.contains(base_named_type) {
             errors.push(InvalidSchemaError::PropertyFieldOnRootQueryType(
                 query_type_definition.name.node.to_string(),
@@ -349,7 +349,7 @@ fn check_type_and_property_and_edge_invariants(
 
             let field_type = Type::from_type(field_type);
 
-            let base_named_type = field_type.base_named_type();
+            let base_named_type = field_type.base_type();
             if BUILTIN_SCALARS.contains(base_named_type) {
                 // We're looking at a property field.
                 if !field_defn.arguments.is_empty() {
