@@ -1257,9 +1257,9 @@ mod dynamic_property_values {
     impl ResolveInfoFn for () {
         fn call<V: AsVertex<NumbersVertex> + 'static>(
             &mut self,
-            adapter: &NumbersAdapter,
+            _adapter: &NumbersAdapter,
             ctxs: ContextIterator<'static, V>,
-            info: &ResolveInfo,
+            _info: &ResolveInfo,
         ) -> ContextIterator<'static, V> {
             ctxs
         }
@@ -1277,9 +1277,9 @@ mod dynamic_property_values {
     impl ResolveEdgeInfoFn for () {
         fn call<V: AsVertex<NumbersVertex> + 'static>(
             &mut self,
-            adapter: &NumbersAdapter,
+            _adapter: &NumbersAdapter,
             ctxs: ContextIterator<'static, V>,
-            info: &ResolveEdgeInfo,
+            _info: &ResolveEdgeInfo,
         ) -> ContextIterator<'static, V> {
             ctxs
         }
@@ -1516,7 +1516,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -1622,7 +1622,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -1644,7 +1644,7 @@ mod dynamic_property_values {
         impl ResolveEdgeInfoFn for EdgeResolver {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
@@ -1687,7 +1687,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -1766,7 +1766,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -1870,7 +1870,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -1948,7 +1948,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -1979,7 +1979,7 @@ mod dynamic_property_values {
         impl ResolveEdgeInfoFn for EdgeResolver {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
@@ -2028,7 +2028,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -2151,7 +2151,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -2265,7 +2265,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
@@ -2394,7 +2394,7 @@ mod dynamic_property_values {
         impl ResolveInfoFn for StartingVertices {
             fn call<V: AsVertex<NumbersVertex> + 'static>(
                 &mut self,
-                adapter: &NumbersAdapter,
+                _adapter: &NumbersAdapter,
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveInfo,
             ) -> ContextIterator<'static, V> {
