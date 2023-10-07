@@ -1,6 +1,5 @@
 use std::{fmt::Display, fmt::Formatter, sync::Arc};
 
-use async_graphql_parser::types::{BaseType, Type as GQLType};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// A representation of a Trustfall type, independent of which parser or query syntax we're using.
@@ -55,6 +54,19 @@ impl Modifiers {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TypeParseError {
+    invalid_type: String,
+}
+
+impl Display for TypeParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} is not a valid Type representation", &self.invalid_type)
+    }
+}
+
+impl std::error::Error for TypeParseError {}
+
 impl Type {
     /// Parses a string type representation into a new [`Type`].
     ///
@@ -67,8 +79,10 @@ impl Type {
     ///
     /// assert_eq!(Type::new("[String!]").unwrap().to_string(), "[String!]");
     /// ```
-    pub fn new(ty: &str) -> Option<Self> {
-        Some(Self::from_type(&GQLType::new(ty)?))
+    pub fn new(ty: &str) -> Result<Self, TypeParseError> {
+        async_graphql_parser::types::Type::new(ty)
+            .ok_or_else(|| TypeParseError { invalid_type: ty.to_string() })
+            .map(|ty| Self::from_type(&ty))
     }
 
     /// Creates an individual [`Type`], not a list.
@@ -197,23 +211,23 @@ impl Type {
     /// use trustfall_core::ir::Type;
     ///
     /// let int_list_ty = Type::new("[Int!]").unwrap();
-    /// assert_eq!(int_list_ty.base_named_type(), "Int");
+    /// assert_eq!(int_list_ty.base_type(), "Int");
     ///
     /// let string_ty = Type::new("String!").unwrap();
-    /// assert_eq!(string_ty.base_named_type(), "String");
+    /// assert_eq!(string_ty.base_type(), "String");
     pub fn base_type(&self) -> &str {
         &self.base
     }
 
-    /// Convert a [`GQLType`] to a [`Type`].
-    pub(crate) fn from_type(ty: &GQLType) -> Type {
+    /// Convert a [`async_graphql_parser::types::Type`] to a [`Type`].
+    pub(crate) fn from_type(ty: &async_graphql_parser::types::Type) -> Type {
         let mut base = &ty.base;
 
         let mut mask = if ty.nullable { 0 } else { Modifiers::NON_NULLABLE_MASK };
 
         let mut i = 0;
 
-        while let BaseType::List(ty_inside_list) = base {
+        while let async_graphql_parser::types::BaseType::List(ty_inside_list) = base {
             mask |= Modifiers::LIST_MASK << i;
             i += 2;
             if i > Modifiers::MAX_LIST_DEPTH * 2 {
@@ -225,7 +239,7 @@ impl Type {
             base = &ty_inside_list.base;
         }
 
-        let BaseType::Named(name) = base else {
+        let async_graphql_parser::types::BaseType::Named(name) = base else {
             unreachable!(
                 "should be impossible to get a non-named type after looping through all list types"
             )
@@ -297,9 +311,8 @@ impl<'de> Deserialize<'de> for Type {
             where
                 E: serde::de::Error,
             {
-                let ty = Type::new(s)
-                    .ok_or_else(|| serde::de::Error::custom("not a valid GraphQL type"))?;
-                Ok(ty)
+                Type::new(s)
+                    .map_err(|err| serde::de::Error::custom(err))
             }
         }
 
@@ -346,7 +359,7 @@ mod test {
             "[".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1),
             "]".repeat(Modifiers::MAX_LIST_DEPTH as usize + 1)
         );
-        Type::new(&type_str); // will panic during modifier mask creation
+        let _ = Type::new(&type_str); // will panic during modifier mask creation
     }
 
     #[test]
@@ -357,8 +370,8 @@ mod test {
             constructed_type = Type::new_list_type(constructed_type, false);
         }
 
-        Type::new_list_type(constructed_type, false); // will panic during new modifier mask creation
-                                                      // for new list type
+        // will panic during new modifier mask creation for new list type
+        Type::new_list_type(constructed_type, false);
     }
 
     #[test]
