@@ -12,8 +12,8 @@ use crate::{
 };
 
 use super::{
-    ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
-    VertexIterator, AsVertex,
+    AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
+    VertexIterator,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -276,9 +276,10 @@ where
                 },
             )
             .map(move |context| {
-                tracer_ref_3
-                    .borrow_mut()
-                    .record(TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()), Some(call_opid));
+                tracer_ref_3.borrow_mut().record(
+                    TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()),
+                    Some(call_opid),
+                );
                 context
             }),
         );
@@ -343,9 +344,10 @@ where
                 },
             )
             .map(move |context| {
-                tracer_ref_3
-                    .borrow_mut()
-                    .record(TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()), Some(call_opid));
+                tracer_ref_3.borrow_mut().record(
+                    TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()),
+                    Some(call_opid),
+                );
                 context
             }),
         );
@@ -368,7 +370,9 @@ where
             .map(move |(context, neighbor_iter)| {
                 let mut trace = tracer_ref_5.borrow_mut();
                 let outer_iterator_opid = trace.record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(context.clone_as::<Self::Vertex>())),
+                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(
+                        context.clone_as::<Self::Vertex>(),
+                    )),
                     Some(call_opid),
                 );
                 drop(trace);
@@ -435,9 +439,10 @@ where
                 },
             )
             .map(move |context| {
-                tracer_ref_3
-                    .borrow_mut()
-                    .record(TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()), Some(call_opid));
+                tracer_ref_3.borrow_mut().record(
+                    TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()),
+                    Some(call_opid),
+                );
                 context
             }),
         );

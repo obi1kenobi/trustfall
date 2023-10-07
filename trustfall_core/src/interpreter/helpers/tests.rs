@@ -67,8 +67,8 @@ mod correctness {
 
         use crate::{
             interpreter::{
-                Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-                VertexIterator, AsVertex,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue},
             numbers_interpreter::NumbersAdapter,
@@ -286,8 +286,8 @@ mod correctness {
 
         use crate::{
             interpreter::{
-                Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-                VertexIterator, AsVertex,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue},
             numbers_interpreter::NumbersAdapter,
@@ -516,8 +516,8 @@ mod correctness {
 
         use crate::{
             interpreter::{
-                Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-                VertexIterator, AsVertex,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue},
             numbers_interpreter::NumbersAdapter,

@@ -18,8 +18,8 @@ use crate::{
 use super::{
     execution::interpret_ir,
     trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo,
-    VertexIterator, AsVertex,
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo,
+    ResolveInfo, VertexIterator,
 };
 
 #[derive(Clone, Debug)]
@@ -168,7 +168,8 @@ where
 }
 
 #[allow(unused_variables)]
-impl<'query, 'trace, V, Vertex> Iterator for TraceReaderResolveCoercionIter<'query, 'trace, V, Vertex>
+impl<'query, 'trace, V, Vertex> Iterator
+    for TraceReaderResolveCoercionIter<'query, 'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     V: AsVertex<Vertex>,
@@ -246,7 +247,8 @@ where
     inner: Rc<RefCell<btree_map::Iter<'trace, Opid, TraceOp<Vertex>>>>,
 }
 
-impl<'query, 'trace, V, Vertex> Iterator for TraceReaderResolveNeighborsIter<'query, 'trace, V, Vertex>
+impl<'query, 'trace, V, Vertex> Iterator
+    for TraceReaderResolveNeighborsIter<'query, 'trace, V, Vertex>
 where
     Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'query,
     V: AsVertex<Vertex>,

@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, fmt::Debug};
 
 use crate::{ir::FieldValue, schema::Schema};
 
-use super::{ContextIterator, ContextOutcomeIterator, Typename, VertexIterator, AsVertex};
+use super::{AsVertex, ContextIterator, ContextOutcomeIterator, Typename, VertexIterator};
 
 mod correctness;
 
@@ -20,7 +20,11 @@ pub use correctness::check_adapter_invariants;
 /// [`accessor_property!`](crate::accessor_property) macros.
 ///
 /// [`BasicAdapter::resolve_property`]: super::basic_adapter::BasicAdapter::resolve_property
-pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVertex<Vertex> + 'vertex>(
+pub fn resolve_property_with<
+    'vertex,
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+>(
     contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
 ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
@@ -39,7 +43,11 @@ pub fn resolve_property_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVert
 /// in the input context iterator, one at a time.
 ///
 /// [`BasicAdapter::resolve_neighbors`]: super::basic_adapter::BasicAdapter::resolve_neighbors
-pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVertex<Vertex> + 'vertex>(
+pub fn resolve_neighbors_with<
+    'vertex,
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+>(
     contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'vertex,
 ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Vertex>> {
@@ -65,7 +73,11 @@ pub fn resolve_neighbors_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVer
 /// in the input context iterator, one at a time.
 ///
 /// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
-pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVertex<Vertex> + 'vertex>(
+pub fn resolve_coercion_with<
+    'vertex,
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+>(
     contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'vertex,
 ) -> ContextOutcomeIterator<'vertex, V, bool> {
@@ -85,7 +97,11 @@ pub fn resolve_coercion_with<'vertex, Vertex: Debug + Clone + 'vertex, V: AsVert
 /// and checks if it's equal or a subtype of the coercion target type.
 ///
 /// [`BasicAdapter::resolve_coercion`]: super::basic_adapter::BasicAdapter::resolve_coercion
-pub fn resolve_coercion_using_schema<'vertex, Vertex: Debug + Clone + Typename + 'vertex, V: AsVertex<Vertex> + 'vertex>(
+pub fn resolve_coercion_using_schema<
+    'vertex,
+    Vertex: Debug + Clone + Typename + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+>(
     contexts: ContextIterator<'vertex, V>,
     schema: &'vertex Schema,
     coerce_to_type: &str,

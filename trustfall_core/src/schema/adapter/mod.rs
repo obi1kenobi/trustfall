@@ -8,8 +8,8 @@ use crate::{
     accessor_property, field_property,
     interpreter::{
         helpers::{resolve_neighbors_with, resolve_property_with},
-        CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        Typename, VertexInfo, VertexIterator, AsVertex,
+        AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        ResolveInfo, Typename, VertexInfo, VertexIterator,
     },
     ir::{types::get_base_named_type, EdgeParameters, FieldValue, TransparentValue},
 };
@@ -304,7 +304,9 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         if property_name.as_ref() == "__typename" {
-            return resolve_property_with::<Self::Vertex, V>(contexts, |vertex| vertex.typename().into());
+            return resolve_property_with::<Self::Vertex, V>(contexts, |vertex| {
+                vertex.typename().into()
+            });
         }
 
         match type_name.as_ref() {

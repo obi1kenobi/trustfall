@@ -8,8 +8,8 @@ use crate::{
     interpreter::{
         self,
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, Typename,
-        VertexIterator, AsVertex,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        Typename, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
     schema::Schema,

@@ -161,8 +161,7 @@ pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
 type IndividualEdgeResolver<'a> =
     fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
-type ContextAndIterableOfEdges<'a, V: AsVertex<FilesystemVertex>> =
-    (DataContext<V>, VertexIterator<'a, FilesystemVertex>);
+type ContextAndIterableOfEdges<'a, V> = (DataContext<V>, VertexIterator<'a, FilesystemVertex>);
 
 struct EdgeResolverIterator<'a, V: AsVertex<FilesystemVertex>> {
     origin: Rc<String>,
@@ -263,60 +262,79 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match type_name.as_ref() {
-            "Directory" => match property_name.as_ref() {
-                "name" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::Directory(ref x)) => {
-                        let value = FieldValue::String(x.name.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "path" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::Directory(ref x)) => {
-                        let value = FieldValue::String(x.path.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "__typename" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(_) => (context, "Directory".into()),
-                })),
-                _ => todo!(),
-            },
-            "File" => match property_name.as_ref() {
-                "name" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::File(ref x)) => {
-                        let value = FieldValue::String(x.name.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "path" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::File(ref x)) => {
-                        let value = FieldValue::String(x.path.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "extension" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::File(ref x)) => {
-                        let value = x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "__typename" => Box::new(contexts.map(|context| match context.active_vertex::<Self::Vertex>() {
-                    None => (context, FieldValue::Null),
-                    Some(_) => (context, "File".into()),
-                })),
-                _ => todo!(),
-            },
+            "Directory" => {
+                match property_name.as_ref() {
+                    "name" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::Directory(ref x)) => {
+                                let value = FieldValue::String(x.name.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "path" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::Directory(ref x)) => {
+                                let value = FieldValue::String(x.path.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "__typename" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(_) => (context, "Directory".into()),
+                        }
+                    })),
+                    _ => todo!(),
+                }
+            }
+            "File" => {
+                match property_name.as_ref() {
+                    "name" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::File(ref x)) => {
+                                let value = FieldValue::String(x.name.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "path" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::File(ref x)) => {
+                                let value = FieldValue::String(x.path.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "extension" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::File(ref x)) => {
+                                let value =
+                                    x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "__typename" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(_) => (context, "File".into()),
+                        }
+                    })),
+                    _ => todo!(),
+                }
+            }
             _ => todo!(),
         }
     }

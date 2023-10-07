@@ -95,23 +95,44 @@ impl<Vertex> DataContext<Vertex> {
     /// - [`Adapter::resolve_neighbors`] must produce an empty iterator of neighbors
     ///   such as `Box::new(std::iter::empty())` for that context.
     /// - [`Adapter::resolve_coercion`] must produce a `false` coercion outcome for that context.
-    pub fn active_vertex<V>(&self) -> Option<&V> where Vertex: AsVertex<V> {
+    pub fn active_vertex<V>(&self) -> Option<&V>
+    where
+        Vertex: AsVertex<V>,
+    {
         self.active_vertex.as_ref().and_then(|v| v.as_vertex())
     }
 }
 
 impl<Vertex: Clone> DataContext<Vertex> {
-    pub(crate) fn clone_as<V: Clone>(&self) -> DataContext<V> where Vertex: AsVertex<V> {
+    pub(crate) fn clone_as<V: Clone>(&self) -> DataContext<V>
+    where
+        Vertex: AsVertex<V>,
+    {
         DataContext {
             active_vertex: self.active_vertex.as_ref().and_then(|v| v.as_vertex()).cloned(),
-            vertices: self.vertices.iter().map(|(k, v)| (*k, v.as_ref().and_then(|x| x.as_vertex()).cloned())).collect(),
+            vertices: self
+                .vertices
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().and_then(|x| x.as_vertex()).cloned()))
+                .collect(),
             values: self.values.clone(),
-            suspended_vertices: self.suspended_vertices.iter().map(|v| v.as_ref().and_then(|x| x.as_vertex()).cloned()).collect(),
-            folded_contexts: self.folded_contexts.iter().map(|(k, v)| {
-                (*k, v.as_ref().map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()))
-            }).collect(),
+            suspended_vertices: self
+                .suspended_vertices
+                .iter()
+                .map(|v| v.as_ref().and_then(|x| x.as_vertex()).cloned())
+                .collect(),
+            folded_contexts: self
+                .folded_contexts
+                .iter()
+                .map(|(k, v)| {
+                    (*k, v.as_ref().map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()))
+                })
+                .collect(),
             folded_values: self.folded_values.clone(),
-            piggyback: self.piggyback.as_ref().map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()),
+            piggyback: self
+                .piggyback
+                .as_ref()
+                .map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()),
             imported_tags: self.imported_tags.clone(),
         }
     }

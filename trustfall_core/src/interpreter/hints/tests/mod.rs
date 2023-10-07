@@ -3,8 +3,8 @@ use std::{cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf
 use super::{ResolveEdgeInfo, ResolveInfo};
 use crate::{
     interpreter::{
-        execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator, VertexInfo,
-        VertexIterator, AsVertex,
+        execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
+        VertexInfo, VertexIterator,
     },
     ir::{Eid, FieldValue, Recursive, Vid},
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
@@ -1245,9 +1245,45 @@ mod dynamic_property_values {
 
     use super::*;
 
-    type CtxIter = ContextIterator<'static, <DynamicTestAdapter as Adapter<'static>>::Vertex>;
-    type ResolveInfoFn = Box<dyn FnMut(&NumbersAdapter, CtxIter, &ResolveInfo) -> CtxIter>;
-    type ResolveEdgeInfoFn = Box<dyn FnMut(&NumbersAdapter, CtxIter, &ResolveEdgeInfo) -> CtxIter>;
+    trait ResolveInfoFn {
+        fn call<V: AsVertex<NumbersVertex> + 'static>(
+            &mut self,
+            adapter: &NumbersAdapter,
+            ctxs: ContextIterator<'static, V>,
+            info: &ResolveInfo,
+        ) -> ContextIterator<'static, V>;
+    }
+
+    impl ResolveInfoFn for () {
+        fn call<V: AsVertex<NumbersVertex> + 'static>(
+            &mut self,
+            adapter: &NumbersAdapter,
+            ctxs: ContextIterator<'static, V>,
+            info: &ResolveInfo,
+        ) -> ContextIterator<'static, V> {
+            ctxs
+        }
+    }
+
+    trait ResolveEdgeInfoFn {
+        fn call<V: AsVertex<NumbersVertex> + 'static>(
+            &mut self,
+            adapter: &NumbersAdapter,
+            ctxs: ContextIterator<'static, V>,
+            info: &ResolveEdgeInfo,
+        ) -> ContextIterator<'static, V>;
+    }
+
+    impl ResolveEdgeInfoFn for () {
+        fn call<V: AsVertex<NumbersVertex> + 'static>(
+            &mut self,
+            adapter: &NumbersAdapter,
+            ctxs: ContextIterator<'static, V>,
+            info: &ResolveEdgeInfo,
+        ) -> ContextIterator<'static, V> {
+            ctxs
+        }
+    }
 
     #[derive(Default)]
     struct TrackCalls<F> {
@@ -1261,34 +1297,39 @@ mod dynamic_property_values {
         }
     }
 
-    impl TrackCalls<ResolveInfoFn> {
-        fn call(&mut self, adapter: &NumbersAdapter, ctxs: CtxIter, info: &ResolveInfo) -> CtxIter {
-            self.calls += 1;
-            (self.underlying)(adapter, ctxs, info)
-        }
-    }
-
-    impl TrackCalls<ResolveEdgeInfoFn> {
-        fn call(
+    impl<R: ResolveInfoFn> TrackCalls<R> {
+        fn resolve_call<V: AsVertex<NumbersVertex> + 'static>(
             &mut self,
             adapter: &NumbersAdapter,
-            ctxs: CtxIter,
-            info: &ResolveEdgeInfo,
-        ) -> CtxIter {
+            ctxs: ContextIterator<'static, V>,
+            info: &ResolveInfo,
+        ) -> ContextIterator<'static, V> {
             self.calls += 1;
-            (self.underlying)(adapter, ctxs, info)
+            self.underlying.call(adapter, ctxs, info)
         }
     }
 
-    struct DynamicTestAdapter {
-        on_starting_vertices: RefCell<BTreeMap<Vid, TrackCalls<ResolveInfoFn>>>,
-        on_property_resolver: RefCell<BTreeMap<Vid, TrackCalls<ResolveInfoFn>>>,
-        on_edge_resolver: RefCell<BTreeMap<Eid, TrackCalls<ResolveEdgeInfoFn>>>,
-        on_type_coercion: RefCell<BTreeMap<Vid, TrackCalls<ResolveInfoFn>>>,
+    impl<R: ResolveEdgeInfoFn> TrackCalls<R> {
+        fn resolve_edge_call<V: AsVertex<NumbersVertex> + 'static>(
+            &mut self,
+            adapter: &NumbersAdapter,
+            ctxs: ContextIterator<'static, V>,
+            info: &ResolveEdgeInfo,
+        ) -> ContextIterator<'static, V> {
+            self.calls += 1;
+            self.underlying.call(adapter, ctxs, info)
+        }
+    }
+
+    struct DynamicTestAdapter<A, B, C, D> {
+        on_starting_vertices: RefCell<BTreeMap<Vid, TrackCalls<A>>>,
+        on_property_resolver: RefCell<BTreeMap<Vid, TrackCalls<B>>>,
+        on_edge_resolver: RefCell<BTreeMap<Eid, TrackCalls<C>>>,
+        on_type_coercion: RefCell<BTreeMap<Vid, TrackCalls<D>>>,
         inner: NumbersAdapter,
     }
 
-    impl DynamicTestAdapter {
+    impl<A, B, C, D> DynamicTestAdapter<A, B, C, D> {
         fn new() -> Self {
             Self {
                 inner: NumbersAdapter::new(),
@@ -1300,25 +1341,31 @@ mod dynamic_property_values {
         }
     }
 
-    impl Default for DynamicTestAdapter {
+    impl<A, B, C, D> Default for DynamicTestAdapter<A, B, C, D> {
         fn default() -> Self {
             Self::new()
         }
     }
 
-    impl Adapter<'static> for DynamicTestAdapter {
+    impl<A: ResolveInfoFn, B: ResolveInfoFn, C: ResolveEdgeInfoFn, D: ResolveInfoFn>
+        Adapter<'static> for DynamicTestAdapter<A, B, C, D>
+    {
         type Vertex = <NumbersAdapter as Adapter<'static>>::Vertex;
 
         fn resolve_starting_vertices(
             &self,
             edge_name: &Arc<str>,
             parameters: &crate::ir::EdgeParameters,
-            resolve_info: &super::ResolveInfo,
+            resolve_info: &ResolveInfo,
         ) -> VertexIterator<'static, Self::Vertex> {
             let mut map_ref = self.on_starting_vertices.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
                 // the starting vertices call doesn't have an iterator
-                let _ = x.call(&self.inner, Box::new(std::iter::empty()), resolve_info);
+                let _ = x.resolve_call::<NumbersVertex>(
+                    &self.inner,
+                    Box::new(std::iter::empty()),
+                    resolve_info,
+                );
             }
             drop(map_ref);
             self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
@@ -1329,11 +1376,11 @@ mod dynamic_property_values {
             mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
             property_name: &Arc<str>,
-            resolve_info: &super::ResolveInfo,
+            resolve_info: &ResolveInfo,
         ) -> ContextOutcomeIterator<'static, V, FieldValue> {
             let mut map_ref = self.on_property_resolver.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
-                contexts = x.call(&self.inner, contexts, resolve_info);
+                contexts = x.resolve_call(&self.inner, contexts, resolve_info);
             }
             drop(map_ref);
             self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
@@ -1345,12 +1392,11 @@ mod dynamic_property_values {
             type_name: &Arc<str>,
             edge_name: &Arc<str>,
             parameters: &crate::ir::EdgeParameters,
-            resolve_info: &super::ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>>
-        {
+            resolve_info: &ResolveEdgeInfo,
+        ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>> {
             let mut map_ref = self.on_edge_resolver.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.eid()) {
-                contexts = x.call(&self.inner, contexts, resolve_info);
+                contexts = x.resolve_edge_call(&self.inner, contexts, resolve_info);
             }
             drop(map_ref);
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info)
@@ -1361,11 +1407,11 @@ mod dynamic_property_values {
             mut contexts: ContextIterator<'static, V>,
             type_name: &Arc<str>,
             coerce_to_type: &Arc<str>,
-            resolve_info: &super::ResolveInfo,
+            resolve_info: &ResolveInfo,
         ) -> ContextOutcomeIterator<'static, V, bool> {
             let mut map_ref = self.on_type_coercion.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
-                contexts = x.call(&self.inner, contexts, resolve_info);
+                contexts = x.resolve_call(&self.inner, contexts, resolve_info);
             }
             drop(map_ref);
             self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
@@ -1378,38 +1424,53 @@ mod dynamic_property_values {
     fn static_and_dynamic_filter() {
         let input_name = "static_and_dynamic_filter";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert!(info.coerced_to_type().is_none());
-                    assert_eq!(vid(1), info.vid());
+        struct StartingVertices;
 
-                    // This property isn't known or needed at all.
-                    assert_eq!(None, info.dynamically_required_property("name"));
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                _adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &super::ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert!(info.coerced_to_type().is_none());
+                assert_eq!(vid(1), info.vid());
 
-                    let edge = info.first_edge("successor").expect("no 'successor' edge");
-                    let destination = edge.destination();
-                    // We haven't resolved Vid 1 yet, so this property
-                    // isn't dynamically known yet.
-                    assert_eq!(None, destination.dynamically_required_property("value"));
+                // This property isn't known or needed at all.
+                assert_eq!(None, info.dynamically_required_property("name"));
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    assert_eq!(eid(1), info.eid());
-                    assert_eq!(vid(1), info.origin_vid());
-                    assert_eq!(vid(2), info.destination_vid());
+                let edge = info.first_edge("successor").expect("no 'successor' edge");
+                let destination = edge.destination();
+                // We haven't resolved Vid 1 yet, so this property
+                // isn't dynamically known yet.
+                assert_eq!(None, destination.dynamically_required_property("value"));
 
-                    let destination = info.destination();
+                ctxs
+            }
+        }
 
-                    let expected_values = [
-                        CandidateValue::Single(FieldValue::Int64(3)),
-                        CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
-                    ];
-                    let value_candidate = destination.dynamically_required_property("value");
-                    Box::new(value_candidate
+        struct EdgeResolver;
+
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(eid(1), info.eid());
+                assert_eq!(vid(1), info.origin_vid());
+                assert_eq!(vid(2), info.destination_vid());
+
+                let destination = info.destination();
+
+                let expected_values = [
+                    CandidateValue::Single(FieldValue::Int64(3)),
+                    CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
+                ];
+                let value_candidate = destination.dynamically_required_property("value");
+                Box::new(
+                    value_candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
@@ -1420,11 +1481,23 @@ mod dynamic_property_values {
                             } else {
                                 panic!("unexpected iterator outcome: {data:?}")
                             }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        }),
+                )
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1438,39 +1511,72 @@ mod dynamic_property_values {
     fn recurse_then_filter_on_tag_depth_one() {
         let input_name = "recurse_then_filter_on_tag_depth_one";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert!(info.coerced_to_type().is_none());
-                    assert_eq!(vid(1), info.vid());
+        struct StartingVertices;
 
-                    let edge = info.first_edge("successor").expect("no 'successor' edge");
-                    let destination = edge.destination();
-                    // We haven't resolved Vid 1 yet, so this property
-                    // isn't dynamically known yet.
-                    assert_eq!(None, destination.dynamically_required_property("value"));
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert!(info.coerced_to_type().is_none());
+                assert_eq!(vid(1), info.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    assert_eq!(eid(1), info.eid());
-                    assert_eq!(vid(1), info.origin_vid());
-                    assert_eq!(vid(2), info.destination_vid());
+                let edge = info.first_edge("successor").expect("no 'successor' edge");
+                let destination = edge.destination();
+                // We haven't resolved Vid 1 yet, so this property
+                // isn't dynamically known yet.
+                assert_eq!(None, destination.dynamically_required_property("value"));
 
-                    let destination = info.destination();
+                ctxs
+            }
+        }
 
-                    let expected_values = [
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(0)), true)),
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(2)), true)),
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(3)), true)),
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(4)), true)),
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(5)), true)),
-                    ];
-                    let value_candidate = destination.dynamically_required_property("value");
-                    Box::new(value_candidate
+        struct EdgeResolver;
+
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(eid(1), info.eid());
+                assert_eq!(vid(1), info.origin_vid());
+                assert_eq!(vid(2), info.destination_vid());
+
+                let destination = info.destination();
+
+                let expected_values = [
+                    CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(FieldValue::Int64(0)),
+                        true,
+                    )),
+                    CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(FieldValue::Int64(1)),
+                        true,
+                    )),
+                    CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(FieldValue::Int64(2)),
+                        true,
+                    )),
+                    CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(FieldValue::Int64(3)),
+                        true,
+                    )),
+                    CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(FieldValue::Int64(4)),
+                        true,
+                    )),
+                    CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(FieldValue::Int64(5)),
+                        true,
+                    )),
+                ];
+                let value_candidate = destination.dynamically_required_property("value");
+                Box::new(
+                    value_candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
@@ -1481,11 +1587,23 @@ mod dynamic_property_values {
                             } else {
                                 panic!("unexpected iterator outcome: {data:?}")
                             }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        }),
+                )
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1499,38 +1617,61 @@ mod dynamic_property_values {
     fn recurse_then_filter_on_tag_depth_two() {
         let input_name = "recurse_then_filter_on_tag_depth_two";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert!(info.coerced_to_type().is_none());
-                    assert_eq!(vid(1), info.vid());
+        struct StartingVertices;
 
-                    let edge = info.first_edge("successor").expect("no 'successor' edge");
-                    let destination = edge.destination();
-                    // We haven't resolved Vid 1 yet, so this property
-                    // isn't dynamically known yet.
-                    assert_eq!(None, destination.dynamically_required_property("value"));
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert!(info.coerced_to_type().is_none());
+                assert_eq!(vid(1), info.vid());
 
-                    ctxs
-                })),
+                let edge = info.first_edge("successor").expect("no 'successor' edge");
+                let destination = edge.destination();
+                // We haven't resolved Vid 1 yet, so this property
+                // isn't dynamically known yet.
+                assert_eq!(None, destination.dynamically_required_property("value"));
+
+                ctxs
             }
-            .into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(eid(1), info.eid());
-                    assert_eq!(vid(1), info.origin_vid());
-                    assert_eq!(vid(2), info.destination_vid());
+        }
 
-                    let destination = info.destination();
+        struct EdgeResolver;
 
-                    let value_candidate = destination.dynamically_required_property("value");
-                    assert_eq!(None, value_candidate);
-                    ctxs
-                })),
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(eid(1), info.eid());
+                assert_eq!(vid(1), info.origin_vid());
+                assert_eq!(vid(2), info.destination_vid());
+
+                let destination = info.destination();
+
+                let value_candidate = destination.dynamically_required_property("value");
+                assert_eq!(None, value_candidate);
+                ctxs
             }
-            .into(),
-            ..Default::default()
-        };
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1541,34 +1682,48 @@ mod dynamic_property_values {
     fn filter_in_fold_using_external_tag() {
         let input_name = "filter_in_fold_using_external_tag";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert!(info.coerced_to_type().is_none());
-                    assert_eq!(vid(1), info.vid());
+        struct StartingVertices;
 
-                    let edge = info.first_edge("multiple").expect("no 'multiple' edge");
-                    let destination = edge.destination();
-                    // We haven't resolved Vid 1 yet, so this property
-                    // isn't dynamically known yet.
-                    assert_eq!(None, destination.dynamically_required_property("name"));
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert!(info.coerced_to_type().is_none());
+                assert_eq!(vid(1), info.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    assert_eq!(eid(1), info.eid());
-                    assert_eq!(vid(1), info.origin_vid());
-                    assert_eq!(vid(2), info.destination_vid());
+                let edge = info.first_edge("multiple").expect("no 'multiple' edge");
+                let destination = edge.destination();
+                // We haven't resolved Vid 1 yet, so this property
+                // isn't dynamically known yet.
+                assert_eq!(None, destination.dynamically_required_property("name"));
 
-                    let destination = info.destination();
+                ctxs
+            }
+        }
 
-                    let expected_values = [
-                        CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
-                    ];
-                    let candidate = destination.dynamically_required_property("name");
-                    Box::new(candidate
+        struct EdgeResolver;
+
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(eid(1), info.eid());
+                assert_eq!(vid(1), info.origin_vid());
+                assert_eq!(vid(2), info.destination_vid());
+
+                let destination = info.destination();
+
+                let expected_values =
+                    [CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true))];
+                let candidate = destination.dynamically_required_property("name");
+                Box::new(
+                    candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
@@ -1579,11 +1734,23 @@ mod dynamic_property_values {
                             } else {
                                 panic!("unexpected iterator outcome: {data:?}")
                             }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        }),
+                )
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1594,67 +1761,99 @@ mod dynamic_property_values {
     fn filter_in_nested_fold_using_external_tag() {
         let input_name = "filter_in_nested_fold_using_external_tag";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert!(info.coerced_to_type().is_none());
-                    assert_eq!(vid(1), info.vid());
+        struct StartingVertices;
 
-                    let edge = info.first_edge("multiple").expect("no 'multiple' edge");
-                    let destination = edge.destination();
-                    // We haven't resolved Vid 1 yet, so this property
-                    // isn't dynamically known yet.
-                    assert_eq!(None, destination.dynamically_required_property("name"));
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert!(info.coerced_to_type().is_none());
+                assert_eq!(vid(1), info.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(eid(1), info.eid());
-                    assert_eq!(vid(1), info.origin_vid());
-                    assert_eq!(vid(2), info.destination_vid());
+                let edge = info.first_edge("multiple").expect("no 'multiple' edge");
+                let destination = edge.destination();
+                // We haven't resolved Vid 1 yet, so this property
+                // isn't dynamically known yet.
+                assert_eq!(None, destination.dynamically_required_property("name"));
 
-                    let edge = info
-                        .destination()
-                        .first_edge("multiple")
-                        .expect("no 'multiple' edge");
-                    let destination = edge.destination();
+                ctxs
+            }
+        }
 
-                    // For the purposes of *this* edge, the subsequent fold's values aren't yet
-                    // dynamically known: no matter their value, they can't affect the vertices
-                    // that this edge resolves to.
-                    assert_eq!(None, destination.dynamically_required_property("name"));
+        struct EdgeResolver(Eid);
 
-                    ctxs
-                })),
-                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    assert_eq!(eid(2), info.eid());
-                    assert_eq!(vid(2), info.origin_vid());
-                    assert_eq!(vid(3), info.destination_vid());
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                match self.0 .0.into() {
+                    1 => {
+                        assert_eq!(eid(1), info.eid());
+                        assert_eq!(vid(1), info.origin_vid());
+                        assert_eq!(vid(2), info.destination_vid());
 
-                    let destination = info.destination();
+                        let edge =
+                            info.destination().first_edge("multiple").expect("no 'multiple' edge");
+                        let destination = edge.destination();
 
-                    let expected_values = [
-                        CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true)),
-                    ];
-                    let candidate = destination.dynamically_required_property("name");
-                    Box::new(candidate
-                        .expect("no dynamic candidate for 'name' property")
-                        .resolve(adapter, ctxs)
-                        .zip_longest(expected_values)
-                        .map(move |data| {
-                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
-                                assert_eq!(expected_value, value);
-                                ctx
-                            } else {
-                                panic!("unexpected iterator outcome: {data:?}")
-                            }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        // For the purposes of *this* edge, the subsequent fold's values aren't yet
+                        // dynamically known: no matter their value, they can't affect the vertices
+                        // that this edge resolves to.
+                        assert_eq!(None, destination.dynamically_required_property("name"));
+
+                        ctxs
+                    }
+                    2 => {
+                        assert_eq!(eid(2), info.eid());
+                        assert_eq!(vid(2), info.origin_vid());
+                        assert_eq!(vid(3), info.destination_vid());
+
+                        let destination = info.destination();
+
+                        let expected_values = [CandidateValue::Range(Range::with_end(
+                            Bound::Excluded("two".into()),
+                            true,
+                        ))];
+                        let candidate = destination.dynamically_required_property("name");
+                        Box::new(
+                            candidate
+                                .expect("no dynamic candidate for 'name' property")
+                                .resolve(adapter, ctxs)
+                                .zip_longest(expected_values)
+                                .map(move |data| {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                        assert_eq!(expected_value, value);
+                                        ctx
+                                    } else {
+                                        panic!("unexpected iterator outcome: {data:?}")
+                                    }
+                                }),
+                        )
+                    }
+                    _ => unreachable!("{:?}", self.0),
+                }
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver(eid(1))),
+                    eid(2) => TrackCalls::new_underlying(EdgeResolver(eid(2))),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1666,34 +1865,47 @@ mod dynamic_property_values {
     fn fold_count_tag_explicitly_named() {
         let input_name = "fold_count_tag_explicitly_named";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert!(info.coerced_to_type().is_none());
-                    assert_eq!(vid(1), info.vid());
+        struct StartingVertices;
 
-                    let edge = info.first_edge("predecessor").expect("no 'predecessor' edge");
-                    let destination = edge.destination();
-                    // We haven't resolved Vid 1 nor Vid 2 yet,
-                    // so this property isn't dynamically known yet.
-                    assert_eq!(None, destination.dynamically_required_property("value"));
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert!(info.coerced_to_type().is_none());
+                assert_eq!(vid(1), info.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    assert_eq!(eid(2), info.eid());
-                    assert_eq!(vid(1), info.origin_vid());
-                    assert_eq!(vid(3), info.destination_vid());
+                let edge = info.first_edge("predecessor").expect("no 'predecessor' edge");
+                let destination = edge.destination();
+                // We haven't resolved Vid 1 nor Vid 2 yet,
+                // so this property isn't dynamically known yet.
+                assert_eq!(None, destination.dynamically_required_property("value"));
 
-                    let destination = info.destination();
+                ctxs
+            }
+        }
 
-                    let expected_values = [
-                        CandidateValue::Single(FieldValue::Int64(1)),
-                    ];
-                    let candidate = destination.dynamically_required_property("value");
-                    Box::new(candidate
+        struct EdgeResolver;
+
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(eid(2), info.eid());
+                assert_eq!(vid(1), info.origin_vid());
+                assert_eq!(vid(3), info.destination_vid());
+
+                let destination = info.destination();
+
+                let expected_values = [CandidateValue::Single(FieldValue::Int64(1))];
+                let candidate = destination.dynamically_required_property("value");
+                Box::new(
+                    candidate
                         .expect("no dynamic candidate for 'value' property")
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
@@ -1704,11 +1916,23 @@ mod dynamic_property_values {
                             } else {
                                 panic!("unexpected iterator outcome: {data:?}")
                             }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        }),
+                )
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(2) => TrackCalls::new_underlying(EdgeResolver),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1719,51 +1943,76 @@ mod dynamic_property_values {
     fn optional_with_nested_filter_with_tag_semantics() {
         let input_name = "optional_with_nested_filter_with_tag_semantics";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(vid(1), info.vid());
-                    assert!(info.coerced_to_type().is_none());
+        struct StartingVertices;
 
-                    let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let neighbor = edge_info.destination();
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(vid(1), info.vid());
+                assert!(info.coerced_to_type().is_none());
 
-                    assert_eq!(vid(2), neighbor.vid());
+                let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                let neighbor = edge_info.destination();
 
-                    // This value actually *isn't* dynamically known, because
-                    // for the purposes of the encompassing `@optional` it's important
-                    // to know whether *any* edges exist, even if none will match the filter.
-                    //
-                    // Including the filter's value here would be a footgun.
-                    // In the absence of a way for the resolver to indicate
-                    // "no matching edges existed, but some other edges were present"
-                    // the safest thing to do is to return `None` here.
-                    assert_eq!(None, neighbor.dynamically_required_property("value"));
+                assert_eq!(vid(2), neighbor.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(2), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+                // This value actually *isn't* dynamically known, because
+                // for the purposes of the encompassing `@optional` it's important
+                // to know whether *any* edges exist, even if none will match the filter.
+                //
+                // Including the filter's value here would be a footgun.
+                // In the absence of a way for the resolver to indicate
+                // "no matching edges existed, but some other edges were present"
+                // the safest thing to do is to return `None` here.
+                assert_eq!(None, neighbor.dynamically_required_property("value"));
 
-                    // This value actually *isn't* dynamically known, because
-                    // for the purposes of the encompassing `@optional` it's important
-                    // to know whether *any* edges exist, even if none will match the filter.
-                    //
-                    // Including the filter's value here would be a footgun.
-                    // In the absence of a way for the resolver to indicate
-                    // "no matching edges existed, but some other edges were present"
-                    // the safest thing to do is to return `None` here.
-                    assert_eq!(None, destination.dynamically_required_property("value"));
+                ctxs
+            }
+        }
 
-                    ctxs
-                })),
-            }.into(),
-            ..Default::default()
-        };
+        struct EdgeResolver;
+
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                let destination = info.destination();
+                assert_eq!(vid(2), destination.vid());
+                assert!(destination.coerced_to_type().is_none());
+
+                // This value actually *isn't* dynamically known, because
+                // for the purposes of the encompassing `@optional` it's important
+                // to know whether *any* edges exist, even if none will match the filter.
+                //
+                // Including the filter's value here would be a footgun.
+                // In the absence of a way for the resolver to indicate
+                // "no matching edges existed, but some other edges were present"
+                // the safest thing to do is to return `None` here.
+                assert_eq!(None, destination.dynamically_required_property("value"));
+
+                ctxs
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1774,82 +2023,118 @@ mod dynamic_property_values {
     fn optional_with_nested_edge_with_filter_and_tag() {
         let input_name = "optional_with_nested_edge_with_filter_and_tag";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(vid(1), info.vid());
-                    assert!(info.coerced_to_type().is_none());
+        struct StartingVertices;
 
-                    let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let neighbor = edge_info.destination();
-                    assert_eq!(vid(2), neighbor.vid());
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(vid(1), info.vid());
+                assert!(info.coerced_to_type().is_none());
 
-                    let next_edge_info = neighbor.first_edge("successor").expect("no 'successor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                let edge_info = info.first_edge("predecessor").expect("no 'predecessor' edge info");
+                let neighbor = edge_info.destination();
+                assert_eq!(vid(2), neighbor.vid());
 
-                    // This value actually *isn't* dynamically known, because
-                    // for the purposes of the encompassing `@optional` it's important
-                    // to know whether *any* edges exist, even if none will match the filter.
-                    //
-                    // Including the filter's value here would be a footgun.
-                    // In the absence of a way for the resolver to indicate
-                    // "no matching edges existed, but some other edges were present"
-                    // the safest thing to do is to return `None` here.
-                    assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+                let next_edge_info =
+                    neighbor.first_edge("successor").expect("no 'successor' edge info");
+                let next_neighbor = next_edge_info.destination();
+                assert_eq!(vid(3), next_neighbor.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(2), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+                // This value actually *isn't* dynamically known, because
+                // for the purposes of the encompassing `@optional` it's important
+                // to know whether *any* edges exist, even if none will match the filter.
+                //
+                // Including the filter's value here would be a footgun.
+                // In the absence of a way for the resolver to indicate
+                // "no matching edges existed, but some other edges were present"
+                // the safest thing to do is to return `None` here.
+                assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
-                    let next_edge_info = destination.first_edge("successor").expect("no 'successor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                ctxs
+            }
+        }
 
-                    // This value actually *isn't* dynamically known, because
-                    // for the purposes of the encompassing `@optional` it's important
-                    // to know whether *any* edges exist, even if none will match the filter.
-                    //
-                    // Including the filter's value here would be a footgun.
-                    // In the absence of a way for the resolver to indicate
-                    // "no matching edges existed, but some other edges were present"
-                    // the safest thing to do is to return `None` here.
-                    assert_eq!(None, next_neighbor.statically_required_property("value"));
+        struct EdgeResolver(Eid);
 
-                    ctxs
-                })),
-                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(3), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                match self.0 .0.into() {
+                    1 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
 
-                    // Here the value *is* dynamically known, since the `@optional`
-                    // has already been resolved in a prior step.
-                    let expected_values = [
-                        CandidateValue::Range(Range::with_start(Bound::Excluded(FieldValue::Int64(1)), true)),
-                    ];
-                    let candidate = destination.dynamically_required_property("value");
-                    Box::new(candidate
-                        .expect("no dynamic candidate for 'value' property")
-                        .resolve(adapter, ctxs)
-                        .zip_longest(expected_values)
-                        .map(move |data| {
-                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
-                                assert_eq!(expected_value, value);
-                                ctx
-                            } else {
-                                panic!("unexpected iterator outcome: {data:?}")
-                            }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        let next_edge_info =
+                            destination.first_edge("successor").expect("no 'successor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value actually *isn't* dynamically known, because
+                        // for the purposes of the encompassing `@optional` it's important
+                        // to know whether *any* edges exist, even if none will match the filter.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        // In the absence of a way for the resolver to indicate
+                        // "no matching edges existed, but some other edges were present"
+                        // the safest thing to do is to return `None` here.
+                        assert_eq!(None, next_neighbor.statically_required_property("value"));
+
+                        ctxs
+                    }
+                    2 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(3), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // Here the value *is* dynamically known, since the `@optional`
+                        // has already been resolved in a prior step.
+                        let expected_values = [CandidateValue::Range(Range::with_start(
+                            Bound::Excluded(FieldValue::Int64(1)),
+                            true,
+                        ))];
+                        let candidate = destination.dynamically_required_property("value");
+                        Box::new(
+                            candidate
+                                .expect("no dynamic candidate for 'value' property")
+                                .resolve(adapter, ctxs)
+                                .zip_longest(expected_values)
+                                .map(move |data| {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                        assert_eq!(expected_value, value);
+                                        ctx
+                                    } else {
+                                        panic!("unexpected iterator outcome: {data:?}")
+                                    }
+                                }),
+                        )
+                    }
+                    _ => unreachable!("{:?}", self.0),
+                }
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver(eid(1))),
+                    eid(2) => TrackCalls::new_underlying(EdgeResolver(eid(2))),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -1861,76 +2146,110 @@ mod dynamic_property_values {
     fn fold_with_nested_filter_and_tag() {
         let input_name = "fold_with_nested_filter_and_tag";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(vid(1), info.vid());
-                    assert!(info.coerced_to_type().is_none());
+        struct StartingVertices;
 
-                    let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
-                    let neighbor = edge_info.destination();
-                    assert_eq!(vid(2), neighbor.vid());
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(vid(1), info.vid());
+                assert!(info.coerced_to_type().is_none());
 
-                    let next_edge_info = neighbor.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                let neighbor = edge_info.destination();
+                assert_eq!(vid(2), neighbor.vid());
 
-                    // This value actually *isn't* dynamically known here, because
-                    // for the purposes of the edge being resolved, no values for that property
-                    // can possibly cause the *currently-resolved edge* to be discarded.
-                    //
-                    // Including the filter's value here would be a footgun.
-                    assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+                let next_edge_info =
+                    neighbor.first_edge("predecessor").expect("no 'predecessor' edge info");
+                let next_neighbor = next_edge_info.destination();
+                assert_eq!(vid(3), next_neighbor.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(2), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+                // This value actually *isn't* dynamically known here, because
+                // for the purposes of the edge being resolved, no values for that property
+                // can possibly cause the *currently-resolved edge* to be discarded.
+                //
+                // Including the filter's value here would be a footgun.
+                assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
-                    let next_edge_info = destination.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                ctxs
+            }
+        }
 
-                    // This value actually *isn't* dynamically known here, because
-                    // for the purposes of the edge being resolved, no values for that property
-                    // can possibly cause the *currently-resolved edge* to be discarded.
-                    //
-                    // Including the filter's value here would be a footgun.
-                    assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+        struct EdgeResolver(Eid);
 
-                    ctxs
-                })),
-                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(3), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                match self.0 .0.into() {
+                    1 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
 
-                    // Here the value *is* dynamically known, since the property value can
-                    // affect which vertices this edge is resolved to.
-                    let expected_values = [
-                        CandidateValue::Single(FieldValue::Int64(1)),
-                    ];
-                    let candidate = destination.dynamically_required_property("value");
-                    Box::new(candidate
-                        .expect("no dynamic candidate for 'value' property")
-                        .resolve(adapter, ctxs)
-                        .zip_longest(expected_values)
-                        .map(move |data| {
-                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
-                                assert_eq!(expected_value, value);
-                                ctx
-                            } else {
-                                panic!("unexpected iterator outcome: {data:?}")
-                            }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        let next_edge_info = destination
+                            .first_edge("predecessor")
+                            .expect("no 'predecessor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value actually *isn't* dynamically known here, because
+                        // for the purposes of the edge being resolved, no values for that property
+                        // can possibly cause the *currently-resolved edge* to be discarded.
+                        //
+                        // Including the filter's value here would be a footgun.
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+
+                        ctxs
+                    }
+                    2 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(3), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // Here the value *is* dynamically known, since the property value can
+                        // affect which vertices this edge is resolved to.
+                        let expected_values = [CandidateValue::Single(FieldValue::Int64(1))];
+                        let candidate = destination.dynamically_required_property("value");
+                        Box::new(
+                            candidate
+                                .expect("no dynamic candidate for 'value' property")
+                                .resolve(adapter, ctxs)
+                                .zip_longest(expected_values)
+                                .map(move |data| {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                        assert_eq!(expected_value, value);
+                                        ctx
+                                    } else {
+                                        panic!("unexpected iterator outcome: {data:?}")
+                                    }
+                                }),
+                        )
+                    }
+                    _ => unreachable!("{:?}", self.0),
+                }
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver(eid(1))),
+                    eid(2) => TrackCalls::new_underlying(EdgeResolver(eid(2))),
+                }
+                .into(),
+                ..Default::default()
+            };
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
         assert_eq!(adapter.on_edge_resolver.borrow()[&eid(1)].calls, 1);
@@ -1941,84 +2260,118 @@ mod dynamic_property_values {
     fn fold_with_count_filter_and_nested_filter_with_tag() {
         let input_name = "fold_with_count_filter_and_nested_filter_with_tag";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(vid(1), info.vid());
-                    assert!(info.coerced_to_type().is_none());
+        struct StartingVertices;
 
-                    let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
-                    let neighbor = edge_info.destination();
-                    assert_eq!(vid(2), neighbor.vid());
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(vid(1), info.vid());
+                assert!(info.coerced_to_type().is_none());
 
-                    let next_edge_info = neighbor.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                let neighbor = edge_info.destination();
+                assert_eq!(vid(2), neighbor.vid());
 
-                    // This value is not yet dynamically known: Vid 1 hasn't been resolved yet,
-                    // and the dynamic candidate value depends on Vid 1.
-                    assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+                let next_edge_info =
+                    neighbor.first_edge("predecessor").expect("no 'predecessor' edge info");
+                let next_neighbor = next_edge_info.destination();
+                assert_eq!(vid(3), next_neighbor.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(2), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+                // This value is not yet dynamically known: Vid 1 hasn't been resolved yet,
+                // and the dynamic candidate value depends on Vid 1.
+                assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
-                    let next_edge_info = destination.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                ctxs
+            }
+        }
 
-                    // This value *is* dynamically known here: the "fold-count-filter" around it
-                    // ensures that at least one such value must exist, or else vertices
-                    // from the currently-resolved edge will be discarded.
-                    let expected_values = [
-                        CandidateValue::Single(FieldValue::Int64(1)),
-                    ];
-                    let candidate = next_neighbor.dynamically_required_property("value");
-                    Box::new(candidate
-                        .expect("no dynamic candidate for 'value' property")
-                        .resolve(adapter, ctxs)
-                        .zip_longest(expected_values)
-                        .map(move |data| {
-                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
-                                assert_eq!(expected_value, value);
-                                ctx
-                            } else {
-                                panic!("unexpected iterator outcome: {data:?}")
-                            }
-                        }))
-                })),
-                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(3), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+        struct EdgeResolver(Eid);
 
-                    // Here the value is also dynamically known, since the property is local
-                    // to the edge being resolved.
-                    let expected_values = [
-                        CandidateValue::Single(FieldValue::Int64(1)),
-                    ];
-                    let candidate = destination.dynamically_required_property("value");
-                    Box::new(candidate
-                        .expect("no dynamic candidate for 'value' property")
-                        .resolve(adapter, ctxs)
-                        .zip_longest(expected_values)
-                        .map(move |data| {
-                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
-                                assert_eq!(expected_value, value);
-                                ctx
-                            } else {
-                                panic!("unexpected iterator outcome: {data:?}")
-                            }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                match self.0 .0.into() {
+                    1 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        let next_edge_info = destination
+                            .first_edge("predecessor")
+                            .expect("no 'predecessor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This value *is* dynamically known here: the "fold-count-filter" around it
+                        // ensures that at least one such value must exist, or else vertices
+                        // from the currently-resolved edge will be discarded.
+                        let expected_values = [CandidateValue::Single(FieldValue::Int64(1))];
+                        let candidate = next_neighbor.dynamically_required_property("value");
+                        Box::new(
+                            candidate
+                                .expect("no dynamic candidate for 'value' property")
+                                .resolve(adapter, ctxs)
+                                .zip_longest(expected_values)
+                                .map(move |data| {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                        assert_eq!(expected_value, value);
+                                        ctx
+                                    } else {
+                                        panic!("unexpected iterator outcome: {data:?}")
+                                    }
+                                }),
+                        )
+                    }
+                    2 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(3), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // Here the value is also dynamically known, since the property is local
+                        // to the edge being resolved.
+                        let expected_values = [CandidateValue::Single(FieldValue::Int64(1))];
+                        let candidate = destination.dynamically_required_property("value");
+                        Box::new(
+                            candidate
+                                .expect("no dynamic candidate for 'value' property")
+                                .resolve(adapter, ctxs)
+                                .zip_longest(expected_values)
+                                .map(move |data| {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                        assert_eq!(expected_value, value);
+                                        ctx
+                                    } else {
+                                        panic!("unexpected iterator outcome: {data:?}")
+                                    }
+                                }),
+                        )
+                    }
+                    _ => unreachable!("{:?}", self.0),
+                }
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver(eid(1))),
+                    eid(2) => TrackCalls::new_underlying(EdgeResolver(eid(2))),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);
@@ -2036,87 +2389,121 @@ mod dynamic_property_values {
     fn fold_with_both_count_and_nested_filter_dependent_on_tag() {
         let input_name = "fold_with_both_count_and_nested_filter_dependent_on_tag";
 
-        let adapter = DynamicTestAdapter {
-            on_starting_vertices: btreemap! {
-                vid(1) => TrackCalls::<ResolveInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    assert_eq!(vid(1), info.vid());
-                    assert!(info.coerced_to_type().is_none());
+        struct StartingVertices;
 
-                    let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
-                    let neighbor = edge_info.destination();
-                    assert_eq!(vid(2), neighbor.vid());
+        impl ResolveInfoFn for StartingVertices {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveInfo,
+            ) -> ContextIterator<'static, V> {
+                assert_eq!(vid(1), info.vid());
+                assert!(info.coerced_to_type().is_none());
 
-                    let next_edge_info = neighbor.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                let edge_info = info.first_edge("successor").expect("no 'successor' edge info");
+                let neighbor = edge_info.destination();
+                assert_eq!(vid(2), neighbor.vid());
 
-                    // This value is not yet dynamically known: Vid 1 hasn't been resolved yet,
-                    // and the dynamic candidate value depends on Vid 1.
-                    assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+                let next_edge_info =
+                    neighbor.first_edge("predecessor").expect("no 'predecessor' edge info");
+                let next_neighbor = next_edge_info.destination();
+                assert_eq!(vid(3), next_neighbor.vid());
 
-                    ctxs
-                })),
-            }.into(),
-            on_edge_resolver: btreemap! {
-                eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|_, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(2), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+                // This value is not yet dynamically known: Vid 1 hasn't been resolved yet,
+                // and the dynamic candidate value depends on Vid 1.
+                assert_eq!(None, next_neighbor.dynamically_required_property("value"));
 
-                    let next_edge_info = destination.first_edge("predecessor").expect("no 'predecessor' edge info");
-                    let next_neighbor = next_edge_info.destination();
-                    assert_eq!(vid(3), next_neighbor.vid());
+                ctxs
+            }
+        }
 
-                    // This is where the current implementation is more conservative than
-                    // strictly necessary:
-                    //
-                    // If the implementation were able to read the tagged value used in
-                    // the fold-count-filter, it could determine that the fold is required
-                    // to have at least one element and subsequently determine the
-                    // dynamically-known value of `CandidateValue::Single(FieldValue::Int64(1))`
-                    // for the `value` property below.
-                    //
-                    // If some instances of the tagged value are insufficient to require
-                    // at least one folded element, those contexts would get
-                    // `CandidateValue::All` for the dynamically-known value read below.
-                    //
-                    // However, the current implementation is not smart enough to do this,
-                    // and instead conservatively returns `None` instead.
-                    // This test pins down that behavior.
-                    //
-                    // TODO: consider making the hints analysis smarter here,
-                    //       as described above
-                    assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+        struct EdgeResolver(Eid);
 
-                    ctxs
-                })),
-                eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|adapter, ctxs, info| {
-                    let destination = info.destination();
-                    assert_eq!(vid(3), destination.vid());
-                    assert!(destination.coerced_to_type().is_none());
+        impl ResolveEdgeInfoFn for EdgeResolver {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                match self.0 .0.into() {
+                    1 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(2), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
 
-                    // Here the value is also dynamically known, since the property is local
-                    // to the edge being resolved.
-                    let expected_values = [
-                        CandidateValue::Single(FieldValue::Int64(1)),
-                    ];
-                    let candidate = destination.dynamically_required_property("value");
-                    Box::new(candidate
-                        .expect("no dynamic candidate for 'value' property")
-                        .resolve(adapter, ctxs)
-                        .zip_longest(expected_values)
-                        .map(move |data| {
-                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
-                                assert_eq!(expected_value, value);
-                                ctx
-                            } else {
-                                panic!("unexpected iterator outcome: {data:?}")
-                            }
-                        }))
-                })),
-            }.into(),
-            ..Default::default()
-        };
+                        let next_edge_info = destination
+                            .first_edge("predecessor")
+                            .expect("no 'predecessor' edge info");
+                        let next_neighbor = next_edge_info.destination();
+                        assert_eq!(vid(3), next_neighbor.vid());
+
+                        // This is where the current implementation is more conservative than
+                        // strictly necessary:
+                        //
+                        // If the implementation were able to read the tagged value used in
+                        // the fold-count-filter, it could determine that the fold is required
+                        // to have at least one element and subsequently determine the
+                        // dynamically-known value of `CandidateValue::Single(FieldValue::Int64(1))`
+                        // for the `value` property below.
+                        //
+                        // If some instances of the tagged value are insufficient to require
+                        // at least one folded element, those contexts would get
+                        // `CandidateValue::All` for the dynamically-known value read below.
+                        //
+                        // However, the current implementation is not smart enough to do this,
+                        // and instead conservatively returns `None` instead.
+                        // This test pins down that behavior.
+                        //
+                        // TODO: consider making the hints analysis smarter here,
+                        //       as described above
+                        assert_eq!(None, next_neighbor.dynamically_required_property("value"));
+
+                        ctxs
+                    }
+                    2 => {
+                        let destination = info.destination();
+                        assert_eq!(vid(3), destination.vid());
+                        assert!(destination.coerced_to_type().is_none());
+
+                        // Here the value is also dynamically known, since the property is local
+                        // to the edge being resolved.
+                        let expected_values = [CandidateValue::Single(FieldValue::Int64(1))];
+                        let candidate = destination.dynamically_required_property("value");
+                        Box::new(
+                            candidate
+                                .expect("no dynamic candidate for 'value' property")
+                                .resolve(adapter, ctxs)
+                                .zip_longest(expected_values)
+                                .map(move |data| {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
+                                        assert_eq!(expected_value, value);
+                                        ctx
+                                    } else {
+                                        panic!("unexpected iterator outcome: {data:?}")
+                                    }
+                                }),
+                        )
+                    }
+                    _ => unreachable!("{:?}", self.0),
+                }
+            }
+        }
+
+        let adapter: DynamicTestAdapter<StartingVertices, (), EdgeResolver, ()> =
+            DynamicTestAdapter {
+                on_starting_vertices: btreemap! {
+                    vid(1) => TrackCalls::new_underlying(StartingVertices),
+                }
+                .into(),
+                on_edge_resolver: btreemap! {
+                    eid(1) => TrackCalls::new_underlying(EdgeResolver(eid(1))),
+                    eid(2) => TrackCalls::new_underlying(EdgeResolver(eid(2))),
+                }
+                .into(),
+                ..Default::default()
+            };
 
         let adapter = run_query(adapter, input_name);
         assert_eq!(adapter.on_starting_vertices.borrow()[&vid(1)].calls, 1);

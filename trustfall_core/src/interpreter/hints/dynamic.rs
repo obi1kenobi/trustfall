@@ -9,7 +9,7 @@ use crate::{
             compute_fold_specific_field_with_separate_value, QueryCarrier,
         },
         hints::Range,
-        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
         VertexIterator,
     },
     ir::{ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation},
@@ -195,11 +195,11 @@ impl<'a> DynamicallyResolvedValue<'a> {
     }
 
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
-    pub fn resolve<'vertex, AdapterT: Adapter<'vertex>>(
+    pub fn resolve<'vertex, AdapterT: Adapter<'vertex>, V: AsVertex<AdapterT::Vertex> + 'vertex>(
         self,
         adapter: &AdapterT,
-        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
-    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
+        contexts: ContextIterator<'vertex, V>,
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -250,12 +250,16 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }))
     }
 
-    fn compute_candidate_from_tagged_value<'vertex, AdapterT: Adapter<'vertex>>(
+    fn compute_candidate_from_tagged_value<
+        'vertex,
+        AdapterT: Adapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
         self,
         context_field: &'a ContextField,
         adapter: &AdapterT,
-        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
-    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
+        contexts: ContextIterator<'vertex, V>,
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
         let mut carrier = QueryCarrier { query: Some(self.query) };
         let iterator = compute_context_field_with_separate_value(
             adapter,
