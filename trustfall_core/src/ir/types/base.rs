@@ -345,6 +345,16 @@ impl Type {
             }
         }
     }
+
+    /// Returns `true` if values of this type can be compared using operators like `<`.
+    ///
+    /// In Rust terms, this checks for `PartialOrd` on this `Type`.
+    ///
+    /// Lists (including nested lists) are orderable if the type they contain is orderable.
+    /// Lists use lexicographic ordering, i.e. `[1, 2, 3] < [3]`.
+    pub(crate) fn is_orderable(&self) -> bool {
+        matches!(self.base_type(), "Int" | "Float" | "String")
+    }
 }
 
 impl Display for Type {

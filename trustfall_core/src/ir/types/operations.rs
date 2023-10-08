@@ -96,11 +96,6 @@ impl NamedTypedValue for Argument {
     }
 }
 
-pub(crate) fn is_base_type_orderable(operand_type: &Type) -> bool {
-    let name = operand_type.base_type();
-    name == "Int" || name == "Float" || name == "String"
-}
-
 /// Check for scalar-only subtyping.
 ///
 /// Scalars don't have an inheritance structure, so they are able to be compared without a schema.

@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-use self::types::is_base_type_orderable;
 pub use self::types::{NamedTypedValue, Type};
 pub use self::value::{FieldValue, TransparentValue};
 
@@ -647,7 +646,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 let right_type = right_type.unwrap();
 
                 let mut errors = vec![];
-                if !is_base_type_orderable(left_type) {
+                if !left_type.is_orderable() {
                     errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
                         self.operation_name().to_string(),
                         left.named().to_string(),
@@ -655,7 +654,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                     ));
                 }
 
-                if !is_base_type_orderable(right_type) {
+                if !right_type.is_orderable() {
                     // The right argument must be a tag at this point. If it is not a tag
                     // and the second .unwrap() below panics, then our type inference
                     // has inferred an incorrect type for the variable in the argument.
