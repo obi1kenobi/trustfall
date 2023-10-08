@@ -16,11 +16,10 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        types::{is_argument_type_valid, NamedTypedValue, Type},
-        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
-        FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
-        LocalField, Operation, Recursive, TransformationKind, VariableRef, Vid,
-        TYPENAME_META_FIELD, TYPENAME_META_FIELD_ARC,
+        types::NamedTypedValue, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
+        FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
+        IRVertex, IndexedQuery, LocalField, Operation, Recursive, TransformationKind, Type,
+        VariableRef, Vid, TYPENAME_META_FIELD, TYPENAME_META_FIELD_ARC,
     },
     schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -165,10 +164,7 @@ fn make_edge_parameters(
 
                         // The default value must be a valid type for the parameter,
                         // otherwise the schema itself is invalid.
-                        assert!(is_argument_type_valid(
-                            &Type::from_type(&arg.node.ty.node),
-                            &value
-                        ));
+                        assert!(Type::from_type(&arg.node.ty.node).is_valid_value(&value));
 
                         value
                     })
@@ -182,7 +178,7 @@ fn make_edge_parameters(
             }
             Some(value) => {
                 // Type-check the supplied value against the schema.
-                if !is_argument_type_valid(&Type::from_type(&arg.node.ty.node), value) {
+                if !Type::from_type(&arg.node.ty.node).is_valid_value(value) {
                     errors.push(FrontendError::InvalidEdgeParameterType(
                         arg_name.to_string(),
                         edge_definition.name.node.to_string(),

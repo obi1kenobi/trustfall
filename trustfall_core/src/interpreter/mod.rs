@@ -4,10 +4,7 @@ use itertools::Itertools;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
-    ir::{
-        types::{is_argument_type_valid, Type},
-        EdgeParameters, Eid, FieldRef, FieldValue, IndexedQuery, Vid,
-    },
+    ir::{EdgeParameters, Eid, FieldRef, FieldValue, IndexedQuery, Type, Vid},
     util::BTreeMapTryInsertExt,
 };
 
@@ -377,7 +374,7 @@ fn validate_argument_type(
     variable_type: &Type,
     argument_value: &FieldValue,
 ) -> Result<(), QueryArgumentsError> {
-    if is_argument_type_valid(variable_type, argument_value) {
+    if variable_type.is_valid_value(argument_value) {
         Ok(())
     } else {
         Err(QueryArgumentsError::ArgumentTypeError(

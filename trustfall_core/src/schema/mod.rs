@@ -20,7 +20,7 @@ use itertools::Itertools;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::types::{is_argument_type_valid, is_scalar_only_subtype, Type};
+use crate::ir::types::{is_scalar_only_subtype, Type};
 use crate::util::{BTreeMapTryInsertExt, HashMapTryInsertExt};
 
 use self::error::InvalidSchemaError;
@@ -376,8 +376,7 @@ fn check_type_and_property_and_edge_invariants(
                             let param_type = &param_defn.node.ty.node;
                             match value.node.clone().try_into() {
                                 Ok(value) => {
-                                    if !is_argument_type_valid(&Type::from_type(param_type), &value)
-                                    {
+                                    if !Type::from_type(param_type).is_valid_value(&value) {
                                         errors.push(InvalidSchemaError::InvalidDefaultValueForFieldParameter(
                                             type_name.to_string(),
                                             field_defn.name.node.to_string(),

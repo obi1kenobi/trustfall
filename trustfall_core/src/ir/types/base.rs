@@ -2,6 +2,8 @@ use std::{fmt::Display, fmt::Formatter, sync::Arc};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::ir::FieldValue;
+
 /// A representation of a Trustfall type, independent of which parser or query syntax we're using.
 /// Equivalent in expressiveness to GraphQL types, but not explicitly tied to a GraphQL library.
 #[derive(Clone, PartialEq, Eq)]
@@ -292,6 +294,57 @@ impl Type {
             _ => false,
         }
     }
+
+    /// Check if the given value is allowed by the specified type.
+    ///
+    /// In particular, mixed integer types in a list are considered valid for types like `[Int]`.
+    /// ```rust
+    /// use trustfall_core::ir::{FieldValue, Type};
+    ///
+    /// let ty = Type::parse("[Int]").unwrap();
+    /// let value = FieldValue::List([
+    ///     FieldValue::Int64(-1),
+    ///     FieldValue::Uint64(1),
+    ///     FieldValue::Null,
+    /// ].as_slice().into());
+    /// assert!(ty.is_valid_value(&value));
+    /// ```
+    pub fn is_valid_value(&self, value: &FieldValue) -> bool {
+        match value {
+            FieldValue::Null => {
+                // This is a valid value only if this layer is nullable.
+                self.nullable()
+            }
+            FieldValue::Int64(_) | FieldValue::Uint64(_) => {
+                // This is a valid value only if the type is Int, ignoring nullability.
+                !self.is_list() && self.base_type() == "Int"
+            }
+            FieldValue::Float64(_) => {
+                // This is a valid value only if the type is Float, ignoring nullability.
+                !self.is_list() && self.base_type() == "Float"
+            }
+            FieldValue::String(_) => {
+                // This is a valid value only if the type is String, ignoring nullability.
+                !self.is_list() && self.base_type() == "String"
+            }
+            FieldValue::Boolean(_) => {
+                // This is a valid value only if the type is Boolean, ignoring nullability.
+                !self.is_list() && self.base_type() == "Boolean"
+            }
+            FieldValue::List(contents) => {
+                // This is a valid value only if the type is a list, and all the inner elements
+                // are valid instances of the type inside the list.
+                if let Some(content_type) = self.as_list() {
+                    contents.iter().all(|inner| content_type.is_valid_value(inner))
+                } else {
+                    false
+                }
+            }
+            FieldValue::Enum(_) => {
+                unimplemented!("enum values are not currently supported: {self} {value:?}")
+            }
+        }
+    }
 }
 
 impl Display for Type {
@@ -367,7 +420,9 @@ impl<'de> Deserialize<'de> for Type {
 
 #[cfg(test)]
 mod test {
-    use crate::ir::Type;
+    use itertools::Itertools;
+
+    use crate::ir::{FieldValue, Type};
 
     use super::Modifiers;
 
@@ -482,6 +537,171 @@ mod test {
                 expected,
                 "commutativity violation in: {right} {left}"
             );
+        }
+    }
+
+    #[test]
+    fn null_values_are_only_valid_for_nullable_types() {
+        let nullable_types = [
+            Type::parse("Int").unwrap(),
+            Type::parse("String").unwrap(),
+            Type::parse("Boolean").unwrap(),
+            Type::parse("[Int!]").unwrap(),
+            Type::parse("[[Int!]!]").unwrap(),
+        ];
+        let non_nullable_types =
+            nullable_types.iter().map(|t| t.with_nullability(false)).collect_vec();
+
+        for nullable_type in &nullable_types {
+            assert!(nullable_type.is_valid_value(&FieldValue::Null), "{}", nullable_type);
+        }
+        for non_nullable_type in &non_nullable_types {
+            assert!(!non_nullable_type.is_valid_value(&FieldValue::Null), "{}", non_nullable_type);
+        }
+    }
+
+    #[test]
+    fn int_values_are_valid_only_for_int_type_regardless_of_nullability() {
+        let matching_types = [Type::parse("Int").unwrap(), Type::parse("Int!").unwrap()];
+        let non_matching_types = [
+            Type::parse("String").unwrap(),
+            Type::parse("[Int!]").unwrap(),
+            Type::parse("[Int!]!").unwrap(),
+            Type::parse("[[Int!]!]").unwrap(),
+        ];
+        let values = [
+            FieldValue::Int64(-42),
+            FieldValue::Int64(0),
+            FieldValue::Uint64(0),
+            FieldValue::Uint64((i64::MAX as u64) + 1),
+        ];
+
+        for value in &values {
+            for matching_type in &matching_types {
+                assert!(matching_type.is_valid_value(value), "{matching_type} {value:?}",);
+            }
+            for non_matching_type in &non_matching_types {
+                assert!(!non_matching_type.is_valid_value(value), "{non_matching_type} {value:?}",);
+            }
+        }
+    }
+
+    #[test]
+    fn string_values_are_valid_only_for_string_type_regardless_of_nullability() {
+        let matching_types = [Type::parse("String").unwrap(), Type::parse("String!").unwrap()];
+        let non_matching_types = [
+            Type::parse("Int").unwrap(),
+            Type::parse("[String!]").unwrap(),
+            Type::parse("[String!]!").unwrap(),
+            Type::parse("[[String!]!]").unwrap(),
+        ];
+        let values = [
+            FieldValue::String("".into()), // empty string is not the same value as null
+            FieldValue::String("test string".into()),
+        ];
+
+        for value in &values {
+            for matching_type in &matching_types {
+                assert!(matching_type.is_valid_value(value), "{matching_type} {value:?}",);
+            }
+            for non_matching_type in &non_matching_types {
+                assert!(!non_matching_type.is_valid_value(value), "{non_matching_type} {value:?}",);
+            }
+        }
+    }
+
+    #[test]
+    fn boolean_values_are_valid_only_for_boolean_type_regardless_of_nullability() {
+        let matching_types = [Type::parse("Boolean").unwrap(), Type::parse("Boolean!").unwrap()];
+        let non_matching_types = [
+            Type::parse("Int").unwrap(),
+            Type::parse("[Boolean!]").unwrap(),
+            Type::parse("[Boolean!]!").unwrap(),
+            Type::parse("[[Boolean!]!]").unwrap(),
+        ];
+        let values = [FieldValue::Boolean(false), FieldValue::Boolean(true)];
+
+        for value in &values {
+            for matching_type in &matching_types {
+                assert!(matching_type.is_valid_value(value), "{matching_type} {value:?}",);
+            }
+            for non_matching_type in &non_matching_types {
+                assert!(!non_matching_type.is_valid_value(value), "{non_matching_type} {value:?}",);
+            }
+        }
+    }
+
+    #[test]
+    fn list_types_correctly_check_contents_of_list() {
+        let non_nullable_contents_matching_types =
+            vec![Type::parse("[Int!]").unwrap(), Type::parse("[Int!]!").unwrap()];
+        let nullable_contents_matching_types =
+            vec![Type::parse("[Int]").unwrap(), Type::parse("[Int]!").unwrap()];
+        let non_matching_types = [
+            Type::parse("Int").unwrap(),
+            Type::parse("Int!").unwrap(),
+            Type::parse("[String!]").unwrap(),
+            Type::parse("[String!]!").unwrap(),
+            Type::parse("[[String!]!]").unwrap(),
+        ];
+        let non_nullable_values = [
+            FieldValue::List((1..3).map(FieldValue::Int64).collect_vec().into()),
+            FieldValue::List((1..3).map(FieldValue::Uint64).collect_vec().into()),
+            FieldValue::List(
+                vec![
+                    // Integer-typed but non-homogeneous FieldValue entries are okay.
+                    FieldValue::Int64(-42),
+                    FieldValue::Uint64(64),
+                ]
+                .into(),
+            ),
+        ];
+        let nullable_values = [
+            FieldValue::List(
+                vec![FieldValue::Int64(1), FieldValue::Null, FieldValue::Int64(2)].into(),
+            ),
+            FieldValue::List(vec![FieldValue::Null, FieldValue::Uint64(42)].into()),
+            FieldValue::List(
+                vec![
+                    // Integer-typed but non-homogeneous FieldValue entries are okay.
+                    FieldValue::Int64(-1),
+                    FieldValue::Uint64(1),
+                    FieldValue::Null,
+                ]
+                .into(),
+            ),
+        ];
+
+        for value in &non_nullable_values {
+            // Values without nulls match both the nullable and the non-nullable types.
+            for matching_type in &nullable_contents_matching_types {
+                assert!(matching_type.is_valid_value(value), "{matching_type} {value:?}",);
+            }
+            for matching_type in &non_nullable_contents_matching_types {
+                assert!(matching_type.is_valid_value(value), "{matching_type} {value:?}",);
+            }
+
+            // Regardless of nulls, these types don't match.
+            for non_matching_type in &non_matching_types {
+                assert!(!non_matching_type.is_valid_value(value), "{non_matching_type} {value:?}",);
+            }
+        }
+
+        for value in &nullable_values {
+            // Nullable values match only the nullable types.
+            for matching_type in &nullable_contents_matching_types {
+                assert!(matching_type.is_valid_value(value), "{matching_type} {value:?}",);
+            }
+
+            // The nullable values don't match the non-nullable types.
+            for non_matching_type in &non_nullable_contents_matching_types {
+                assert!(!non_matching_type.is_valid_value(value), "{non_matching_type} {value:?}",);
+            }
+
+            // Regardless of nulls, these types don't match.
+            for non_matching_type in &non_matching_types {
+                assert!(!non_matching_type.is_valid_value(value), "{non_matching_type} {value:?}",);
+            }
         }
     }
 }
