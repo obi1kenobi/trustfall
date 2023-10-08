@@ -1,5 +1,5 @@
 mod base;
-mod operations;
+mod named_typed;
 
 pub use base::Type;
-pub use operations::NamedTypedValue;
+pub use named_typed::NamedTypedValue;
