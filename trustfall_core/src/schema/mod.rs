@@ -20,7 +20,7 @@ use itertools::Itertools;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::ir::types::{is_scalar_only_subtype, Type};
+use crate::ir::Type;
 use crate::util::{BTreeMapTryInsertExt, HashMapTryInsertExt};
 
 use self::error::InvalidSchemaError;
@@ -699,10 +699,9 @@ fn check_field_type_narrowing(
                         if let Some(&parent_field_type) =
                             parent_field_parameters.get(field_parameter)
                         {
-                            if !is_scalar_only_subtype(
-                                &Type::from_type(field_type),
-                                &Type::from_type(parent_field_type),
-                            ) {
+                            if !Type::from_type(field_type)
+                                .is_scalar_only_subtype(&Type::from_type(parent_field_type))
+                            {
                                 errors.push(InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
                                     field_name.to_owned(),
                                     type_name.to_string(),

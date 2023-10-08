@@ -355,6 +355,38 @@ impl Type {
     pub(crate) fn is_orderable(&self) -> bool {
         matches!(self.base_type(), "Int" | "Float" | "String")
     }
+
+    /// Check for scalar-only subtyping.
+    ///
+    /// Scalars don't have an inheritance structure, so they are able to be compared without a schema.
+    /// Callers of this function must guarantee that the passed types are either scalars or
+    /// (potentially multiply-nested) lists of scalars.
+    ///
+    /// This function considers types of different names to always be non-equal and unrelated:
+    /// neither is a subtype of the other. So given `interface Base` and `type Derived implements Base`,
+    /// that means `is_scalar_only_subtype(Base, Derived) == false`, since this function never sees
+    /// the definitions of `Base` and `Derived` as those are part of a schema which this function
+    /// never gets.
+    pub(crate) fn is_scalar_only_subtype(&self, maybe_subtype: &Self) -> bool {
+        // If the parent type is non-nullable, all its subtypes must be non-nullable as well.
+        // If the parent type is nullable, it can have both nullable and non-nullable subtypes.
+        if !self.nullable() && maybe_subtype.nullable() {
+            return false;
+        }
+
+        // If the base types don't match, there can't be a subtyping relationship here.
+        // Recall that callers are required to make sure only scalar / nested-lists-of-scalar types
+        // are passed into this function.
+        if self.base_type() != maybe_subtype.base_type() {
+            return false;
+        }
+
+        match (self.as_list(), maybe_subtype.as_list()) {
+            (None, None) => true,
+            (Some(parent), Some(maybe_subtype)) => parent.is_scalar_only_subtype(&maybe_subtype),
+            _ => false,
+        }
+    }
 }
 
 impl Display for Type {

@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::util::BTreeMapTryInsertExt;
 
-use super::{
-    types::{is_scalar_only_subtype, Type},
-    Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Vid,
-};
+use super::{Argument, Eid, IREdge, IRFold, IRQuery, IRQueryComponent, Type, Vid};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedQuery {
@@ -141,7 +138,7 @@ fn add_data_from_component(
                             //
                             // If the variable type at top level is not a subtype of the type here,
                             // this query is not valid.
-                            if !is_scalar_only_subtype(&vref.variable_type, var_type) {
+                            if !vref.variable_type.is_scalar_only_subtype(var_type) {
                                 return Err(InvalidIRQueryError::GetBetterVariant(-2));
                             }
                         }
