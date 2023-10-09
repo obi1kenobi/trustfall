@@ -1,4 +1,7 @@
-use std::{fmt::Display, fmt::Formatter, sync::Arc};
+use std::{
+    fmt::{Display, Formatter},
+    sync::Arc,
+};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -35,6 +38,11 @@ impl Modifiers {
     /// `(Self::MAX_LIST_DEPTH - 1)` because we start shifted over once.
     const MAX_LIST_DEPTH_MASK: u64 = Self::LIST_MASK << ((Self::MAX_LIST_DEPTH - 1) * 2);
 
+    /// Returns an optionally-nullable, non-list modifiers value.
+    fn new(nullable: bool) -> Self {
+        Self { mask: if nullable { 0 } else { Self::NON_NULLABLE_MASK } }
+    }
+
     #[inline]
     fn nullable(&self) -> bool {
         (self.mask & Self::NON_NULLABLE_MASK) == 0
@@ -69,6 +77,11 @@ impl Display for TypeParseError {
 
 impl std::error::Error for TypeParseError {}
 
+static STRING_TYPE_NAME: &str = "String";
+static INT_TYPE_NAME: &str = "Int";
+static FLOAT_TYPE_NAME: &str = "Float";
+static BOOLEAN_TYPE_NAME: &str = "Boolean";
+
 impl Type {
     /// Parses a string type representation into a new [`Type`].
     ///
@@ -87,6 +100,31 @@ impl Type {
             .map(|ty| Self::from_type(&ty))
     }
 
+    fn from_name_and_modifiers(base_type: &str, modifiers: Modifiers) -> Self {
+        match base_type {
+            "String" => Self {
+                base: Arc::from(STRING_TYPE_NAME),
+                modifiers,
+            },
+            "Int" => Self {
+                base: Arc::from(INT_TYPE_NAME),
+                modifiers,
+            },
+            "Float" => Self {
+                base: Arc::from(FLOAT_TYPE_NAME),
+                modifiers,
+            },
+            "Boolean" => Self {
+                base: Arc::from(BOOLEAN_TYPE_NAME),
+                modifiers,
+            },
+            _ => Self {
+                base: base_type.to_string().into(),
+                modifiers,
+            },
+        }
+    }
+
     /// Creates an individual [`Type`], not a list.
     ///
     /// # Example
@@ -100,10 +138,8 @@ impl Type {
     /// assert_eq!(ty, Type::parse("String!").unwrap());
     /// ```
     pub fn new_named_type(base_type: &str, nullable: bool) -> Self {
-        Self {
-            base: base_type.to_string().into(),
-            modifiers: Modifiers { mask: if nullable { 0 } else { Modifiers::NON_NULLABLE_MASK } },
-        }
+        let modifiers = Modifiers::new(nullable);
+        Self::from_name_and_modifiers(base_type, modifiers)
     }
 
     /// Creates a new list layer on a [`Type`].
@@ -246,7 +282,8 @@ impl Type {
                 "should be impossible to get a non-named type after looping through all list types"
             )
         };
-        Type { base: name.to_string().into(), modifiers: Modifiers { mask } }
+
+        Self::from_name_and_modifiers(name.as_str(), Modifiers { mask })
     }
 
     /// For two types, return a type that is a subtype of both, or None if no such type exists.
