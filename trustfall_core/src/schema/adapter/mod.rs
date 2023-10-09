@@ -283,7 +283,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         match edge_name.as_ref() {
             "VertexType" => {
                 let name = resolve_info.statically_required_property("name");
-                vertex_type_iter(self.schema, name.map(|x| x.cloned()))
+                vertex_type_iter(self.schema, name)
             }
             "Entrypoint" => entrypoints_iter(self.schema),
             "Schema" => Box::new(std::iter::once(SchemaVertex::Schema)),
@@ -423,8 +423,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     let destination = resolve_info.destination();
 
                     // `.cloned()` to get rid of reference, so we can own it when we need to move it later
-                    let vertex_type_name =
-                        destination.statically_required_property("name").map(|x| x.cloned());
+                    let vertex_type_name = destination.statically_required_property("name");
 
                     resolve_neighbors_with(contexts, move |_| {
                         // `.clone()` each time as we may have multiple "vertex_type" edges

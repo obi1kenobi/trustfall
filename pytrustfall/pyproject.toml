@@ -14,6 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Database :: Database Engines/Servers",
     "Topic :: Software Development :: Compilers",
     "Topic :: Software Development :: Interpreters",
@@ -37,9 +38,9 @@ authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 python = "^3.9"
 
 [tool.poetry.dev-dependencies]
-maturin = "^0.12.5"
-pytest = "^6.2.5"
-black = "^22.10.0"
+maturin = "^1.3.0"
+pytest = "^7.4.2"
+black = "^23.9.1"
 
 [tool.black]
 line-length = 100
@@ -48,5 +49,5 @@ line-length = 100
 sdist-include = ["trustfall/py.typed"]
 
 [build-system]
-requires = ["maturin>=0.13.0,<0.14", "poetry-core>=1.0.0"]
+requires = ["maturin>=1.3.0,<2", "poetry-core>=1.0.0"]
 build-backend = "maturin"
