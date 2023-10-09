@@ -102,9 +102,13 @@ fn vertex_type_iter(
         });
         Box::new(neighbors)
     } else {
-        Box::new(schema.vertex_types.values().filter_map(move |v| {
-            (v.name.node != root_query_type).then(|| SchemaVertex::VertexType(VertexType::new(v)))
-        }))
+        Box::new(
+            schema
+                .vertex_types
+                .values()
+                .filter(move |v| v.name.node != root_query_type)
+                .map(|v| SchemaVertex::VertexType(VertexType::new(v))),
+        )
     }
 }
 

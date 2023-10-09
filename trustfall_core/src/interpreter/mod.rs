@@ -427,7 +427,7 @@ pub trait Adapter<'vertex> {
 
     /// Resolve the value of a vertex property over an iterator of query contexts.
     ///
-    /// Each [`DataContext`](self::DataContext) in the `contexts` argument has an active vertex,
+    /// Each [`DataContext`] in the `contexts` argument has an active vertex,
     /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
@@ -456,7 +456,7 @@ pub trait Adapter<'vertex> {
 
     /// Resolve the neighboring vertices across an edge, for each query context in an iterator.
     ///
-    /// Each [`DataContext`](self::DataContext) in the `contexts` argument has an active vertex,
+    /// Each [`DataContext`] in the `contexts` argument has an active vertex,
     /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
@@ -502,7 +502,7 @@ pub trait Adapter<'vertex> {
     /// The `... on AudioFile` operator causes only `AudioFile` vertices to be retained,
     /// filtering out all other kinds of `File` vertices.
     ///
-    /// Each [`DataContext`](self::DataContext) in the `contexts` argument has an active vertex,
+    /// Each [`DataContext`] in the `contexts` argument has an active vertex,
     /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
     /// of type `type_name` defined in the schema.
     ///
