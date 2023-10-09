@@ -102,26 +102,11 @@ impl Type {
 
     fn from_name_and_modifiers(base_type: &str, modifiers: Modifiers) -> Self {
         match base_type {
-            "String" => Self {
-                base: Arc::from(STRING_TYPE_NAME),
-                modifiers,
-            },
-            "Int" => Self {
-                base: Arc::from(INT_TYPE_NAME),
-                modifiers,
-            },
-            "Float" => Self {
-                base: Arc::from(FLOAT_TYPE_NAME),
-                modifiers,
-            },
-            "Boolean" => Self {
-                base: Arc::from(BOOLEAN_TYPE_NAME),
-                modifiers,
-            },
-            _ => Self {
-                base: base_type.to_string().into(),
-                modifiers,
-            },
+            "String" => Self { base: Arc::from(STRING_TYPE_NAME), modifiers },
+            "Int" => Self { base: Arc::from(INT_TYPE_NAME), modifiers },
+            "Float" => Self { base: Arc::from(FLOAT_TYPE_NAME), modifiers },
+            "Boolean" => Self { base: Arc::from(BOOLEAN_TYPE_NAME), modifiers },
+            _ => Self { base: base_type.to_string().into(), modifiers },
         }
     }
 
@@ -159,7 +144,7 @@ impl Type {
     /// ```
     pub fn new_list_type(inner_type: Self, nullable: bool) -> Self {
         if inner_type.modifiers.at_max_list_depth() {
-            panic!("too many nested lists");
+            panic!("too many nested lists: {inner_type}");
         }
 
         let mut new_mask = (inner_type.modifiers.mask << 2) | Modifiers::LIST_MASK;
@@ -269,7 +254,7 @@ impl Type {
             mask |= Modifiers::LIST_MASK << i;
             i += 2;
             if i > Modifiers::MAX_LIST_DEPTH * 2 {
-                panic!("too many nested lists");
+                panic!("too many nested lists: {ty:?}");
             }
             if !ty_inside_list.nullable {
                 mask |= Modifiers::NON_NULLABLE_MASK << i;
@@ -279,7 +264,8 @@ impl Type {
 
         let async_graphql_parser::types::BaseType::Named(name) = base else {
             unreachable!(
-                "should be impossible to get a non-named type after looping through all list types"
+                "should be impossible to get a non-named type after \
+looping through all list types: {ty:?} {base:?}"
             )
         };
 

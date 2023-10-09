@@ -695,15 +695,13 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
             Operation::Contains(_, _) | Operation::NotContains(_, _) => {
                 // The left-hand operand needs to be a list, ignoring nullability.
                 // The right-hand operand may be anything, if considered individually.
-                let inner_type = if let Some(list) = left_type.as_list() {
-                    Ok(list)
-                } else {
-                    Err(vec![FilterTypeError::ListFilterOperationOnNonListField(
+                let inner_type = left_type.as_list().ok_or_else(|| {
+                    vec![FilterTypeError::ListFilterOperationOnNonListField(
                         self.operation_name().to_string(),
                         left.named().to_string(),
                         left_type.to_string(),
-                    )])
-                }?;
+                    )]
+                })?;
 
                 let right_type = right_type.unwrap();
 
