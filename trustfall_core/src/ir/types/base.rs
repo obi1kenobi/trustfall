@@ -782,4 +782,32 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn round_trip_serialization_and_creation() {
+        let test_data = [
+            "String!",
+            "[Int]",
+            "[Float!]",
+            "[Boolean]!",
+            "[[[[String]!]]!]",
+            "[[[[[[[[String]!]]!]!]!]]]",
+        ];
+
+        for item in test_data {
+            let ty = Type::parse(item).expect("valid type");
+            assert_eq!(item, &format!("{ty}"));
+
+            let nullable_list = Type::new_list_type(ty.clone(), true);
+            let non_nullable_list = Type::new_list_type(ty.clone(), false);
+
+            assert_eq!(format!("[{item}]"), format!("{}", &nullable_list));
+            assert_eq!(format!("[{item}]!"), format!("{}", &non_nullable_list));
+
+            assert_eq!(nullable_list, non_nullable_list.with_nullability(true));
+            assert_eq!(nullable_list, nullable_list.with_nullability(true));
+            assert_eq!(non_nullable_list, nullable_list.with_nullability(false));
+            assert_eq!(non_nullable_list, non_nullable_list.with_nullability(false));
+        }
+    }
 }
