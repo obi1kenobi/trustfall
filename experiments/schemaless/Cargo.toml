@@ -9,6 +9,5 @@ edition = "2021"
 async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
 derive-new = "0.5.9"
-once_cell = { workspace = true }
 maplit = { workspace = true }
 trustfall_core = { path = "../../trustfall_core" }

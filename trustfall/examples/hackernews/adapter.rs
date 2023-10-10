@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::OnceLock};
 
 use hn_api::{types::Item, HnClient};
-use once_cell::sync::Lazy;
 use trustfall::{
     provider::{
         field_property, resolve_coercion_using_schema, resolve_neighbors_with,
@@ -13,9 +12,13 @@ use trustfall::{
     FieldValue,
 };
 
-use crate::{vertex::Vertex, SCHEMA};
+use crate::{get_schema, vertex::Vertex};
 
-static CLIENT: Lazy<HnClient> = Lazy::new(|| HnClient::init().expect("HnClient instantiated"));
+static CLIENT: OnceLock<HnClient> = OnceLock::new();
+
+fn get_client() -> &'static HnClient {
+    CLIENT.get_or_init(|| HnClient::init().expect("HnClient instantiated"))
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct HackerNewsAdapter {
@@ -26,7 +29,7 @@ pub struct HackerNewsAdapter {
 impl HackerNewsAdapter {
     pub fn new() -> Self {
         Self {
-            item_subtypes: SCHEMA
+            item_subtypes: get_schema()
                 .subtypes("Item")
                 .expect("Item type exists")
                 .map(|x| x.to_owned())
@@ -39,12 +42,12 @@ impl HackerNewsAdapter {
     }
 
     fn top<'a>(&self, max: Option<usize>) -> VertexIterator<'a, Vertex> {
-        let iterator = CLIENT
+        let iterator = get_client()
             .get_top_stories()
             .unwrap()
             .into_iter()
             .take(max.unwrap_or(usize::MAX))
-            .filter_map(|id| match CLIENT.get_item(id) {
+            .filter_map(|id| match get_client().get_item(id) {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
                     eprintln!("Got an error while fetching item: {e}");
@@ -67,7 +70,7 @@ impl HackerNewsAdapter {
         let iterator = story_ids
             .into_iter()
             .take(max.unwrap_or(usize::MAX))
-            .map(move |id| CLIENT.get_item(id))
+            .map(move |id| get_client().get_item(id))
             .filter_map(|res| match res {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
@@ -80,7 +83,7 @@ impl HackerNewsAdapter {
     }
 
     fn user<'a>(&self, username: &str) -> VertexIterator<'a, Vertex> {
-        match CLIENT.get_user(username) {
+        match get_client().get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
                 let vertex = Vertex::from(user);
@@ -214,7 +217,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let edge_resolver = |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
                     let story = vertex.as_story().unwrap();
                     let author = story.by.as_str();
-                    match CLIENT.get_user(author) {
+                    match get_client().get_user(author) {
                         Ok(None) => Box::new(std::iter::empty()), // no known author
                         Ok(Some(user)) => Box::new(std::iter::once(user.into())),
                         Err(e) => {
@@ -236,7 +239,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
 
                     let neighbors: VertexIterator<'a, Self::Vertex> =
                         Box::new(comment_ids.into_iter().filter_map(move |comment_id| {
-                            match CLIENT.get_item(comment_id) {
+                            match get_client().get_item(comment_id) {
                                 Ok(None) => None,
                                 Ok(Some(item)) => {
                                     if let Item::Comment(comment) = item {
@@ -262,18 +265,18 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let edge_resolver = |vertex: &Self::Vertex| {
                     let comment = vertex.as_comment().unwrap();
                     let author = comment.by.as_str();
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match CLIENT.get_user(author)
-                    {
-                        Ok(None) => Box::new(std::iter::empty()), // no known author
-                        Ok(Some(user)) => Box::new(std::iter::once(user.into())),
-                        Err(e) => {
-                            eprintln!(
-                                "API error while fetching comment {} author \"{}\": {}",
-                                comment.id, author, e
-                            );
-                            Box::new(std::iter::empty())
-                        }
-                    };
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
+                        match get_client().get_user(author) {
+                            Ok(None) => Box::new(std::iter::empty()), // no known author
+                            Ok(Some(user)) => Box::new(std::iter::once(user.into())),
+                            Err(e) => {
+                                eprintln!(
+                                    "API error while fetching comment {} author \"{}\": {}",
+                                    comment.id, author, e
+                                );
+                                Box::new(std::iter::empty())
+                            }
+                        };
                     neighbors
                 };
                 resolve_neighbors_with(contexts, edge_resolver)
@@ -284,7 +287,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                     let comment_id = comment.id;
                     let parent_id = comment.parent;
 
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match CLIENT
+                    let neighbors: VertexIterator<'a, Self::Vertex> = match get_client()
                         .get_item(parent_id)
                     {
                         Ok(None) => Box::new(std::iter::empty()),
@@ -307,7 +310,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                     let reply_ids = comment.kids.clone().unwrap_or_default();
 
                     let neighbors: VertexIterator<'a, Self::Vertex> = Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
-                        match CLIENT.get_item(reply_id) {
+                        match get_client().get_item(reply_id) {
                             Ok(None) => None,
                             Ok(Some(item)) => {
                                 if let Item::Comment(c) = item {
@@ -335,7 +338,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
 
                     let neighbors: VertexIterator<'a, Self::Vertex> =
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
-                            match CLIENT.get_item(submission_id) {
+                            match get_client().get_item(submission_id) {
                                 Ok(None) => None,
                                 Ok(Some(item)) => Some(item.into()),
                                 Err(e) => {
@@ -360,6 +363,6 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         _type_name: &str,
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-        resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
+        resolve_coercion_using_schema(contexts, get_schema(), coerce_to_type)
     }
 }

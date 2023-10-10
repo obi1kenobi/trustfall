@@ -16,12 +16,12 @@ use crate::{
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
-        types::NamedTypedValue, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
+        get_typename_meta_field, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
         FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
-        IRVertex, IndexedQuery, LocalField, Operation, Recursive, TransformationKind, Type,
-        VariableRef, Vid, TYPENAME_META_FIELD, TYPENAME_META_FIELD_ARC,
+        IRVertex, IndexedQuery, LocalField, NamedTypedValue, Operation, Recursive,
+        TransformationKind, Type, VariableRef, Vid, TYPENAME_META_FIELD,
     },
-    schema::{FieldOrigin, Schema, BUILTIN_SCALARS},
+    schema::{get_builtin_scalars, FieldOrigin, Schema},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
 };
 
@@ -70,10 +70,11 @@ fn get_field_name_and_type_from_schema<'a>(
     field_node: &FieldNode,
 ) -> (&'a str, Arc<str>, Arc<str>, Type) {
     if field_node.name.as_ref() == TYPENAME_META_FIELD {
+        let field_name = get_typename_meta_field();
         return (
             TYPENAME_META_FIELD,
-            TYPENAME_META_FIELD_ARC.clone(),
-            TYPENAME_META_FIELD_ARC.clone(),
+            field_name.clone(),
+            field_name.clone(),
             Type::new_named_type("String", false),
         );
     }
@@ -1092,7 +1093,7 @@ where
             }
 
             output_handler.end_nested_scope(next_vid);
-        } else if BUILTIN_SCALARS.contains(subfield_post_coercion_type.as_ref())
+        } else if get_builtin_scalars().contains(subfield_post_coercion_type.as_ref())
             || schema.scalars.contains_key(subfield_post_coercion_type.as_ref())
             || subfield_name == TYPENAME_META_FIELD
         {
@@ -1363,9 +1364,9 @@ mod tests {
     use std::{
         fs,
         path::{Path, PathBuf},
+        sync::OnceLock,
     };
 
-    use once_cell::sync::Lazy;
     use trustfall_filetests_macros::parameterize;
 
     use crate::{
@@ -1374,30 +1375,46 @@ mod tests {
         test_types::{TestIRQuery, TestIRQueryResult, TestParsedGraphQLQueryResult},
     };
 
-    static FILESYSTEM_SCHEMA: Lazy<Schema> = Lazy::new(|| {
-        Schema::parse(fs::read_to_string("test_data/schemas/filesystem.graphql").unwrap()).unwrap()
-    });
+    static FILESYSTEM_SCHEMA: OnceLock<Schema> = OnceLock::new();
+    static NUMBERS_SCHEMA: OnceLock<Schema> = OnceLock::new();
+    static NULLABLES_SCHEMA: OnceLock<Schema> = OnceLock::new();
+    static RECURSES_SCHEMA: OnceLock<Schema> = OnceLock::new();
 
-    static NUMBERS_SCHEMA: Lazy<Schema> = Lazy::new(|| {
-        Schema::parse(fs::read_to_string("test_data/schemas/numbers.graphql").unwrap()).unwrap()
-    });
+    fn get_filesystem_schema() -> &'static Schema {
+        FILESYSTEM_SCHEMA.get_or_init(|| {
+            Schema::parse(fs::read_to_string("test_data/schemas/filesystem.graphql").unwrap())
+                .unwrap()
+        })
+    }
 
-    static NULLABLES_SCHEMA: Lazy<Schema> = Lazy::new(|| {
-        Schema::parse(fs::read_to_string("test_data/schemas/nullables.graphql").unwrap()).unwrap()
-    });
+    fn get_numbers_schema() -> &'static Schema {
+        NUMBERS_SCHEMA.get_or_init(|| {
+            Schema::parse(fs::read_to_string("test_data/schemas/numbers.graphql").unwrap()).unwrap()
+        })
+    }
 
-    static RECURSES_SCHEMA: Lazy<Schema> = Lazy::new(|| {
-        Schema::parse(fs::read_to_string("test_data/schemas/recurses.graphql").unwrap()).unwrap()
-    });
+    fn get_nullables_schema() -> &'static Schema {
+        NULLABLES_SCHEMA.get_or_init(|| {
+            Schema::parse(fs::read_to_string("test_data/schemas/nullables.graphql").unwrap())
+                .unwrap()
+        })
+    }
+
+    fn get_recurses_schema() -> &'static Schema {
+        RECURSES_SCHEMA.get_or_init(|| {
+            Schema::parse(fs::read_to_string("test_data/schemas/recurses.graphql").unwrap())
+                .unwrap()
+        })
+    }
 
     #[test]
     fn test_schemas_load_correctly() {
         // We want to merely touch the lazy-static variables so they get initialized.
         // If that succeeds, even very cursory checks will suffice.
-        assert!(FILESYSTEM_SCHEMA.vertex_types.len() > 3);
-        assert!(!NUMBERS_SCHEMA.vertex_types.is_empty());
-        assert!(!NULLABLES_SCHEMA.vertex_types.is_empty());
-        assert!(!RECURSES_SCHEMA.vertex_types.is_empty());
+        assert!(get_filesystem_schema().vertex_types.len() > 3);
+        assert!(!get_numbers_schema().vertex_types.is_empty());
+        assert!(!get_nullables_schema().vertex_types.is_empty());
+        assert!(!get_recurses_schema().vertex_types.is_empty());
     }
 
     #[parameterize("trustfall_core/test_data/tests/frontend_errors")]
@@ -1427,10 +1444,10 @@ mod tests {
         let test_query = test_query.unwrap();
 
         let schema: &Schema = match test_query.schema_name.as_str() {
-            "filesystem" => &FILESYSTEM_SCHEMA,
-            "numbers" => &NUMBERS_SCHEMA,
-            "nullables" => &NULLABLES_SCHEMA,
-            "recurses" => &RECURSES_SCHEMA,
+            "filesystem" => get_filesystem_schema(),
+            "numbers" => get_numbers_schema(),
+            "nullables" => get_nullables_schema(),
+            "recurses" => get_recurses_schema(),
             _ => unimplemented!("unrecognized schema name: {:?}", test_query.schema_name),
         };
 

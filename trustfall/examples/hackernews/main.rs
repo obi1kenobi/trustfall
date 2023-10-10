@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::{env, process};
 
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
@@ -12,9 +11,14 @@ pub mod adapter;
 mod util;
 pub mod vertex;
 
-static SCHEMA: Lazy<Schema> = Lazy::new(|| {
-    Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql")).unwrap()
-});
+static SCHEMA: OnceLock<Schema> = OnceLock::new();
+
+pub(crate) fn get_schema() -> &'static Schema {
+    SCHEMA.get_or_init(|| {
+        Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql"))
+            .expect("valid schema")
+    })
+}
 
 #[derive(Debug, Clone, Deserialize)]
 struct InputQuery<'a> {
@@ -28,11 +32,12 @@ fn run_query(path: &str, max_results: Option<usize>) {
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let adapter = Arc::new(HackerNewsAdapter::new());
+    let schema = get_schema();
 
     let query = input_query.query;
-    let arguments = input_query.args;
+    let variables = input_query.args;
 
-    for data_item in execute_query(&SCHEMA, adapter, query, arguments)
+    for data_item in execute_query(schema, adapter, query, variables)
         .expect("not a legal query")
         .take(max_results.unwrap_or(usize::MAX))
     {

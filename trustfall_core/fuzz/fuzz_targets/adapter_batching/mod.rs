@@ -6,11 +6,10 @@ use std::collections::{BTreeMap, VecDeque};
 use std::io::Cursor;
 use std::marker::PhantomData;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use globset::GlobBuilder;
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use walkdir::WalkDir;
 
@@ -182,49 +181,54 @@ pub(crate) struct TestIRQuery {
 
 type QueryAndArgs = (Arc<IndexedQuery>, Arc<BTreeMap<Arc<str>, FieldValue>>);
 
-static QUERY_DATA: Lazy<Vec<QueryAndArgs>> = Lazy::new(|| {
-    let mut buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    buf.pop();
-    buf.push("test_data/tests/valid_queries");
-    let base = buf.as_path();
+static QUERY_DATA: OnceLock<Vec<QueryAndArgs>> = OnceLock::new();
 
-    let glob = GlobBuilder::new("*.ir.ron")
-        .case_insensitive(true)
-        .literal_separator(true)
-        .build()
-        .unwrap()
-        .compile_matcher();
+fn get_query_data() -> &'static Vec<QueryAndArgs> {
+    QUERY_DATA.get_or_init(|| {
+        let mut buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        buf.pop();
+        buf.push("test_data/tests/valid_queries");
+        let base = buf.as_path();
 
-    let walker = WalkDir::new(base);
-    let mut paths = vec![];
+        let glob = GlobBuilder::new("*.ir.ron")
+            .case_insensitive(true)
+            .literal_separator(true)
+            .build()
+            .unwrap()
+            .compile_matcher();
 
-    for file in walker {
-        let file = file.unwrap();
-        let path = file.path();
-        let stripped_path = path.strip_prefix(base).unwrap();
-        if !glob.is_match(stripped_path) {
-            continue;
+        let walker = WalkDir::new(base);
+        let mut paths = vec![];
+
+        for file in walker {
+            let file = file.unwrap();
+            let path = file.path();
+            let stripped_path = path.strip_prefix(base).unwrap();
+            if !glob.is_match(stripped_path) {
+                continue;
+            }
+            paths.push(PathBuf::from(path));
         }
-        paths.push(PathBuf::from(path));
-    }
-    paths.sort_unstable();
+        paths.sort_unstable();
 
-    let mut outputs = vec![];
-    for path in paths {
-        let contents = std::fs::read_to_string(path).expect("failed to read file");
-        let input_data: TestIRQuery = ron::from_str::<Result<TestIRQuery, ()>>(&contents)
-            .expect("failed to parse file")
-            .expect("Err result");
-        if input_data.schema_name == "numbers" {
-            let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
-            let arguments =
-                Arc::new(input_data.arguments.into_iter().map(|(k, v)| (k.into(), v)).collect());
-            outputs.push((indexed_query, arguments));
+        let mut outputs = vec![];
+        for path in paths {
+            let contents = std::fs::read_to_string(path).expect("failed to read file");
+            let input_data: TestIRQuery = ron::from_str::<Result<TestIRQuery, ()>>(&contents)
+                .expect("failed to parse file")
+                .expect("Err result");
+            if input_data.schema_name == "numbers" {
+                let indexed_query = Arc::new(input_data.ir_query.try_into().unwrap());
+                let arguments = Arc::new(
+                    input_data.arguments.into_iter().map(|(k, v)| (k.into(), v)).collect(),
+                );
+                outputs.push((indexed_query, arguments));
+            }
         }
-    }
 
-    outputs
-});
+        outputs
+    })
+}
 
 impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
     type Error = ();
@@ -235,7 +239,7 @@ impl<'a> TryFrom<&'a [u8]> for TestCase<'a> {
         };
         let (file_selector_bytes, rest) = value.split_at(2);
         let file_selector = u16::from_le_bytes(file_selector_bytes.try_into().unwrap()) as usize;
-        let (query, args) = QUERY_DATA.get(file_selector).ok_or(())?;
+        let (query, args) = get_query_data().get(file_selector).ok_or(())?;
         let cursor = Cursor::new(rest);
 
         Ok(Self { query: query.clone(), arguments: args.clone(), cursor })

@@ -2,10 +2,9 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::{env, process};
 
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
@@ -18,10 +17,14 @@ mod adapter;
 mod metar;
 mod util;
 
-static SCHEMA: Lazy<Schema> = Lazy::new(|| {
-    Schema::parse(util::read_file("./examples/weather/metar_weather.graphql"))
-        .expect("failed to parse schema")
-});
+static SCHEMA: OnceLock<Schema> = OnceLock::new();
+
+fn get_schema() -> &'static Schema {
+    SCHEMA.get_or_init(|| {
+        Schema::parse(util::read_file("./examples/weather/metar_weather.graphql"))
+            .expect("failed to parse schema")
+    })
+}
 
 const METAR_DOC_URL: &str =
     "https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv";
@@ -86,11 +89,12 @@ fn run_query(path: &str) {
 
     let data = read_metar_data();
     let adapter = Arc::new(MetarAdapter::new(&data));
+    let schema = get_schema();
 
     let query = input_query.query;
-    let arguments = input_query.args;
+    let variables = input_query.args;
 
-    for data_item in execute_query(&SCHEMA, adapter, query, arguments).expect("not a legal query") {
+    for data_item in execute_query(schema, adapter, query, variables).expect("not a legal query") {
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.
         //
