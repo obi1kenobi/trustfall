@@ -74,10 +74,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Set up python
         id: setup-python
@@ -150,14 +148,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
         run: cargo clippy --workspace --all-features --all-targets --no-deps -- -D warnings --allow deprecated
@@ -179,10 +173,8 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       # Test all crates except trustfall_stubgen,
       # which is only tested if it has changed since its tests are a bit long.
@@ -215,16 +207,14 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: rustfmt, clippy
+          cache: false
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             ./trustfall_core/fuzz
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
         run: |
@@ -253,16 +243,14 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: rustfmt, clippy
+          cache: false
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             ./experiments/trustfall_rustdoc
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
         run: |
@@ -294,10 +282,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -357,8 +343,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install rust  # necessary for `npm run build:wasm` later
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install rust + caching  # necessary for `npm run build:wasm` later
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - uses: actions/setup-node@v3
         with:
@@ -396,7 +382,9 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
 
       - name: Publishing?
         id: version

@@ -32,9 +32,9 @@ jobs:
           persist-credentials: true
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
 
       - name: Tag the version
         run: |
@@ -56,8 +56,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - uses: Swatinem/rust-cache@v2
 
       - id: check
         run: |
@@ -83,8 +81,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - uses: Swatinem/rust-cache@v2
 
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v1

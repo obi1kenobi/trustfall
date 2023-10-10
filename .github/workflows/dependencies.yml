@@ -44,7 +44,9 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
@@ -171,7 +173,9 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
