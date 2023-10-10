@@ -440,7 +440,7 @@ impl Display for Type {
 
         write!(f, "{}", self.base)?;
 
-        let mut builder = String::new();
+        let mut builder = String::with_capacity(self.modifiers.mask.count_ones().max(4) as usize);
 
         // right
         {
