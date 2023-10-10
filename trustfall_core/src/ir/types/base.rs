@@ -1,6 +1,6 @@
 use std::{
     fmt::{Display, Formatter},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
@@ -82,6 +82,19 @@ static INT_TYPE_NAME: &str = "Int";
 static FLOAT_TYPE_NAME: &str = "Float";
 static BOOLEAN_TYPE_NAME: &str = "Boolean";
 
+static STRING_TYPE_NAME_ARC: OnceLock<Arc<str>> = OnceLock::new();
+static INT_TYPE_NAME_ARC: OnceLock<Arc<str>> = OnceLock::new();
+
+#[inline]
+fn get_string_type_name_arc() -> &'static Arc<str> {
+    STRING_TYPE_NAME_ARC.get_or_init(|| Arc::from(STRING_TYPE_NAME))
+}
+
+#[inline]
+fn get_int_type_name_arc() -> &'static Arc<str> {
+    INT_TYPE_NAME_ARC.get_or_init(|| Arc::from(INT_TYPE_NAME))
+}
+
 impl Type {
     /// Parses a string type representation into a new [`Type`].
     ///
@@ -102,8 +115,8 @@ impl Type {
 
     fn from_name_and_modifiers(base_type: &str, modifiers: Modifiers) -> Self {
         match base_type {
-            "String" => Self { base: Arc::from(STRING_TYPE_NAME), modifiers },
-            "Int" => Self { base: Arc::from(INT_TYPE_NAME), modifiers },
+            "String" => Self { base: Arc::clone(get_string_type_name_arc()), modifiers },
+            "Int" => Self { base: Arc::clone(get_int_type_name_arc()), modifiers },
             "Float" => Self { base: Arc::from(FLOAT_TYPE_NAME), modifiers },
             "Boolean" => Self { base: Arc::from(BOOLEAN_TYPE_NAME), modifiers },
             _ => Self { base: base_type.to_string().into(), modifiers },
