@@ -1,7 +1,6 @@
 //! Trustfall intermediate representation (IR)
 
 mod indexed;
-pub mod serialization;
 pub mod types;
 pub mod value;
 
@@ -9,26 +8,16 @@ use std::{
     cmp::Ordering, collections::BTreeMap, fmt::Debug, num::NonZeroUsize, ops::Index, sync::Arc,
 };
 
-use async_graphql_parser::types::{BaseType, Type};
-use async_graphql_value::Name;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::error::FilterTypeError;
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-use self::types::{
-    are_base_types_equal_ignoring_nullability, is_base_type_orderable, NamedTypedValue,
-};
+pub use self::types::{NamedTypedValue, Type};
 pub use self::value::{FieldValue, TransparentValue};
 
 pub(crate) const TYPENAME_META_FIELD: &str = "__typename";
-
-pub(crate) static TYPENAME_META_FIELD_NAME: Lazy<Name> =
-    Lazy::new(|| Name::new(TYPENAME_META_FIELD));
-
-pub(crate) static TYPENAME_META_FIELD_TYPE: Lazy<Type> =
-    Lazy::new(|| Type::new("String!").unwrap());
 
 pub(crate) static TYPENAME_META_FIELD_ARC: Lazy<Arc<str>> =
     Lazy::new(|| Arc::from(TYPENAME_META_FIELD));
@@ -135,12 +124,7 @@ pub struct IRQuery {
 
     pub root_component: Arc<IRQueryComponent>,
 
-    #[serde(
-        default,
-        skip_serializing_if = "BTreeMap::is_empty",
-        serialize_with = "crate::ir::serialization::serde_variables_serializer",
-        deserialize_with = "crate::ir::serialization::serde_variables_deserializer"
-    )]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub variables: BTreeMap<Arc<str>, Type>,
 }
 
@@ -232,8 +216,7 @@ pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
 }
 
-static NON_NULL_INT_TYPE: Lazy<Type> =
-    Lazy::new(|| Type { base: BaseType::Named(Name::new("Int")), nullable: false });
+static NON_NULL_INT_TYPE: Lazy<Type> = Lazy::new(|| Type::new_named_type("Int", false));
 
 impl FoldSpecificFieldKind {
     pub fn field_type(&self) -> &Type {
@@ -619,7 +602,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
         match self {
             Operation::IsNull(_) | Operation::IsNotNull(_) => {
                 // Checking non-nullable types for null or non-null is pointless.
-                if left_type.nullable {
+                if left_type.nullable() {
                     Ok(())
                 } else {
                     Err(vec![FilterTypeError::NonNullableTypeFilteredForNullability(
@@ -636,7 +619,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 // For the operands relative to each other, nullability doesn't matter,
                 // but the rest of the type must be the same.
                 let right_type = right_type.unwrap();
-                if are_base_types_equal_ignoring_nullability(&left_type.base, &right_type.base) {
+                if left_type.equal_ignoring_nullability(right_type) {
                     Ok(())
                 } else {
                     // The right argument must be a tag at this point. If it is not a tag
@@ -663,7 +646,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 let right_type = right_type.unwrap();
 
                 let mut errors = vec![];
-                if !is_base_type_orderable(&left_type.base) {
+                if !left_type.is_orderable() {
                     errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
                         self.operation_name().to_string(),
                         left.named().to_string(),
@@ -671,7 +654,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                     ));
                 }
 
-                if !is_base_type_orderable(&right_type.base) {
+                if !right_type.is_orderable() {
                     // The right argument must be a tag at this point. If it is not a tag
                     // and the second .unwrap() below panics, then our type inference
                     // has inferred an incorrect type for the variable in the argument.
@@ -687,7 +670,7 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
 
                 // For the operands relative to each other, nullability doesn't matter,
                 // but the types must be equal to each other.
-                if !are_base_types_equal_ignoring_nullability(&left_type.base, &right_type.base) {
+                if !left_type.equal_ignoring_nullability(right_type) {
                     // The right argument must be a tag at this point. If it is not a tag
                     // and the second .unwrap() below panics, then our type inference
                     // has inferred an incorrect type for the variable in the argument.
@@ -712,22 +695,19 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
             Operation::Contains(_, _) | Operation::NotContains(_, _) => {
                 // The left-hand operand needs to be a list, ignoring nullability.
                 // The right-hand operand may be anything, if considered individually.
-                let inner_type = match &left_type.base {
-                    BaseType::List(ty) => Ok(ty),
-                    BaseType::Named(_) => {
-                        Err(vec![FilterTypeError::ListFilterOperationOnNonListField(
-                            self.operation_name().to_string(),
-                            left.named().to_string(),
-                            left_type.to_string(),
-                        )])
-                    }
-                }?;
+                let inner_type = left_type.as_list().ok_or_else(|| {
+                    vec![FilterTypeError::ListFilterOperationOnNonListField(
+                        self.operation_name().to_string(),
+                        left.named().to_string(),
+                        left_type.to_string(),
+                    )]
+                })?;
 
                 let right_type = right_type.unwrap();
 
                 // However, the type inside the left-hand list must be equal,
                 // ignoring nullability, to the type of the right-hand operand.
-                if are_base_types_equal_ignoring_nullability(&inner_type.base, &right_type.base) {
+                if inner_type.equal_ignoring_nullability(right_type) {
                     Ok(())
                 } else {
                     // The right argument must be a tag at this point. If it is not a tag
@@ -749,26 +729,25 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 // The right-hand operand needs to be a list, ignoring nullability.
                 // The left-hand operand may be anything, if considered individually.
                 let right_type = right_type.unwrap();
-                let inner_type = match &right_type.base {
-                    BaseType::List(ty) => Ok(ty),
-                    BaseType::Named(_) => {
-                        // The right argument must be a tag at this point. If it is not a tag
-                        // and the second .unwrap() below panics, then our type inference
-                        // has inferred an incorrect type for the variable in the argument.
-                        let tag = right.unwrap().as_tag().unwrap();
+                let inner_type = if let Some(list) = right_type.as_list() {
+                    Ok(list)
+                } else {
+                    // The right argument must be a tag at this point. If it is not a tag
+                    // and the second .unwrap() below panics, then our type inference
+                    // has inferred an incorrect type for the variable in the argument.
+                    let tag = right.unwrap().as_tag().unwrap();
 
-                        Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
-                            self.operation_name().to_string(),
-                            tag_name.unwrap().to_string(),
-                            tag.field_name().to_string(),
-                            tag.field_type().to_string(),
-                        )])
-                    }
+                    Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
+                        self.operation_name().to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
+                    )])
                 }?;
 
                 // However, the type inside the right-hand list must be equal,
                 // ignoring nullability, to the type of the left-hand operand.
-                if are_base_types_equal_ignoring_nullability(&left_type.base, &inner_type.base) {
+                if left_type.equal_ignoring_nullability(&inner_type) {
                     Ok(())
                 } else {
                     // The right argument must be a tag at this point. If it is not a tag
@@ -797,31 +776,26 @@ impl<LeftT: NamedTypedValue> Operation<LeftT, Argument> {
                 let mut errors = vec![];
 
                 // Both operands need to be strings, ignoring nullability.
-                match &left_type.base {
-                    BaseType::Named(ty) if ty == "String" => {}
-                    _ => {
-                        errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
-                            self.operation_name().to_string(),
-                            left.named().to_string(),
-                            left_type.to_string(),
-                        ));
-                    }
-                };
+                if left_type.is_list() || left_type.base_type() != "String" {
+                    errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
+                        self.operation_name().to_string(),
+                        left.named().to_string(),
+                        left_type.to_string(),
+                    ));
+                }
 
-                match &right_type.unwrap().base {
-                    BaseType::Named(ty) if ty == "String" => {}
-                    _ => {
-                        // The right argument must be a tag at this point. If it is not a tag
-                        // and the second .unwrap() below panics, then our type inference
-                        // has inferred an incorrect type for the variable in the argument.
-                        let tag = right.unwrap().as_tag().unwrap();
-                        errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
-                            self.operation_name().to_string(),
-                            tag_name.unwrap().to_string(),
-                            tag.field_name().to_string(),
-                            tag.field_type().to_string(),
-                        ));
-                    }
+                // The right argument must be a tag at this point. If it is not a tag
+                // and the second .unwrap() below panics, then our type inference
+                // has inferred an incorrect type for the variable in the argument.
+                let right_type = right_type.unwrap();
+                if right_type.is_list() || right_type.base_type() != "String" {
+                    let tag = right.unwrap().as_tag().unwrap();
+                    errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
+                        self.operation_name().to_string(),
+                        tag_name.unwrap().to_string(),
+                        tag.field_name().to_string(),
+                        tag.field_type().to_string(),
+                    ));
                 }
 
                 if errors.is_empty() {
@@ -840,8 +814,6 @@ pub struct ContextField {
 
     pub field_name: Arc<str>,
 
-    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
-    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub field_type: Type,
 }
 
@@ -849,8 +821,6 @@ pub struct ContextField {
 pub struct LocalField {
     pub field_name: Arc<str>,
 
-    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
-    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub field_type: Type,
 }
 
@@ -858,8 +828,6 @@ pub struct LocalField {
 pub struct VariableRef {
     pub variable_name: Arc<str>,
 
-    #[serde(serialize_with = "crate::ir::serialization::serde_type_serializer")]
-    #[serde(deserialize_with = "crate::ir::serialization::serde_type_deserializer")]
     pub variable_type: Type,
 }
 
