@@ -288,7 +288,7 @@ looping through all list types: {ty:?} {base:?}"
     /// For two types, return a type that is a subtype of both, or None if no such type exists.
     /// For example:
     /// ```rust
-    /// use trustfall_core::ir::types::Type;
+    /// use trustfall_core::ir::Type;
     ///
     /// let left = Type::parse("[String]!").unwrap();
     /// let right = Type::parse("[String!]").unwrap();

@@ -4,11 +4,10 @@ use std::{
     fs::{self, File},
     io::{BufWriter, Write},
     process,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use feed_rs::{model::Feed, parser};
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
@@ -23,8 +22,11 @@ const WIRED_FEED_URI: &str = "https://www.wired.com/feed";
 const PCGAMER_FEED_LOCATION: &str = "/tmp/feeds-pcgamer.xml";
 const WIRED_FEED_LOCATION: &str = "/tmp/feeds-wired.xml";
 
-static SCHEMA: Lazy<Schema> =
-    Lazy::new(|| Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).unwrap());
+static SCHEMA: OnceLock<Schema> = OnceLock::new();
+
+fn get_schema() -> &'static Schema {
+    SCHEMA.get_or_init(|| Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).expect("valid schema"))
+}
 
 #[derive(Debug, Clone, Deserialize)]
 struct InputQuery<'a> {
@@ -58,11 +60,12 @@ fn run_query(path: &str) {
 
     let data = read_feed_data();
     let adapter = Arc::new(FeedAdapter::new(&data));
+    let schema = get_schema();
 
     let query = input_query.query;
-    let arguments = input_query.args;
+    let variables = input_query.args;
 
-    for data_item in execute_query(&SCHEMA, adapter, query, arguments).expect("not a legal query") {
+    for data_item in execute_query(schema, adapter, query, variables).expect("not a legal query") {
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.
         //

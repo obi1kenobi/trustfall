@@ -1,14 +1,14 @@
 //! Trustfall intermediate representation (IR)
 
-mod indexed;
-pub mod types;
-pub mod value;
-
 use std::{
-    cmp::Ordering, collections::BTreeMap, fmt::Debug, num::NonZeroUsize, ops::Index, sync::Arc,
+    cmp::Ordering,
+    collections::BTreeMap,
+    fmt::Debug,
+    num::NonZeroUsize,
+    ops::Index,
+    sync::{Arc, OnceLock},
 };
 
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::error::FilterTypeError;
@@ -17,10 +17,17 @@ pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
 pub use self::types::{NamedTypedValue, Type};
 pub use self::value::{FieldValue, TransparentValue};
 
+mod indexed;
+mod types;
+pub mod value;
+
 pub(crate) const TYPENAME_META_FIELD: &str = "__typename";
 
-pub(crate) static TYPENAME_META_FIELD_ARC: Lazy<Arc<str>> =
-    Lazy::new(|| Arc::from(TYPENAME_META_FIELD));
+static TYPENAME_META_FIELD_ARC: OnceLock<Arc<str>> = OnceLock::new();
+
+pub(crate) fn get_typename_meta_field() -> &'static Arc<str> {
+    TYPENAME_META_FIELD_ARC.get_or_init(|| Arc::from(TYPENAME_META_FIELD))
+}
 
 /// Unique vertex ID identifying a specific vertex in a Trustfall query
 #[doc(alias("vertex", "node"))]
@@ -216,12 +223,12 @@ pub enum FoldSpecificFieldKind {
     Count, // Represents the number of elements in an IRFold's component.
 }
 
-static NON_NULL_INT_TYPE: Lazy<Type> = Lazy::new(|| Type::new_named_type("Int", false));
+static NON_NULL_INT_TYPE: OnceLock<Type> = OnceLock::new();
 
 impl FoldSpecificFieldKind {
     pub fn field_type(&self) -> &Type {
         match self {
-            Self::Count => &NON_NULL_INT_TYPE,
+            Self::Count => NON_NULL_INT_TYPE.get_or_init(|| Type::new_named_type("Int", false)),
         }
     }
 

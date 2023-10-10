@@ -1,6 +1,5 @@
-use std::fmt;
+use std::{fmt, sync::OnceLock};
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{de::Visitor, Deserialize, Deserializer};
 use time::OffsetDateTime;
@@ -219,23 +218,26 @@ static METAR_WIND_VARIABILITY_PATTERN: &str = r"(?:[0-9/]{3}V[0-9/]{3} )?";
 //                                        |raw meters|vis.ok| statute mi |
 static METAR_VISIBILITY_PATTERN: &str = r"(?:[0-9]{4}|CAVOK|(?:[0-9/ ]+SM)) ";
 
-static METAR_VISIBILITY_CAPTURE_PATTERN: Lazy<String> = Lazy::new(|| {
-    METAR_STATION_AND_DATE_PATTERN.to_owned()
-        + METAR_AUTO_OPTIONAL_MARKER_PATTERN
-        + "(?:"
-        + METAR_WIND_PATTERN
-        + ")?"
-        + METAR_WIND_VARIABILITY_PATTERN
-        + "("
-        + METAR_VISIBILITY_PATTERN
-        + ")"
-});
+static METAR_VISIBILITY_CAPTURE_REGEX: OnceLock<Regex> =
+    OnceLock::new();
 
-static METAR_VISIBILITY_CAPTURE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(&METAR_VISIBILITY_CAPTURE_PATTERN).unwrap());
+fn get_metar_visibility_capture_regex() -> &'static Regex {
+    METAR_VISIBILITY_CAPTURE_REGEX.get_or_init(|| {
+        let pattern = METAR_STATION_AND_DATE_PATTERN.to_owned()
+            + METAR_AUTO_OPTIONAL_MARKER_PATTERN
+            + "(?:"
+            + METAR_WIND_PATTERN
+            + ")?"
+            + METAR_WIND_VARIABILITY_PATTERN
+            + "("
+            + METAR_VISIBILITY_PATTERN
+            + ")";
+        Regex::new(&pattern).expect("valid pattern")
+    })
+}
 
 fn get_visibility(raw_metar: &str) -> Visibility {
-    if let Some(capture) = METAR_VISIBILITY_CAPTURE_RE.captures(raw_metar) {
+    if let Some(capture) = METAR_VISIBILITY_CAPTURE_REGEX.captures(raw_metar) {
         match capture[1].trim() {
             "0000" => Visibility::Minimal,
             "9999" | "CAVOK" => Visibility::Unlimited,

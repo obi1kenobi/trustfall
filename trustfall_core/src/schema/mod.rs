@@ -2,7 +2,7 @@
 use std::{
     collections::{btree_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     ops::Add,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use async_graphql_parser::{
@@ -17,7 +17,6 @@ use async_graphql_parser::{
 pub use ::async_graphql_parser::Error;
 use async_graphql_value::Name;
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::Type;
@@ -74,15 +73,19 @@ impl Add for &FieldOrigin {
     }
 }
 
-pub(crate) static BUILTIN_SCALARS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    hashset! {
-        "Int",
-        "Float",
-        "String",
-        "Boolean",
-        "ID",
-    }
-});
+static BUILTIN_SCALARS: OnceLock<HashSet<&'static str>> = OnceLock::new();
+
+pub(crate) fn get_builtin_scalars() -> &'static HashSet<&'static str> {
+    BUILTIN_SCALARS.get_or_init(|| {
+        hashset! {
+            "Int",
+            "Float",
+            "String",
+            "Boolean",
+            "ID",
+        }
+    })
+}
 
 const RESERVED_PREFIX: &str = "__";
 
@@ -134,7 +137,7 @@ directive @transform(op: String!) on FIELD
                 TypeSystemDefinition::Type(t) => {
                     let node = t.node;
                     let type_name: Arc<str> = Arc::from(node.name.node.to_string());
-                    assert!(!BUILTIN_SCALARS.contains(type_name.as_ref()));
+                    assert!(!get_builtin_scalars().contains(type_name.as_ref()));
 
                     if node.extend {
                         unimplemented!();
@@ -303,7 +306,7 @@ fn check_root_query_type_invariants(
     for field_defn in &query_type.fields {
         let field_type = Type::from_type(&field_defn.node.ty.node);
         let base_named_type = field_type.base_type();
-        if BUILTIN_SCALARS.contains(base_named_type) {
+        if get_builtin_scalars().contains(base_named_type) {
             errors.push(InvalidSchemaError::PropertyFieldOnRootQueryType(
                 query_type_definition.name.node.to_string(),
                 field_defn.node.name.node.to_string(),
@@ -350,7 +353,7 @@ fn check_type_and_property_and_edge_invariants(
             let field_type = Type::from_type(field_type);
 
             let base_named_type = field_type.base_type();
-            if BUILTIN_SCALARS.contains(base_named_type) {
+            if get_builtin_scalars().contains(base_named_type) {
                 // We're looking at a property field.
                 if !field_defn.arguments.is_empty() {
                     errors.push(InvalidSchemaError::PropertyFieldWithParameters(
