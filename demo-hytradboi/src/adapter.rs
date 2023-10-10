@@ -1,11 +1,10 @@
 #![allow(dead_code)]
 
-use std::{fs, rc::Rc, sync::Arc};
+use std::{fs, rc::Rc, sync::{Arc, OnceLock}};
 
 use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
 use octorust::types::{ContentFile, FullRepository};
-use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 use trustfall::{
     provider::{
@@ -24,31 +23,48 @@ use crate::{
 
 const USER_AGENT: &str = "demo-hytradboi (github.com/obi1kenobi/trustfall)";
 
-static HN_CLIENT: Lazy<HnClient> = Lazy::new(|| HnClient::init().unwrap());
+static HN_CLIENT: OnceLock<HnClient> = OnceLock::new();
 
-static CRATES_CLIENT: Lazy<consecrates::Client> =
-    Lazy::new(|| consecrates::Client::new(USER_AGENT));
+fn get_hn_client() -> &'static HnClient {
+    HN_CLIENT.get_or_init(|| HnClient::init().unwrap())
+}
 
-static GITHUB_CLIENT: Lazy<octorust::Client> = Lazy::new(|| {
-    octorust::Client::new(
-        USER_AGENT,
-        Some(octorust::auth::Credentials::Token(std::env::var("GITHUB_TOKEN").unwrap_or_else(
-            |_| {
-                fs::read_to_string("./localdata/gh_token")
-                    .expect("could not find creds file")
-                    .trim()
-                    .to_string()
-            },
-        ))),
-    )
-    .unwrap()
-});
+static CRATES_CLIENT: OnceLock<consecrates::Client> = OnceLock::new();
 
-static REPOS_CLIENT: Lazy<octorust::repos::Repos> =
-    Lazy::new(|| octorust::repos::Repos::new(GITHUB_CLIENT.clone()));
+fn get_crates_client() -> &'static consecrates::Client {
+    CRATES_CLIENT.get_or_init(|| consecrates::Client::new(USER_AGENT))
+}
 
-static RUNTIME: Lazy<Runtime> =
-    Lazy::new(|| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap());
+static GITHUB_CLIENT: OnceLock<octorust::Client> = OnceLock::new();
+
+fn get_github_client() -> &'static octorust::Client {
+    GITHUB_CLIENT.get_or_init(|| {
+        octorust::Client::new(
+            USER_AGENT,
+            Some(octorust::auth::Credentials::Token(std::env::var("GITHUB_TOKEN").unwrap_or_else(
+                |_| {
+                    fs::read_to_string("./localdata/gh_token")
+                        .expect("could not find creds file")
+                        .trim()
+                        .to_string()
+                },
+            ))),
+        )
+        .unwrap()
+    })
+}
+
+static REPOS_CLIENT: OnceLock<octorust::repos::Repos> = OnceLock::new();
+
+fn get_repos_client() -> &'static octorust::repos::Repos {
+    REPOS_CLIENT.get_or_init(|| octorust::repos::Repos::new(get_github_client().clone()))
+}
+
+static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+
+fn get_runtime() -> &'static Runtime {
+    RUNTIME.get_or_init(|| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap())
+}
 
 pub struct DemoAdapter;
 
@@ -62,12 +78,12 @@ impl DemoAdapter {
     }
 
     fn top(&self, max: Option<usize>) -> VertexIterator<'static, Vertex> {
-        let iterator = HN_CLIENT
+        let iterator = get_hn_client()
             .get_top_stories()
             .unwrap()
             .into_iter()
             .take(max.unwrap_or(usize::MAX))
-            .filter_map(|id| match HN_CLIENT.get_item(id) {
+            .filter_map(|id| match get_hn_client().get_item(id) {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
                     eprintln!("Got an error while fetching item: {e}");
@@ -90,7 +106,7 @@ impl DemoAdapter {
         let iterator = story_ids
             .into_iter()
             .take(max.unwrap_or(usize::MAX))
-            .map(move |id| HN_CLIENT.get_item(id))
+            .map(move |id| get_hn_client().get_item(id))
             .filter_map(|res| match res {
                 Ok(maybe_item) => maybe_item.map(|item| item.into()),
                 Err(e) => {
@@ -103,7 +119,7 @@ impl DemoAdapter {
     }
 
     fn user(&self, username: &str) -> VertexIterator<'static, Vertex> {
-        match HN_CLIENT.get_user(username) {
+        match get_hn_client().get_user(username) {
             Ok(Some(user)) => {
                 // Found a user by that name.
                 let vertex = Vertex::from(user);
@@ -121,7 +137,7 @@ impl DemoAdapter {
     }
 
     fn most_downloaded_crates(&self) -> VertexIterator<'static, Vertex> {
-        Box::new(CratesPager::new(&CRATES_CLIENT).into_iter().map(|x| x.into()))
+        Box::new(CratesPager::new(get_crates_client()).into_iter().map(|x| x.into()))
     }
 }
 
@@ -363,7 +379,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                     Some(vertex) => {
                         let story = vertex.as_story().unwrap();
                         let author = story.by.as_str();
-                        match HN_CLIENT.get_user(author) {
+                        match get_hn_client().get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
                             Ok(Some(user)) => Box::new(std::iter::once(user.into())),
                             Err(e) => {
@@ -390,7 +406,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
 
                         let neighbors_iter =
                             comment_ids.into_iter().filter_map(move |comment_id| {
-                                match HN_CLIENT.get_item(comment_id) {
+                                match get_hn_client().get_item(comment_id) {
                                     Ok(None) => None,
                                     Ok(Some(item)) => {
                                         if let Item::Comment(comment) = item {
@@ -456,7 +472,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                     Some(vertex) => {
                         let comment = vertex.as_comment().unwrap();
                         let author = comment.by.as_str();
-                        match HN_CLIENT.get_user(author) {
+                        match get_hn_client().get_user(author) {
                             Ok(None) => Box::new(std::iter::empty()), // no known author
                             Ok(Some(user)) => Box::new(std::iter::once(user.into())),
                             Err(e) => {
@@ -481,7 +497,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                         let comment_id = comment.id;
                         let parent_id = comment.parent;
 
-                        match HN_CLIENT.get_item(parent_id) {
+                        match get_hn_client().get_item(parent_id) {
                             Ok(None) => Box::new(std::iter::empty()),
                             Ok(Some(item)) => Box::new(std::iter::once(item.into())),
                             Err(e) => {
@@ -505,7 +521,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                         let mut comment_id = comment.id;
                         let mut parent_id = comment.parent;
                         loop {
-                            match HN_CLIENT.get_item(parent_id) {
+                            match get_hn_client().get_item(parent_id) {
                                 Ok(None) => break Box::new(std::iter::empty()),
                                 Ok(Some(item)) => match item {
                                     Item::Story(s) => break Box::new(std::iter::once(s.into())),
@@ -543,7 +559,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                         let reply_ids = comment.kids.clone().unwrap_or_default();
 
                         Box::new(reply_ids.into_iter().filter_map(move |reply_id| {
-                            match HN_CLIENT.get_item(reply_id) {
+                            match get_hn_client().get_item(reply_id) {
                                 Ok(None) => None,
                                 Ok(Some(item)) => {
                                     if let Item::Comment(c) = item {
@@ -574,7 +590,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                         let submitted_ids = user.submitted.clone();
 
                         Box::new(submitted_ids.into_iter().filter_map(move |submission_id| {
-                            match HN_CLIENT.get_item(submission_id) {
+                            match get_hn_client().get_item(submission_id) {
                                 Ok(None) => None,
                                 Ok(Some(item)) => Some(item.into()),
                                 Err(e) => {
@@ -613,7 +629,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 let neighbors: VertexIterator<'a, Self::Vertex> = match vertex {
                     None => Box::new(std::iter::empty()),
                     Some(vertex) => Box::new(
-                        WorkflowsPager::new(GITHUB_CLIENT.clone(), vertex, &RUNTIME)
+                        WorkflowsPager::new(get_github_client().clone(), vertex, get_runtime())
                             .into_iter()
                             .map(|x| x.into()),
                     ),
@@ -722,7 +738,7 @@ fn resolve_url(url: &str) -> Option<Vertex> {
                 // This is just a regular link to a webpage.
                 Some(Vertex::Webpage(Rc::from(url)))
             } else if matches!(git_url.host, Some(x) if x == "github.com") {
-                let future = REPOS_CLIENT.get(
+                let future = get_repos_client().get(
                     git_url
                         .owner
                         .as_ref()
@@ -730,7 +746,7 @@ fn resolve_url(url: &str) -> Option<Vertex> {
                         .as_str(),
                     git_url.name.as_str(),
                 );
-                match RUNTIME.block_on(future) {
+                match get_runtime().block_on(future) {
                     Ok(repo) => Some(Repository::new(url.to_string(), Rc::new(repo)).into()),
                     Err(e) => {
                         eprintln!("Error getting repository information for url {url}: {e}",);
@@ -749,7 +765,7 @@ fn get_repo_file_content(repo: &FullRepository, path: &str) -> Option<ContentFil
     let (owner, repo_name) = get_owner_and_repo(repo);
     let main_branch = repo.default_branch.as_ref();
 
-    match RUNTIME.block_on(REPOS_CLIENT.get_content_file(owner, repo_name, path, main_branch)) {
+    match get_runtime().block_on(get_repos_client().get_content_file(owner, repo_name, path, main_branch)) {
         Ok(content) => Some(content),
         Err(e) => {
             eprintln!(

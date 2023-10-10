@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use adapter::DemoAdapter;
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
 
@@ -15,8 +14,11 @@ mod pagers;
 mod util;
 mod vertex;
 
-static SCHEMA: Lazy<Schema> =
-    Lazy::new(|| Schema::parse(fs::read_to_string("./schema.graphql").unwrap()).unwrap());
+static SCHEMA: OnceLock<Schema> = OnceLock::new();
+
+fn get_schema() -> &'static Schema {
+    SCHEMA.get_or_init(|| Schema::parse(fs::read_to_string("./schema.graphql").expect("file exists")).expect("valid schema contents"))
+}
 
 #[derive(Debug, Clone, Deserialize)]
 struct InputQuery<'a> {
@@ -30,6 +32,7 @@ fn run_query(path: &str) {
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
     let adapter = Arc::new(DemoAdapter::new());
+    let schema = get_schema();
     let max_results = 20usize;
 
     println!("Executing query:");
@@ -52,7 +55,7 @@ fn run_query(path: &str) {
 
     let mut total_query_duration: Duration = Default::default();
     let mut current_instant = Instant::now();
-    for (index, data_item) in execute_query(&SCHEMA, adapter, input_query.query, input_query.args)
+    for (index, data_item) in execute_query(schema, adapter, input_query.query, input_query.args)
         .expect("not a valid query")
         .enumerate()
     {

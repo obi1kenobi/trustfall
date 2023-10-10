@@ -15,7 +15,6 @@ futures-executor = "0.3.21"
 git-url-parse = "0.4.0"
 hn_api = "0.1.0"
 itertools = { workspace = true }
-once_cell = { workspace = true }
 maplit = { workspace = true }
 octorust = "0.1.35"
 regex = { workspace = true }
