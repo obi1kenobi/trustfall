@@ -27,7 +27,7 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: true
 
@@ -55,7 +55,7 @@ jobs:
       is_new_version: "${{ steps.check.outputs.is_new_version }}"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
 
@@ -82,7 +82,7 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
 
