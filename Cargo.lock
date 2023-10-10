@@ -3299,7 +3299,6 @@ dependencies = [
  "async-graphql-parser",
  "itertools",
  "maplit",
- "once_cell",
  "ron",
  "serde",
  "trustfall_core",
