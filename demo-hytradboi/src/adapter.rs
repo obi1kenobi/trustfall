@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 
-use std::{fs, rc::Rc, sync::{Arc, OnceLock}};
+use std::{
+    fs,
+    rc::Rc,
+    sync::{Arc, OnceLock},
+};
 
 use git_url_parse::GitUrl;
 use hn_api::{types::Item, HnClient};
@@ -63,7 +67,8 @@ fn get_repos_client() -> &'static octorust::repos::Repos {
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 fn get_runtime() -> &'static Runtime {
-    RUNTIME.get_or_init(|| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap())
+    RUNTIME
+        .get_or_init(|| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap())
 }
 
 pub struct DemoAdapter;
@@ -765,7 +770,12 @@ fn get_repo_file_content(repo: &FullRepository, path: &str) -> Option<ContentFil
     let (owner, repo_name) = get_owner_and_repo(repo);
     let main_branch = repo.default_branch.as_ref();
 
-    match get_runtime().block_on(get_repos_client().get_content_file(owner, repo_name, path, main_branch)) {
+    match get_runtime().block_on(get_repos_client().get_content_file(
+        owner,
+        repo_name,
+        path,
+        main_branch,
+    )) {
         Ok(content) => Some(content),
         Err(e) => {
             eprintln!(

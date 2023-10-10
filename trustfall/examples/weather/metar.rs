@@ -218,8 +218,7 @@ static METAR_WIND_VARIABILITY_PATTERN: &str = r"(?:[0-9/]{3}V[0-9/]{3} )?";
 //                                        |raw meters|vis.ok| statute mi |
 static METAR_VISIBILITY_PATTERN: &str = r"(?:[0-9]{4}|CAVOK|(?:[0-9/ ]+SM)) ";
 
-static METAR_VISIBILITY_CAPTURE_REGEX: OnceLock<Regex> =
-    OnceLock::new();
+static METAR_VISIBILITY_CAPTURE_REGEX: OnceLock<Regex> = OnceLock::new();
 
 fn get_metar_visibility_capture_regex() -> &'static Regex {
     METAR_VISIBILITY_CAPTURE_REGEX.get_or_init(|| {

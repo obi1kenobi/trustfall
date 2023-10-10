@@ -25,7 +25,9 @@ const WIRED_FEED_LOCATION: &str = "/tmp/feeds-wired.xml";
 static SCHEMA: OnceLock<Schema> = OnceLock::new();
 
 fn get_schema() -> &'static Schema {
-    SCHEMA.get_or_init(|| Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).expect("valid schema"))
+    SCHEMA.get_or_init(|| {
+        Schema::parse(util::read_file("./examples/feeds/feeds.graphql")).expect("valid schema")
+    })
 }
 
 #[derive(Debug, Clone, Deserialize)]

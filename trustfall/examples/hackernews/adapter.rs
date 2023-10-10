@@ -12,7 +12,7 @@ use trustfall::{
     FieldValue,
 };
 
-use crate::{vertex::Vertex, get_schema};
+use crate::{get_schema, vertex::Vertex};
 
 static CLIENT: OnceLock<HnClient> = OnceLock::new();
 
@@ -265,18 +265,18 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let edge_resolver = |vertex: &Self::Vertex| {
                     let comment = vertex.as_comment().unwrap();
                     let author = comment.by.as_str();
-                    let neighbors: VertexIterator<'a, Self::Vertex> = match get_client().get_user(author)
-                    {
-                        Ok(None) => Box::new(std::iter::empty()), // no known author
-                        Ok(Some(user)) => Box::new(std::iter::once(user.into())),
-                        Err(e) => {
-                            eprintln!(
-                                "API error while fetching comment {} author \"{}\": {}",
-                                comment.id, author, e
-                            );
-                            Box::new(std::iter::empty())
-                        }
-                    };
+                    let neighbors: VertexIterator<'a, Self::Vertex> =
+                        match get_client().get_user(author) {
+                            Ok(None) => Box::new(std::iter::empty()), // no known author
+                            Ok(Some(user)) => Box::new(std::iter::once(user.into())),
+                            Err(e) => {
+                                eprintln!(
+                                    "API error while fetching comment {} author \"{}\": {}",
+                                    comment.id, author, e
+                                );
+                                Box::new(std::iter::empty())
+                            }
+                        };
                     neighbors
                 };
                 resolve_neighbors_with(contexts, edge_resolver)

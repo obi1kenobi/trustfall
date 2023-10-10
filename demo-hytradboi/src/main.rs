@@ -17,7 +17,10 @@ mod vertex;
 static SCHEMA: OnceLock<Schema> = OnceLock::new();
 
 fn get_schema() -> &'static Schema {
-    SCHEMA.get_or_init(|| Schema::parse(fs::read_to_string("./schema.graphql").expect("file exists")).expect("valid schema contents"))
+    SCHEMA.get_or_init(|| {
+        Schema::parse(fs::read_to_string("./schema.graphql").expect("file exists"))
+            .expect("valid schema contents")
+    })
 }
 
 #[derive(Debug, Clone, Deserialize)]

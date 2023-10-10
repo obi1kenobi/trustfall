@@ -15,7 +15,8 @@ static SCHEMA: OnceLock<Schema> = OnceLock::new();
 
 pub(crate) fn get_schema() -> &'static Schema {
     SCHEMA.get_or_init(|| {
-        Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql")).expect("valid schema")
+        Schema::parse(util::read_file("./examples/hackernews/hackernews.graphql"))
+            .expect("valid schema")
     })
 }
 
