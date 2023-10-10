@@ -1920,7 +1920,6 @@ version = "0.1.6"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "once_cell",
  "pyo3",
  "trustfall_core",
 ]
@@ -2429,7 +2428,6 @@ dependencies = [
  "async-graphql-value",
  "derive-new",
  "maplit",
- "once_cell",
  "trustfall_core",
 ]
 
@@ -3222,7 +3220,6 @@ dependencies = [
  "csv",
  "feed-rs",
  "hn_api",
- "once_cell",
  "regex",
  "reqwest 0.11.22",
  "ron",

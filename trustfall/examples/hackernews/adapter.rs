@@ -363,6 +363,6 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         _type_name: &str,
         coerce_to_type: &str,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
-        resolve_coercion_using_schema(contexts, &SCHEMA, coerce_to_type)
+        resolve_coercion_using_schema(contexts, get_schema(), coerce_to_type)
     }
 }

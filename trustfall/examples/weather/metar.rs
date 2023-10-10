@@ -237,7 +237,8 @@ fn get_metar_visibility_capture_regex() -> &'static Regex {
 }
 
 fn get_visibility(raw_metar: &str) -> Visibility {
-    if let Some(capture) = METAR_VISIBILITY_CAPTURE_REGEX.captures(raw_metar) {
+    let regex = get_metar_visibility_capture_regex();
+    if let Some(capture) = regex.captures(raw_metar) {
         match capture[1].trim() {
             "0000" => Visibility::Minimal,
             "9999" | "CAVOK" => Visibility::Unlimited,

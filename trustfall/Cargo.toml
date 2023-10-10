@@ -23,7 +23,6 @@ trustfall_derive = { version = "=0.3.1", path = "../trustfall_derive" }
 ron = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-once_cell = { workspace = true }
 regex = { workspace = true }
 reqwest = { version = "0.11.6", features = ["blocking", "json"] }
 time = { version = "0.3.23", features = ["serde-human-readable"] }
