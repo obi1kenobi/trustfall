@@ -4,10 +4,9 @@ use gloo_utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use trustfall_core::{
-    interpreter::{DataContext, VertexIterator},
-    ir::FieldValue,
-};
+use trustfall_core::{interpreter::VertexIterator, ir::FieldValue};
+
+use crate::adapter::Opaque;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -123,8 +122,8 @@ impl JsStringConstants {
 
 #[wasm_bindgen]
 pub struct JsContextIterator {
-    iter: VertexIterator<'static, DataContext<JsValue>>,
-    pub(super) registry: Rc<RefCell<BTreeMap<u32, DataContext<JsValue>>>>,
+    iter: VertexIterator<'static, Opaque>,
+    pub(super) registry: Rc<RefCell<BTreeMap<u32, Opaque>>>,
     next_item: u32,
 }
 
@@ -156,7 +155,7 @@ impl ContextIteratorItem {
 
 #[wasm_bindgen]
 impl JsContextIterator {
-    pub(super) fn new(iter: VertexIterator<'static, DataContext<JsValue>>) -> Self {
+    pub(super) fn new(iter: VertexIterator<'static, Opaque>) -> Self {
         Self { iter, registry: Rc::from(RefCell::new(Default::default())), next_item: 0 }
     }
 
@@ -166,7 +165,7 @@ impl JsContextIterator {
         if let Some(ctx) = next {
             let next_item = self.next_item;
             self.next_item = self.next_item.wrapping_add(1);
-            let current_vertex = ctx.active_vertex().cloned();
+            let current_vertex = ctx.vertex.clone();
 
             let existing = self.registry.borrow_mut().insert(next_item, ctx);
             assert!(existing.is_none(), "id {next_item} already inserted with value {existing:?}",);
