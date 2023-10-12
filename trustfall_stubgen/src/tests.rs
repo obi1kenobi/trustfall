@@ -16,22 +16,39 @@ fn write_new_file(path: &Path, contents: &str) {
 }
 
 fn assert_generated_code_compiles(path: &Path) {
-    let cargo_toml = r#"
+    let output = std::process::Command::new(env!("CARGO"))
+        .arg("locate-project")
+        .arg("--workspace")
+        .arg("--message-format=plain")
+        .output()
+        .expect("error running `cargo locate-project`")
+        .stdout;
+    let workspace_cargo_toml_path =
+        Path::new(std::str::from_utf8(&output).expect("not legal utf-8").trim());
+
+    let trustfall_lib_path =
+        workspace_cargo_toml_path.parent().expect("no parent path").join("trustfall");
+
+    let trustfall_lib_str = trustfall_lib_path.display();
+
+    let cargo_toml = format!(
+        "
 [package]
-name = "tests"
+name = \"tests\"
 publish = false
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.70"
+version = \"0.1.0\"
+edition = \"2021\"
+rust-version = \"1.70\"
 
 [dependencies]
-trustfall = "*"
+trustfall = {{ path = \"{trustfall_lib_str}\" }}
 
 [workspace]
-"#;
+"
+    );
     let mut cargo_toml_path = PathBuf::from(path);
     cargo_toml_path.push("Cargo.toml");
-    write_new_file(cargo_toml_path.as_path(), cargo_toml);
+    write_new_file(cargo_toml_path.as_path(), &cargo_toml);
 
     let lib_rs = "\
 mod adapter;

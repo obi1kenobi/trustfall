@@ -51,6 +51,7 @@ pub(super) fn make_properties_file(
         properties_file.top_level_items.push(resolver);
     }
 
+    properties_file.external_imports.insert(parse_import("trustfall::provider::AsVertex"));
     properties_file.external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     properties_file
         .external_imports
@@ -76,11 +77,11 @@ fn make_resolver_fn(type_name: &str, properties: &[String]) -> proc_macro2::Toke
     let unreachable_msg =
         format!("attempted to read unexpected property '{{property_name}}' on type '{type_name}'");
     quote! {
-        pub(super) fn #ident<'a>(
-            contexts: ContextIterator<'a, Vertex>,
+        pub(super) fn #ident<'a, V: AsVertex<Vertex> + 'a>(
+            contexts: ContextIterator<'a, V>,
             property_name: &str,
             _resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
+        ) -> ContextOutcomeIterator<'a, V, FieldValue> {
             match property_name {
                 #arms
                 _ => unreachable!(#unreachable_msg),

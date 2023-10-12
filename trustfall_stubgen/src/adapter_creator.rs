@@ -155,19 +155,20 @@ fn emit_property_handling(
     }
 
     builtin_imports.insert(parse_import("std::sync::Arc"));
+    external_imports.insert(parse_import("trustfall::provider::AsVertex"));
     external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
     external_imports.insert(parse_import("trustfall::provider::ResolveInfo"));
     external_imports.insert(parse_import("trustfall::FieldValue"));
 
     quote! {
-        fn resolve_property(
+        fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
             &self,
-            contexts: ContextIterator<'a, Self::Vertex>,
+            contexts: ContextIterator<'a, V>,
             type_name: &Arc<str>,
             property_name: &Arc<str>,
             resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+        ) -> ContextOutcomeIterator<'a, V, FieldValue> {
             match type_name.as_ref() {
                 #arms
                 _ => unreachable!("attempted to read property '{property_name}' on unexpected type: {type_name}"),
@@ -215,6 +216,7 @@ fn emit_edge_handling(
     }
 
     builtin_imports.insert(parse_import("std::sync::Arc"));
+    external_imports.insert(parse_import("trustfall::provider::AsVertex"));
     external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
     external_imports.insert(parse_import("trustfall::provider::EdgeParameters"));
@@ -223,14 +225,14 @@ fn emit_edge_handling(
     external_imports.insert(parse_import("trustfall::FieldValue"));
 
     quote! {
-        fn resolve_neighbors(
+        fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
             &self,
-            contexts: ContextIterator<'a, Self::Vertex>,
+            contexts: ContextIterator<'a, V>,
             type_name: &Arc<str>,
             edge_name: &Arc<str>,
             parameters: &EdgeParameters,
             resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
             match type_name.as_ref() {
                 #arms
                 _ => unreachable!("attempted to resolve edge '{edge_name}' on unexpected type: {type_name}"),
@@ -244,19 +246,20 @@ fn emit_coercion_handling(
     external_imports: &mut BTreeSet<Vec<String>>,
 ) -> proc_macro2::TokenStream {
     builtin_imports.insert(parse_import("std::sync::Arc"));
+    external_imports.insert(parse_import("trustfall::provider::AsVertex"));
     external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
     external_imports.insert(parse_import("trustfall::provider::ResolveInfo"));
     external_imports.insert(parse_import("trustfall::provider::resolve_coercion_using_schema"));
 
     quote! {
-        fn resolve_coercion(
+        fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
             &self,
-            contexts: ContextIterator<'a, Self::Vertex>,
+            contexts: ContextIterator<'a, V>,
             _type_name: &Arc<str>,
             coerce_to_type: &Arc<str>,
             _resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+        ) -> ContextOutcomeIterator<'a, V, bool> {
             resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
         }
     }

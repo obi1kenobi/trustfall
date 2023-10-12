@@ -1,6 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
-use trustfall::{FieldValue, Schema, provider::{ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator, resolve_coercion_using_schema}};
+use trustfall::{FieldValue, Schema, provider::{AsVertex, ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator, resolve_coercion_using_schema}};
 
 use super::vertex::Vertex;
 
@@ -61,13 +61,13 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match type_name.as_ref() {
             "const2" => {
                 super::properties::resolve_const2_property(
@@ -140,14 +140,14 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match type_name.as_ref() {
             "const" => {
                 super::edges::resolve_const_edge(
@@ -229,13 +229,13 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         _type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
     }
 }
