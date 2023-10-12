@@ -223,14 +223,21 @@ impl Opaque {
     fn new<V: AsVertex<JsValue> + 'static>(ctx: DataContext<V>) -> Self {
         let vertex = ctx.active_vertex::<JsValue>().cloned();
         let boxed = Box::new(ctx);
-        let transmuted = unsafe { std::mem::transmute(boxed) };
+        let data = Box::into_raw(boxed) as *mut ();
 
-        Self { data: transmuted, vertex }
+        Self { data, vertex }
     }
 
-    fn into_inner<V: AsVertex<JsValue> + 'static>(self) -> DataContext<V> {
-        let transmuted: Box<DataContext<V>> = unsafe { std::mem::transmute(self.data) };
-        *transmuted
+    /// Converts an `Opaque` into the `DataContext<V>` it points to.
+    ///
+    /// # Safety
+    ///
+    /// When an `Opaque` is constructed, it does not store the value of the `V` generic parameter
+    /// it was constructed with. The caller of this function must ensure that the `V` parameter here
+    /// is the same type as the one used in the `Opaque::new()` call that constructed `self` here.
+    unsafe fn into_inner<V: AsVertex<JsValue> + 'static>(self) -> DataContext<V> {
+        let boxed_ctx = unsafe { Box::from_raw(self.data as *mut DataContext<V>) };
+        *boxed_ctx
     }
 }
 
@@ -264,7 +271,15 @@ impl Adapter<'static> for AdapterShim {
             self.inner.resolve_property(ctx_iter, type_name.as_ref(), property_name.as_ref());
         Box::new(
             ContextAndValueIterator::new(js_iter, registry)
-                .map(|(opaque, value)| (opaque.into_inner(), value)),
+                .map(|(opaque, value)| {
+                    // SAFETY: This `Opaque` was constructed just a few lines ago
+                    //         in this `resolve_property()` call, so the `V` type must be the same.
+                    let ctx = unsafe {
+                        opaque.into_inner()
+                    };
+
+                    (ctx, value)
+                }),
         )
     }
 
@@ -290,7 +305,15 @@ impl Adapter<'static> for AdapterShim {
         );
         Box::new(
             ContextAndNeighborsIterator::new(js_iter, registry, self.constants.clone())
-                .map(|(opaque, neighbors)| (opaque.into_inner(), neighbors)),
+                .map(|(opaque, neighbors)| {
+                    // SAFETY: This `Opaque` was constructed just a few lines ago
+                    //         in this `resolve_neighbors()` call, so the `V` type must be the same.
+                    let ctx = unsafe {
+                        opaque.into_inner()
+                    };
+
+                    (ctx, neighbors)
+                }),
         )
     }
 
@@ -309,7 +332,15 @@ impl Adapter<'static> for AdapterShim {
             self.inner.resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type.as_ref());
         Box::new(
             ContextAndBoolIterator::new(js_iter, registry)
-                .map(|(opaque, value)| (opaque.into_inner(), value)),
+                .map(|(opaque, value)| {
+                    // SAFETY: This `Opaque` was constructed just a few lines ago
+                    //         in this `resolve_coercion()` call, so the `V` type must be the same.
+                    let ctx = unsafe {
+                        opaque.into_inner()
+                    };
+
+                    (ctx, value)
+                }),
         )
     }
 }
