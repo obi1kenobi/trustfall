@@ -39,7 +39,7 @@ use std::{collections::BTreeMap, sync::Arc};
 pub mod provider {
     pub use trustfall_core::interpreter::basic_adapter::BasicAdapter;
     pub use trustfall_core::interpreter::{
-        Adapter, CandidateValue, ContextIterator, ContextOutcomeIterator, DataContext,
+        Adapter, AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator, DataContext,
         DynamicallyResolvedValue, EdgeInfo, QueryInfo, Range, RequiredProperty, ResolveEdgeInfo,
         ResolveInfo, Typename, VertexInfo, VertexIterator,
     };

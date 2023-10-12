@@ -33,8 +33,7 @@ impl trustfall::provider::BasicAdapter<'static> for Adapter {
         contexts: trustfall::provider::ContextIterator<'static, V>,
         type_name: &str,
         property_name: &str,
-    ) -> trustfall::provider::ContextOutcomeIterator<'static, V, trustfall::FieldValue>
-    {
+    ) -> trustfall::provider::ContextOutcomeIterator<'static, V, trustfall::FieldValue> {
         match (type_name, property_name) {
             ("Vertex", "name") => trustfall::provider::resolve_property_with(
                 contexts,
