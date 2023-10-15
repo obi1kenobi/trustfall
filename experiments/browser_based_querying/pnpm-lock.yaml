@@ -1,12 +1,13 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 patchedDependencies:
   graphql-language-service@5.1.7:
     hash: w6briuljthcrfw47ukgoxfvne4
     path: patches/graphql-language-service@5.1.7.patch
-  monaco-editor@0.20.0:
-    hash: uf5fj7h4rxeihd5auffjnde5pu
-    path: patches/monaco-editor@0.20.0.patch
 
 dependencies:
   '@emotion/react':
@@ -47,7 +48,7 @@ dependencies:
     version: 13.0.1
   monaco-editor:
     specifier: ^0.20.0
-    version: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
+    version: 0.20.0
   monaco-graphql:
     specifier: ^1.2.0
     version: 1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.6.2)
@@ -576,6 +577,7 @@ packages:
 
   /@emotion/memoize@0.7.4:
     resolution: {integrity: sha512-Ja/Vfqe3HpuzRsG1oBtWTHk2PGZ7GR+2Vz5iYGelAw8dx32K0y7PjVuxK6z1nMpZOqAFsRUPCkK1YjJ56qJlgw==}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -4304,10 +4306,9 @@ packages:
     hasBin: true
     dev: true
 
-  /monaco-editor@0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu):
+  /monaco-editor@0.20.0:
     resolution: {integrity: sha512-hkvf4EtPJRMQlPC3UbMoRs0vTAFAYdzFQ+gpMb8A+9znae1c43q8Mab9iVsgTcg/4PNiLGGn3SlDIa8uvK1FIQ==}
     dev: false
-    patched: true
 
   /monaco-graphql@1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.6.2):
     resolution: {integrity: sha512-r4QhIp7Q35zo7/a8EqtWePQou/sV0JewUjuXZJFHXKq1wDaTmXg+6AsS/D5wU5iUpudKu1Zjv2sC9co+28ypQA==}
@@ -4318,7 +4319,7 @@ packages:
     dependencies:
       graphql: 16.7.1
       graphql-language-service: 5.1.7(patch_hash=w6briuljthcrfw47ukgoxfvne4)(graphql@16.7.1)
-      monaco-editor: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
+      monaco-editor: 0.20.0
       picomatch-browser: 2.2.6
       prettier: 2.6.2
     dev: false
