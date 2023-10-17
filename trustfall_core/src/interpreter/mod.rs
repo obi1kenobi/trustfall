@@ -101,39 +101,58 @@ impl<Vertex> DataContext<Vertex> {
     {
         self.active_vertex.as_ref().and_then(|v| v.as_vertex())
     }
-}
 
-impl<Vertex: Clone> DataContext<Vertex> {
-    pub(crate) fn clone_as<V: Clone>(&self) -> DataContext<V>
-    where
-        Vertex: AsVertex<V>,
-    {
+    pub fn map<T>(self, mut mapper: impl FnMut(Vertex) -> T) -> DataContext<T> {
         DataContext {
-            active_vertex: self.active_vertex.as_ref().and_then(|v| v.as_vertex()).cloned(),
-            vertices: self
-                .vertices
-                .iter()
-                .map(|(k, v)| (*k, v.as_ref().and_then(|x| x.as_vertex()).cloned()))
-                .collect(),
-            values: self.values.clone(),
+            active_vertex: self.active_vertex.map(&mut mapper),
+            vertices: self.vertices.into_iter().map(|(k, v)| (k, v.map(&mut mapper))).collect(),
+            values: self.values,
             suspended_vertices: self
                 .suspended_vertices
-                .iter()
-                .map(|v| v.as_ref().and_then(|x| x.as_vertex()).cloned())
+                .into_iter()
+                .map(|v| v.map(&mut mapper))
                 .collect(),
             folded_contexts: self
                 .folded_contexts
-                .iter()
-                .map(|(k, v)| {
-                    (*k, v.as_ref().map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()))
+                .into_iter()
+                .map(|(k, ctxs)| {
+                    (k, ctxs.map(|v| v.into_iter().map(|ctx| ctx.map(&mut mapper)).collect()))
                 })
                 .collect(),
-            folded_values: self.folded_values.clone(),
+            folded_values: self.folded_values,
             piggyback: self
                 .piggyback
-                .as_ref()
-                .map(|vec| vec.iter().map(|ctx| ctx.clone_as()).collect()),
-            imported_tags: self.imported_tags.clone(),
+                .map(|v| v.into_iter().map(|ctx| ctx.map(&mut mapper)).collect()),
+            imported_tags: self.imported_tags,
+        }
+    }
+
+    pub fn flat_map<T>(self, mut mapper: impl FnMut(Vertex) -> Option<T>) -> DataContext<T> {
+        DataContext {
+            active_vertex: self.active_vertex.and_then(&mut mapper),
+            vertices: self
+                .vertices
+                .into_iter()
+                .map(|(k, v)| (k, v.and_then(&mut mapper)))
+                .collect(),
+            values: self.values,
+            suspended_vertices: self
+                .suspended_vertices
+                .into_iter()
+                .map(|v| v.and_then(&mut mapper))
+                .collect(),
+            folded_contexts: self
+                .folded_contexts
+                .into_iter()
+                .map(|(k, ctxs)| {
+                    (k, ctxs.map(|v| v.into_iter().map(|ctx| ctx.flat_map(&mut mapper)).collect()))
+                })
+                .collect(),
+            folded_values: self.folded_values,
+            piggyback: self
+                .piggyback
+                .map(|v| v.into_iter().map(|ctx| ctx.flat_map(&mut mapper)).collect()),
+            imported_tags: self.imported_tags,
         }
     }
 }
@@ -575,6 +594,8 @@ pub trait Adapter<'vertex> {
 
 pub trait AsVertex<V>: Debug + Clone {
     fn as_vertex(&self) -> Option<&V>;
+
+    fn into_vertex(self) -> Option<V>;
 }
 
 pub trait Cast<V>: AsVertex<V> {
@@ -585,10 +606,8 @@ impl<V: Debug + Clone> AsVertex<V> for V {
     fn as_vertex(&self) -> Option<&V> {
         Some(self)
     }
-}
 
-impl<V: Debug + Clone> Cast<V> for V {
-    fn into_self(vertex: Self) -> Self {
-        vertex
+    fn into_vertex(self) -> Option<V> {
+        Some(self)
     }
 }

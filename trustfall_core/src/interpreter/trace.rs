@@ -277,7 +277,7 @@ where
             )
             .map(move |context| {
                 tracer_ref_3.borrow_mut().record(
-                    TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()),
+                    TraceOpContent::YieldInto(context.clone().flat_map(AsVertex::into_vertex)),
                     Some(call_opid),
                 );
                 context
@@ -297,7 +297,7 @@ where
             .map(move |(context, value)| {
                 tracer_ref_5.borrow_mut().record(
                     TraceOpContent::YieldFrom(YieldValue::ResolveProperty(
-                        context.clone_as::<Self::Vertex>(),
+                        context.clone().flat_map(AsVertex::into_vertex),
                         value.clone(),
                     )),
                     Some(call_opid),
@@ -345,7 +345,7 @@ where
             )
             .map(move |context| {
                 tracer_ref_3.borrow_mut().record(
-                    TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()),
+                    TraceOpContent::YieldInto(context.clone().flat_map(AsVertex::into_vertex)),
                     Some(call_opid),
                 );
                 context
@@ -371,7 +371,7 @@ where
                 let mut trace = tracer_ref_5.borrow_mut();
                 let outer_iterator_opid = trace.record(
                     TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(
-                        context.clone_as::<Self::Vertex>(),
+                        context.clone().flat_map(AsVertex::into_vertex),
                     )),
                     Some(call_opid),
                 );
@@ -440,7 +440,7 @@ where
             )
             .map(move |context| {
                 tracer_ref_3.borrow_mut().record(
-                    TraceOpContent::YieldInto(context.clone_as::<Self::Vertex>()),
+                    TraceOpContent::YieldInto(context.clone().flat_map(AsVertex::into_vertex)),
                     Some(call_opid),
                 );
                 context
@@ -460,7 +460,7 @@ where
             .map(move |(context, can_coerce)| {
                 tracer_ref_5.borrow_mut().record(
                     TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(
-                        context.clone_as::<Self::Vertex>(),
+                        context.clone().flat_map(AsVertex::into_vertex),
                         can_coerce,
                     )),
                     Some(call_opid),

@@ -126,7 +126,7 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context.clone_as::<Vertex>(), "at {input_op:?}");
+                    assert_eq!(context, &input_context.clone().flat_map(AsVertex::into_vertex), "at {input_op:?}");
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
                     assert!(input_data.is_none(), "at {input_op:?}");
@@ -141,7 +141,7 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveProperty(trace_context, value)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context.clone_as::<Vertex>(), "at {next_op:?}");
+                assert_eq!(trace_context, &input_context.clone().flat_map(AsVertex::into_vertex), "at {next_op:?}");
                 Some((input_context, value.clone()))
             }
             TraceOpContent::OutputIteratorExhausted => {
@@ -205,7 +205,7 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context.clone_as::<Vertex>(), "at {input_op:?}");
+                    assert_eq!(context, &input_context.clone().flat_map(AsVertex::into_vertex), "at {input_op:?}");
 
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
@@ -221,7 +221,7 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(trace_context, can_coerce)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context.clone_as::<Vertex>(), "at {next_op:?}");
+                assert_eq!(trace_context, &input_context.clone().flat_map(AsVertex::into_vertex), "at {next_op:?}");
                 Some((input_context, *can_coerce))
             }
             TraceOpContent::OutputIteratorExhausted => {
@@ -284,7 +284,7 @@ where
 
                 if let TraceOpContent::YieldInto(context) = &input_op.content {
                     let input_context = input_data.unwrap();
-                    assert_eq!(context, &input_context.clone_as::<Vertex>(), "at {input_op:?}");
+                    assert_eq!(context, &input_context.clone().flat_map(AsVertex::into_vertex), "at {input_op:?}");
 
                     self.input_batch.push_back(input_context);
                 } else if let TraceOpContent::InputIteratorExhausted = &input_op.content {
@@ -300,7 +300,7 @@ where
         match &next_op.content {
             TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(trace_context)) => {
                 let input_context = self.input_batch.pop_front().unwrap();
-                assert_eq!(trace_context, &input_context.clone_as::<Vertex>(), "at {next_op:?}");
+                assert_eq!(trace_context, &input_context.clone().flat_map(AsVertex::into_vertex), "at {next_op:?}");
 
                 let neighbors = Box::new(TraceReaderNeighborIter {
                     exhausted: false,
