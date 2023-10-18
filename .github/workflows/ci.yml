@@ -167,6 +167,10 @@ jobs:
   rust-tests:
     name: Run tests
     runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -175,6 +179,12 @@ jobs:
 
       - name: Install rust + caching
         uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Clear sccache stats
+        run: sccache --zero-stats
 
       # Test all crates except trustfall_stubgen,
       # which is only tested if it has changed since its tests are a bit long.
@@ -196,6 +206,9 @@ jobs:
 
           # `git diff --quiet` exits non-zero if there are changes
           git diff --quiet HEAD origin/main -- ./trustfall_stubgen || (cd trustfall_stubgen/ && cargo test --all-features)
+
+      - name: Show sccache stats
+        run: sccache --show-stats
 
   rust-fuzz:
     name: Check fuzz targets
@@ -276,6 +289,10 @@ jobs:
      - rust-tests
     permissions:
       contents: write
+    env:
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -287,6 +304,12 @@ jobs:
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Clear sccache stats
+        run: sccache --zero-stats
 
       - name: Run cargo test and wasm-pack tests
         run: |
@@ -330,6 +353,9 @@ jobs:
           generateReleaseNotes: true
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show sccache stats
+        run: sccache --show-stats
 
   js-lint:
     name: Run JS linters
