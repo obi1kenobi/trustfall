@@ -1,5 +1,5 @@
 diff --git a/esm/interface/getAutocompleteSuggestions.js b/esm/interface/getAutocompleteSuggestions.js
-index ac159d132d095a789b966627d315f4238c79ab60..2541d6298b980629d638619cb908a17f7ed5dac7 100644
+index ac159d132d095a789b966627d315f4238c79ab60..eea37ce47d3eee31a764719d269194e9bc6fc412 100644
 --- a/esm/interface/getAutocompleteSuggestions.js
 +++ b/esm/interface/getAutocompleteSuggestions.js
 @@ -63,6 +63,9 @@ const hasTypeSystemDefinitions = (sdl) => {
@@ -7,8 +7,8 @@ index ac159d132d095a789b966627d315f4238c79ab60..2541d6298b980629d638619cb908a17f
      return hasTypeSystemDef;
  };
 +const primitives = new Set(['Int', 'Float', 'String', 'Boolean'])
-+const propertyDirectives = new Set(['fold', 'recurse', 'optional', 'transform'])
-+const edgeDirectives = new Set(['filter', 'tag', 'output', 'transform'])
++const edgeDirectives = new Set(['fold', 'recurse', 'optional', 'transform'])
++const propertyDirectives = new Set(['filter', 'tag', 'output', 'transform'])
  export function getAutocompleteSuggestions(schema, queryText, cursor, contextToken, fragmentDefs, options) {
      var _a;
      const opts = Object.assign(Object.assign({}, options), { schema });
