@@ -6,7 +6,7 @@ index ac159d132d095a789b966627d315f4238c79ab60..fa7f614cb2feb8a90bca66bf2c6dcb67
      }
      return hasTypeSystemDef;
  };
-+const primitives = new Set(['Int', 'Float', 'String', 'Boolean'])
++const primitives = new Set(['Int', 'Float', 'String', 'Boolean', 'ID'])
 +const edgeDirectives = new Set(['fold', 'recurse', 'optional', 'transform'])
 +const propertyDirectives = new Set(['filter', 'tag', 'output', 'transform'])
  export function getAutocompleteSuggestions(schema, queryText, cursor, contextToken, fragmentDefs, options) {
