@@ -1,5 +1,5 @@
 diff --git a/esm/interface/getAutocompleteSuggestions.js b/esm/interface/getAutocompleteSuggestions.js
-index ac159d132d095a789b966627d315f4238c79ab60..eea37ce47d3eee31a764719d269194e9bc6fc412 100644
+index ac159d132d095a789b966627d315f4238c79ab60..a3cb52a0b5203edfc5046b9011da02082727bd79 100644
 --- a/esm/interface/getAutocompleteSuggestions.js
 +++ b/esm/interface/getAutocompleteSuggestions.js
 @@ -63,6 +63,9 @@ const hasTypeSystemDefinitions = (sdl) => {
@@ -37,19 +37,17 @@ index ac159d132d095a789b966627d315f4238c79ab60..eea37ce47d3eee31a764719d269194e9
      }
      return [];
  }
-@@ -442,7 +461,11 @@ function getSuggestionsForFragmentTypeConditions(token, typeInfo, schema, _kind)
+@@ -441,7 +460,9 @@ function getSuggestionsForFragmentTypeConditions(token, typeInfo, schema, _kind)
+             const possibleObjTypes = schema.getPossibleTypes(abstractType);
              const possibleIfaceMap = Object.create(null);
              for (const type of possibleObjTypes) {
-                 for (const iface of type.getInterfaces()) {
--                    possibleIfaceMap[iface.name] = iface;
-+                    // Only allow interfaces to be autocompleted that implement
-+                    // the type of the fragment.
-+                    if (iface._interfaces.some(iface => iface.name === typeInfo.parentType.name)) {
-+                        possibleIfaceMap[iface.name] = iface;
-+                    }
+-                for (const iface of type.getInterfaces()) {
++                // Only allow interfaces to be autocompleted that implement
++                // the type of the fragment.
++                if (type.getInterfaces().some(iface => iface.name === typeInfo.parentType.name)) {
+                     possibleIfaceMap[iface.name] = iface;
                  }
              }
-             possibleTypes = possibleObjTypes.concat(objectValues(possibleIfaceMap));
 diff --git a/esm/interface/getDiagnostics.js b/esm/interface/getDiagnostics.js
 index 38a10439b1a5d7e7adbdd3e16c743a9cedff9dab..c699c3166cf458a5f9e85a794591fd445e843821 100644
 --- a/esm/interface/getDiagnostics.js
