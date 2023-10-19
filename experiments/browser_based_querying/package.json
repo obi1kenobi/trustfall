@@ -78,7 +78,7 @@
     "node": ">=16.13.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@8.2.0",
+  "packageManager": "pnpm@8.9.1",
   "pnpm": {
     "patchedDependencies": {
       "monaco-editor@0.20.0": "patches/monaco-editor@0.20.0.patch",
