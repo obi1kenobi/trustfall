@@ -1,8 +1,12 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 patchedDependencies:
   graphql-language-service@5.1.7:
-    hash: w6briuljthcrfw47ukgoxfvne4
+    hash: i4sprbq3bcj6ibqhpya372at5q
     path: patches/graphql-language-service@5.1.7.patch
   monaco-editor@0.20.0:
     hash: uf5fj7h4rxeihd5auffjnde5pu
@@ -576,6 +580,7 @@ packages:
 
   /@emotion/memoize@0.7.4:
     resolution: {integrity: sha512-Ja/Vfqe3HpuzRsG1oBtWTHk2PGZ7GR+2Vz5iYGelAw8dx32K0y7PjVuxK6z1nMpZOqAFsRUPCkK1YjJ56qJlgw==}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -725,7 +730,7 @@ packages:
       copy-to-clipboard: 3.3.3
       framer-motion: 6.5.1(react-dom@18.1.0)(react@18.1.0)
       graphql: 16.7.1
-      graphql-language-service: 5.1.7(patch_hash=w6briuljthcrfw47ukgoxfvne4)(graphql@16.7.1)
+      graphql-language-service: 5.1.7(patch_hash=i4sprbq3bcj6ibqhpya372at5q)(graphql@16.7.1)
       markdown-it: 12.3.2
       react: 18.1.0
       react-dom: 18.1.0(react@18.1.0)
@@ -2572,7 +2577,7 @@ packages:
       '@codemirror/language': 6.0.0
       codemirror: 5.65.14
       graphql: 16.7.1
-      graphql-language-service: 5.1.7(patch_hash=w6briuljthcrfw47ukgoxfvne4)(graphql@16.7.1)
+      graphql-language-service: 5.1.7(patch_hash=i4sprbq3bcj6ibqhpya372at5q)(graphql@16.7.1)
     dev: false
 
   /codemirror@5.65.14:
@@ -3569,7 +3574,7 @@ packages:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
     dev: true
 
-  /graphql-language-service@5.1.7(patch_hash=w6briuljthcrfw47ukgoxfvne4)(graphql@16.7.1):
+  /graphql-language-service@5.1.7(patch_hash=i4sprbq3bcj6ibqhpya372at5q)(graphql@16.7.1):
     resolution: {integrity: sha512-xkawYMJeoNYGhT+SpSH3c2qf6HpGHQ/duDmrseVHBpVCrXAiGnliXGSCC4jyMGgZQ05GytsZ12p0nUo7s6lSSw==}
     hasBin: true
     peerDependencies:
@@ -4317,7 +4322,7 @@ packages:
       prettier: ^2.8.0 || ^3.0.0
     dependencies:
       graphql: 16.7.1
-      graphql-language-service: 5.1.7(patch_hash=w6briuljthcrfw47ukgoxfvne4)(graphql@16.7.1)
+      graphql-language-service: 5.1.7(patch_hash=i4sprbq3bcj6ibqhpya372at5q)(graphql@16.7.1)
       monaco-editor: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
       picomatch-browser: 2.2.6
       prettier: 2.6.2

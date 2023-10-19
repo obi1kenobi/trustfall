@@ -1,15 +1,36 @@
 diff --git a/esm/interface/getAutocompleteSuggestions.js b/esm/interface/getAutocompleteSuggestions.js
-index ac159d132d095a789b966627d315f4238c79ab60..a3be2d27c9d5c7d6fd3745093301a07d28e79a8d 100644
+index ac159d132d095a789b966627d315f4238c79ab60..fa7f614cb2feb8a90bca66bf2c6dcb6763c4a1f3 100644
 --- a/esm/interface/getAutocompleteSuggestions.js
 +++ b/esm/interface/getAutocompleteSuggestions.js
-@@ -234,7 +234,12 @@ export function getAutocompleteSuggestions(schema, queryText, cursor, contextTok
+@@ -63,6 +63,9 @@ const hasTypeSystemDefinitions = (sdl) => {
+     }
+     return hasTypeSystemDef;
+ };
++const primitives = new Set(['Int', 'Float', 'String', 'Boolean'])
++const edgeDirectives = new Set(['fold', 'recurse', 'optional', 'transform'])
++const propertyDirectives = new Set(['filter', 'tag', 'output', 'transform'])
+ export function getAutocompleteSuggestions(schema, queryText, cursor, contextToken, fragmentDefs, options) {
+     var _a;
+     const opts = Object.assign(Object.assign({}, options), { schema });
+@@ -234,7 +237,23 @@ export function getAutocompleteSuggestions(schema, queryText, cursor, contextTok
          return getSuggestionsForVariableDefinition(token, schema, kind);
      }
      if (kind === RuleKinds.DIRECTIVE) {
 -        return getSuggestionsForDirective(token, state, schema, kind);
 +        // We should autocomplete fields on the line after we autocomplete a directive
-+        if (state.needsAdvance) { // active after '@' or many other kinds of punctuation, so perfect for when we need to autocomplete directives
-+            return getSuggestionsForDirective(token, state, schema, kind);
++        if (state.needsAdvance || state.name === null) { // active after '@' or many other kinds of punctuation, so perfect for when we need to autocomplete directives.
++                                                         // `state` is `null` when the user autocompletes after typing just '@' then opening autocomplete menu
++            // further restrict the directives we suggest based on the type of the field we are on
++            // x.label does not include the '@'
++            let fieldType = typeInfo.fieldDef.type;
++            while (fieldType.ofType) {
++                fieldType = fieldType.ofType
++            }
++            if (primitives.has(fieldType.name)) {
++                return getSuggestionsForDirective(token, state, schema, kind).filter(x => propertyDirectives.has(x.label))
++            } else {
++                return getSuggestionsForDirective(token, state, schema, kind).filter(x => edgeDirectives.has(x.label))
++            }
 +        } else { // there has been no '@' so we should autocomplete fields
 +            return getSuggestionsForFieldNames(token, typeInfo, opts);
 +        }
