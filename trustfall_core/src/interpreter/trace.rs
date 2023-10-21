@@ -149,6 +149,14 @@ fn make_iter_with_pre_action<T, I: Iterator<Item = T>, F: Fn()>(
     PreActionIter { inner, pre_action }
 }
 
+/// An adapter "middleware" that records all adapter operations into a linear, replayable trace.
+///
+/// Tapping adapters must be done at top level, on the top-level adapter which is being used
+/// for query execution i.e. where the `<V>` generic on the resolver methods
+/// is the same as `AdapterT::Vertex`.
+///
+/// Otherwise, the recorded traces may not be possible to replay since they would be incomplete:
+/// they would only capture a portion of the execution, the rest of which is missing.
 #[derive(Debug, Clone)]
 pub struct AdapterTap<'vertex, AdapterT>
 where
@@ -196,11 +204,6 @@ where
     })
 }
 
-// Tapping adapters must be done at top level, where the `<V>` generic on the resolver methods
-// is the same as `AdapterT::Vertex`.
-//
-// Otherwise, the recorded traces may not be possible to replay since they would be incomplete:
-// they only capture a portion of the execution, the rest of which is missing.
 impl<'vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, AdapterT>
 where
     AdapterT: Adapter<'vertex>,
