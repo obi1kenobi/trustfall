@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, filtering::apply_filter, Adapter, ContextIterator,
+    error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextIterator,
     ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
     TaggedValue, ValueOrVec, VertexIterator,
 };
@@ -766,13 +766,17 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     )
 }
 
-pub(super) fn compute_context_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
+pub(super) fn compute_context_field_with_separate_value<
+    'query,
+    AdapterT: Adapter<'query>,
+    V: AsVertex<AdapterT::Vertex> + 'query,
+>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     context_field: &ContextField,
-    iterator: Box<dyn Iterator<Item = DataContext<AdapterT::Vertex>> + 'query>,
-) -> Box<dyn Iterator<Item = (DataContext<AdapterT::Vertex>, TaggedValue)> + 'query> {
+    iterator: Box<dyn Iterator<Item = DataContext<V>> + 'query>,
+) -> Box<dyn Iterator<Item = (DataContext<V>, TaggedValue)> + 'query> {
     let vertex_id = context_field.vertex_id;
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
@@ -1344,8 +1348,8 @@ mod tests {
 
         use crate::{
             interpreter::{
-                execution::interpret_ir, Adapter, ContextIterator, ContextOutcomeIterator,
-                ResolveEdgeInfo, ResolveInfo, VertexIterator,
+                execution::interpret_ir, Adapter, AsVertex, ContextIterator,
+                ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
@@ -1434,13 +1438,13 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_property(
+            fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextIterator<'a, Self::Vertex>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 property_name: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+            ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1454,15 +1458,14 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_neighbors(
+            fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextIterator<'a, Self::Vertex>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 edge_name: &Arc<str>,
                 parameters: &EdgeParameters,
                 resolve_info: &ResolveEdgeInfo,
-            ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
-            {
+            ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1477,13 +1480,13 @@ mod tests {
                 Box::new(VariableChunkIterator::new(inner, sequence))
             }
 
-            fn resolve_coercion(
+            fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextIterator<'a, Self::Vertex>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 coerce_to_type: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+            ) -> ContextOutcomeIterator<'a, V, bool> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);

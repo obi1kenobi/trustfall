@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    helpers::resolve_property_with, Adapter, ContextIterator, ContextOutcomeIterator,
+    helpers::resolve_property_with, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
     ResolveEdgeInfo, ResolveInfo, Typename, VertexIterator,
 };
 
@@ -72,12 +72,12 @@ pub trait BasicAdapter<'vertex> {
     /// - When a context's active vertex is `None`, its property value is `FieldValue::Null`.
     ///
     /// [`DataContext`]: super::DataContext
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue>;
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue>;
 
     /// Resolve the neighboring vertices across an edge, for each query context in an iterator.
     ///
@@ -103,13 +103,13 @@ pub trait BasicAdapter<'vertex> {
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &str,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>>;
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>>;
 
     /// Attempt to coerce vertices to a subtype, over an iterator of query contexts.
     ///
@@ -147,12 +147,12 @@ pub trait BasicAdapter<'vertex> {
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool>;
+    ) -> ContextOutcomeIterator<'vertex, V, bool>;
 
     /// Resolve the `__typename` special property over an iterator of query contexts.
     ///
@@ -201,11 +201,11 @@ pub trait BasicAdapter<'vertex> {
     ///
     /// [`DataContext`]: super::DataContext
     /// [`Schema`]: crate::schema::Schema
-    fn resolve_typename(
+    fn resolve_typename<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         _type_name: &str,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
         resolve_property_with(contexts, |vertex| vertex.typename().into())
     }
 }
@@ -225,13 +225,13 @@ where
         <Self as BasicAdapter>::resolve_starting_vertices(self, edge_name.as_ref(), parameters)
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &std::sync::Arc<str>,
         property_name: &std::sync::Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
         if property_name.as_ref() == "__typename" {
             return self.resolve_typename(contexts, type_name);
         }
@@ -244,14 +244,14 @@ where
         )
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &std::sync::Arc<str>,
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, VertexIterator<'vertex, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>> {
         <Self as BasicAdapter>::resolve_neighbors(
             self,
             contexts,
@@ -261,13 +261,13 @@ where
         )
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextIterator<'vertex, Self::Vertex>,
+        contexts: ContextIterator<'vertex, V>,
         type_name: &std::sync::Arc<str>,
         coerce_to_type: &std::sync::Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'vertex, V, bool> {
         <Self as BasicAdapter>::resolve_coercion(
             self,
             contexts,

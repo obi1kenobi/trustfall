@@ -7,6 +7,7 @@ use trustfall::{
     },
     FieldValue,
 };
+use trustfall_core::interpreter::AsVertex;
 
 #[derive(Debug)]
 pub(crate) struct FeedAdapter<'a> {
@@ -56,12 +57,12 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match type_name {
             "Feed" => match property_name {
                 "id" => property(contexts, field_property!(as_feed, id)),
@@ -152,13 +153,13 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         edge_name: &str,
         _parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match type_name {
             "Feed" => match edge_name {
                 "title" => neighbors(contexts, iterable!(as_feed, title, Vertex::FeedText)),
@@ -195,12 +196,12 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        _contexts: ContextIterator<'a, Self::Vertex>,
+        _contexts: ContextIterator<'a, V>,
         type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         unimplemented!("{type_name} -> {coerce_to_type}")
     }
 }

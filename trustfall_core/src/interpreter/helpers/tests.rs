@@ -67,8 +67,8 @@ mod correctness {
 
         use crate::{
             interpreter::{
-                Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-                VertexIterator,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue},
             numbers_interpreter::NumbersAdapter,
@@ -93,13 +93,13 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     if type_name.as_ref() == "Named" && property_name.as_ref() == "__typename" {
                         panic!("oops! we forgot to implement __typename on Named");
                     }
@@ -107,14 +107,14 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     self.inner.resolve_neighbors(
                         contexts,
@@ -125,13 +125,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
@@ -161,24 +161,24 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     if type_name.as_ref() == "Neither" && edge_name.as_ref() == "predecessor" {
                         panic!("oops! we forgot to implement predecessor edge on type Neither");
@@ -193,13 +193,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
@@ -229,24 +229,24 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     self.inner.resolve_neighbors(
                         contexts,
@@ -257,13 +257,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     if type_name.as_ref() == "Named" && coerce_to_type.as_ref() == "Number" {
                         panic!("oops! we forgot to implement coercion from Named to Number");
                     }
@@ -286,8 +286,8 @@ mod correctness {
 
         use crate::{
             interpreter::{
-                Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-                VertexIterator,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue},
             numbers_interpreter::NumbersAdapter,
@@ -313,13 +313,13 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    mut contexts: ContextIterator<'a, Self::Vertex>,
+                    mut contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     if type_name.as_ref() == "Named" && property_name.as_ref() == "__typename" {
                         // This is a context we consume from the input
                         // but don't return in the output iterator.
@@ -329,14 +329,14 @@ mod correctness {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     self.inner.resolve_neighbors(
                         contexts,
@@ -347,13 +347,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
@@ -386,24 +386,24 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    mut contexts: ContextIterator<'a, Self::Vertex>,
+                    mut contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     if type_name.as_ref() == "Neither" && edge_name.as_ref() == "predecessor" {
                         // This is a context we consume from the input
@@ -420,13 +420,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
@@ -457,24 +457,24 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     self.inner.resolve_neighbors(
                         contexts,
@@ -485,13 +485,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    mut contexts: ContextIterator<'a, Self::Vertex>,
+                    mut contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     if type_name.as_ref() == "Named" && coerce_to_type.as_ref() == "Number" {
                         // This is a context we consume from the input
                         // but don't return in the output iterator.
@@ -516,8 +516,8 @@ mod correctness {
 
         use crate::{
             interpreter::{
-                Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-                VertexIterator,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue},
             numbers_interpreter::NumbersAdapter,
@@ -545,13 +545,13 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     if type_name.as_ref() == "Named" && property_name.as_ref() == "__typename" {
                         let mut all_contexts: Vec<_> = contexts.collect();
                         let popped = all_contexts.swap_remove(3);
@@ -572,14 +572,14 @@ mod correctness {
                     }
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     self.inner.resolve_neighbors(
                         contexts,
@@ -590,13 +590,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
@@ -629,24 +629,24 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     if type_name.as_ref() == "Neither" && edge_name.as_ref() == "predecessor" {
                         let mut all_contexts: Vec<_> = contexts.collect();
@@ -670,13 +670,13 @@ mod correctness {
                     }
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
                 }
             }
@@ -709,24 +709,24 @@ mod correctness {
                     self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info)
                 }
 
-                fn resolve_property(
+                fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     property_name: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+                ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                     self.inner.resolve_property(contexts, type_name, property_name, resolve_info)
                 }
 
-                fn resolve_neighbors(
+                fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     edge_name: &Arc<str>,
                     parameters: &EdgeParameters,
                     resolve_info: &ResolveEdgeInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>>
+                ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>>
                 {
                     self.inner.resolve_neighbors(
                         contexts,
@@ -737,13 +737,13 @@ mod correctness {
                     )
                 }
 
-                fn resolve_coercion(
+                fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                     &self,
-                    contexts: ContextIterator<'a, Self::Vertex>,
+                    contexts: ContextIterator<'a, V>,
                     type_name: &Arc<str>,
                     coerce_to_type: &Arc<str>,
                     resolve_info: &ResolveInfo,
-                ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+                ) -> ContextOutcomeIterator<'a, V, bool> {
                     if type_name.as_ref() == "Named" && coerce_to_type.as_ref() == "Number" {
                         let mut all_contexts: Vec<_> = contexts.collect();
                         let popped = all_contexts.swap_remove(3);

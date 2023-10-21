@@ -12,8 +12,8 @@ use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
 use trustfall::{
     provider::{
-        field_property, resolve_property_with, Adapter, ContextIterator, ContextOutcomeIterator,
-        EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+        field_property, resolve_property_with, Adapter, AsVertex, ContextIterator,
+        ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator,
     },
     FieldValue,
 };
@@ -197,13 +197,13 @@ impl<'a> Adapter<'a> for DemoAdapter {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
                 let value = match ctx.active_vertex() {
@@ -368,14 +368,14 @@ impl<'a> Adapter<'a> for DemoAdapter {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
@@ -687,13 +687,13 @@ impl<'a> Adapter<'a> for DemoAdapter {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         let type_name = type_name.clone();
         let coerce_to_type = coerce_to_type.clone();
         let iterator = contexts.map(move |ctx| {

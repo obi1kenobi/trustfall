@@ -67,6 +67,7 @@ pub(super) fn make_edges_file(
         edges_file.top_level_items.push(type_edge_mod);
     }
 
+    edges_file.external_imports.insert(parse_import("trustfall::provider::AsVertex"));
     edges_file.external_imports.insert(parse_import("trustfall::provider::ContextIterator"));
     edges_file.external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
     edges_file.external_imports.insert(parse_import("trustfall::provider::EdgeParameters"));
@@ -100,12 +101,12 @@ fn make_type_edge_resolver(
     let unreachable_msg =
         format!("attempted to resolve unexpected edge '{{edge_name}}' on type '{type_name}'");
     let type_edge_resolver = quote! {
-        pub(super) fn #ident<'a>(
-            contexts: ContextIterator<'a, Vertex>,
+        pub(super) fn #ident<'a, V: AsVertex<Vertex> + 'a>(
+            contexts: ContextIterator<'a, V>,
             edge_name: &str,
             parameters: &EdgeParameters,
             resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
             match edge_name {
                 #arms
                 _ => unreachable!(#unreachable_msg),
@@ -116,7 +117,7 @@ fn make_type_edge_resolver(
     let type_edge_mod = quote! {
         mod #mod_name {
             use trustfall::provider::{
-                resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                resolve_neighbors_with, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
                 VertexIterator,
             };
 
@@ -150,11 +151,11 @@ fn make_edge_resolver_and_call(
     let expect_msg = format!("conversion failed, vertex was not a {type_name}");
     let todo_msg = format!("get neighbors along edge '{edge_name}' for type '{type_name}'");
     let resolver = quote! {
-        pub(super) fn #resolver_fn_ident<'a>(
-            contexts: ContextIterator<'a, Vertex>,
+        pub(super) fn #resolver_fn_ident<'a, V: AsVertex<Vertex> + 'a>(
+            contexts: ContextIterator<'a, V>,
             #fn_params
             _resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
             resolve_neighbors_with(contexts, |vertex| {
                 let vertex = vertex.#conversion_fn_ident().expect(#expect_msg);
                 todo!(#todo_msg)

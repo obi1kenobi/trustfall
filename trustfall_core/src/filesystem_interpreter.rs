@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+use crate::interpreter::AsVertex;
 use crate::{
     interpreter::{
         Adapter, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo,
@@ -160,31 +161,30 @@ pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
 type IndividualEdgeResolver<'a> =
     fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
-type ContextAndIterableOfEdges<'a> =
-    (DataContext<FilesystemVertex>, VertexIterator<'a, FilesystemVertex>);
+type ContextAndIterableOfEdges<'a, V> = (DataContext<V>, VertexIterator<'a, FilesystemVertex>);
 
-struct EdgeResolverIterator<'a> {
+struct EdgeResolverIterator<'a, V: AsVertex<FilesystemVertex>> {
     origin: Rc<String>,
-    contexts: VertexIterator<'a, DataContext<FilesystemVertex>>,
+    contexts: VertexIterator<'a, DataContext<V>>,
     edge_resolver: IndividualEdgeResolver<'a>,
 }
 
-impl<'a> EdgeResolverIterator<'a> {
+impl<'a, V: AsVertex<FilesystemVertex>> EdgeResolverIterator<'a, V> {
     pub fn new(
         origin: Rc<String>,
-        contexts: VertexIterator<'a, DataContext<FilesystemVertex>>,
+        contexts: VertexIterator<'a, DataContext<V>>,
         edge_resolver: IndividualEdgeResolver<'a>,
     ) -> Self {
         Self { origin, contexts, edge_resolver }
     }
 }
 
-impl<'a> Iterator for EdgeResolverIterator<'a> {
-    type Item = (DataContext<FilesystemVertex>, VertexIterator<'a, FilesystemVertex>);
+impl<'a, V: AsVertex<FilesystemVertex>> Iterator for EdgeResolverIterator<'a, V> {
+    type Item = (DataContext<V>, VertexIterator<'a, FilesystemVertex>);
 
-    fn next(&mut self) -> Option<ContextAndIterableOfEdges<'a>> {
+    fn next(&mut self) -> Option<ContextAndIterableOfEdges<'a, V>> {
         if let Some(context) = self.contexts.next() {
-            if let Some(vertex) = context.active_vertex() {
+            if let Some(vertex) = context.active_vertex::<FilesystemVertex>() {
                 let neighbors = (self.edge_resolver)(self.origin.clone(), vertex);
                 Some((context, neighbors))
             } else {
@@ -254,80 +254,99 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         Box::new(OriginIterator::new(vertex))
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match type_name.as_ref() {
-            "Directory" => match property_name.as_ref() {
-                "name" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::Directory(ref x)) => {
-                        let value = FieldValue::String(x.name.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "path" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::Directory(ref x)) => {
-                        let value = FieldValue::String(x.path.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "__typename" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(_) => (context, "Directory".into()),
-                })),
-                _ => todo!(),
-            },
-            "File" => match property_name.as_ref() {
-                "name" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::File(ref x)) => {
-                        let value = FieldValue::String(x.name.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "path" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::File(ref x)) => {
-                        let value = FieldValue::String(x.path.clone().into());
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "extension" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(FilesystemVertex::File(ref x)) => {
-                        let value = x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
-                        (context, value)
-                    }
-                    _ => unreachable!(),
-                })),
-                "__typename" => Box::new(contexts.map(|context| match context.active_vertex() {
-                    None => (context, FieldValue::Null),
-                    Some(_) => (context, "File".into()),
-                })),
-                _ => todo!(),
-            },
+            "Directory" => {
+                match property_name.as_ref() {
+                    "name" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::Directory(ref x)) => {
+                                let value = FieldValue::String(x.name.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "path" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::Directory(ref x)) => {
+                                let value = FieldValue::String(x.path.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "__typename" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(_) => (context, "Directory".into()),
+                        }
+                    })),
+                    _ => todo!(),
+                }
+            }
+            "File" => {
+                match property_name.as_ref() {
+                    "name" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::File(ref x)) => {
+                                let value = FieldValue::String(x.name.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "path" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::File(ref x)) => {
+                                let value = FieldValue::String(x.path.clone().into());
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "extension" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(FilesystemVertex::File(ref x)) => {
+                                let value =
+                                    x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
+                                (context, value)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })),
+                    "__typename" => Box::new(contexts.map(|context| {
+                        match context.active_vertex::<Self::Vertex>() {
+                            None => (context, FieldValue::Null),
+                            Some(_) => (context, "File".into()),
+                        }
+                    })),
+                    _ => todo!(),
+                }
+            }
             _ => todo!(),
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {
                 let iterator = EdgeResolverIterator::new(
@@ -349,13 +368,13 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         todo!()
     }
 }

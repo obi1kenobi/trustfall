@@ -11,6 +11,7 @@ use trustfall::{
     },
     FieldValue,
 };
+use trustfall_core::interpreter::AsVertex;
 
 use crate::{get_schema, vertex::Vertex};
 
@@ -135,7 +136,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.top(max)
             }
-            "LatestStory" => {
+            "Latest" => {
                 let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.latest_stories(max)
             }
@@ -147,12 +148,12 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match (type_name, property_name) {
             // properties on Item and its implementers
             (type_name, "id") if self.item_subtypes.contains(type_name) => {
@@ -160,6 +161,20 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
             }
             (type_name, "unixTime") if self.item_subtypes.contains(type_name) => {
                 resolve_property_with(contexts, item_property_resolver!(time))
+            }
+            (type_name, "url") if self.item_subtypes.contains(type_name) => {
+                resolve_property_with(contexts, |vertex: &Vertex| {
+                    let id = match vertex {
+                        Vertex::Story(x) => x.id,
+                        Vertex::Job(x) => x.id,
+                        Vertex::Comment(x) => x.id,
+                        Vertex::Poll(x) => x.id,
+                        Vertex::PollOption(x) => x.id,
+                        Vertex::User(_) => unreachable!("found a User which is not an Item"),
+                    };
+
+                    format!("https://news.ycombinator.com/item?id={id}").into()
+                })
             }
 
             // properties on Job
@@ -177,7 +192,9 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
             }
             ("Story", "score") => resolve_property_with(contexts, field_property!(as_story, score)),
             ("Story", "title") => resolve_property_with(contexts, field_property!(as_story, title)),
-            ("Story", "url") => resolve_property_with(contexts, field_property!(as_story, url)),
+            ("Story", "submittedUrl") => {
+                resolve_property_with(contexts, field_property!(as_story, url))
+            }
 
             // properties on Comment
             ("Comment", "byUsername") => {
@@ -205,13 +222,13 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         edge_name: &str,
         _parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("Story", "byUser") => {
                 let edge_resolver = |vertex: &Self::Vertex| -> VertexIterator<'a, Self::Vertex> {
@@ -357,12 +374,12 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         _type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         resolve_coercion_using_schema(contexts, get_schema(), coerce_to_type)
     }
 }

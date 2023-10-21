@@ -1,13 +1,13 @@
-use trustfall::provider::{ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, VertexIterator};
+use trustfall::provider::{AsVertex, ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, VertexIterator};
 
 use super::vertex::Vertex;
 
-pub(super) fn resolve_comment_edge<'a>(
-    contexts: ContextIterator<'a, Vertex>,
+pub(super) fn resolve_comment_edge<'a, V: AsVertex<Vertex> + 'a>(
+    contexts: ContextIterator<'a, V>,
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
-) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
     match edge_name {
         "byUser" => comment::by_user(contexts, resolve_info),
         "link" => comment::link(contexts, resolve_info),
@@ -23,16 +23,16 @@ pub(super) fn resolve_comment_edge<'a>(
 
 mod comment {
     use trustfall::provider::{
-        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
-        VertexIterator,
+        resolve_neighbors_with, AsVertex, ContextIterator, ContextOutcomeIterator,
+        ResolveEdgeInfo, VertexIterator,
     };
 
     use super::super::vertex::Vertex;
 
-    pub(super) fn by_user<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn by_user<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -44,10 +44,10 @@ mod comment {
         )
     }
 
-    pub(super) fn link<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn link<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -59,10 +59,10 @@ mod comment {
         )
     }
 
-    pub(super) fn parent<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn parent<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -74,10 +74,10 @@ mod comment {
         )
     }
 
-    pub(super) fn reply<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn reply<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -90,12 +90,12 @@ mod comment {
     }
 }
 
-pub(super) fn resolve_job_edge<'a>(
-    contexts: ContextIterator<'a, Vertex>,
+pub(super) fn resolve_job_edge<'a, V: AsVertex<Vertex> + 'a>(
+    contexts: ContextIterator<'a, V>,
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
-) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
     match edge_name {
         "link" => job::link(contexts, resolve_info),
         _ => {
@@ -108,16 +108,16 @@ pub(super) fn resolve_job_edge<'a>(
 
 mod job {
     use trustfall::provider::{
-        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
-        VertexIterator,
+        resolve_neighbors_with, AsVertex, ContextIterator, ContextOutcomeIterator,
+        ResolveEdgeInfo, VertexIterator,
     };
 
     use super::super::vertex::Vertex;
 
-    pub(super) fn link<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn link<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -130,12 +130,12 @@ mod job {
     }
 }
 
-pub(super) fn resolve_story_edge<'a>(
-    contexts: ContextIterator<'a, Vertex>,
+pub(super) fn resolve_story_edge<'a, V: AsVertex<Vertex> + 'a>(
+    contexts: ContextIterator<'a, V>,
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
-) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
     match edge_name {
         "byUser" => story::by_user(contexts, resolve_info),
         "comment" => story::comment(contexts, resolve_info),
@@ -150,16 +150,16 @@ pub(super) fn resolve_story_edge<'a>(
 
 mod story {
     use trustfall::provider::{
-        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
-        VertexIterator,
+        resolve_neighbors_with, AsVertex, ContextIterator, ContextOutcomeIterator,
+        ResolveEdgeInfo, VertexIterator,
     };
 
     use super::super::vertex::Vertex;
 
-    pub(super) fn by_user<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn by_user<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -171,10 +171,10 @@ mod story {
         )
     }
 
-    pub(super) fn comment<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn comment<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -186,10 +186,10 @@ mod story {
         )
     }
 
-    pub(super) fn link<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn link<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -202,12 +202,12 @@ mod story {
     }
 }
 
-pub(super) fn resolve_user_edge<'a>(
-    contexts: ContextIterator<'a, Vertex>,
+pub(super) fn resolve_user_edge<'a, V: AsVertex<Vertex> + 'a>(
+    contexts: ContextIterator<'a, V>,
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
-) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
     match edge_name {
         "link" => user::link(contexts, resolve_info),
         "submitted" => user::submitted(contexts, resolve_info),
@@ -221,16 +221,16 @@ pub(super) fn resolve_user_edge<'a>(
 
 mod user {
     use trustfall::provider::{
-        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
-        VertexIterator,
+        resolve_neighbors_with, AsVertex, ContextIterator, ContextOutcomeIterator,
+        ResolveEdgeInfo, VertexIterator,
     };
 
     use super::super::vertex::Vertex;
 
-    pub(super) fn link<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn link<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {
@@ -242,10 +242,10 @@ mod user {
         )
     }
 
-    pub(super) fn submitted<'a>(
-        contexts: ContextIterator<'a, Vertex>,
+    pub(super) fn submitted<'a, V: AsVertex<Vertex> + 'a>(
+        contexts: ContextIterator<'a, V>,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
             |vertex| {

@@ -7,7 +7,7 @@ use crate::{
             compute_fold_specific_field_with_separate_value, QueryCarrier,
         },
         hints::Range,
-        Adapter, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
         VertexIterator,
     },
     ir::{
@@ -59,7 +59,7 @@ use super::CandidateValue;
 /// # use trustfall_core::{
 /// #     ir::{EdgeParameters, FieldValue},
 /// #     interpreter::{
-/// #         Adapter, CandidateValue, ContextIterator, ContextOutcomeIterator,
+/// #         Adapter, AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator,
 /// #         ResolveEdgeInfo, ResolveInfo, VertexInfo, VertexIterator,
 /// #     },
 /// # };
@@ -78,59 +78,59 @@ use super::CandidateValue;
 /// #         todo!()
 /// #     }
 /// #
-/// #     fn resolve_property(
+/// #     fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
 /// #         &self,
-/// #         contexts: ContextIterator<'a, Self::Vertex>,
+/// #         contexts: ContextIterator<'a, V>,
 /// #         type_name: &Arc<str>,
 /// #         property_name: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+/// #     ) -> ContextOutcomeIterator<'a, V, FieldValue> {
 /// #         todo!()
 /// #     }
 /// #
-/// #     fn resolve_neighbors(
+/// #     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
 /// #         &self,
-/// #         contexts: ContextIterator<'a, Self::Vertex>,
+/// #         contexts: ContextIterator<'a, V>,
 /// #         type_name: &Arc<str>,
 /// #         edge_name: &Arc<str>,
 /// #         parameters: &EdgeParameters,
 /// #         resolve_info: &ResolveEdgeInfo,
-/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+/// #     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
 /// #         todo!()
 /// #     }
 /// #
-/// #     fn resolve_coercion(
+/// #     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
 /// #         &self,
-/// #         contexts: ContextIterator<'a, Self::Vertex>,
+/// #         contexts: ContextIterator<'a, V>,
 /// #         type_name: &Arc<str>,
 /// #         coerce_to_type: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+/// #     ) -> ContextOutcomeIterator<'a, V, bool> {
 /// #         todo!()
 /// #     }
 /// # }
 /// #
-/// # fn resolve_recipient_from_candidate_value<'a>(
-/// #     vertex: &Vertex,
+/// # fn resolve_recipient_from_candidate_value<'a, V>(
+/// #     vertex: &V,
 /// #     candidate: CandidateValue<FieldValue>
 /// # ) -> VertexIterator<'a, Vertex> {
 /// #     todo!()
 /// # }
 /// #
-/// # fn resolve_recipient_otherwise<'a>(
-/// #     contexts: ContextIterator<'a, Vertex>,
-/// # ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+/// # fn resolve_recipient_otherwise<'a, V>(
+/// #     contexts: ContextIterator<'a, V>,
+/// # ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
 /// #     todo!()
 /// # }
 /// #
 /// # impl EmailAdapter {
 /// // Inside our adapter implementation:
 /// // we use this method to resolve `recipient` edges.
-/// fn resolve_recipient_edge<'a>(
+/// fn resolve_recipient_edge<'a, V: AsVertex<Vertex> + 'a>(
 ///     &self,
-///     contexts: ContextIterator<'a, Vertex>,
+///     contexts: ContextIterator<'a, V>,
 ///     resolve_info: &ResolveEdgeInfo,
-/// ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
+/// ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
 ///     if let Some(dynamic_value) = resolve_info.destination().dynamically_required_property("address") {
 ///         // The query is looking for a specific recipient's address,
 ///         // so let's look it up directly.
@@ -195,11 +195,11 @@ impl<'a> DynamicallyResolvedValue<'a> {
     }
 
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
-    pub fn resolve<'vertex, AdapterT: Adapter<'vertex>>(
+    pub fn resolve<'vertex, AdapterT: Adapter<'vertex>, V: AsVertex<AdapterT::Vertex> + 'vertex>(
         self,
         adapter: &AdapterT,
-        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
-    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
+        contexts: ContextIterator<'vertex, V>,
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -230,17 +230,17 @@ impl<'a> DynamicallyResolvedValue<'a> {
     }
 
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
-    pub fn resolve_with<'vertex, AdapterT: Adapter<'vertex>>(
+    pub fn resolve_with<
+        'vertex,
+        AdapterT: Adapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
         self,
         adapter: &AdapterT,
-        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
-        mut neighbor_resolver: impl FnMut(
-                &AdapterT::Vertex,
-                CandidateValue<FieldValue>,
-            ) -> VertexIterator<'vertex, AdapterT::Vertex>
+        contexts: ContextIterator<'vertex, V>,
+        mut neighbor_resolver: impl FnMut(&V, CandidateValue<FieldValue>) -> VertexIterator<'vertex, AdapterT::Vertex>
             + 'vertex,
-    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, VertexIterator<'vertex, AdapterT::Vertex>>
-    {
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, AdapterT::Vertex>> {
         Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
             let neighbors = match ctx.active_vertex.as_ref() {
                 Some(vertex) => neighbor_resolver(vertex, candidate),
@@ -250,12 +250,16 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }))
     }
 
-    fn compute_candidate_from_tagged_value<'vertex, AdapterT: Adapter<'vertex>>(
+    fn compute_candidate_from_tagged_value<
+        'vertex,
+        AdapterT: Adapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
         self,
         context_field: &'a ContextField,
         adapter: &AdapterT,
-        contexts: ContextIterator<'vertex, AdapterT::Vertex>,
-    ) -> ContextOutcomeIterator<'vertex, AdapterT::Vertex, CandidateValue<FieldValue>> {
+        contexts: ContextIterator<'vertex, V>,
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
         let mut carrier = QueryCarrier { query: Some(self.query) };
         let iterator = compute_context_field_with_separate_value(
             adapter,

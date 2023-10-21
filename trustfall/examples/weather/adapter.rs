@@ -6,6 +6,7 @@ use trustfall::{
     },
     FieldValue,
 };
+use trustfall_core::interpreter::AsVertex;
 
 use crate::metar::{MetarCloudCover, MetarReport};
 
@@ -76,12 +77,12 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         match type_name {
             "MetarReport" => match property_name {
                 "station_id" => {
@@ -138,13 +139,13 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("MetarReport", "cloud_cover") => {
                 assert!(parameters.is_empty());
@@ -163,12 +164,12 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
     }
 
     #[allow(unused_variables)]
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         unimplemented!("no types in our schema have subtypes")
     }
 }

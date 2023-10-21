@@ -4,7 +4,7 @@ InputQuery (
     FrontPage {
         ... on Story {
             title @output
-            url @filter(op: "is_not_null") @output
+            submittedUrl @filter(op: "is_not_null") @output
             score @output
 
             byUser {

@@ -5,7 +5,7 @@ use pyo3::{exceptions::PyStopIteration, prelude::*, wrap_pyfunction};
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
-        execution::interpret_ir, Adapter, ContextIterator as BaseContextIterator,
+        execution::interpret_ir, Adapter, AsVertex, ContextIterator as BaseContextIterator,
         ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
@@ -197,24 +197,49 @@ fn make_iterator(py: Python, value: Py<PyAny>) -> PyResult<Py<PyAny>> {
     value.call_method(py, "__iter__", (), None)
 }
 
-#[pyclass]
+#[pyclass(unsendable)]
 #[derive(Debug, Clone)]
-pub struct Context(DataContext<Arc<Py<PyAny>>>);
+pub(crate) struct Opaque {
+    data: *mut (),
+    pub(crate) vertex: Option<Arc<Py<PyAny>>>,
+}
+
+impl Opaque {
+    fn new<V: AsVertex<Arc<Py<PyAny>>> + 'static>(ctx: DataContext<V>) -> Self {
+        let vertex = ctx.active_vertex::<Arc<Py<PyAny>>>().cloned();
+        let boxed = Box::new(ctx);
+        let data = Box::into_raw(boxed) as *mut ();
+
+        Self { data, vertex }
+    }
+
+    /// Converts an `Opaque` into the `DataContext<V>` it points to.
+    ///
+    /// # Safety
+    ///
+    /// When an `Opaque` is constructed, it does not store the value of the `V` generic parameter
+    /// it was constructed with. The caller of this function must ensure that the `V` parameter here
+    /// is the same type as the one used in the `Opaque::new()` call that constructed `self` here.
+    unsafe fn into_inner<V: AsVertex<Arc<Py<PyAny>>> + 'static>(self) -> DataContext<V> {
+        let boxed_ctx = unsafe { Box::from_raw(self.data as *mut DataContext<V>) };
+        *boxed_ctx
+    }
+}
 
 #[pymethods]
-impl Context {
+impl Opaque {
     #[getter]
     fn active_vertex(&self) -> PyResult<Option<Py<PyAny>>> {
-        Ok(self.0.active_vertex().map(|arc| (**arc).clone()))
+        Ok(self.vertex.as_ref().map(|arc| (**arc).clone()))
     }
 }
 
 #[pyclass(unsendable)]
-pub struct ContextIterator(VertexIterator<'static, Context>);
+pub struct ContextIterator(VertexIterator<'static, Opaque>);
 
 impl ContextIterator {
-    fn new(inner: VertexIterator<'static, DataContext<Arc<Py<PyAny>>>>) -> Self {
-        Self(Box::new(inner.map(Context)))
+    fn new<V: AsVertex<Arc<Py<PyAny>>> + 'static>(inner: BaseContextIterator<'static, V>) -> Self {
+        Self(Box::new(inner.map(Opaque::new)))
     }
 }
 
@@ -224,7 +249,7 @@ impl ContextIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<Context> {
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<Opaque> {
         slf.0.next()
     }
 }
@@ -256,13 +281,13 @@ impl Adapter<'static> for AdapterShim {
         })
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'static>(
         &self,
-        contexts: BaseContextIterator<'static, Self::Vertex>,
+        contexts: BaseContextIterator<'static, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'static, V, FieldValue> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
             let py_iterable = self
@@ -275,19 +300,28 @@ impl Adapter<'static> for AdapterShim {
                 )
                 .unwrap();
 
-            let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonResolvePropertyIterator::new(iter))
+            let iter = PythonResolvePropertyIterator::new(
+                make_iterator(py, py_iterable).expect("failed to use py_iterable as an iterator"),
+            );
+
+            Box::new(iter.map(|(opaque, value)| {
+                // SAFETY: This `Opaque` was constructed just a few lines ago
+                //         in this `resolve_property()` call, so the `V` type must be the same.
+                let ctx = unsafe { opaque.into_inner() };
+
+                (ctx, value)
+            }))
         })
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'static>(
         &self,
-        contexts: BaseContextIterator<'static, Self::Vertex>,
+        contexts: BaseContextIterator<'static, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, VertexIterator<'static, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> =
@@ -303,18 +337,26 @@ impl Adapter<'static> for AdapterShim {
                 )
                 .unwrap();
 
-            let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonResolveNeighborsIterator::new(iter))
+            let iter = PythonResolveNeighborsIterator::new(
+                make_iterator(py, py_iterable).expect("failed to use py_iterable as an iterator"),
+            );
+            Box::new(iter.map(|(opaque, neighbors)| {
+                // SAFETY: This `Opaque` was constructed just a few lines ago
+                //         in this `resolve_neighbors()` call, so the `V` type must be the same.
+                let ctx = unsafe { opaque.into_inner() };
+
+                (ctx, neighbors)
+            }))
         })
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'static>(
         &self,
-        contexts: BaseContextIterator<'static, Self::Vertex>,
+        contexts: BaseContextIterator<'static, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'static, V, bool> {
         let contexts = ContextIterator::new(contexts);
         Python::with_gil(|py| {
             let py_iterable = self
@@ -327,8 +369,16 @@ impl Adapter<'static> for AdapterShim {
                 )
                 .unwrap();
 
-            let iter = make_iterator(py, py_iterable).unwrap();
-            Box::new(PythonResolveCoercionIterator::new(iter))
+            let iter = PythonResolveCoercionIterator::new(
+                make_iterator(py, py_iterable).expect("failed to use py_iterable as an iterator"),
+            );
+            Box::new(iter.map(|(opaque, value)| {
+                // SAFETY: This `Opaque` was constructed just a few lines ago
+                //         in this `resolve_coercion()` call, so the `V` type must be the same.
+                let ctx = unsafe { opaque.into_inner() };
+
+                (ctx, value)
+            }))
         })
     }
 }
@@ -373,14 +423,14 @@ impl PythonResolvePropertyIterator {
 }
 
 impl Iterator for PythonResolvePropertyIterator {
-    type Item = (DataContext<Arc<Py<PyAny>>>, FieldValue);
+    type Item = (Opaque, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
             match self.underlying.call_method(py, "__next__", (), None) {
                 Ok(output) => {
                     // value is a (context, property_value) tuple here
-                    let context: Context = output
+                    let context: Opaque = output
                         .call_method(py, "__getitem__", (0i64,), None)
                         .unwrap()
                         .extract(py)
@@ -393,7 +443,7 @@ impl Iterator for PythonResolvePropertyIterator {
                     )
                     .unwrap();
 
-                    Some((context.0, value))
+                    Some((context, value))
                 }
                 Err(e) => {
                     if e.is_instance_of::<PyStopIteration>(py) {
@@ -420,14 +470,14 @@ impl PythonResolveNeighborsIterator {
 }
 
 impl Iterator for PythonResolveNeighborsIterator {
-    type Item = (DataContext<Arc<Py<PyAny>>>, VertexIterator<'static, Arc<Py<PyAny>>>);
+    type Item = (Opaque, VertexIterator<'static, Arc<Py<PyAny>>>);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
             match self.underlying.call_method(py, "__next__", (), None) {
                 Ok(output) => {
                     // value is a (context, neighbor_iterator) tuple here
-                    let context: Context = output
+                    let context: Opaque = output
                         .call_method(py, "__getitem__", (0i64,), None)
                         .unwrap()
                         .extract(py)
@@ -441,7 +491,7 @@ impl Iterator for PythonResolveNeighborsIterator {
 
                     let neighbors: VertexIterator<'static, Arc<Py<PyAny>>> =
                         Box::new(PythonVertexIterator::new(neighbors_iter));
-                    Some((context.0, neighbors))
+                    Some((context, neighbors))
                 }
                 Err(e) => {
                     if e.is_instance_of::<PyStopIteration>(py) {
@@ -468,14 +518,14 @@ impl PythonResolveCoercionIterator {
 }
 
 impl Iterator for PythonResolveCoercionIterator {
-    type Item = (DataContext<Arc<Py<PyAny>>>, bool);
+    type Item = (Opaque, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
             match self.underlying.call_method(py, "__next__", (), None) {
                 Ok(output) => {
                     // value is a (context, can_coerce) tuple here
-                    let context: Context = output
+                    let context: Opaque = output
                         .call_method(py, "__getitem__", (0i64,), None)
                         .unwrap()
                         .extract(py)
@@ -485,7 +535,7 @@ impl Iterator for PythonResolveCoercionIterator {
                         .unwrap()
                         .extract::<bool>(py)
                         .unwrap();
-                    Some((context.0, can_coerce))
+                    Some((context, can_coerce))
                 }
                 Err(e) => {
                     if e.is_instance_of::<PyStopIteration>(py) {
