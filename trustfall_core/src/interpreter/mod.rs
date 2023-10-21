@@ -104,27 +104,27 @@ impl<Vertex> DataContext<Vertex> {
     /// If you are implementing an [`Adapter`] for a data source,
     /// you almost certainly *should not* be using this function.
     /// You're probably looking for [`DataContext::active_vertex()`] instead.
-    pub fn map<Other>(self, mut mapper: impl FnMut(Vertex) -> Other) -> DataContext<Other> {
+    pub fn map<Other>(self, mapper: &mut impl FnMut(Vertex) -> Other) -> DataContext<Other> {
         DataContext {
-            active_vertex: self.active_vertex.map(&mut mapper),
-            vertices: self.vertices.into_iter().map(|(k, v)| (k, v.map(&mut mapper))).collect(),
+            active_vertex: self.active_vertex.map(&mut *mapper),
+            vertices: self.vertices.into_iter().map(|(k, v)| (k, v.map(&mut *mapper))).collect(),
             values: self.values,
             suspended_vertices: self
                 .suspended_vertices
                 .into_iter()
-                .map(|v| v.map(&mut mapper))
+                .map(|v| v.map(&mut *mapper))
                 .collect(),
             folded_contexts: self
                 .folded_contexts
                 .into_iter()
                 .map(|(k, ctxs)| {
-                    (k, ctxs.map(|v| v.into_iter().map(|ctx| ctx.map(&mut mapper)).collect()))
+                    (k, ctxs.map(|v| v.into_iter().map(|ctx| ctx.map(&mut *mapper)).collect()))
                 })
                 .collect(),
             folded_values: self.folded_values,
             piggyback: self
                 .piggyback
-                .map(|v| v.into_iter().map(|ctx| ctx.map(&mut mapper)).collect()),
+                .map(|v| v.into_iter().map(|ctx| ctx.map(&mut *mapper)).collect()),
             imported_tags: self.imported_tags,
         }
     }
@@ -138,35 +138,32 @@ impl<Vertex> DataContext<Vertex> {
     /// you almost certainly *should not* be using this function.
     /// You're probably looking for [`DataContext::active_vertex()`] instead.
     ///
-    /// This function must take a `&mut dyn FnMut` instead of the usual `impl FnMut` type
-    /// in order to avoid an infinite recursive expansion while evaluating the generic type.
-    ///
     /// [option]: https://doc.rust-lang.org/std/option/enum.Option.html#method.and_then
-    pub fn flat_map<T>(self, mut mapper: &mut dyn FnMut(Vertex) -> Option<T>) -> DataContext<T> {
+    pub fn flat_map<T>(self, mapper: &mut impl FnMut(Vertex) -> Option<T>) -> DataContext<T> {
         DataContext {
-            active_vertex: self.active_vertex.and_then(&mut mapper),
+            active_vertex: self.active_vertex.and_then(&mut *mapper),
             vertices: self
                 .vertices
                 .into_iter()
-                .map(|(k, v)| (k, v.and_then(&mut mapper)))
+                .map(|(k, v)| (k, v.and_then(&mut *mapper)))
                 .collect::<BTreeMap<Vid, Option<T>>>(),
             values: self.values,
             suspended_vertices: self
                 .suspended_vertices
                 .into_iter()
-                .map(|v| v.and_then(&mut mapper))
+                .map(|v| v.and_then(&mut *mapper))
                 .collect(),
             folded_contexts: self
                 .folded_contexts
                 .into_iter()
                 .map(|(k, ctxs)| {
-                    (k, ctxs.map(|v| v.into_iter().map(|ctx| ctx.flat_map(&mut mapper)).collect()))
+                    (k, ctxs.map(|v| v.into_iter().map(|ctx| ctx.flat_map(&mut *mapper)).collect()))
                 })
                 .collect(),
             folded_values: self.folded_values,
             piggyback: self
                 .piggyback
-                .map(|v| v.into_iter().map(|ctx| ctx.flat_map(&mut mapper)).collect()),
+                .map(|v| v.into_iter().map(|ctx| ctx.flat_map(&mut *mapper)).collect()),
             imported_tags: self.imported_tags,
         }
     }
