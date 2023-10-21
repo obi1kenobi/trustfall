@@ -99,7 +99,11 @@ impl<Vertex> DataContext<Vertex> {
         self.active_vertex.as_ref().and_then(|v| v.as_vertex())
     }
 
-    pub fn map<T>(self, mut mapper: impl FnMut(Vertex) -> T) -> DataContext<T> {
+    /// Converts `DataContext<Vertex>` to `DataContext<Other>` by mapping each `Vertex` to `Other`.
+    ///
+    /// If you are implementing an [`Adapter`] for a data source, you almost certainly *should not*
+    /// be using this function. You're probably looking for [`DataContext::active_vertex`] instead.
+    pub fn map<Other>(self, mut mapper: impl FnMut(Vertex) -> Other) -> DataContext<Other> {
         DataContext {
             active_vertex: self.active_vertex.map(&mut mapper),
             vertices: self.vertices.into_iter().map(|(k, v)| (k, v.map(&mut mapper))).collect(),
@@ -124,6 +128,15 @@ impl<Vertex> DataContext<Vertex> {
         }
     }
 
+    /// Map each `Vertex` to `Option<Other>`, thus converting `Self` to `DataContext<Other>`.
+    ///
+    /// This is the [`DataContext`] equivalent of [`Option::and_then`][option], which is also
+    /// referred to as "flat-map" in some languages.
+    ///
+    /// If you are implementing an [`Adapter`] for a data source, you almost certainly *should not*
+    /// be using this function. You're probably looking for [`DataContext::active_vertex`] instead.
+    ///
+    /// [option]: https://doc.rust-lang.org/std/option/enum.Option.html#method.and_then
     pub fn flat_map<T>(self, mut mapper: impl FnMut(Vertex) -> Option<T>) -> DataContext<T> {
         DataContext {
             active_vertex: self.active_vertex.and_then(&mut mapper),
@@ -589,16 +602,43 @@ pub trait Adapter<'vertex> {
     ) -> ContextOutcomeIterator<'vertex, V, bool>;
 }
 
+/// Attempt to dereference a value to a `&V`, returning `None` if the value did not contain a `V`.
+///
+/// This trait allows types that may contain a `V` to be projected down to a `Option<&V>`.
+/// It's similar in spirit to the built-in [`Deref`][deref] trait.
+/// The primary difference is that [`AsVertex`] does not guarantee it'll be able to produce a `&V`,
+/// instead returning `Option<&V>`. The same type may implement [`AsVertex<V>`] multiple times
+/// with different `V` types, also unlike [`Deref`][deref].
+///
+/// [deref]: https://doc.rust-lang.org/std/ops/trait.Deref.html
 pub trait AsVertex<V>: Debug + Clone {
+    /// Dereference this value into a `&V`, if the value happens to contain a `V`.
+    ///
+    /// If this method returns `Some(&v)`, [`AsVertex::into_vertex()`] for the same `V`
+    /// is guaranteed to return `Some(v)` as well.
     fn as_vertex(&self) -> Option<&V>;
 
+    /// Consume `self` and produce the contained `V`, if one was indeed present.
+    ///
+    /// If this method returned `Some(v)`, prior [`AsVertex::as_vertex()`] calls for the same `V`
+    /// are guaranteed to have returned `Some(&v)` as well.
     fn into_vertex(self) -> Option<V>;
 }
 
+/// Allow bidirectional conversions between a type `V` and the type implementing this trait.
+///
+/// Values of type `V` may be converted into the type implementing this trait, and values
+/// of the implementing type may be converted into `V` via the `AsVertex<V>` supertrait.
 pub trait Cast<V>: AsVertex<V> {
+    /// Convert a `V` into the type implementing this trait.
+    ///
+    /// This is the inverse of [`AsVertex::into_vertex()`]: this function converts `vertex: V`
+    /// into `Self` whereas [`AsVertex::into_vertex()`] can convert the resulting `Self`
+    /// back into `Some(v)`.
     fn into_self(vertex: V) -> Self;
 }
 
+/// Trivially, every `Debug + Clone` type is [`AsVertex`] of itself.
 impl<V: Debug + Clone> AsVertex<V> for V {
     fn as_vertex(&self) -> Option<&V> {
         Some(self)

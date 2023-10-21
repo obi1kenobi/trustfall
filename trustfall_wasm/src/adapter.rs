@@ -269,18 +269,13 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner.resolve_property(ctx_iter, type_name.as_ref(), property_name.as_ref());
-        Box::new(
-            ContextAndValueIterator::new(js_iter, registry)
-                .map(|(opaque, value)| {
-                    // SAFETY: This `Opaque` was constructed just a few lines ago
-                    //         in this `resolve_property()` call, so the `V` type must be the same.
-                    let ctx = unsafe {
-                        opaque.into_inner()
-                    };
+        Box::new(ContextAndValueIterator::new(js_iter, registry).map(|(opaque, value)| {
+            // SAFETY: This `Opaque` was constructed just a few lines ago
+            //         in this `resolve_property()` call, so the `V` type must be the same.
+            let ctx = unsafe { opaque.into_inner() };
 
-                    (ctx, value)
-                }),
-        )
+            (ctx, value)
+        }))
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'static>(
@@ -303,18 +298,15 @@ impl Adapter<'static> for AdapterShim {
             edge_name.as_ref(),
             parameters.into_js_dict(),
         );
-        Box::new(
-            ContextAndNeighborsIterator::new(js_iter, registry, self.constants.clone())
-                .map(|(opaque, neighbors)| {
-                    // SAFETY: This `Opaque` was constructed just a few lines ago
-                    //         in this `resolve_neighbors()` call, so the `V` type must be the same.
-                    let ctx = unsafe {
-                        opaque.into_inner()
-                    };
+        Box::new(ContextAndNeighborsIterator::new(js_iter, registry, self.constants.clone()).map(
+            |(opaque, neighbors)| {
+                // SAFETY: This `Opaque` was constructed just a few lines ago
+                //         in this `resolve_neighbors()` call, so the `V` type must be the same.
+                let ctx = unsafe { opaque.into_inner() };
 
-                    (ctx, neighbors)
-                }),
-        )
+                (ctx, neighbors)
+            },
+        ))
     }
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'static>(
@@ -330,17 +322,12 @@ impl Adapter<'static> for AdapterShim {
         let registry = ctx_iter.registry.clone();
         let js_iter =
             self.inner.resolve_coercion(ctx_iter, type_name.as_ref(), coerce_to_type.as_ref());
-        Box::new(
-            ContextAndBoolIterator::new(js_iter, registry)
-                .map(|(opaque, value)| {
-                    // SAFETY: This `Opaque` was constructed just a few lines ago
-                    //         in this `resolve_coercion()` call, so the `V` type must be the same.
-                    let ctx = unsafe {
-                        opaque.into_inner()
-                    };
+        Box::new(ContextAndBoolIterator::new(js_iter, registry).map(|(opaque, value)| {
+            // SAFETY: This `Opaque` was constructed just a few lines ago
+            //         in this `resolve_coercion()` call, so the `V` type must be the same.
+            let ctx = unsafe { opaque.into_inner() };
 
-                    (ctx, value)
-                }),
-        )
+            (ctx, value)
+        }))
     }
 }
