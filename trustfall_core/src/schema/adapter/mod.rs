@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_graphql_parser::types::{
-    BaseType, FieldDefinition, InputValueDefinition, Type, TypeDefinition, TypeKind,
+    BaseType, FieldDefinition, InputValueDefinition, TypeDefinition, TypeKind,
 };
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
         AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         ResolveInfo, Typename, VertexInfo, VertexIterator,
     },
-    ir::{types::get_base_named_type, EdgeParameters, FieldValue, TransparentValue},
+    ir::{EdgeParameters, FieldValue, TransparentValue, Type},
 };
 
 use super::Schema;
@@ -206,17 +206,12 @@ pub struct Property<'a> {
     parent: &'a TypeDefinition,
     name: &'a str,
     docs: Option<&'a str>,
-    type_: &'a Type,
+    type_: Type,
 }
 
 impl<'a> Property<'a> {
     #[inline(always)]
-    fn new(
-        parent: &'a TypeDefinition,
-        name: &'a str,
-        docs: Option<&'a str>,
-        type_: &'a Type,
-    ) -> Self {
+    fn new(parent: &'a TypeDefinition, name: &'a str, docs: Option<&'a str>, type_: Type) -> Self {
         Self { parent, name, docs, type_ }
     }
 }
@@ -406,7 +401,8 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
             "Edge" => match edge_name.as_ref() {
                 "target" => resolve_neighbors_with(contexts, move |vertex| {
                     let vertex = vertex.as_edge().expect("not an Edge");
-                    let target_type = get_base_named_type(&vertex.defn.ty.node);
+                    let edge_type = Type::from_type(&vertex.defn.ty.node);
+                    let target_type = edge_type.base_type();
                     Box::new(
                         schema
                             .vertex_types
@@ -509,8 +505,8 @@ fn resolve_vertex_type_property_edge<'a>(
     let parent_defn = vertex.defn;
     Box::new(fields.iter().filter_map(move |p| {
         let field = &p.node;
-        let field_ty = &field.ty.node;
-        let base_ty = get_base_named_type(field_ty);
+        let field_ty = Type::from_type(&field.ty.node);
+        let base_ty = field_ty.base_type();
 
         if !schema.vertex_types.contains_key(base_ty) {
             Some(SchemaVertex::Property(Property::new(
@@ -535,8 +531,8 @@ fn resolve_vertex_type_edge_edge<'a>(
 
     Box::new(fields.iter().filter_map(move |p| {
         let field = &p.node;
-        let field_ty = &field.ty.node;
-        let base_ty = get_base_named_type(field_ty);
+        let field_ty = Type::from_type(&field.ty.node);
+        let base_ty = field_ty.base_type();
 
         if schema.vertex_types.contains_key(base_ty) {
             Some(SchemaVertex::Edge(Edge::new(field)))

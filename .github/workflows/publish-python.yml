@@ -22,7 +22,7 @@ jobs:
       # - musllinux
     if: needs.should-publish.outputs.is_new_version == 'yes' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: true
       - name: Tag the version
@@ -66,9 +66,9 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: actions/setup-python@v4
@@ -76,7 +76,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: x64
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
       - name: Show python version
         run: |
           python --version
@@ -110,9 +112,9 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: actions/setup-python@v4
@@ -120,7 +122,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: x64
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
       - name: Show python version
         run: |
           python --version
@@ -146,15 +150,19 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
+      - name: Install rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
       - name: Show python version
         run: |
           python3 --version
@@ -181,9 +189,9 @@ jobs:
     # if: needs.should-publish.outputs.is_new_version == 'yes'
   #   strategy:
   #     matrix:
-  #       python-version: ["3.9", "3.10", "3.11"]
+  #       python-version: ["3.9", "3.10", "3.11", "3.12"]
   #   steps:
-  #     - uses: actions/checkout@v3
+  #     - uses: actions/checkout@v4
   #       with:
   #         persist-credentials: false
   #     - uses: actions/setup-python@v4
@@ -223,11 +231,9 @@ jobs:
       is_new_version: "${{ steps.check.outputs.is_new_version }}"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      - uses: Swatinem/rust-cache@v2
 
       - id: check
         run: |

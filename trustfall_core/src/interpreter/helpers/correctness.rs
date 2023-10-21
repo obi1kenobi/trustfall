@@ -1,12 +1,10 @@
 use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
-use async_graphql_parser::types::Type;
-
 use crate::{
     interpreter::{Adapter, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo},
     ir::{
         ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent, IRVertex,
-        TransparentValue, Vid,
+        TransparentValue, Type, Vid,
     },
     schema::{Schema, SchemaAdapter},
     TryIntoStruct,
@@ -171,7 +169,7 @@ fn make_resolve_info_for_property_check(
                 property_name.clone() => ContextField {
                     vertex_id: vid,
                     field_name: property_name.clone(),
-                    field_type: Type::new(property_type).expect("not a valid type"),
+                    field_type: Type::parse(property_type).expect("not a valid type"),
                 }
             },
         }),
@@ -328,7 +326,7 @@ fn make_resolve_edge_info_for_edge_check(
                 property_name.clone() => ContextField {
                     vertex_id: vid,
                     field_name: property_name,
-                    field_type: Type::new("String!").expect("not a valid type"),
+                    field_type: Type::parse("String!").expect("not a valid type"),
                 }
             },
         }),
@@ -496,7 +494,7 @@ fn make_resolve_info_for_type_coercion(
                 typename_property.clone() => ContextField {
                     vertex_id: vid,
                     field_name: typename_property.clone(),
-                    field_type: Type::new("String!").expect("not a valid type"),
+                    field_type: Type::parse("String!").expect("not a valid type"),
                 }
             },
         }),

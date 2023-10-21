@@ -160,6 +160,8 @@ fn emit_property_handling(
     external_imports.insert(parse_import("trustfall::provider::ContextOutcomeIterator"));
     external_imports.insert(parse_import("trustfall::provider::ResolveInfo"));
     external_imports.insert(parse_import("trustfall::FieldValue"));
+    external_imports.insert(parse_import("trustfall::provider::Typename"));
+    external_imports.insert(parse_import("trustfall::provider::resolve_property_with"));
 
     quote! {
         fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
@@ -169,6 +171,10 @@ fn emit_property_handling(
             property_name: &Arc<str>,
             resolve_info: &ResolveInfo,
         ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+            if property_name.as_ref() == "__typename" {
+                return resolve_property_with(contexts, |vertex| vertex.typename().into());
+            }
+
             match type_name.as_ref() {
                 #arms
                 _ => unreachable!("attempted to read property '{property_name}' on unexpected type: {type_name}"),

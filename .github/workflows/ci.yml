@@ -70,14 +70,12 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Set up python
         id: setup-python
@@ -146,18 +144,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
         run: cargo clippy --workspace --all-features --all-targets --no-deps -- -D warnings --allow deprecated
@@ -173,16 +167,26 @@ jobs:
   rust-tests:
     name: Run tests
     runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: true
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Clear sccache stats
+        run: sccache --zero-stats
 
       # Test all crates except trustfall_stubgen,
       # which is only tested if it has changed since its tests are a bit long.
@@ -205,26 +209,27 @@ jobs:
           # `git diff --quiet` exits non-zero if there are changes
           git diff --quiet HEAD origin/main -- ./trustfall_stubgen || (cd trustfall_stubgen/ && cargo test --all-features)
 
+      - name: Show sccache stats
+        run: sccache --show-stats
+
   rust-fuzz:
     name: Check fuzz targets
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: rustfmt, clippy
+          cache: false
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             ./trustfall_core/fuzz
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
         run: |
@@ -248,21 +253,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: rustfmt, clippy
+          cache: false
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             ./experiments/trustfall_rustdoc
-
-      - uses: r7kamura/rust-problem-matchers@v1
 
       - name: cargo clippy
         run: |
@@ -288,19 +291,27 @@ jobs:
      - rust-tests
     permissions:
       contents: write
+    env:
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Clear sccache stats
+        run: sccache --zero-stats
 
       - name: Run cargo test and wasm-pack tests
         run: |
@@ -345,6 +356,9 @@ jobs:
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Show sccache stats
+        run: sccache --show-stats
+
   js-lint:
     name: Run JS linters
     runs-on: ubuntu-latest
@@ -353,16 +367,16 @@ jobs:
         working-directory: experiments/schemaless_wasm/www/
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install rust  # necessary for `npm run build:wasm` later
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install rust + caching  # necessary for `npm run build:wasm` later
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
@@ -391,12 +405,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
 
       - name: Publishing?
         id: version

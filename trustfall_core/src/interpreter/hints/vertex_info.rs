@@ -285,7 +285,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let first_filter = relevant_filters.first()?;
 
         let initial_candidate = self.statically_required_property(property).unwrap_or_else(|| {
-            if first_filter.left().field_type.nullable {
+            if first_filter.left().field_type.nullable() {
                 CandidateValue::All
             } else {
                 CandidateValue::Range(Range::full_non_null())
@@ -395,7 +395,7 @@ fn compute_statically_known_candidate<'a, 'b>(
     relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
 ) -> Option<CandidateValue<&'b FieldValue>> {
-    let is_subject_field_nullable = field.field_type.nullable;
+    let is_subject_field_nullable = field.field_type.nullable();
     super::filters::candidate_from_statically_evaluated_filters(
         relevant_filters,
         query_variables,
@@ -407,13 +407,11 @@ fn compute_statically_known_candidate<'a, 'b>(
 mod tests {
     use std::{ops::Bound, sync::Arc};
 
-    use async_graphql_parser::types::Type;
-
     use crate::{
         interpreter::hints::{
             vertex_info::compute_statically_known_candidate, CandidateValue, Range,
         },
-        ir::{Argument, FieldValue, LocalField, Operation, VariableRef},
+        ir::{Argument, FieldValue, LocalField, Operation, Type, VariableRef},
     };
 
     #[test]
@@ -424,9 +422,9 @@ mod tests {
         let null: Arc<str> = Arc::from("null");
         let list: Arc<str> = Arc::from("my_list");
         let longer_list: Arc<str> = Arc::from("longer_list");
-        let nullable_int_type = Type::new("Int").unwrap();
-        let int_type = Type::new("Int!").unwrap();
-        let list_int_type = Type::new("[Int!]!").unwrap();
+        let nullable_int_type = Type::parse("Int").unwrap();
+        let int_type = Type::parse("Int!").unwrap();
+        let list_int_type = Type::parse("[Int!]!").unwrap();
 
         let first_var = Argument::Variable(VariableRef {
             variable_name: first.clone(),
@@ -603,7 +601,7 @@ mod tests {
     #[test]
     fn use_schema_to_exclude_null_from_range() {
         let first: Arc<str> = Arc::from("first");
-        let int_type = Type::new("Int!").unwrap();
+        let int_type = Type::parse("Int!").unwrap();
 
         let first_var = Argument::Variable(VariableRef {
             variable_name: first.clone(),

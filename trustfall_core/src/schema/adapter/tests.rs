@@ -1,6 +1,7 @@
-use std::{collections::BTreeMap, sync::Arc};
-
-use once_cell::sync::Lazy;
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, OnceLock},
+};
 
 use super::SchemaAdapter;
 use crate::{
@@ -9,12 +10,16 @@ use crate::{
     TryIntoStruct,
 };
 
-static SCHEMA: Lazy<Schema> = Lazy::new(|| Schema::parse(SchemaAdapter::schema_text()).unwrap());
+static SCHEMA: OnceLock<Schema> = OnceLock::new();
+
+fn get_schema() -> &'static Schema {
+    SCHEMA.get_or_init(|| Schema::parse(SchemaAdapter::schema_text()).unwrap())
+}
 
 #[test]
 fn enforce_adapter_invariants() {
-    let adapter = SchemaAdapter::new(&SCHEMA);
-    crate::interpreter::helpers::check_adapter_invariants(&SCHEMA, adapter);
+    let adapter = SchemaAdapter::new(get_schema());
+    crate::interpreter::helpers::check_adapter_invariants(get_schema(), adapter);
 }
 
 #[test]
@@ -33,14 +38,14 @@ fn check_vertex_type_properties() {
         "name".into() => "VertexType".into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct Output {
         property: String,
     }
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("incorrect result shape"))
@@ -72,7 +77,7 @@ fn check_vertex_type_properties_using_one_of() {
         "name".into() => vec!["VertexType", "Property"].into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct Output {
@@ -80,7 +85,7 @@ fn check_vertex_type_properties_using_one_of() {
         property: String,
     }
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("incorrect result shape"))
@@ -123,9 +128,9 @@ fn check_schema_then_vertex_type() {
         "name".into() => vec!["VertexType", "Property"].into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
@@ -173,9 +178,9 @@ fn use_vertex_type_in_schema_edge_multiple_times() {
         "name".into() => vec!["VertexType", "Property"].into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
@@ -227,9 +232,9 @@ fn check_entrypoint_target_edges() {
         "name".into() => "VertexType".into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .collect();
@@ -291,7 +296,7 @@ fn check_parameterized_edges() {
             .unwrap();
     let adapter = Arc::new(SchemaAdapter::new(&test_schema));
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("result shape did not match"))
@@ -392,14 +397,14 @@ fn check_entrypoint_docs() {
         "name".into() => "Entrypoint".into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct Output {
         docs: String,
     }
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("invalid result shape"))
@@ -430,14 +435,14 @@ fn check_vertex_type_docs() {
         "name".into() => "VertexType".into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct Output {
         docs: String,
     }
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("invalid result shape"))
@@ -466,14 +471,14 @@ fn check_property_docs() {
         "property".into() => "is_interface".into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct Output {
         docs: String,
     }
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("invalid result shape"))
@@ -507,14 +512,14 @@ fn check_edge_docs() {
         "edge".into() => "implementer".into(),
     }
     .into();
-    let adapter = Arc::new(SchemaAdapter::new(&SCHEMA));
+    let adapter = Arc::new(SchemaAdapter::new(get_schema()));
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
     struct Output {
         docs: String,
     }
 
-    let indexed = crate::frontend::parse(&SCHEMA, query).expect("not a valid query");
+    let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
         .map(|row| row.try_into_struct().expect("invalid result shape"))

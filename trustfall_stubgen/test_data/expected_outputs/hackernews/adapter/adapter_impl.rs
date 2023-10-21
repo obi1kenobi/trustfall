@@ -1,6 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
-use trustfall::{FieldValue, Schema, provider::{AsVertex, ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator, resolve_coercion_using_schema}};
+use trustfall::{FieldValue, Schema, provider::{AsVertex, ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, Typename, VertexIterator, resolve_coercion_using_schema, resolve_property_with}};
 
 use super::vertex::Vertex;
 
@@ -171,6 +171,9 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+        if property_name.as_ref() == "__typename" {
+            return resolve_property_with(contexts, |vertex| vertex.typename().into());
+        }
         match type_name.as_ref() {
             "Comment" => {
                 super::properties::resolve_comment_property(
