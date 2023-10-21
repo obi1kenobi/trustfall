@@ -16,7 +16,7 @@ use walkdir::WalkDir;
 extern crate trustfall_core;
 
 use trustfall_core::{
-    interpreter::{execution::interpret_ir, Adapter},
+    interpreter::{execution::interpret_ir, Adapter, AsVertex},
     ir::{FieldValue, IndexedQuery},
 };
 
@@ -99,13 +99,13 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         Box::new(VariableChunkIterator::new(inner, sequence))
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: trustfall_core::interpreter::ContextIterator<'a, Self::Vertex>,
+        contexts: trustfall_core::interpreter::ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
-    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, V, FieldValue> {
         let mut cursor_ref = self.cursor.borrow_mut();
         let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
         drop(cursor_ref);
@@ -119,16 +119,16 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         Box::new(VariableChunkIterator::new(inner, sequence))
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: trustfall_core::interpreter::ContextIterator<'a, Self::Vertex>,
+        contexts: trustfall_core::interpreter::ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &trustfall_core::ir::EdgeParameters,
         resolve_info: &trustfall_core::interpreter::ResolveEdgeInfo,
     ) -> trustfall_core::interpreter::ContextOutcomeIterator<
         'a,
-        Self::Vertex,
+        V,
         trustfall_core::interpreter::VertexIterator<'a, Self::Vertex>,
     > {
         let mut cursor_ref = self.cursor.borrow_mut();
@@ -145,13 +145,13 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         Box::new(VariableChunkIterator::new(inner, sequence))
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: trustfall_core::interpreter::ContextIterator<'a, Self::Vertex>,
+        contexts: trustfall_core::interpreter::ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
-    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, V, bool> {
         let mut cursor_ref = self.cursor.borrow_mut();
         let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
         drop(cursor_ref);

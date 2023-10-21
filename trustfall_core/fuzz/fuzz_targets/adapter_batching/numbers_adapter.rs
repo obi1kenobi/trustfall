@@ -6,8 +6,8 @@ use maplit::btreeset;
 use trustfall_core::{
     interpreter::{
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, Typename,
-        VertexIterator,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        Typename, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -214,13 +214,13 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         }
     }
 
-    fn resolve_property(
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         if property_name.as_ref() == "__typename" {
             return resolve_property_with(contexts, |vertex| Number::typename(vertex).into());
         }
@@ -241,14 +241,14 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         }
     }
 
-    fn resolve_neighbors(
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
         match (type_name.as_ref(), edge_name.as_ref()) {
@@ -353,13 +353,13 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         }
     }
 
-    fn resolve_coercion(
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, Self::Vertex>,
+        contexts: ContextIterator<'a, V>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, Self::Vertex, bool> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => {
                 resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersVertex::Prime(..)))
