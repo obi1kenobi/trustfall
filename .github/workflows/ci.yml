@@ -179,6 +179,8 @@ jobs:
 
       - name: Install rust + caching
         uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.3
