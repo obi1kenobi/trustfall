@@ -9,7 +9,7 @@ InputQuery (
                 score @output @filter(op: ">=", value: ["$min_score"])
                 title @output
                 unixTime @output
-                url @output
+                submittedUrl @output
                 text @output
                 commentsCount @output
             }

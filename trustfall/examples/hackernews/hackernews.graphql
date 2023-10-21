@@ -34,37 +34,39 @@ directive @transform(
 type RootSchemaQuery {
     FrontPage: [Item!]!
     Top(max: Int): [Item!]!
-    LatestStory(max: Int): [Story!]!
+    Latest(max: Int): [Story!]!
     User(name: String!): User
 }
 
 interface Item {
     id: Int!
     unixTime: Int!
+    url: String!
 }
 
 type Job implements Item {
     # properties from Item
     id: Int!
     unixTime: Int!
+    url: String!
 
     # own properties
     title: String!
     score: Int!
-    url: String!
 }
 
 type Story implements Item {
     # properties from Item
     id: Int!
     unixTime: Int!
+    url: String!  # the URL of the HackerNews page for this story
 
     # own properties
     byUsername: String!
     score: Int!
+    submittedUrl: String  # the URL this story is about, if any
     text: String
     title: String!
-    url: String
     commentsCount: Int!
 
     # edges
@@ -76,6 +78,7 @@ type Comment implements Item {
     # properties from Item
     id: Int!
     unixTime: Int!
+    url: String!
 
     # own properties
     text: String!
@@ -92,12 +95,14 @@ type Poll implements Item {
     # properties from Item
     id: Int!
     unixTime: Int!
+    url: String!
 }
 
 type PollOption implements Item {
     # properties from Item
     id: Int!
     unixTime: Int!
+    url: String!
 }
 
 type User {

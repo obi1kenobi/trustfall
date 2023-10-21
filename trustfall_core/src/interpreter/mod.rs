@@ -144,7 +144,7 @@ impl<Vertex> DataContext<Vertex> {
                 .vertices
                 .into_iter()
                 .map(|(k, v)| (k, v.and_then(&mut mapper)))
-                .collect(),
+                .collect::<BTreeMap<Vid, Option<T>>>(),
             values: self.values,
             suspended_vertices: self
                 .suspended_vertices
@@ -457,37 +457,64 @@ fn validate_argument_type(
 
 /// Trustfall data providers implement this trait to enable querying their data sets.
 ///
-/// The most straightforward way to implement this trait is by implementing
-/// [`BasicAdapter`](self::basic_adapter::BasicAdapter) instead, which is a simpler version
-/// of this trait and is faster to implement.
+/// The most straightforward way to implement this trait is to use
+/// the [`trustfall_stubgen` code-generator tool][stubgen] tool to auto-generate stubs
+/// customized to match your dataset's schema, then fill in the blanks denoted by `todo!()`.
 ///
-/// Most often, it's best to first implement [`BasicAdapter`](self::basic_adapter::BasicAdapter) and
-/// only convert to a direct implementation of this trait if your use case absolutely demands it:
+/// If you prefer to implement the trait without code generation, consider implementing
+/// [`BasicAdapter`](self::basic_adapter::BasicAdapter) instead. That's a simpler version
+/// of this trait and can be faster to implement without a significant loss of functionality:
+/// - Both traits support the same set of queries. Under the hood,
+///   [`BasicAdapter`](self::basic_adapter::BasicAdapter) itself implements [`Adapter`].
 /// - If you need optimizations like batching or caching, you can implement them within
 ///   [`BasicAdapter`](self::basic_adapter::BasicAdapter) as well.
 /// - If you need more advanced optimizations such as predicate pushdown, or need to access
 ///   Trustfall's static analysis capabilities, implement this trait directly instead.
+///
+/// [stubgen]: https://docs.rs/trustfall_stubgen/latest/trustfall_stubgen/
 pub trait Adapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
-    /// It's frequently a good idea to use an Rc<...> type for cheaper cloning here.
+    /// Unless your intended vertex type is cheap to clone, consider wrapping it an [`Rc`][rc]
+    /// or [`Arc`] to make cloning it cheaper since that's a fairly common operation
+    /// when queries are evaluated.
+    ///
+    /// [rc]: std::rc::Rc
     type Vertex: Clone + Debug + 'vertex;
 
     /// Produce an iterator of vertices for the specified starting edge.
     ///
-    /// Starting edges are ones where queries are allowed to begin.
-    /// They are defined directly on the root query type of the schema.
-    /// For example, `User` is the starting edge of the following query:
+    /// Starting edges are the entry points for querying according to a schema.
+    /// Each query starts at such an edge, and such starting edges are defined
+    /// directly on the root query type of the schema.
+    ///
+    /// # Example
+    ///
+    /// Consider this query which gets the URLs of the posts
+    /// currently on the front page of HackerNews: [playground][playground]
     /// ```graphql
     /// query {
-    ///     User {
-    ///         name @output
-    ///     }
+    ///   FrontPage {
+    ///     url @output
+    ///   }
     /// }
     /// ```
+    ///
+    /// The [HackerNews schema][schema] defines `FrontPage` as a starting edge
+    /// that points to vertices of type `Item`.
+    ///
+    /// As part of executing this query, Trustfall will call this method
+    /// with `edge_name = "FrontPage"`. Here's the [implementation of this method][method]
+    /// in the HackerNews example adapter.
+    ///
+    /// # Preconditions and postconditions
     ///
     /// The caller guarantees that:
     /// - The specified edge is a starting edge in the schema being queried.
     /// - Any parameters the edge requires per the schema have values provided.
+    ///
+    /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
+    /// [schema]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L35
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/adapter.rs#L127-L133
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
@@ -495,27 +522,66 @@ pub trait Adapter<'vertex> {
         resolve_info: &ResolveInfo,
     ) -> VertexIterator<'vertex, Self::Vertex>;
 
-    /// Resolve the value of a vertex property over an iterator of query contexts.
+    /// Resolve a property required by the query that's being evaluated.
     ///
-    /// Each [`DataContext`] in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
+    /// Each [`DataContext`] in the `contexts` parameter has an active vertex
+    /// [`DataContext::active_vertex()`]. This call is asking for the value of
+    /// the specified property on each such active vertex,
+    /// for each active vertex in the input iterator.
     ///
-    /// This function resolves the property value on that active vertex.
+    /// The most ergonomic way to implement this method is usually via
+    /// the [`resolve_property_with`][resolve-property] helper method together with
+    /// the [`field_property!`][field-property] and [`accessor_property!`][accessor-property]
+    /// macros.
+    ///
+    /// # Example
+    ///
+    /// Consider this query which gets the URLs of the posts
+    /// currently on the front page of HackerNews: [playground][playground]
+    /// ```graphql
+    /// query {
+    ///   FrontPage {
+    ///     url @output
+    ///   }
+    /// }
+    /// ```
+    ///
+    /// Our HackerNews schema [defines][starting-edge] `FrontPage` as a starting edge
+    /// that points to vertices of type `Item`, and [defines][property] `url`
+    /// as a property on the `Item` type.
+    ///
+    /// As part of executing this query, Trustfall will call this method
+    /// with `type_name = "Item"` and `property_name = "url"`.
+    /// This is how Trustfall looks up the URLs of the items returned by this query.
+    /// Here's the [implementation of this method][method] in the HackerNews example adapter.
+    ///
+    /// # Preconditions and postconditions
+    ///
+    /// The active vertex may be `None`, or a `Some(v)` whose `v` is of Rust type `&Self::Vertex`
+    /// and represents a vertex whose type in the Trustfall schema is given by
+    /// this function's `type_name` parameter.
     ///
     /// The caller guarantees that:
     /// - `type_name` is a type or interface defined in the schema.
     /// - `property_name` is either a property field on `type_name` defined in the schema,
     ///   or the special value `"__typename"` requesting the name of the vertex's type.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
+    /// - When the active vertex is `Some(...)`, its represents a vertex of type `type_name`:
+    ///   either its type is exactly `type_name`, or `type_name` is an interface implemented by
+    ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
     /// - Produce `(context, property_value)` tuples with the property's value for that context.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
     /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
+    ///
+    /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
+    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L35
+    /// [property]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L44
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/adapter.rs#L151
+    /// [resolve-property]: helpers::resolve_property_with
+    /// [field-property]: crate::field_property
+    /// [accessor-property]: crate::accessor_property
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
@@ -524,13 +590,46 @@ pub trait Adapter<'vertex> {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'vertex, V, FieldValue>;
 
-    /// Resolve the neighboring vertices across an edge, for each query context in an iterator.
+    /// Resolve the neighboring vertices across an edge.
     ///
-    /// Each [`DataContext`] in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
+    /// Each [`DataContext`] in the `contexts` parameter has an active vertex
+    /// [`DataContext::active_vertex()`]. This call is asking for
+    /// the iterator of neighboring vertices of the active vertex along a specified edge,
+    /// for each active vertex in the input iterator.
     ///
-    /// This function resolves the neighboring vertices for that active vertex.
+    /// The most ergonomic way to implement this method is usually via
+    /// the [`resolve_neighbors_with`][resolve-neighbors] helper method.
+    ///
+    /// # Example
+    ///
+    /// Consider this query which gets the usernames and karma points of the users
+    /// who submitted the latest stories on HackerNews: [playground][playground]
+    /// ```graphql
+    /// query {
+    ///   Latest {
+    ///     byUser {
+    ///       id @output
+    ///       karma @output
+    ///     }
+    ///   }
+    /// }
+    /// ```
+    ///
+    /// Our HackerNews schema [defines][starting-edge] `Latest` as a starting edge
+    /// that points to vertices of type `Story`.
+    /// In turn, `Story` [has an edge][edge] called `byUser` that points to `User` vertices.
+    ///
+    /// As part of executing this query, Trustfall will call this method
+    /// with `type_name = "Story"` and `edge_name = "byUser"`.
+    /// This is how Trustfall looks up the user vertices representing the submitters
+    /// of the latest HackerNews stories.
+    /// Here's the [implementation of this method][method] in the HackerNews example adapter.
+    ///
+    /// # Preconditions and postconditions
+    ///
+    /// The active vertex may be `None`, or a `Some(v)` whose `v` is of Rust type `&Self::Vertex`
+    /// and represents a vertex whose type in the Trustfall schema is given by
+    /// this function's `type_name` parameter.
     ///
     /// If the schema this adapter covers has no edges aside from starting edges,
     /// then this method will never be called and may be implemented as `unreachable!()`.
@@ -538,16 +637,22 @@ pub trait Adapter<'vertex> {
     /// The caller guarantees that:
     /// - `type_name` is a type or interface defined in the schema.
     /// - `edge_name` is an edge field on `type_name` defined in the schema.
-    /// - Any parameters the edge requires per the schema have values provided.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
+    /// - Each parameter required by the edge has a value of appropriate type, per the schema.
+    /// - When the active vertex is `Some(...)`, its represents a vertex of type `type_name`:
+    ///   either its type is exactly `type_name`, or `type_name` is an interface implemented by
+    ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
     /// - Produce `(context, neighbors)` tuples with an iterator of neighbor vertices for that edge.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
+    ///
+    /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-usernames-and-karma-points-of-the-folks*l*3-who-submitted-the-latest-stories-on-HackerNews.*lquery---0Latest---2byUser---4id-*o*l--_4karma-*o*l--_2--*0*J*l*J&v=--0*l*J
+    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L37
+    /// [edge]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L73
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/adapter.rs#L223
+    /// [resolve-neighbors]: helpers::resolve_neighbors_with
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
@@ -557,26 +662,45 @@ pub trait Adapter<'vertex> {
         resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>>;
 
-    /// Attempt to coerce vertices to a subtype, over an iterator of query contexts.
+    /// Attempt to coerce vertices to a subtype, as required by the query that's being evaluated.
     ///
-    /// In this example query, the starting vertices of type `File` are coerced to `AudioFile`:
+    /// Each [`DataContext`] in the `contexts` parameter has an active vertex
+    /// [`DataContext::active_vertex()`]. This call is asking whether the active vertex
+    /// happens to be an instance of a subtype, for each active vertex in the input iterator.
+    ///
+    /// The most ergonomic ways to implement this method usually rely on
+    /// the [`resolve_coercion_using_schema`][resolve-schema]
+    /// or [`resolve_coercion_with`][resolve-basic] helper methods.
+    ///
+    /// # Example
+    ///
+    /// Consider this query which gets the titles of all stories on the front page of HackerNews,
+    /// while discarding non-story items such as job postings and polls: [playground][playground]
     /// ```graphql
     /// query {
-    ///     File {
-    ///         ... on AudioFile {
-    ///             duration @output
-    ///         }
+    ///   FrontPage {
+    ///     ... on Story {
+    ///       title @output
     ///     }
+    ///   }
     /// }
     /// ```
-    /// The `... on AudioFile` operator causes only `AudioFile` vertices to be retained,
-    /// filtering out all other kinds of `File` vertices.
     ///
-    /// Each [`DataContext`] in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
+    /// Our HackerNews schema [defines][starting-edge] `FrontPage` as a starting edge
+    /// that points to vertices of type `Item`.
+    /// It also defines `Story` as [a subtype][subtype] of `Item`.
     ///
-    /// This function checks whether the active vertex is of the specified subtype.
+    /// After resolving the `FrontPage` starting edge, Trustfall will need to determine which
+    /// of the resulting `Item` vertices are actually of type `Story`.
+    /// This is when Trustfall will call this method
+    /// with `type_name = "Item"` and `coerce_to_type = "Story"`.
+    /// Here's the [implementation of this method][method] in the HackerNews example adapter.
+    ///
+    /// # Preconditions and postconditions
+    ///
+    /// The active vertex may be `None`, or a `Some(v)` whose `v` is of Rust type `&Self::Vertex`
+    /// and represents a vertex whose type in the Trustfall schema is given by
+    /// this function's `type_name` parameter.
     ///
     /// If this adapter's schema contains no subtyping, then no type coercions are possible:
     /// this method will never be called and may be implemented as `unreachable!()`.
@@ -584,15 +708,22 @@ pub trait Adapter<'vertex> {
     /// The caller guarantees that:
     /// - `type_name` is an interface defined in the schema.
     /// - `coerce_to_type` is a type or interface that implements `type_name` in the schema.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
+    /// - When the active vertex is `Some(...)`, its represents a vertex of type `type_name`:
+    ///   either its type is exactly `type_name`, or `type_name` is an interface implemented by
+    ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
     /// - Produce `(context, can_coerce)` tuples showing if the coercion succeded for that context.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Each neighboring vertex is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
+    ///
+    /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-title-of-stories-on-the-HN-front-page.*l*3-Discards-any-non*-story-items-on-the-front-page*L*l*3-such-as-job-postings-or-polls.*lquery---0FrontPage---2*E-Story---4title-*o*l--_2--*0*J*l*J&v=--0*l*J
+    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L35
+    /// [subtype]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/hackernews.graphql#L58
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/main/trustfall/examples/hackernews/adapter.rs#L375
+    /// [resolve-schema]: helpers::resolve_coercion_using_schema
+    /// [resolve-basic]: helpers::resolve_coercion_with
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,

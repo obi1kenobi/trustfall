@@ -136,7 +136,7 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
                 let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.top(max)
             }
-            "LatestStory" => {
+            "Latest" => {
                 let max = parameters.get("max").map(|v| v.as_u64().unwrap() as usize);
                 self.latest_stories(max)
             }
@@ -162,6 +162,20 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
             (type_name, "unixTime") if self.item_subtypes.contains(type_name) => {
                 resolve_property_with(contexts, item_property_resolver!(time))
             }
+            (type_name, "url") if self.item_subtypes.contains(type_name) => {
+                resolve_property_with(contexts, |vertex: &Vertex| {
+                    let id = match vertex {
+                        Vertex::Story(x) => x.id,
+                        Vertex::Job(x) => x.id,
+                        Vertex::Comment(x) => x.id,
+                        Vertex::Poll(x) => x.id,
+                        Vertex::PollOption(x) => x.id,
+                        Vertex::User(_) => unreachable!("found a User which is not an Item"),
+                    };
+
+                    format!("https://news.ycombinator.com/item?id={id}").into()
+                })
+            }
 
             // properties on Job
             ("Job", "score") => resolve_property_with(contexts, field_property!(as_job, score)),
@@ -178,7 +192,9 @@ impl<'a> BasicAdapter<'a> for HackerNewsAdapter {
             }
             ("Story", "score") => resolve_property_with(contexts, field_property!(as_story, score)),
             ("Story", "title") => resolve_property_with(contexts, field_property!(as_story, title)),
-            ("Story", "url") => resolve_property_with(contexts, field_property!(as_story, url)),
+            ("Story", "submittedUrl") => {
+                resolve_property_with(contexts, field_property!(as_story, url))
+            }
 
             // properties on Comment
             ("Comment", "byUsername") => {

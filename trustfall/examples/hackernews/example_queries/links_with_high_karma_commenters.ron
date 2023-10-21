@@ -1,9 +1,9 @@
 InputQuery (
     query: r#"
 {
-    LatestStory(max: 100) {
+    Latest(max: 100) {
         title @output
-        url @filter(op: "is_not_null") @output
+        submittedUrl @filter(op: "is_not_null") @output
         score @output
 
         comment {
