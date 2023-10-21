@@ -96,14 +96,14 @@ impl<Vertex> DataContext<Vertex> {
     where
         Vertex: AsVertex<V>,
     {
-        self.active_vertex.as_ref().and_then(|v| v.as_vertex())
+        self.active_vertex.as_ref().and_then(AsVertex::as_vertex)
     }
 
     /// Converts `DataContext<Vertex>` to `DataContext<Other>` by mapping each `Vertex` to `Other`.
     ///
     /// If you are implementing an [`Adapter`] for a data source,
     /// you almost certainly *should not* be using this function.
-    /// You're probably looking for [`DataContext::active_vertex`] instead.
+    /// You're probably looking for [`DataContext::active_vertex()`] instead.
     pub fn map<Other>(self, mut mapper: impl FnMut(Vertex) -> Other) -> DataContext<Other> {
         DataContext {
             active_vertex: self.active_vertex.map(&mut mapper),
@@ -136,7 +136,7 @@ impl<Vertex> DataContext<Vertex> {
     ///
     /// If you are implementing an [`Adapter`] for a data source,
     /// you almost certainly *should not* be using this function.
-    /// You're probably looking for [`DataContext::active_vertex`] instead.
+    /// You're probably looking for [`DataContext::active_vertex()`] instead.
     ///
     /// This function must take a `&mut dyn FnMut` instead of the usual `impl FnMut` type
     /// in order to avoid an infinite recursive expansion while evaluating the generic type.
@@ -535,8 +535,8 @@ pub trait Adapter<'vertex> {
     /// for each active vertex in the input iterator.
     ///
     /// The most ergonomic way to implement this method is usually via
-    /// the [`resolve_property_with`][resolve-property] helper method together with
-    /// the [`field_property!`][field-property] and [`accessor_property!`][accessor-property]
+    /// the [`resolve_property_with()`][resolve-property] helper method together with
+    /// the [`field_property!()`][field-property] and [`accessor_property!()`][accessor-property]
     /// macros.
     ///
     /// # Example
@@ -603,7 +603,7 @@ pub trait Adapter<'vertex> {
     /// for each active vertex in the input iterator.
     ///
     /// The most ergonomic way to implement this method is usually via
-    /// the [`resolve_neighbors_with`][resolve-neighbors] helper method.
+    /// the [`resolve_neighbors_with()`][resolve-neighbors] helper method.
     ///
     /// # Example
     ///
@@ -674,8 +674,8 @@ pub trait Adapter<'vertex> {
     /// happens to be an instance of a subtype, for each active vertex in the input iterator.
     ///
     /// The most ergonomic ways to implement this method usually rely on
-    /// the [`resolve_coercion_using_schema`][resolve-schema]
-    /// or [`resolve_coercion_with`][resolve-basic] helper methods.
+    /// the [`resolve_coercion_using_schema()`][resolve-schema]
+    /// or [`resolve_coercion_with()`][resolve-basic] helper methods.
     ///
     /// # Example
     ///
