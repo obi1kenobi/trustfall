@@ -136,8 +136,11 @@ impl<Vertex> DataContext<Vertex> {
     /// If you are implementing an [`Adapter`] for a data source, you almost certainly *should not*
     /// be using this function. You're probably looking for [`DataContext::active_vertex`] instead.
     ///
+    /// This function must take a `&mut dyn FnMut` instead of the usual `impl FnMut` type
+    /// in order to avoid an infinite recursive expansion while evaluating the generic type.
+    ///
     /// [option]: https://doc.rust-lang.org/std/option/enum.Option.html#method.and_then
-    pub fn flat_map<T>(self, mut mapper: impl FnMut(Vertex) -> Option<T>) -> DataContext<T> {
+    pub fn flat_map<T>(self, mut mapper: &mut dyn FnMut(Vertex) -> Option<T>) -> DataContext<T> {
         DataContext {
             active_vertex: self.active_vertex.and_then(&mut mapper),
             vertices: self

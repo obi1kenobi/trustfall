@@ -128,7 +128,7 @@ where
                     let input_context = input_data.unwrap();
                     assert_eq!(
                         context,
-                        &input_context.clone().flat_map(AsVertex::into_vertex),
+                        &input_context.clone().flat_map(&mut |v| v.into_vertex()),
                         "at {input_op:?}"
                     );
                     self.input_batch.push_back(input_context);
@@ -147,7 +147,7 @@ where
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(
                     trace_context,
-                    &input_context.clone().flat_map(AsVertex::into_vertex),
+                    &input_context.clone().flat_map(&mut |v| v.into_vertex()),
                     "at {next_op:?}"
                 );
                 Some((input_context, value.clone()))
@@ -215,7 +215,7 @@ where
                     let input_context = input_data.unwrap();
                     assert_eq!(
                         context,
-                        &input_context.clone().flat_map(AsVertex::into_vertex),
+                        &input_context.clone().flat_map(&mut |v| v.into_vertex()),
                         "at {input_op:?}"
                     );
 
@@ -235,7 +235,7 @@ where
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(
                     trace_context,
-                    &input_context.clone().flat_map(AsVertex::into_vertex),
+                    &input_context.clone().flat_map(&mut |v| v.into_vertex()),
                     "at {next_op:?}"
                 );
                 Some((input_context, *can_coerce))
@@ -302,7 +302,7 @@ where
                     let input_context = input_data.unwrap();
                     assert_eq!(
                         context,
-                        &input_context.clone().flat_map(AsVertex::into_vertex),
+                        &input_context.clone().flat_map(&mut |v| v.into_vertex()),
                         "at {input_op:?}"
                     );
 
@@ -322,7 +322,7 @@ where
                 let input_context = self.input_batch.pop_front().unwrap();
                 assert_eq!(
                     trace_context,
-                    &input_context.clone().flat_map(AsVertex::into_vertex),
+                    &input_context.clone().flat_map(&mut |v| v.into_vertex()),
                     "at {next_op:?}"
                 );
 
