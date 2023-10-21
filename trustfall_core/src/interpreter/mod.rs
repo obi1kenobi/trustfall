@@ -101,8 +101,9 @@ impl<Vertex> DataContext<Vertex> {
 
     /// Converts `DataContext<Vertex>` to `DataContext<Other>` by mapping each `Vertex` to `Other`.
     ///
-    /// If you are implementing an [`Adapter`] for a data source, you almost certainly *should not*
-    /// be using this function. You're probably looking for [`DataContext::active_vertex`] instead.
+    /// If you are implementing an [`Adapter`] for a data source,
+    /// you almost certainly *should not* be using this function.
+    /// You're probably looking for [`DataContext::active_vertex`] instead.
     pub fn map<Other>(self, mut mapper: impl FnMut(Vertex) -> Other) -> DataContext<Other> {
         DataContext {
             active_vertex: self.active_vertex.map(&mut mapper),
@@ -133,8 +134,9 @@ impl<Vertex> DataContext<Vertex> {
     /// This is the [`DataContext`] equivalent of [`Option::and_then`][option], which is also
     /// referred to as "flat-map" in some languages.
     ///
-    /// If you are implementing an [`Adapter`] for a data source, you almost certainly *should not*
-    /// be using this function. You're probably looking for [`DataContext::active_vertex`] instead.
+    /// If you are implementing an [`Adapter`] for a data source,
+    /// you almost certainly *should not* be using this function.
+    /// You're probably looking for [`DataContext::active_vertex`] instead.
     ///
     /// This function must take a `&mut dyn FnMut` instead of the usual `impl FnMut` type
     /// in order to avoid an infinite recursive expansion while evaluating the generic type.
