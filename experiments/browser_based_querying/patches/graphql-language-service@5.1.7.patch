@@ -1,5 +1,5 @@
 diff --git a/esm/interface/getAutocompleteSuggestions.js b/esm/interface/getAutocompleteSuggestions.js
-index ac159d132d095a789b966627d315f4238c79ab60..fa7f614cb2feb8a90bca66bf2c6dcb6763c4a1f3 100644
+index ac159d132d095a789b966627d315f4238c79ab60..ec3fabdd1ed75a2175bbd0c8112ba0437a6398cd 100644
 --- a/esm/interface/getAutocompleteSuggestions.js
 +++ b/esm/interface/getAutocompleteSuggestions.js
 @@ -63,6 +63,9 @@ const hasTypeSystemDefinitions = (sdl) => {
@@ -29,7 +29,7 @@ index ac159d132d095a789b966627d315f4238c79ab60..fa7f614cb2feb8a90bca66bf2c6dcb67
 +            if (primitives.has(fieldType.name)) {
 +                return getSuggestionsForDirective(token, state, schema, kind).filter(x => propertyDirectives.has(x.label))
 +            } else {
-+                return getSuggestionsForDirective(token, state, schema, kind).filter(x => edgeDirectives.has(x.label))
++                return getSuggestionsForDirective(token, state, schema, kind)//.filter(x => edgeDirectives.has(x.label)) // Don't filter until we can decide if there is a @transform(op: "count") before this directive
 +            }
 +        } else { // there has been no '@' so we should autocomplete fields
 +            return getSuggestionsForFieldNames(token, typeInfo, opts);
