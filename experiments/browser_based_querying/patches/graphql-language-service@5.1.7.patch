@@ -1,18 +1,17 @@
 diff --git a/esm/interface/getAutocompleteSuggestions.js b/esm/interface/getAutocompleteSuggestions.js
-index ac159d132d095a789b966627d315f4238c79ab60..ec3fabdd1ed75a2175bbd0c8112ba0437a6398cd 100644
+index ac159d132d095a789b966627d315f4238c79ab60..1d6f624a8ad888ebbe8aa9092feb845a7d8205b0 100644
 --- a/esm/interface/getAutocompleteSuggestions.js
 +++ b/esm/interface/getAutocompleteSuggestions.js
-@@ -63,6 +63,9 @@ const hasTypeSystemDefinitions = (sdl) => {
+@@ -63,6 +63,8 @@ const hasTypeSystemDefinitions = (sdl) => {
      }
      return hasTypeSystemDef;
  };
 +const primitives = new Set(['Int', 'Float', 'String', 'Boolean', 'ID'])
-+const edgeDirectives = new Set(['fold', 'recurse', 'optional', 'transform'])
 +const propertyDirectives = new Set(['filter', 'tag', 'output', 'transform'])
  export function getAutocompleteSuggestions(schema, queryText, cursor, contextToken, fragmentDefs, options) {
      var _a;
      const opts = Object.assign(Object.assign({}, options), { schema });
-@@ -234,7 +237,23 @@ export function getAutocompleteSuggestions(schema, queryText, cursor, contextTok
+@@ -234,7 +236,23 @@ export function getAutocompleteSuggestions(schema, queryText, cursor, contextTok
          return getSuggestionsForVariableDefinition(token, schema, kind);
      }
      if (kind === RuleKinds.DIRECTIVE) {
@@ -29,7 +28,7 @@ index ac159d132d095a789b966627d315f4238c79ab60..ec3fabdd1ed75a2175bbd0c8112ba043
 +            if (primitives.has(fieldType.name)) {
 +                return getSuggestionsForDirective(token, state, schema, kind).filter(x => propertyDirectives.has(x.label))
 +            } else {
-+                return getSuggestionsForDirective(token, state, schema, kind)//.filter(x => edgeDirectives.has(x.label)) // Don't filter until we can decide if there is a @transform(op: "count") before this directive
++                return getSuggestionsForDirective(token, state, schema, kind) // Don't filter edges until we can decide if there is a @transform(op: "count") before this directive, which would force us to switch to property directives
 +            }
 +        } else { // there has been no '@' so we should autocomplete fields
 +            return getSuggestionsForFieldNames(token, typeInfo, opts);
