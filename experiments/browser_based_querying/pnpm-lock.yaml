@@ -32,8 +32,8 @@ dependencies:
     specifier: ^5.8.0
     version: 5.8.0(@emotion/react@11.9.0)(@emotion/styled@11.8.1)(@types/react@18.0.9)(react-dom@18.1.0)(react@18.1.0)
   core-js:
-    specifier: ^3.22.5
-    version: 3.22.5
+    specifier: ^3.23.3
+    version: 3.33.1
   detect-browser:
     specifier: ^5.3.0
     version: 5.3.0
@@ -54,7 +54,7 @@ dependencies:
     version: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
   monaco-graphql:
     specifier: ^1.2.0
-    version: 1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.6.2)
+    version: 1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.8.8)
   react:
     specifier: ^18.1.0
     version: 18.1.0
@@ -124,8 +124,8 @@ devDependencies:
     specifier: ^5.5.0
     version: 5.5.0(webpack@5.72.1)
   prettier:
-    specifier: ^2.6.2
-    version: 2.6.2
+    specifier: ^2.8.0
+    version: 2.8.8
   style-loader:
     specifier: ^3.3.1
     version: 3.3.1(webpack@5.72.1)
@@ -133,8 +133,8 @@ devDependencies:
     specifier: ^4.7.4
     version: 4.7.4
   wasm-pack:
-    specifier: ^0.12.0
-    version: 0.12.0
+    specifier: ^0.12.1
+    version: 0.12.1
   webpack:
     specifier: ^5.72.1
     version: 5.72.1(webpack-cli@4.10.0)
@@ -2686,9 +2686,8 @@ packages:
       toggle-selection: 1.0.6
     dev: false
 
-  /core-js@3.22.5:
-    resolution: {integrity: sha512-VP/xYuvJ0MJWRAobcmQ8F2H6Bsn+s7zqAAjFaHGBMc5AQm7zaelhD1LGduFn2EehEcQcU+br6t+fwbpQ5d1ZWA==}
-    deprecated: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+  /core-js@3.33.1:
+    resolution: {integrity: sha512-qVSq3s+d4+GsqN0teRCJtM6tdEEXyWxjzbhVrCHmBS5ZTM0FS2MOS0D13dUXAWDUN6a+lHI/N1hF9Ytz6iLl9Q==}
     requiresBuild: true
     dev: false
 
@@ -4314,7 +4313,7 @@ packages:
     dev: false
     patched: true
 
-  /monaco-graphql@1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.6.2):
+  /monaco-graphql@1.2.0(graphql@16.7.1)(monaco-editor@0.20.0)(prettier@2.8.8):
     resolution: {integrity: sha512-r4QhIp7Q35zo7/a8EqtWePQou/sV0JewUjuXZJFHXKq1wDaTmXg+6AsS/D5wU5iUpudKu1Zjv2sC9co+28ypQA==}
     peerDependencies:
       graphql: ^15.5.0 || ^16.0.0
@@ -4325,7 +4324,7 @@ packages:
       graphql-language-service: 5.1.7(patch_hash=qivyzqyfs7hon4wbvvbq7vibpa)(graphql@16.7.1)
       monaco-editor: 0.20.0(patch_hash=uf5fj7h4rxeihd5auffjnde5pu)
       picomatch-browser: 2.2.6
-      prettier: 2.6.2
+      prettier: 2.8.8
     dev: false
 
   /ms@2.0.0:
@@ -4693,8 +4692,8 @@ packages:
     engines: {node: '>= 0.8.0'}
     dev: true
 
-  /prettier@2.6.2:
-    resolution: {integrity: sha512-PkUpF+qoXTqhOeWL9fu7As8LXsIUZ1WYaJiY/a7McAQzxjk82OF0tibkFXVCDImZtWxbvojFjerkiLb0/q8mew==}
+  /prettier@2.8.8:
+    resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
     hasBin: true
 
@@ -5672,8 +5671,8 @@ packages:
     resolution: {integrity: sha512-dpojBhNsCNN7T82Tm7k26A6G9ML3NkhDsnw9n/eoxSRlVBB4CEtIQ/KTCLI2Fwf3ataSXRhYFkQi3SlnFwPvPQ==}
     dev: false
 
-  /wasm-pack@0.12.0:
-    resolution: {integrity: sha512-2MuRmArr8x0S6GAQKJtToH2tJ9rM8nJ2yy6J+ueMm2v4deKAh0uAOT2BwJlLoZ0VnELtKBDjJ17NV/RFDt/QpA==}
+  /wasm-pack@0.12.1:
+    resolution: {integrity: sha512-dIyKWUumPFsGohdndZjDXRFaokUT/kQS+SavbbiXVAvA/eN4riX5QNdB6AhXQx37zNxluxQkuixZUgJ8adKjOg==}
     hasBin: true
     requiresBuild: true
     dependencies:
