@@ -98,8 +98,8 @@ const enableGutterConfig: monaco.editor.IStandaloneEditorConstructionOptions = {
   folding: true,
   lineDecorationsWidth: 5,
   lineNumbersMinChars: 2,
-  acceptSuggestionOnEnter: "off",
-  suggestOnTriggerCharacters: false,
+  acceptSuggestionOnEnter: "smart",
+  suggestOnTriggerCharacters: true,
 };
 
 window.MonacoEnvironment = {

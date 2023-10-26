@@ -183,7 +183,7 @@ export class MyAdapter implements Adapter<Vertex> {
 
   *resolveStartingVertices(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
     if (edge === 'FrontPage') {
-      return limitIterator(getTopItems(this.fetchPort), 30);
+      yield* limitIterator(getTopItems(this.fetchPort), 30);
     } else if (
       edge === 'Top' ||
       edge === 'Latest' ||
