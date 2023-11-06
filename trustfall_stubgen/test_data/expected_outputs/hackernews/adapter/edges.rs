@@ -35,7 +35,7 @@ mod comment {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_comment()
                     .expect("conversion failed, vertex was not a Comment");
@@ -50,7 +50,7 @@ mod comment {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_comment()
                     .expect("conversion failed, vertex was not a Comment");
@@ -65,7 +65,7 @@ mod comment {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_comment()
                     .expect("conversion failed, vertex was not a Comment");
@@ -80,7 +80,7 @@ mod comment {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_comment()
                     .expect("conversion failed, vertex was not a Comment");
@@ -120,7 +120,7 @@ mod job {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_job()
                     .expect("conversion failed, vertex was not a Job");
@@ -162,7 +162,7 @@ mod story {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_story()
                     .expect("conversion failed, vertex was not a Story");
@@ -177,7 +177,7 @@ mod story {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_story()
                     .expect("conversion failed, vertex was not a Story");
@@ -192,7 +192,7 @@ mod story {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_story()
                     .expect("conversion failed, vertex was not a Story");
@@ -233,7 +233,7 @@ mod user {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_user()
                     .expect("conversion failed, vertex was not a User");
@@ -248,7 +248,7 @@ mod user {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_user()
                     .expect("conversion failed, vertex was not a User");

@@ -32,7 +32,7 @@ mod const_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_const()
                     .expect("conversion failed, vertex was not a const");
@@ -72,7 +72,7 @@ mod continue_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_continue()
                     .expect("conversion failed, vertex was not a continue");
@@ -112,7 +112,7 @@ mod dyn_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_dyn()
                     .expect("conversion failed, vertex was not a dyn");
@@ -152,7 +152,7 @@ mod if_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_if()
                     .expect("conversion failed, vertex was not a if");
@@ -192,7 +192,7 @@ mod mod_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_mod()
                     .expect("conversion failed, vertex was not a mod");
@@ -232,7 +232,7 @@ mod self_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_self_()
                     .expect("conversion failed, vertex was not a self");
@@ -272,7 +272,7 @@ mod type_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_type()
                     .expect("conversion failed, vertex was not a type");
@@ -312,7 +312,7 @@ mod unsafe_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_unsafe()
                     .expect("conversion failed, vertex was not a unsafe");
@@ -352,7 +352,7 @@ mod where_ {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(
             contexts,
-            |vertex| {
+            move |vertex| {
                 let vertex = vertex
                     .as_where()
                     .expect("conversion failed, vertex was not a where");
