@@ -156,7 +156,7 @@ fn make_edge_resolver_and_call(
             #fn_params
             _resolve_info: &ResolveEdgeInfo,
         ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
-            resolve_neighbors_with(contexts, |vertex| {
+            resolve_neighbors_with(contexts, move |vertex| {
                 let vertex = vertex.#conversion_fn_ident().expect(#expect_msg);
                 todo!(#todo_msg)
             })
