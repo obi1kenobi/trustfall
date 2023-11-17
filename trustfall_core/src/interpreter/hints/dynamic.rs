@@ -238,11 +238,14 @@ impl<'a> DynamicallyResolvedValue<'a> {
         self,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-        mut neighbor_resolver: impl FnMut(&V, CandidateValue<FieldValue>) -> VertexIterator<'vertex, AdapterT::Vertex>
+        mut neighbor_resolver: impl FnMut(
+                &AdapterT::Vertex,
+                CandidateValue<FieldValue>,
+            ) -> VertexIterator<'vertex, AdapterT::Vertex>
             + 'vertex,
     ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, AdapterT::Vertex>> {
         Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
-            let neighbors = match ctx.active_vertex.as_ref() {
+            let neighbors = match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
                 Some(vertex) => neighbor_resolver(vertex, candidate),
                 None => Box::new(std::iter::empty()),
             };

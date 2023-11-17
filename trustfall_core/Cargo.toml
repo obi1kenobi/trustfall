@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_core"
-version = "0.7.0"
+version = "0.7.1"
 license = "Apache-2.0"
 description = "The trustfall query engine, empowering you to query everything."
 repository = "https://github.com/obi1kenobi/trustfall"
