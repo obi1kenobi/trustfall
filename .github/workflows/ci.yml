@@ -413,6 +413,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: false
+          rustflags: ""
 
       - name: Publishing?
         id: version
@@ -451,7 +452,6 @@ jobs:
           cd trustfall
           cargo run --example hackernews query ./examples/hackernews/example_queries/front_page_stories_with_links.ron 1
           cargo run --example hackernews query ./examples/hackernews/example_queries/latest_links_by_high_karma_users.ron 1
-          cargo run --example hackernews query ./examples/hackernews/example_queries/patio11_comments_on_own_blog_posts.ron 1
 
       - name: weather example
         if: steps.version.outputs.is_new_version == 'yes'

@@ -26,8 +26,7 @@ fn get_schema() -> &'static Schema {
     })
 }
 
-const METAR_DOC_URL: &str =
-    "https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv";
+const METAR_DOC_URL: &str = "https://aviationweather.gov/data/cache/metars.cache.csv.gz";
 const METAR_DOC_LOCATION: &str = "/tmp/metars-clean.cache.csv";
 const METAR_DOC_HEADER_ROW: &str = "\
 raw_text,station_id,observation_time,latitude,longitude,temp_c,dewpoint_c,\
@@ -107,13 +106,15 @@ fn run_query(path: &str) {
 }
 
 fn refresh_data() {
-    let all_data = reqwest::blocking::get(METAR_DOC_URL).unwrap().text().unwrap();
-    let write_file_path = METAR_DOC_LOCATION.to_owned() + "-temp";
+    let response = reqwest::blocking::get(METAR_DOC_URL).expect("network request failed");
+    let decoder = flate2::read::MultiGzDecoder::new(response);
 
+    let write_file_path = METAR_DOC_LOCATION.to_owned() + "-temp";
     let write_file = File::create(&write_file_path).unwrap();
     let mut buf_writer = BufWriter::new(write_file);
 
-    for line in all_data.lines() {
+    let contents = std::io::read_to_string(decoder).expect("failed to read file to string");
+    for line in contents.lines() {
         if line.contains("AUTO NIL") {
             continue;
         }

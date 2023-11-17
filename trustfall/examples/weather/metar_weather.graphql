@@ -37,25 +37,26 @@ type RootSchemaQuery {
 }
 
 type MetarReport {
-    station_id: String!              # for airport stations, the 4-letter ICAO airport code: KBOS for Boston Logan
+    station_id: String!               # for airport stations, the 4-letter ICAO airport code: KBOS for Boston Logan
     raw_report: String!
 
     latitude: Float
     longitude: Float
 
-    wind_speed_kts: Int              # in knots
-    wind_direction: Int              # in degrees
-    wind_gusts_kts: Int              # in knots
+    wind_speed_kts: Int               # in knots
+    wind_direction: Int               # in degrees, if known
+    wind_direction_variable: Boolean  # true if the wind direction is inconsistent
+    wind_gusts_kts: Int               # in knots
 
-    temperature: Float               # in degrees C
-    dewpoint: Float                  # in degrees C
+    temperature: Float                # in degrees C
+    dewpoint: Float                   # in degrees C
 
-    visibility_unlimited: Boolean    # corresponds to visibility 9999
-    visibility_minimal: Boolean      # corresponds to visibility 0000
-    visibility_statute_mi: Int       # in statute miles (the "usual" miles, not nautical miles)
+    visibility_unlimited: Boolean     # corresponds to visibility 9999
+    visibility_minimal: Boolean       # corresponds to visibility 0000
+    visibility_statute_mi: Float      # in statute miles (the "usual" miles, not nautical miles)
 
-    altimeter_in_hg: Float           # in inches of mercury
-    sea_level_pressure_mb: Float     # in milibars
+    altimeter_in_hg: Float            # in inches of mercury
+    sea_level_pressure_mb: Float      # in milibars
 
     cloud_cover: [MetarCloudCover!]
 }

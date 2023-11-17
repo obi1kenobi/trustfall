@@ -20,11 +20,11 @@ pub(crate) struct CsvMetarReport {
     pub(crate) temp_c: Option<f64>,
     pub(crate) dewpoint_c: Option<f64>,
 
-    pub(crate) wind_dir_degrees: Option<u16>,
+    pub(crate) wind_dir_degrees: Option<String>,
     pub(crate) wind_speed_kt: Option<u16>,
     pub(crate) wind_gust_kt: Option<u16>,
 
-    pub(crate) visibility_statute_mi: Option<f64>,
+    pub(crate) visibility_statute_mi: Option<String>,
 
     pub(crate) altim_in_hg: Option<f64>,
     pub(crate) sea_level_pressure_mb: Option<f64>,
@@ -127,6 +127,7 @@ pub(crate) struct MetarReport {
 
     pub(crate) wind_speed_kts: Option<u16>,
     pub(crate) wind_direction: Option<u16>,
+    pub(crate) wind_direction_variable: Option<bool>,
     pub(crate) wind_gusts_kts: Option<u16>,
 
     pub(crate) temperature: Option<f64>,
@@ -174,13 +175,26 @@ impl From<CsvMetarReport> for MetarReport {
         let visibility_statute_mi = match visibility {
             Visibility::StatuteMiles(visibility_mi) => Some(visibility_mi),
             Visibility::Minimal | Visibility::Unlimited => None,
-            Visibility::Unknown => csv_metar.visibility_statute_mi,
+            Visibility::Unknown => None,
         };
         let (visibility_unlimited, visibility_minimal) = match visibility {
             Visibility::StatuteMiles(_) => (Some(false), Some(false)),
             Visibility::Unlimited => (Some(true), Some(false)),
             Visibility::Minimal => (Some(false), Some(true)),
             Visibility::Unknown => (None, None),
+        };
+
+        let (wind_direction, wind_direction_variable) = match csv_metar.wind_dir_degrees.as_deref()
+        {
+            Some("VRB") => (None, Some(true)),
+            Some(number) => match number.parse() {
+                Ok(direction) => (Some(direction), Some(false)),
+                Err(e) => {
+                    eprintln!("failed to parse wind direction: {e}");
+                    (None, None)
+                }
+            },
+            None => (None, None),
         };
 
         Self {
@@ -190,7 +204,8 @@ impl From<CsvMetarReport> for MetarReport {
             latitude: csv_metar.latitude,
             longitude: csv_metar.longitude,
             wind_speed_kts: csv_metar.wind_speed_kt,
-            wind_direction: csv_metar.wind_dir_degrees,
+            wind_direction,
+            wind_direction_variable,
             wind_gusts_kts: csv_metar.wind_gust_kt,
             temperature: csv_metar.temp_c,
             dewpoint: csv_metar.dewpoint_c,
@@ -240,7 +255,7 @@ fn get_visibility(raw_metar: &str) -> Visibility {
     if let Some(capture) = regex.captures(raw_metar) {
         match capture[1].trim() {
             "0000" => Visibility::Minimal,
-            "9999" | "CAVOK" => Visibility::Unlimited,
+            "9999" | "CAVOK" | "10+" => Visibility::Unlimited,
             "////" | "////SM" => Visibility::Unknown,
             visibility_sm if visibility_sm.ends_with("SM") => {
                 let visibility_amount = visibility_sm.strip_suffix("SM").unwrap();
