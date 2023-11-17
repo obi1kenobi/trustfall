@@ -1,0 +1,19 @@
+diff --git a/esm/vs/editor/standalone/common/monarch/monarchLexer.js b/esm/vs/editor/standalone/common/monarch/monarchLexer.js
+index 87c871b0ebba2efcce701462ba4e54ed2c1a9071..41f6fdd2fc0ed4102bedd8658bdb6bcd8e944c40 100644
+--- a/esm/vs/editor/standalone/common/monarch/monarchLexer.js
++++ b/esm/vs/editor/standalone/common/monarch/monarchLexer.js
+@@ -623,9 +623,11 @@ let MonarchTokenizer = MonarchTokenizer_1 = class MonarchTokenizer extends Dispo
+                         }
+                     }
+                 }
+-                if (action.log && typeof (action.log) === 'string') {
+-                    monarchCommon.log(this._lexer, this._lexer.languageId + ': ' + monarchCommon.substituteMatches(this._lexer, action.log, matched, matches, state));
+-                }
++                // Stop logging messages like 'graphql: graphql: annotation token: @filter'
++                //
++                // if (action.log && typeof (action.log) === 'string') {
++                //     monarchCommon.log(this._lexer, this._lexer.languageId + ': ' + monarchCommon.substituteMatches(this._lexer, action.log, matched, matches, state));
++                // }
+             }
+             // check result
+             if (result === null) {

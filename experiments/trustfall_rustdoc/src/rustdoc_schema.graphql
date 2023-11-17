@@ -52,6 +52,11 @@ type Crate {
   includes_private: Boolean!
   format_version: Int!
 
+  """
+  The top-level module of the crate, in which everything else in the crate is contained.
+  """
+  root_module: Module!
+
   item: [Item!]
 }
 
@@ -73,12 +78,104 @@ interface Item {
   """
   attrs: [String!]!
 
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   # stringified version of the visibility struct field
   visibility_limit: String!
 
   attribute: [Attribute!]
   span: Span
 }
+
+"""
+https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
+https://docs.rs/rustdoc-types/0.16.0/rustdoc_types/struct.Module.html
+"""
+type Module implements Item & Importable {
+  # properties from Item
+  id: String!
+  crate_id: Int!
+  name: String
+  docs: String
+  attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
+  visibility_limit: String!
+
+  # own properties
+  is_stripped: Boolean!
+
+  # edges from Item
+  span: Span
+  attribute: [Attribute!]
+
+  # edges from Importable
+  importable_path: [ImportablePath!]
+  canonical_path: Path
+
+  # own edges
+  item: [Item!]!
+}
+
 
 """
 https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.Item.html
@@ -92,6 +189,38 @@ type Struct implements Item & Importable & ImplOwner {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # own properties
@@ -146,6 +275,38 @@ type StructField implements Item {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -165,6 +326,38 @@ type Enum implements Item & Importable & ImplOwner {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # own properties
@@ -218,6 +411,38 @@ interface Variant implements Item {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -240,6 +465,38 @@ type PlainVariant implements Item & Variant {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -262,6 +519,38 @@ type TupleVariant implements Item & Variant {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -284,6 +573,38 @@ type StructVariant implements Item & Variant {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -323,6 +644,38 @@ interface ImplOwner implements Item & Importable {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -370,6 +723,37 @@ type Impl implements Item {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
 
   # stringified version of the visibility struct field
   visibility_limit: String!
@@ -422,6 +806,38 @@ type Trait implements Item & Importable {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # own properties
@@ -471,6 +887,24 @@ type ImportablePath {
   visibility_limit: String!
 
   """
+  This path is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This path is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  This path should be treated as public API. This is true if either:
+  - The path is visible in documentation.
+  - The path is not visible and is deprecated,
+    since deprecated paths are assumed to have been part of the public API in the past.
+  """
+  public_api: Boolean!
+
+  """
   The path from which the item can be imported.
 
   For example: ["foo", "bar", "Baz"] for a type importable as foo::bar::Baz
@@ -503,6 +937,7 @@ interface FunctionLike {
 
   # own edges
   parameter: [FunctionParameter!]
+  abi: FunctionAbi!
 }
 
 """
@@ -511,6 +946,54 @@ https://docs.rs/rustdoc-types/0.11.0/rustdoc_types/struct.FnDecl.html
 """
 type FunctionParameter {
   name: String!
+}
+
+"""
+The ABI of a function, method, or function pointer.
+
+It defines the calling convention for those functions, including whether unwinding across
+the call boundary is supported. More info: https://rust-lang.github.io/rfcs/2945-c-unwind-abi.html
+
+The list of supported ABIs is here:
+https://github.com/rust-lang/rust/blob/557359f92512ca88b62a602ebda291f17a953002/compiler/rustc_target/src/spec/abi.rs#L74-L110
+
+Backed by:
+https://docs.rs/rustdoc-types/latest/rustdoc_types/enum.Abi.html
+"""
+type FunctionAbi {
+    """
+    The name of the ABI, with any `"-unwind"` modifier stripped.
+
+    To get the ABI name directly as it would appear in a Rust source file,
+    use the `raw_name` property instead.
+
+    For example, a function defined as `extern "C-unwind" fn example()` would
+    have `name = "C"` and `raw_name = "C-unwind"`.
+
+    Functions with no specified ABI by default have an ABI named `"Rust"`.
+    """
+    name: String!
+
+    """
+    The raw name of the ABI, as it would appear in a Rust source file.
+
+    For example: "C-unwind" or "thiscall-unwind"
+
+    Functions with no specified ABI by default have an ABI named `"Rust"`.
+    """
+    raw_name: String!
+
+    """
+    Whether unwinding across this call is supported.
+
+    If encountering an unknown ABI, this value will be `null` due to unknown unwind semantics.
+
+    Unwind ability is specified in rustc here:
+    https://github.com/rust-lang/rust/blob/557359f92512ca88b62a602ebda291f17a953002/compiler/rustc_middle/src/ty/layout.rs#L1422-L1488
+
+    More info: https://rust-lang.github.io/rfcs/2945-c-unwind-abi.html
+    """
+    unwind: Boolean
 }
 
 """
@@ -525,6 +1008,38 @@ type Function implements Item & FunctionLike & Importable {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # properties from FunctionLike
@@ -532,12 +1047,37 @@ type Function implements Item & FunctionLike & Importable {
   unsafe: Boolean!
   async: Boolean!
 
+  # own properties
+  """
+  The unmangled or explicitly-specified export name of this item, if any.
+
+  Export names are defined using the `#[export_name]` or `#[no_mangle]` attributes.
+
+  For example:
+  - The following function has `export_name = "example"`:
+    ```rust
+    #[no_mangle]
+    extern "C" fn example() {}
+    ```
+  - The following function has `export_name = "other"`:
+    ```rust
+    #[export_name = "other"]
+    extern "C" fn example() {}
+    ```
+
+  More info:
+  https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
+  https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute
+  """
+  export_name: String
+
   # edges from Item
   span: Span
   attribute: [Attribute!]
 
   # edges from FunctionLike
   parameter: [FunctionParameter!]
+  abi: FunctionAbi!
 
   # edges from Importable
   importable_path: [ImportablePath!]
@@ -556,6 +1096,38 @@ type Method implements Item & FunctionLike {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # properties from FunctionLike
@@ -569,6 +1141,7 @@ type Method implements Item & FunctionLike {
 
   # edges from FunctionLike
   parameter: [FunctionParameter!]
+  abi: FunctionAbi!
 }
 
 """
@@ -583,6 +1156,38 @@ interface GlobalValue implements Item & Importable {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # edges from Item
@@ -606,7 +1211,96 @@ type Constant implements Item & Importable & GlobalValue {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
+
+  # properties for Constant
+  """
+  The expression of the constant, if any, as a Rust literal or `"_"`. For example:
+  ```rust
+  //                                 // expr
+  const MIN     : usize = 16       ; // 16
+  const MIN_SIZE: usize = MIN      ; // "MIN", referring to the other constant's name
+  const LOG_AS  : &str  = "batch"  ; // "\"batch\"", including escaped quotes
+  const YEAR    : Years = Years(42); // "_"
+  const EXPR_2_2: i32   = 2 + 2    ; // "_"
+  const FN_FIVE : i32   = five()   ; // "_"
+  const fn five() -> i32 { 5 };
+  struct Years(i32);
+  ```
+
+  If the constant is set:
+
+    - to be equal to another constant, `expr` holds the name of that other constant.
+    - by evaluating a `const` expression, such as `2 + 2` or a `const fn` call, `expr` is `"_"` instead of including the full expression.
+  """
+  expr: String
+  """
+  The value of the constant, if any, as a Rust literal. For example:
+  ```rust
+  //                                 // value
+  const MIN     : usize = 16       ; // "16usize"
+  const MIN_SIZE: usize = MIN      ; // "16usize"
+  const LOG_AS  : &str  = "batch"  ; // None
+  const YEAR    : Years = Years(42); // None
+  const EXPR_2_2: i32   = 2 + 2    ; // "4i32"
+  const FN_FIVE : i32   = five()   ; // "5i32"
+  const fn five() -> i32 { 5 };
+  struct Years(i32);
+  ```
+
+  If the constant is set:
+
+    - to be equal to another constant, `value` holds the value of that other constant.
+    - by evaluating a `const` expression, such as `2 + 2` or a `const fn` call, `value` is evaluated
+  """
+  value: String
+  """
+  The literal flag of the constant. For example:
+  ```rust
+  //                                 // is_literal
+  const MIN     : usize = 16       ; // true
+  const MIN_SIZE: usize = MIN      ; // false
+  const LOG_AS  : &str  = "batch"  ; // true
+  const YEAR    : Years = Years(42); // false
+  const EXPR_2_2: i32   = 2 + 2    ; // false
+  const FN_FIVE : i32   = five()   ; // false
+  const fn five() -> i32 { 5 };
+  struct Years(i32);
+  ```
+  """
+  is_literal: Boolean
 
   # edges from Item
   span: Span
@@ -629,6 +1323,38 @@ type Static implements Item & Importable & GlobalValue {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # own properties
@@ -743,6 +1469,38 @@ type AssociatedType implements Item {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # properties for AssociatedType
@@ -787,35 +1545,65 @@ type AssociatedConstant implements Item {
   name: String
   docs: String
   attrs: [String!]!
+
+  """
+  This item is hidden in documentation.
+  """
+  doc_hidden: Boolean!
+
+  """
+  This item is deprecated.
+  """
+  deprecated: Boolean!
+
+  """
+  Whether this item is eligible to be in the public API. This is true if both:
+  - The item is public, either explicitly (`pub`) or implicitly (like enum variants).
+  - The item is visible in documentation, or is not visible but is deprecated,
+    since deprecated items are assumed to have been part of the public API in the past.
+
+  Being eligible to be part of the public API *does not* make an item public API!
+  An item that is not eligible by itself cannot be part of the public API,
+  but eligible items might not be public API -- for example, pub-in-priv items
+  (public items in a private module) are eligible but not public API. Another example
+  would be a public item that is only reachable via modules that are both
+  `#[doc(hidden)]` and not deprecated.
+
+  To check whether an item is part of the public API:
+  - For items that are legal in a `use` import statement, use the `importable_path` edge and the
+    path's `public_api` property.
+  - For all other items (e.g. struct fields), first check whether that parent item is public API
+    as above, and then check whether the item itself is `public_api_eligible`.
+  """
+  public_api_eligible: Boolean!
+
   visibility_limit: String!
 
   # properties for AssociatedConstant
   """
-  The constant's default value, if any, as a Rust literal, expression, or `"_"`.
+  The default value of the constant, if any, as a Rust literal, expression, or `"_"`.
 
   For example:
   ```rust
-  trait BatchIterator<const MIN: usize> {
-    const SIZE: usize = 16;  // `"16"` is the default
-
-    // `"\"batch\""` is the default, including escaped quotes
-    const LOG_AS: &'static str = "batch";
-
-    // "MIN" is the default, referring to the other constant's name
-    const MIN_SIZE: usize = MIN;
+  const fn five() -> i32 { 5 };
+  struct Years(i32);
+  trait MyTrait<const MIN: usize> {           // rustdocs default field
+    const NUM     : i32          = 16       ; // 16
+    const MIN_SIZE: usize        = MIN      ; // "MIN", referring to the other constant's name
+    const LOG_AS  : &'static str = "batch"  ; // "\"batch\"", including escaped quotes
+    const EXPR2_2 : i32          = 2+2      ; // "_"
+    const FN_FIVE : i32          = five()   ; // "_"
+    const YEAR    : Years        = Years(42); // "_"
   }
   ```
 
-  If the associated constant is on a type's inherent impl, the default
-  is always required to be set.
+  If the associated constant is on a type's inherent impl, `default` is always required to be set.
 
-  If the associated constant is set to be equal to another constant,
-  the default holds the name of that other constant.
+  If the associated constant is set:
 
-  If the associated constant is set by evaluating a `const` expression,
-  such as `2 + 2` or a `const fn` call, rustdoc's current behavior is
-  to show a default value of `"_"` instead of evaluating
-  the constant value or including the full expression.
+    - to be equal to another constant, `default` holds the name of that other constant.
+    - by evaluating a `const` expression, such as `2 + 2` or a `const fn` call,
+      `default` is `"_"` instead of evaluating the constant value or including the full expression.
   """
   default: String
 
