@@ -83,7 +83,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check semver
-        uses: obi1kenobi/cargo-semver-checks-action@v1
+        uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          crate-name: "${{ inputs.crate-name }}"
-          version-tag-prefix: "${{ inputs.crate-name }}-v"
+          package: "${{ inputs.crate-name }}"
