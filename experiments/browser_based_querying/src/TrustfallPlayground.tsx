@@ -268,26 +268,6 @@ export default function TrustfallPlayground(props: TrustfallPlaygroundProps): JS
           },
           automaticLayout: true,
         },
-        {
-          storageService: {
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
-            get() {},
-            // Workaround to expand suggestion docs by default. See: https://stackoverflow.com/a/59040199
-            getBoolean(key: string) {
-              if (key === 'expandSuggestionDocs') return true;
-
-              return false;
-            },
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
-            remove() {},
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
-            store() {},
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
-            onWillSaveState() {},
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
-            onDidChangeStorage() {},
-          },
-        }
       );
 
       const varsEditor = monaco.editor.create(varsEditorRef.current, {

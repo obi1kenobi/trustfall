@@ -1,5 +1,5 @@
 diff --git a/esm/interface/getAutocompleteSuggestions.js b/esm/interface/getAutocompleteSuggestions.js
-index ac159d132d095a789b966627d315f4238c79ab60..1d6f624a8ad888ebbe8aa9092feb845a7d8205b0 100644
+index d9b7d42daefd3b139434701f30bbbf3f9e1b2689..87dc25df38f2475d4c67e2470f008b174ae8edda 100644
 --- a/esm/interface/getAutocompleteSuggestions.js
 +++ b/esm/interface/getAutocompleteSuggestions.js
 @@ -63,6 +63,8 @@ const hasTypeSystemDefinitions = (sdl) => {
@@ -36,16 +36,3 @@ index ac159d132d095a789b966627d315f4238c79ab60..1d6f624a8ad888ebbe8aa9092feb845a
      }
      return [];
  }
-diff --git a/esm/interface/getDiagnostics.js b/esm/interface/getDiagnostics.js
-index 38a10439b1a5d7e7adbdd3e16c743a9cedff9dab..c699c3166cf458a5f9e85a794591fd445e843821 100644
---- a/esm/interface/getDiagnostics.js
-+++ b/esm/interface/getDiagnostics.js
-@@ -90,7 +90,7 @@ export function getRange(location, queryText) {
-     const lines = queryText.split('\n');
-     invariant(lines.length >= location.line, 'Query text must have more lines than where the error happened');
-     let stream = null;
--    for (let i = 0; i < location.line; i++) {
-+    for (let i = 0; i <= location.line; i++) { // fix console error spam from hovering a comment on the first line of a file by properly visiting the first line of a file
-         stream = new CharacterStream(lines[i]);
-         while (!stream.eol()) {
-             const style = parser.token(stream, state);
