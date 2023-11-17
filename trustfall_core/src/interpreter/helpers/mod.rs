@@ -236,12 +236,12 @@ pub fn resolve_coercion_using_schema<
 macro_rules! field_property {
     // If the data is a field directly on the vertex type.
     ($field:ident) => {
-        |vertex| -> $crate::ir::value::FieldValue { vertex.$field.clone().into() }
+        move |vertex| -> $crate::ir::value::FieldValue { vertex.$field.clone().into() }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
     ($conversion:ident, $field:ident) => {
-        |vertex| -> $crate::ir::value::FieldValue {
+        move |vertex| -> $crate::ir::value::FieldValue {
             let vertex = vertex.$conversion().unwrap_or_else(|| {
                 panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
             });
@@ -251,7 +251,7 @@ macro_rules! field_property {
     // Supply a block to post-process the field's value.
     // Use the field's name inside the block.
     ($conversion:ident, $field:ident, $b:block) => {
-        |vertex| -> $crate::ir::value::FieldValue {
+        move |vertex| -> $crate::ir::value::FieldValue {
             let $field = &vertex
                 .$conversion()
                 .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
@@ -313,6 +313,48 @@ macro_rules! field_property {
 /// }
 /// ```
 ///
+/// If the function to be called requires additional arguments, they can be specified
+/// as part of naming the function and the argument values will be moved into the generated closure.
+/// ```rust
+/// # use std::rc::Rc;
+/// # use trustfall_core::{
+/// #     accessor_property,
+/// #     field_property,
+/// #     interpreter::{
+/// #         ContextIterator,
+/// #         ContextOutcomeIterator,
+/// #         helpers::resolve_property_with,
+/// #     },
+/// #     ir::FieldValue,
+/// # };
+/// #[derive(Debug, Clone)]
+/// struct User {
+///     // ...
+/// }
+///
+/// impl User {
+///     pub fn age(&self, current_year: i64) -> i64 {
+///         // Some calculation
+///         # let age = 69;
+///         age
+///     }
+/// }
+///
+/// // In implementation of `BasicAdapter`
+/// fn resolve_property(
+///     // &mut self,
+///     contexts: ContextIterator<'static, User>,
+///     type_name: &str,
+///     property_name: &str,
+/// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
+///     match (type_name, property_name) {
+///         ("User", "age") => resolve_property_with(contexts, accessor_property!(age(2024))),
+///         // ...
+///         _ => unreachable!()
+///     }
+/// }
+/// ```
+///
 /// The usage of conversion functions and possible extra processing with a code
 /// block is analogous to the ones used with
 /// [`field_property!`](crate::field_property).
@@ -322,25 +364,48 @@ macro_rules! accessor_property {
     ($accessor:ident) => {
         |vertex| -> $crate::ir::value::FieldValue { vertex.$accessor().clone().into() }
     };
+    // Same as above, but if the accessor also takes arguments.
+    ($accessor:ident($($arg:expr),* $(,)?)) => {
+        |vertex| -> $crate::ir::value::FieldValue { vertex.$accessor($($arg),*).clone().into() }
+    };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before using the accessor.
     ($conversion:ident, $accessor:ident) => {
-        |vertex| -> $crate::ir::value::FieldValue {
+        move |vertex| -> $crate::ir::value::FieldValue {
             let vertex = vertex.$conversion().unwrap_or_else(|| {
                 panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
             });
             vertex.$accessor().clone().into()
         }
     };
+    // If the function we're calling isn't a plain accessor, but instead takes extra arguments.
+    ($conversion:ident, $accessor:ident($($arg:expr),* $(,)?)) => {
+        move |vertex| -> $crate::ir::value::FieldValue {
+            let vertex = vertex.$conversion().unwrap_or_else(|| {
+                panic!("conversion failed, unexpected vertex kind: {vertex:#?}")
+            });
+            vertex.$accessor($($arg),*).clone().into()
+        }
+    };
     // Supply a block to post-process the field's value.
     // The accessor's value is assigned to a variable with the same name as the accessor,
     // and is available as such inside the block.
     ($conversion:ident, $accessor:ident, $b:block) => {
-        |vertex| -> $crate::ir::value::FieldValue {
+        move |vertex| -> $crate::ir::value::FieldValue {
             let $accessor = vertex
                 .$conversion()
                 .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
                 .$accessor();
+            $b
+        }
+    };
+    // Supply a block as above, and also pass extra arguments to the "accessor" function as above.
+    ($conversion:ident, $accessor:ident($($arg:expr),* $(,)?), $b:block) => {
+        move |vertex| -> $crate::ir::value::FieldValue {
+            let $accessor = vertex
+                .$conversion()
+                .unwrap_or_else(|| panic!("conversion failed, unexpected vertex kind: {vertex:#?}"))
+                .$accessor($($arg),*);
             $b
         }
     };
