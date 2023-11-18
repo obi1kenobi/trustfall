@@ -515,8 +515,8 @@ pub trait Adapter<'vertex> {
     /// - Any parameters the edge requires per the schema have values provided.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
-    /// [schema]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L35
-    /// [method]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/adapter.rs#L128-L134
+    /// [schema]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L128-L134
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
@@ -578,9 +578,9 @@ pub trait Adapter<'vertex> {
     /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
-    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L35
-    /// [property]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L44
-    /// [method]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/adapter.rs#L151
+    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
+    /// [property]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L44
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L151
     /// [resolve-property]: helpers::resolve_property_with
     /// [field-property]: crate::field_property
     /// [accessor-property]: crate::accessor_property
@@ -651,9 +651,9 @@ pub trait Adapter<'vertex> {
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-usernames-and-karma-points-of-the-folks*l*3-who-submitted-the-latest-stories-on-HackerNews.*lquery---0Latest---2byUser---4id-*o*l--_4karma-*o*l--_2--*0*J*l*J&v=--0*l*J
-    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L37
-    /// [edge]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L73
-    /// [method]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/adapter.rs#L225
+    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L37
+    /// [edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L73
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L225
     /// [resolve-neighbors]: helpers::resolve_neighbors_with
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
@@ -721,9 +721,9 @@ pub trait Adapter<'vertex> {
     /// - When a context's active vertex is `None`, its coercion outcome is `false`.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-title-of-stories-on-the-HN-front-page.*l*3-Discards-any-non*-story-items-on-the-front-page*L*l*3-such-as-job-postings-or-polls.*lquery---0FrontPage---2*E-Story---4title-*o*l--_2--*0*J*l*J&v=--0*l*J
-    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L35
-    /// [subtype]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/hackernews.graphql#L58
-    /// [method]: https://github.com/obi1kenobi/trustfall/blob/722f5fa6263a85ba0f376b2a5942d5a6ec17926d/trustfall/examples/hackernews/adapter.rs#L377
+    /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
+    /// [subtype]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L58
+    /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L377
     /// [resolve-schema]: helpers::resolve_coercion_using_schema
     /// [resolve-basic]: helpers::resolve_coercion_with
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
