@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    sync::Arc, pin::Pin,
+    sync::Arc, pin::Pin, task::Poll,
 };
 
 use futures::{StreamExt as _, Stream};
@@ -33,6 +33,18 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
 ) -> Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>, QueryArgumentsError>
 {
+    interpret_ir_async(adapter, indexed_query, arguments).map(|stream| -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
+        Box::new(super::TokioHandleStreamToIter(stream))
+    })
+}
+
+#[allow(clippy::type_complexity)]
+pub fn interpret_ir_async<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+    adapter: Arc<AdapterT>,
+    indexed_query: Arc<IndexedQuery>,
+    arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
+) -> Result<Pin<Box<dyn Stream<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>>, QueryArgumentsError>
+{
     let query = InterpretedQuery::from_query_and_arguments(indexed_query, arguments)?;
     let root_vid = query.indexed_query.ir_query.root_component.root;
 
@@ -44,7 +56,7 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 
     let resolve_info = ResolveInfo::new(query.clone(), root_vid, false);
 
-    let mut iterator: ContextStream<'query, Pin<AdapterT::Vertex> = Box::new>(
+    let mut iterator: Pin<ContextStream<'query, AdapterT::Vertex>> = Box::pin(
         adapter
             .resolve_starting_vertices(root_edge, root_edge_parameters, &resolve_info)
             .map(|x| DataContext::new(Some(x))),
@@ -84,8 +96,8 @@ fn perform_coercion<'query, AdapterT: AsyncAdapter<'query>>(
     let coercion_iter = adapter.resolve_coercion(iterator, coerced_from, coerce_to, &resolve_info);
     carrier.query = Some(resolve_info.into_inner());
 
-    Box::new(coercion_iter.filter_map(
-        |(ctx, can_coerce)| {
+    Box::pin(coercion_iter.filter_map(
+        |(ctx, can_coerce)| async {
             if can_coerce {
                 Some(ctx)
             } else {
@@ -184,7 +196,7 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
-) -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
+) -> Pin<Box<dyn Stream<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>> {
     let mut query = carrier.query.take().expect("query was not returned");
 
     let root_component = query.indexed_query.ir_query.root_component.clone();
@@ -895,7 +907,7 @@ fn compute_local_field<'query, AdapterT: AsyncAdapter<'query>>(
 
 struct EdgeExpander<'query, Vertex: Clone + Debug + 'query> {
     context: DataContext<Vertex>,
-    neighbors: VertexIterator<'query, Vertex>,
+    neighbors: Pin<VertexStream<'query, Vertex>>,
     is_optional_edge: bool,
     has_neighbors: bool,
     neighbors_ended: bool,
@@ -905,7 +917,7 @@ struct EdgeExpander<'query, Vertex: Clone + Debug + 'query> {
 impl<'query, Vertex: Clone + Debug + 'query> EdgeExpander<'query, Vertex> {
     pub fn new(
         context: DataContext<Vertex>,
-        neighbors: VertexIterator<'query, Vertex>,
+        neighbors: Pin<VertexStream<'query, Vertex>>,
         is_optional_edge: bool,
     ) -> EdgeExpander<'query, Vertex> {
         EdgeExpander {
@@ -919,19 +931,22 @@ impl<'query, Vertex: Clone + Debug + 'query> EdgeExpander<'query, Vertex> {
     }
 }
 
-impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, Vertex> {
+impl<'query, Vertex: Clone + Debug + 'query> Stream for EdgeExpander<'query, Vertex> {
     type Item = DataContext<Vertex>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
         if self.ended {
-            return None;
+            return Poll::Ready(None);
         }
 
         if !self.neighbors_ended {
-            let neighbor = self.neighbors.next();
+            let neighbor = match self.neighbors.poll_next_unpin(cx) {
+                Poll::Ready(neighbor) => neighbor,
+                Poll::Pending => return Poll::Pending,
+            };
             if neighbor.is_some() {
                 self.has_neighbors = true;
-                return Some(self.context.split_and_move_to_vertex(neighbor));
+                return Poll::Ready(Some(self.context.split_and_move_to_vertex(neighbor)));
             } else {
                 self.neighbors_ended = true;
             }
@@ -954,9 +969,9 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
         // The other case where we have to return a context with no active vertex is when
         // we have a current vertex, but the edge we're traversing is optional and does not exist.
         if self.context.active_vertex.is_none() || (!self.has_neighbors && self.is_optional_edge) {
-            Some(self.context.split_and_move_to_vertex(None))
+            Poll::Ready(Some(self.context.split_and_move_to_vertex(None)))
         } else {
-            None
+            Poll::Ready(None)
         }
     }
 }
@@ -1208,12 +1223,15 @@ impl<'query, Vertex: Clone + Debug + 'query> RecursiveEdgeExpander<'query, Verte
     }
 }
 
-impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<'query, Vertex> {
+impl<'query, Vertex: Clone + Debug + 'query> Stream for RecursiveEdgeExpander<'query, Vertex> {
     type Item = DataContext<Vertex>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
         if !self.neighbors_ended {
-            let neighbor = self.neighbors.next();
+            let neighbor = match self.neighbors.poll_next_unpin(cx) {
+                Poll::Ready(neighbor) => neighbor,
+                Poll::Pending => return Poll::Pending,
+            };
 
             if let Some(vertex) = neighbor {
                 if let Some(context) = self.context.take() {
@@ -1227,13 +1245,13 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
                         .piggyback
                         .get_or_insert_with(Default::default)
                         .push(context.ensure_suspended());
-                    return Some(neighbor_context);
+                    return Poll::Ready(Some(neighbor_context));
                 } else {
                     // The "self" vertex has already been moved out, so use the neighbor base context
                     // as the starting point for constructing a new context.
-                    return Some(
+                    return Poll::Ready(Some(
                         self.neighbor_base.as_ref().unwrap().split_and_move_to_vertex(Some(vertex)),
-                    );
+                    ));
                 }
             } else {
                 self.neighbors_ended = true;
@@ -1249,7 +1267,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
             }
         }
 
-        self.context.take()
+        std::task::Poll::Ready(self.context.take())
     }
 }
 
@@ -1354,7 +1372,7 @@ mod tests {
         use crate::{
             interpreter::{
                 execution::interpret_ir, Adapter, AsVertex, ContextStream,
-                ContextOutcomeStream, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+                ContextOutcomeStream, ResolveEdgeInfo, ResolveInfo, VertexIterator, ContextIterator, ContextOutcomeIterator,
             },
             ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
@@ -1445,11 +1463,11 @@ mod tests {
 
             fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextStream<'a, V>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 property_name: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeStream<'a, V, FieldValue> {
+            ) -> ContextOutcomeIterator<'a, V, FieldValue> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1465,12 +1483,12 @@ mod tests {
 
             fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextStream<'a, V>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 edge_name: &Arc<str>,
                 parameters: &EdgeParameters,
                 resolve_info: &ResolveEdgeInfo,
-            ) -> ContextOutcomeStream<'a, V, VertexIterator<'a, Self::Vertex>> {
+            ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1487,11 +1505,11 @@ mod tests {
 
             fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextStream<'a, V>,
+                contexts: ContextIterator<'a, V>,
                 type_name: &Arc<str>,
                 coerce_to_type: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeStream<'a, V, bool> {
+            ) -> ContextOutcomeIterator<'a, V, bool> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
