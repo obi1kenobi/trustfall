@@ -18,7 +18,7 @@ use crate::{
 use super::{
     error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextStream,
     ContextOutcomeStream, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
-    TaggedValue, ValueOrVec, VertexIterator, AsyncAdapter, ContextStream, ContextOutcomeStream, VertexStream,
+    TaggedValue, ValueOrVec, AsyncAdapter, VertexStream,
 };
 
 #[derive(Debug, Clone)]
@@ -370,14 +370,11 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     result
 }
 
-fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
-    iterator: Pin<ContextStream<'query, Vertex>>,
+async fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
+    mut iterator: Pin<ContextStream<'query, Vertex>>,
     max_fold_count_limit: &Option<usize>,
     min_fold_count_limit: &Option<usize>,
 ) -> Option<Vec<DataContext<Vertex>>> {
-    // TODO: HACK, we shouldn't need to do this, this should be an async fn instead
-    let mut iterator = super::TokioHandleStreamToIter(iterator);
-
     // If we must collect the fold up to our upperbound of `max_fold_count_limit`,
     // then we won't use our lowerbound of `min_fold_count_limit`, as by definition
     // the upperbound will be larger than the lowerbound.
@@ -394,7 +391,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
 
         let mut stopped_early = false;
         for _ in 0..*max_fold_count_limit {
-            if let Some(element) = iterator.next() {
+            if let Some(element) = iterator.next().await {
                 fold_elements.push(element);
             } else {
                 stopped_early = true;
@@ -402,7 +399,7 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
             }
         }
 
-        if !stopped_early && iterator.next().is_some() {
+        if !stopped_early && iterator.next().await.is_some() {
             // There are more elements than the max size allowed by the filters on this fold.
             // It's going to get filtered out anyway, so we can avoid materializing the rest.
             return None;
@@ -413,10 +410,10 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
         let collected = match min_fold_count_limit {
             // Some queries may be able to be optimized by only partially expanding the fold,
             // just enough to check any filters that may be applied to the fold count.
-            Some(min_fold_count_limit) => iterator.take(*min_fold_count_limit).collect(),
+            Some(min_fold_count_limit) => iterator.take(*min_fold_count_limit).collect().await,
             // We weren't able to find any early-termination condition for materializing the fold,
             // so materialize the whole thing and return it.
-            _ => iterator.collect(),
+            _ => iterator.collect().await,
         };
 
         Some(collected)
@@ -568,7 +565,7 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         let fold_elements = if fold_exists {
             // N.B.: Note the `?` at the end here!
             //       This lets us early-discard folds that failed a post-processing filter.
-            Some(collect_fold_elements(computed_iterator, &max_fold_size, &min_fold_size)?)
+            Some(collect_fold_elements(computed_iterator, &max_fold_size, &min_fold_size).await?)
         } else {
             None
         };
@@ -688,7 +685,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                 }));
             }
 
-            for mut folded_context in output_iterator {
+            output_iterator.for_each(|mut folded_context| async {
                 for (key, value) in folded_context.folded_values {
                     folded_values
                         .entry(key)
@@ -714,7 +711,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                         .expect("not a Vec")
                         .push(ValueOrVec::Value(value));
                 }
-            }
+            });
         };
 
         let prior_folded_values_count = ctx.folded_values.len();
