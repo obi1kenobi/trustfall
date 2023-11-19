@@ -1,8 +1,10 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    sync::Arc,
+    sync::Arc, pin::Pin,
 };
+
+use futures::{StreamExt as _, Stream};
 
 use crate::{
     ir::{
@@ -14,9 +16,9 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextIterator,
-    ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
-    TaggedValue, ValueOrVec, VertexIterator,
+    error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextStream,
+    ContextOutcomeStream, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
+    TaggedValue, ValueOrVec, VertexIterator, AsyncAdapter, ContextStream, ContextOutcomeStream, VertexStream,
 };
 
 #[derive(Debug, Clone)]
@@ -25,7 +27,7 @@ pub(super) struct QueryCarrier {
 }
 
 #[allow(clippy::type_complexity)]
-pub fn interpret_ir<'query, AdapterT: Adapter<'query> + 'query>(
+pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     indexed_query: Arc<IndexedQuery>,
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
@@ -42,7 +44,7 @@ pub fn interpret_ir<'query, AdapterT: Adapter<'query> + 'query>(
 
     let resolve_info = ResolveInfo::new(query.clone(), root_vid, false);
 
-    let mut iterator: ContextIterator<'query, AdapterT::Vertex> = Box::new(
+    let mut iterator: ContextStream<'query, Pin<AdapterT::Vertex> = Box::new>(
         adapter
             .resolve_starting_vertices(root_edge, root_edge_parameters, &resolve_info)
             .map(|x| DataContext::new(Some(x))),
@@ -55,12 +57,12 @@ pub fn interpret_ir<'query, AdapterT: Adapter<'query> + 'query>(
     Ok(construct_outputs(adapter.as_ref(), &mut carrier, iterator))
 }
 
-fn coerce_if_needed<'query, AdapterT: Adapter<'query>>(
+fn coerce_if_needed<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     vertex: &IRVertex,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     match vertex.coerced_from_type.as_ref() {
         None => iterator,
         Some(coerced_from) => {
@@ -69,14 +71,14 @@ fn coerce_if_needed<'query, AdapterT: Adapter<'query>>(
     }
 }
 
-fn perform_coercion<'query, AdapterT: Adapter<'query>>(
+fn perform_coercion<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     vertex: &IRVertex,
     coerced_from: &Arc<str>,
     coerce_to: &Arc<str>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let query = carrier.query.take().expect("query was not returned");
     let resolve_info = ResolveInfo::new(query, vertex.vid, false);
     let coercion_iter = adapter.resolve_coercion(iterator, coerced_from, coerce_to, &resolve_info);
@@ -93,12 +95,12 @@ fn perform_coercion<'query, AdapterT: Adapter<'query>>(
     ))
 }
 
-fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
+fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
-    mut iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    mut iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let component_root_vid = component.root;
     let root_vertex = &component.vertices[&component_root_vid];
 
@@ -115,7 +117,7 @@ fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
         );
     }
 
-    iterator = Box::new(iterator.map(move |mut context| {
+    iterator = Box::pin(iterator.map(move |mut context| {
         context.record_vertex(component_root_vid);
         context
     }));
@@ -178,10 +180,10 @@ fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
     iterator
 }
 
-fn construct_outputs<'query, AdapterT: Adapter<'query>>(
+fn construct_outputs<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
 ) -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
     let mut query = carrier.query.take().expect("query was not returned");
 
@@ -196,7 +198,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
         let context_field = &root_component.outputs[output_name];
         let vertex_id = context_field.vertex_id;
 
-        let moved_iterator = Box::new(output_iterator.map(move |context| {
+        let moved_iterator = Box::pin(output_iterator.map(move |context| {
             let new_vertex = context.vertices[&vertex_id].clone();
             context.move_to_vertex(new_vertex)
         }));
@@ -212,7 +214,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
         );
         query = resolve_info.into_inner();
 
-        output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
+        output_iterator = Box::pin(field_data_iterator.map(|(mut context, value)| {
             context.values.push(value);
             context
         }));
@@ -220,7 +222,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     let expected_output_names: BTreeSet<_> = query.indexed_query.outputs.keys().cloned().collect();
     carrier.query = Some(query);
 
-    Box::new(output_iterator.map(move |mut context| {
+    Box::pin(output_iterator.map(move |mut context| {
         assert!(
             context.values.len() == output_names.len(),
             "expected {output_names:?} but got {:?}",
@@ -357,10 +359,13 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
 }
 
 fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
-    mut iterator: ContextIterator<'query, Vertex>,
+    iterator: Pin<ContextStream<'query, Vertex>>,
     max_fold_count_limit: &Option<usize>,
     min_fold_count_limit: &Option<usize>,
 ) -> Option<Vec<DataContext<Vertex>>> {
+    // TODO: HACK, we shouldn't need to do this, this should be an async fn instead
+    let mut iterator = super::TokioHandleStreamToIter(iterator);
+
     // If we must collect the fold up to our upperbound of `max_fold_count_limit`,
     // then we won't use our lowerbound of `min_fold_count_limit`, as by definition
     // the upperbound will be larger than the lowerbound.
@@ -407,21 +412,21 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
 }
 
 #[allow(unused_variables)]
-fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
+fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     expanding_from: &IRVertex,
     parent_component: &IRQueryComponent,
     fold: Arc<IRFold>,
-    mut iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    mut iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     // Get any imported tag values needed inside the fold component or one of its subcomponents.
     for imported_field in fold.imported_tags.iter() {
         match &imported_field {
             FieldRef::ContextField(field) => {
                 let vertex_id = field.vertex_id;
-                let activated_vertex_iterator: ContextIterator<'query, AdapterT::Vertex> =
-                    Box::new(iterator.map(move |x| x.activate_vertex(&vertex_id)));
+                let activated_vertex_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> =
+                    Box::pin(iterator.map(move |x| x.activate_vertex(&vertex_id)));
 
                 let field_vertex = &parent_component.vertices[&field.vertex_id];
                 let type_name = &field_vertex.type_name;
@@ -438,7 +443,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                 carrier.query = Some(resolve_info.into_inner());
 
                 let cloned_field = imported_field.clone();
-                iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
+                iterator = Box::pin(context_and_value_iterator.map(move |(mut context, value)| {
                     // Check whether the tagged value is coming from an `@optional` scope
                     // that did not exist, in order to satisfy its filtering semantics.
                     let tag_value = if context.vertices[&vertex_id].is_some() {
@@ -453,7 +458,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             FieldRef::FoldSpecificField(fold_specific_field) => {
                 let cloned_field = imported_field.clone();
                 let fold_eid = fold_specific_field.fold_eid;
-                iterator = Box::new(
+                iterator = Box::pin(
                     compute_fold_specific_field_with_separate_value(
                         fold_specific_field.fold_eid,
                         &fold_specific_field.kind,
@@ -470,8 +475,8 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 
     // Get the initial vertices inside the folded scope.
     let expanding_from_vid = expanding_from.vid;
-    let activated_vertex_iterator: ContextIterator<'query, AdapterT::Vertex> =
-        Box::new(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
+    let activated_vertex_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> =
+        Box::pin(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
     let type_name = &expanding_from.type_name;
 
     let query = carrier.query.take().expect("query was not returned");
@@ -529,10 +534,10 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
         };
 
     let moved_fold = fold.clone();
-    let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
+    let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| async {
         let imported_tags = context.imported_tags.clone();
 
-        let neighbor_contexts = Box::new(neighbors.map(move |x| {
+        let neighbor_contexts = Box::pin(neighbors.map(move |x| {
             let mut ctx = DataContext::new(Some(x));
             ctx.imported_tags = imported_tags.clone();
             ctx
@@ -567,8 +572,8 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     });
 
     // Apply post-fold filters.
-    let mut post_filtered_iterator: ContextIterator<'query, AdapterT::Vertex> =
-        Box::new(folded_iterator);
+    let mut post_filtered_iterator: Pin<ContextStream<'query, AdapterT::Vertex>>=
+        Box::pin(folded_iterator);
     for post_fold_filter in fold.post_filters.iter() {
         post_filtered_iterator = apply_fold_specific_filter(
             adapter.as_ref(),
@@ -641,8 +646,8 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
             }
         } else {
             // Iterate through the elements of the fold and get the values we need.
-            let mut output_iterator: ContextIterator<'query, AdapterT::Vertex> = Box::new(
-                fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter(),
+            let mut output_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> = Box::pin(
+                futures::stream::iter(fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter()),
             );
             for output_name in output_names.iter() {
                 // This is a slimmed-down version of computing a context field:
@@ -650,7 +655,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                 // - it already knows that the context field is guaranteed to exist
                 let context_field = &fold.component.outputs[output_name.as_ref()];
                 let vertex_id = context_field.vertex_id;
-                let moved_iterator = Box::new(output_iterator.map(move |context| {
+                let moved_iterator = Box::pin(output_iterator.map(move |context| {
                     let new_vertex = context.vertices[&vertex_id].clone();
                     context.move_to_vertex(new_vertex)
                 }));
@@ -665,7 +670,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                 );
                 cloned_carrier.query = Some(resolve_info.into_inner());
 
-                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
+                output_iterator = Box::pin(field_data_iterator.map(|(mut context, value)| {
                     context.values.push(value);
                     context
                 }));
@@ -710,17 +715,17 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
         ctx
     });
 
-    Box::new(final_iterator)
+    Box::pin(final_iterator)
 }
 
-fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
+fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     filter: &Operation<LocalField, Argument>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let local_field = filter.left();
     let field_iterator =
         compute_local_field(adapter, carrier, component, current_vid, local_field, iterator);
@@ -735,17 +740,17 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     )
 }
 
-fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
+fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     fold: &IRFold,
     current_vid: Vid,
     filter: &Operation<FoldSpecificFieldKind, Argument>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let fold_specific_field = filter.left();
-    let field_iterator = Box::new(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
+    let field_iterator = Box::pin(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
         let value = match tagged_value {
             TaggedValue::Some(value) => value,
             TaggedValue::NonexistentOptional => {
@@ -768,15 +773,15 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
 
 pub(super) fn compute_context_field_with_separate_value<
     'query,
-    AdapterT: Adapter<'query>,
+    AdapterT: AsyncAdapter<'query>,
     V: AsVertex<AdapterT::Vertex> + 'query,
 >(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     context_field: &ContextField,
-    iterator: Box<dyn Iterator<Item = DataContext<V>> + 'query>,
-) -> Box<dyn Iterator<Item = (DataContext<V>, TaggedValue)> + 'query> {
+    iterator: Pin<Box<dyn Stream<Item = DataContext<V>> + 'query>>,
+) -> Pin<Box<dyn Stream<Item = (DataContext<V>, TaggedValue)> + 'query>> {
     let vertex_id = context_field.vertex_id;
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
@@ -793,7 +798,7 @@ pub(super) fn compute_context_field_with_separate_value<
 
         let context_and_value_iterator = adapter
             .resolve_property(
-                Box::new(moved_iterator),
+                Box::pin(moved_iterator),
                 type_name,
                 &context_field.field_name,
                 &resolve_info,
@@ -813,12 +818,12 @@ pub(super) fn compute_context_field_with_separate_value<
             });
         carrier.query = Some(resolve_info.into_inner());
 
-        Box::new(context_and_value_iterator)
+        Box::pin(context_and_value_iterator)
     } else {
         // This context field represents an imported tag value from an outer component.
         // Grab its value from the context itself.
         let field_ref = FieldRef::ContextField(context_field.clone());
-        Box::new(iterator.map(move |context| {
+        Box::pin(iterator.map(move |context| {
             let value = context.imported_tags[&field_ref].clone();
             (context, value)
         }))
@@ -831,10 +836,10 @@ pub(super) fn compute_fold_specific_field_with_separate_value<
 >(
     fold_eid: Eid,
     fold_specific_field: &FoldSpecificFieldKind,
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextOutcomeIterator<'query, Vertex, TaggedValue> {
+    iterator: Pin<ContextStream<'query, Vertex>>,
+) -> Pin<ContextOutcomeStream<'query, Vertex, TaggedValue>> {
     match fold_specific_field {
-        FoldSpecificFieldKind::Count => Box::new(iterator.map(move |ctx| {
+        FoldSpecificFieldKind::Count => Box::pin(iterator.map(move |ctx| {
             // TODO: Ensure output type inference handles this correctly too...
             let folded_contexts = ctx.folded_contexts[&fold_eid].as_ref();
             let value = match folded_contexts {
@@ -846,14 +851,14 @@ pub(super) fn compute_fold_specific_field_with_separate_value<
     }
 }
 
-pub(super) fn compute_local_field_with_separate_value<'query, AdapterT: Adapter<'query>>(
+pub(super) fn compute_local_field_with_separate_value<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     local_field: &LocalField,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextOutcomeIterator<'query, AdapterT::Vertex, FieldValue> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextOutcomeStream<'query, AdapterT::Vertex, FieldValue>> {
     let type_name = &component.vertices[&current_vid].type_name;
     let query = carrier.query.take().expect("query was not returned");
     let resolve_info = ResolveInfo::new(query, current_vid, true);
@@ -865,14 +870,14 @@ pub(super) fn compute_local_field_with_separate_value<'query, AdapterT: Adapter<
     context_and_value_iterator
 }
 
-fn compute_local_field<'query, AdapterT: Adapter<'query>>(
+fn compute_local_field<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     local_field: &LocalField,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let context_and_value_iterator = compute_local_field_with_separate_value(
         adapter,
         carrier,
@@ -882,7 +887,7 @@ fn compute_local_field<'query, AdapterT: Adapter<'query>>(
         iterator,
     );
 
-    Box::new(context_and_value_iterator.map(|(mut context, value)| {
+    Box::pin(context_and_value_iterator.map(|(mut context, value)| {
         context.values.push(value);
         context
     }))
@@ -956,15 +961,15 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for EdgeExpander<'query, V
     }
 }
 
-fn expand_edge<'query, AdapterT: Adapter<'query> + 'query>(
+fn expand_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     expanding_from_vid: Vid,
     expanding_to_vid: Vid,
     edge: &IREdge,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let expanded_iterator = if let Some(recursive) = &edge.recursive {
         expand_recursive_edge(
             adapter,
@@ -1003,7 +1008,7 @@ fn expand_edge<'query, AdapterT: Adapter<'query> + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn expand_non_recursive_edge<'query, AdapterT: Adapter<'query>>(
+fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     _component: &IRQueryComponent,
@@ -1013,11 +1018,11 @@ fn expand_non_recursive_edge<'query, AdapterT: Adapter<'query>>(
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
     is_optional: bool,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let expanding_from_vid = expanding_from.vid;
-    let expanding_vertex_iterator: ContextIterator<'query, AdapterT::Vertex> =
-        Box::new(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
+    let expanding_vertex_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> =
+        Box::pin(iterator.map(move |x| x.activate_vertex(&expanding_from_vid)));
 
     let type_name = &expanding_from.type_name;
     let query = carrier.query.take().expect("query was not returned");
@@ -1032,7 +1037,7 @@ fn expand_non_recursive_edge<'query, AdapterT: Adapter<'query>>(
     );
     carrier.query = Some(resolve_info.into_inner());
 
-    Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
+    Box::pin(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
         EdgeExpander::new(context, neighbor_iterator, is_optional)
     }))
 }
@@ -1041,27 +1046,27 @@ fn expand_non_recursive_edge<'query, AdapterT: Adapter<'query>>(
 /// - coerce the type, if needed
 /// - apply all local filters
 /// - record the vertex at this Vid in the context
-fn perform_entry_into_new_vertex<'query, AdapterT: Adapter<'query>>(
+fn perform_entry_into_new_vertex<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     vertex: &IRVertex,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let vertex_id = vertex.vid;
     let mut iterator = coerce_if_needed(adapter, carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
         iterator =
             apply_local_field_filter(adapter, carrier, component, vertex_id, filter_expr, iterator);
     }
-    Box::new(iterator.map(move |mut x| {
+    Box::pin(iterator.map(move |mut x| {
         x.record_vertex(vertex_id);
         x
     }))
 }
 
 #[allow(clippy::too_many_arguments)]
-fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
+fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -1071,11 +1076,11 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
     recursive: &Recursive,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let expanding_from_vid = expanding_from.vid;
-    let mut recursion_iterator: ContextIterator<'query, AdapterT::Vertex> =
-        Box::new(iterator.map(move |mut context| {
+    let mut recursion_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> =
+        Box::pin(iterator.map(move |mut context| {
             if context.active_vertex.is_none() {
                 // Mark that this vertex starts off with a None active_vertex value,
                 // so the later unsuspend() call should restore it to such a state later.
@@ -1119,7 +1124,7 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
             // This is because we still want to produce those elements, and we simply want to
             // not continue recursing deeper through them since they don't have the edge we need.
             recursion_iterator =
-                Box::new(coercion_iter.map(
+                Box::pin(coercion_iter.map(
                     |(ctx, can_coerce)| {
                         if can_coerce {
                             ctx
@@ -1148,7 +1153,7 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn perform_one_recursive_edge_expansion<'query, AdapterT: Adapter<'query>>(
+fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     _component: &IRQueryComponent,
@@ -1158,8 +1163,8 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: Adapter<'query>>(
     edge_id: Eid,
     edge_name: &Arc<str>,
     edge_parameters: &EdgeParameters,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     let query = carrier.query.take().expect("query was not returned");
     let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, expanding_to.vid, edge_id);
 
@@ -1172,8 +1177,8 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: Adapter<'query>>(
     );
     carrier.query = Some(resolve_info.into_inner());
 
-    let result_iterator: ContextIterator<'query, AdapterT::Vertex> =
-        Box::new(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
+    let result_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> =
+        Box::pin(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
             RecursiveEdgeExpander::new(context, neighbor_iterator)
         }));
 
@@ -1183,7 +1188,7 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: Adapter<'query>>(
 struct RecursiveEdgeExpander<'query, Vertex: Clone + Debug + 'query> {
     context: Option<DataContext<Vertex>>,
     neighbor_base: Option<DataContext<Vertex>>,
-    neighbors: VertexIterator<'query, Vertex>,
+    neighbors: Pin<VertexStream<'query, Vertex>>,
     has_neighbors: bool,
     neighbors_ended: bool,
 }
@@ -1191,7 +1196,7 @@ struct RecursiveEdgeExpander<'query, Vertex: Clone + Debug + 'query> {
 impl<'query, Vertex: Clone + Debug + 'query> RecursiveEdgeExpander<'query, Vertex> {
     pub fn new(
         context: DataContext<Vertex>,
-        neighbors: VertexIterator<'query, Vertex>,
+        neighbors: Pin<VertexStream<'query, Vertex>>,
     ) -> RecursiveEdgeExpander<'query, Vertex> {
         RecursiveEdgeExpander {
             context: Some(context),
@@ -1272,9 +1277,9 @@ fn unpack_piggyback_inner<Vertex: Debug + Clone>(
 }
 
 fn post_process_recursive_expansion<'query, Vertex: Clone + Debug + 'query>(
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
-    Box::new(iterator.flat_map(|context| unpack_piggyback(context)).map(|context| {
+    iterator: Pin<ContextStream<'query, Vertex>>,
+) -> Pin<ContextStream<'query, Vertex>> {
+    Box::pin(iterator.flat_map(|context| futures::stream::iter(unpack_piggyback(context))).map(|context| {
         assert!(context.piggyback.is_none());
         context.ensure_unsuspended()
     }))
@@ -1348,8 +1353,8 @@ mod tests {
 
         use crate::{
             interpreter::{
-                execution::interpret_ir, Adapter, AsVertex, ContextIterator,
-                ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+                execution::interpret_ir, Adapter, AsVertex, ContextStream,
+                ContextOutcomeStream, ResolveEdgeInfo, ResolveInfo, VertexIterator,
             },
             ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,
@@ -1440,11 +1445,11 @@ mod tests {
 
             fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextIterator<'a, V>,
+                contexts: ContextStream<'a, V>,
                 type_name: &Arc<str>,
                 property_name: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+            ) -> ContextOutcomeStream<'a, V, FieldValue> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1460,12 +1465,12 @@ mod tests {
 
             fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextIterator<'a, V>,
+                contexts: ContextStream<'a, V>,
                 type_name: &Arc<str>,
                 edge_name: &Arc<str>,
                 parameters: &EdgeParameters,
                 resolve_info: &ResolveEdgeInfo,
-            ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
+            ) -> ContextOutcomeStream<'a, V, VertexIterator<'a, Self::Vertex>> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);
@@ -1482,11 +1487,11 @@ mod tests {
 
             fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
                 &self,
-                contexts: ContextIterator<'a, V>,
+                contexts: ContextStream<'a, V>,
                 type_name: &Arc<str>,
                 coerce_to_type: &Arc<str>,
                 resolve_info: &ResolveInfo,
-            ) -> ContextOutcomeIterator<'a, V, bool> {
+            ) -> ContextOutcomeStream<'a, V, bool> {
                 let mut batch_sequences_ref = self.batch_sequences.borrow_mut();
                 let sequence = batch_sequences_ref.pop_front().unwrap_or(0);
                 drop(batch_sequences_ref);

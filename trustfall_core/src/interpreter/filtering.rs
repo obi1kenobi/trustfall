@@ -1,6 +1,7 @@
-use std::{fmt::Debug, mem};
+use std::{fmt::Debug, mem, pin::Pin};
 
 use regex::Regex;
+use futures::stream::StreamExt as _;
 
 use crate::ir::{Argument, FieldRef, FieldValue, IRQueryComponent, LocalField, Operation, Vid};
 
@@ -9,7 +10,7 @@ use super::{
         compute_context_field_with_separate_value, compute_fold_specific_field_with_separate_value,
         compute_local_field_with_separate_value, QueryCarrier,
     },
-    Adapter, ContextIterator, ContextOutcomeIterator, TaggedValue,
+    Adapter, TaggedValue, ContextStream, ContextOutcomeStream, AsyncAdapter,
 };
 
 #[inline(always)]
@@ -225,41 +226,43 @@ pub(super) fn regex_matches_optimized(left: &FieldValue, regex: &Regex) -> bool 
 
 fn attempt_apply_unary_filter<'query, Vertex: Debug + Clone + 'query>(
     filter: &Operation<(), &Argument>,
-    iterator: ContextIterator<'query, Vertex>,
-) -> Result<ContextIterator<'query, Vertex>, ContextIterator<'query, Vertex>> {
+    iterator: Pin<ContextStream<'query, Vertex>>,
+) -> Result<Pin<ContextStream<'query, Vertex>>, Pin<ContextStream<'query, Vertex>>> {
     match filter {
         Operation::IsNull(_) => {
-            let output_iter = iterator.filter_map(move |mut context| {
+            let output_iter = iterator.filter_map(move |mut context| async {
                 let last_value = context.values.pop().expect("no value present");
-                match last_value {
+                let output = match last_value {
                     FieldValue::Null => Some(context),
                     _ => None,
-                }
+                };
+                output
             });
-            Ok(Box::new(output_iter))
+            Ok(Box::pin(output_iter))
         }
         Operation::IsNotNull(_) => {
-            let output_iter = iterator.filter_map(move |mut context| {
+            let output_iter = iterator.filter_map(move |mut context| async {
                 let last_value = context.values.pop().expect("no value present");
-                match last_value {
+                let output = match last_value {
                     FieldValue::Null => None,
                     _ => Some(context),
-                }
+                };
+                output
             });
-            Ok(Box::new(output_iter))
+            Ok(Box::pin(output_iter))
         }
         _ => Err(iterator),
     }
 }
 
-pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
+pub(super) fn apply_filter<'query, AdapterT: AsyncAdapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     filter: &Operation<(), &Argument>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
+    iterator: Pin<ContextStream<'query, AdapterT::Vertex>>,
+) -> Pin<ContextStream<'query, AdapterT::Vertex>> {
     // If the filter operator is unary, we don't need to evaluate any arguments.
     // Short-circuit it here.
     let iterator = match attempt_apply_unary_filter(filter, iterator) {
@@ -293,7 +296,7 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
                     field_name: context_field.field_name.clone(),
                     field_type: context_field.field_type.clone(),
                 };
-                Box::new(
+                Box::pin(
                     compute_local_field_with_separate_value(
                         adapter,
                         carrier,
@@ -326,7 +329,7 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
                 // This value represents an imported tag value from an outer component.
                 // Grab its value from the context itself.
                 let cloned_ref = field_ref.clone();
-                Box::new(iterator.map(move |ctx| {
+                Box::pin(iterator.map(move |ctx| {
                     let right_value = ctx.imported_tags[&cloned_ref].clone();
                     (ctx, right_value)
                 }))
@@ -342,70 +345,70 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
 fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'query>(
     filter: &Operation<(), &Argument>,
     right_value: FieldValue,
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
+    iterator: Pin<ContextStream<'query, Vertex>>,
+) -> Pin<ContextStream<'query, Vertex>> {
     match filter {
-        Operation::Equals(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::Equals(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             equals(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::NotEquals(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::NotEquals(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             (!equals(&left_value, &right_value)).then_some(ctx)
         })),
-        Operation::LessThan(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::LessThan(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             less_than(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::LessThanOrEqual(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::LessThanOrEqual(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             less_than_or_equal(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::GreaterThan(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::GreaterThan(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             greater_than(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::GreaterThanOrEqual(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::GreaterThanOrEqual(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             greater_than_or_equal(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::Contains(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::Contains(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             contains(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::NotContains(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::NotContains(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             (!contains(&left_value, &right_value)).then_some(ctx)
         })),
-        Operation::OneOf(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::OneOf(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             one_of(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::NotOneOf(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::NotOneOf(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             (!one_of(&left_value, &right_value)).then_some(ctx)
         })),
-        Operation::HasPrefix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::HasPrefix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             has_prefix(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::NotHasPrefix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::NotHasPrefix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             (!has_prefix(&left_value, &right_value)).then_some(ctx)
         })),
-        Operation::HasSuffix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::HasSuffix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             has_suffix(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::NotHasSuffix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::NotHasSuffix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             (!has_suffix(&left_value, &right_value)).then_some(ctx)
         })),
-        Operation::HasSubstring(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::HasSubstring(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             has_substring(&left_value, &right_value).then_some(ctx)
         })),
-        Operation::NotHasSubstring(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
+        Operation::NotHasSubstring(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
             let left_value = ctx.values.pop().expect("no value present");
             (!has_substring(&left_value, &right_value)).then_some(ctx)
         })),
@@ -413,7 +416,7 @@ fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'quer
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            Box::new(iterator.filter_map(move |mut ctx| {
+            Box::pin(iterator.filter_map(move |mut ctx| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 regex_matches_optimized(&left_value, &pattern).then_some(ctx)
             }))
@@ -422,7 +425,7 @@ fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'quer
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            Box::new(iterator.filter_map(move |mut ctx| {
+            Box::pin(iterator.filter_map(move |mut ctx| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 (!regex_matches_optimized(&left_value, &pattern)).then_some(ctx)
             }))
@@ -433,11 +436,11 @@ fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'quer
 
 fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'query>(
     filter: &Operation<(), &Argument>,
-    argument_value_iterator: ContextOutcomeIterator<'query, Vertex, TaggedValue>,
-) -> ContextIterator<'query, Vertex> {
+    argument_value_iterator: Pin<ContextOutcomeStream<'query, Vertex, TaggedValue>>,
+) -> Pin<ContextStream<'query, Vertex>> {
     match filter {
         Operation::Equals(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -446,7 +449,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotEquals(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -455,7 +458,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::LessThan(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -464,7 +467,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::LessThanOrEqual(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -473,7 +476,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::GreaterThan(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -482,7 +485,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::GreaterThanOrEqual(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -491,7 +494,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::Contains(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -500,7 +503,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotContains(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -509,7 +512,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::OneOf(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -518,7 +521,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotOneOf(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -527,7 +530,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::HasPrefix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -536,7 +539,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotHasPrefix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -545,7 +548,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::HasSuffix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -554,7 +557,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotHasSuffix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -563,7 +566,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::HasSubstring(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -572,7 +575,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotHasSubstring(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -581,7 +584,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::RegexMatches(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);
@@ -590,7 +593,7 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
             }))
         }
         Operation::NotRegexMatches(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
+            Box::pin(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| async {
                 let left_value = ctx.values.pop().expect("no value present");
                 let TaggedValue::Some(right_value) = tagged_value else {
                     return Some(ctx);

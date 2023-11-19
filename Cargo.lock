@@ -3264,6 +3264,8 @@ version = "0.7.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "async-trait",
+ "futures 0.3.29",
  "itertools",
  "maplit",
  "regex",
@@ -3273,6 +3275,7 @@ dependencies = [
  "similar-asserts",
  "smallvec 1.11.2",
  "thiserror",
+ "tokio 1.34.0",
  "trustfall_filetests_macros",
 ]
 

@@ -1,5 +1,6 @@
-use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug, sync::Arc, pin::Pin};
 
+use futures::{Stream, StreamExt as _};
 use itertools::Itertools;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -27,6 +28,8 @@ pub use hints::{
 /// An iterator of vertices representing data points we are querying.
 pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + 'vertex>;
 
+pub type VertexStream<'vertex, VertexT> = Box<dyn Stream<Item = VertexT> + 'vertex>;
+
 /// An iterator of query contexts: bookkeeping structs we use to build up the query results.
 ///
 /// Each context represents a possible result of the query. At each query processing step,
@@ -36,6 +39,8 @@ pub type VertexIterator<'vertex, VertexT> = Box<dyn Iterator<Item = VertexT> + '
 /// asks them to resolve a property, edge, or type coercion for the particular vertex
 /// the context is currently processing at that point in the query.
 pub type ContextIterator<'vertex, VertexT> = VertexIterator<'vertex, DataContext<VertexT>>;
+
+pub type ContextStream<'vertex, VertexT> = VertexStream<'vertex, DataContext<VertexT>>;
 
 /// Iterator of (context, outcome) tuples: the output type of most resolver functions.
 ///
@@ -47,6 +52,9 @@ pub type ContextIterator<'vertex, VertexT> = VertexIterator<'vertex, DataContext
 /// This type lets us write those output types in a slightly more readable way.
 pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
     Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
+
+pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT> =
+    Box<dyn Stream<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
 
 /// Accessor method for the `__typename` special property of Trustfall vertices.
 pub trait Typename {
@@ -454,6 +462,116 @@ fn validate_argument_type(
             variable_type.to_string(),
             argument_value.to_owned(),
         ))
+    }
+}
+
+pub trait AsyncAdapter<'vertex> {
+    /// The type of vertices in the dataset this adapter queries.
+    /// Unless your intended vertex type is cheap to clone, consider wrapping it an [`Rc`][rc]
+    /// or [`Arc`] to make cloning it cheaper since that's a fairly common operation
+    /// when queries are evaluated.
+    ///
+    /// [rc]: std::rc::Rc
+    type Vertex: Clone + Debug + 'vertex;
+
+    fn resolve_starting_vertices(
+        &self,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveInfo,
+    ) -> Pin<VertexStream<'vertex, Self::Vertex>>;
+
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, FieldValue>>;
+
+    #[allow(clippy::type_complexity)]
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveEdgeInfo,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, Pin<VertexStream<'vertex, Self::Vertex>>>>;
+
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, bool>>;
+}
+
+pub struct TokioHandleBridge<T>(T);
+
+struct TokioHandleStreamToIter<T>(T);
+
+impl<T: Stream + Unpin> Iterator for TokioHandleStreamToIter<T> {
+    type Item = <T as Stream>::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let future = self.0.next();
+        tokio::runtime::Handle::current().block_on(future)
+    }
+}
+
+impl<'vertex, T: Adapter<'vertex>> AsyncAdapter<'vertex> for T {
+    type Vertex = <T as Adapter<'vertex>>::Vertex;
+
+    fn resolve_starting_vertices(
+        &self,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveInfo,
+    ) -> Pin<VertexStream<'vertex, Self::Vertex>> {
+        let iter = <Self as Adapter<'vertex>>::resolve_starting_vertices(self, edge_name, parameters, resolve_info);
+        Box::pin(futures::stream::iter(iter))
+    }
+
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, FieldValue>> {
+        let iter = <Self as Adapter<'vertex>>::resolve_property(self, Box::new(TokioHandleStreamToIter(contexts)), type_name, property_name, resolve_info);
+        Box::pin(futures::stream::iter(iter))
+    }
+
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveEdgeInfo,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, Pin<VertexStream<'vertex, Self::Vertex>>>> {
+        let iter = <Self as Adapter<'vertex>>::resolve_neighbors(self, Box::new(TokioHandleStreamToIter(contexts)), type_name, edge_name, parameters, resolve_info);
+
+        #[allow(clippy::type_complexity)]
+        let wrapped_neighbors = iter.map(|(ctx, neighbors)| -> (DataContext<V>, Pin<VertexStream<'vertex, Self::Vertex>>) {
+            (ctx, Box::pin(futures::stream::iter(neighbors)))
+        });
+
+        Box::pin(futures::stream::iter(wrapped_neighbors))
+    }
+
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, bool>> {
+        let iter = <Self as Adapter<'vertex>>::resolve_coercion(self, Box::new(TokioHandleStreamToIter(contexts)), type_name, coerce_to_type, resolve_info);
+        Box::pin(futures::stream::iter(iter))
     }
 }
 
