@@ -699,7 +699,7 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     }));
                 }
 
-                for mut folded_context in output_iterator.next().await {
+                while let Some(mut folded_context) = output_iterator.next().await {
                     for (key, value) in folded_context.folded_values {
                         folded_values
                             .entry(key)
