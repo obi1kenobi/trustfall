@@ -37,7 +37,7 @@ thiserror = { workspace = true }
 itertools = { workspace = true }
 futures = "0.3.29"
 async-trait = "0.1.74"
-tokio = { version = "1.34.0", features = ["rt"] }
+tokio = { version = "1.34.0", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies]
 ron = { workspace = true }

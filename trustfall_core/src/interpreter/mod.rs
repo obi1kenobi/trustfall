@@ -510,14 +510,33 @@ pub trait AsyncAdapter<'vertex> {
 
 struct TokioHandleStreamToIter<T> {
     stream: T,
-    rt: tokio::runtime::Runtime,
+    // handle: tokio::runtime::Handle,
+    // rt: Option<tokio::runtime::Runtime>,
+}
+
+static RUNTIME: OnceLock<(tokio::runtime::Handle, Option<tokio::runtime::Runtime>)> = OnceLock::new();
+
+fn get_runtime_handle() -> &'static (tokio::runtime::Handle, Option<tokio::runtime::Runtime>) {
+    println!("attempting to get runtime");
+    RUNTIME.get_or_init(|| {
+        match tokio::runtime::Handle::try_current() {
+            Ok(h) => (h, None),
+            Err(e) => {
+                println!("creating runtime due to error: {e:?}");
+                let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("failed to create runtime");
+                (rt.handle().clone(), Some(rt))
+            }
+        }
+    })
 }
 
 impl<T> TokioHandleStreamToIter<T> {
     fn new(stream: T) -> Self {
+        // let (handle, maybe_rt) = get_runtime_handle();
         Self {
             stream,
-            rt: tokio::runtime::Builder::new_current_thread().enable_all().build().expect("failed to build runtime"),
+            // handle,
+            // rt: maybe_rt,
         }
     }
 }
@@ -527,7 +546,12 @@ impl<T: Stream + Unpin> Iterator for TokioHandleStreamToIter<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let future = self.stream.next();
-        self.rt.block_on(future)
+        let (handle, rt) = get_runtime_handle();
+        if let Some(rt) = rt.as_ref() {
+            rt.block_on(future)
+        } else {
+            handle.block_on(future)
+        }
     }
 }
 
