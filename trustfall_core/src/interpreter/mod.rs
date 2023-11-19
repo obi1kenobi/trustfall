@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Debug, sync::Arc, pin::Pin};
+use std::{collections::BTreeMap, fmt::Debug, sync::{Arc, OnceLock}, pin::Pin, cell::OnceCell};
 
 use futures::{Stream, StreamExt as _};
 use itertools::Itertools;
@@ -508,16 +508,26 @@ pub trait AsyncAdapter<'vertex> {
     ) -> Pin<ContextOutcomeStream<'vertex, V, bool>>;
 }
 
-pub struct TokioHandleBridge<T>(T);
+struct TokioHandleStreamToIter<T> {
+    stream: T,
+    rt: tokio::runtime::Runtime,
+}
 
-struct TokioHandleStreamToIter<T>(T);
+impl<T> TokioHandleStreamToIter<T> {
+    fn new(stream: T) -> Self {
+        Self {
+            stream,
+            rt: tokio::runtime::Builder::new_current_thread().enable_all().build().expect("failed to build runtime"),
+        }
+    }
+}
 
 impl<T: Stream + Unpin> Iterator for TokioHandleStreamToIter<T> {
     type Item = <T as Stream>::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let future = self.0.next();
-        tokio::runtime::Handle::current().block_on(future)
+        let future = self.stream.next();
+        self.rt.block_on(future)
     }
 }
 
@@ -541,7 +551,7 @@ impl<'vertex, T: Adapter<'vertex>> AsyncAdapter<'vertex> for T {
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> Pin<ContextOutcomeStream<'vertex, V, FieldValue>> {
-        let iter = <Self as Adapter<'vertex>>::resolve_property(self, Box::new(TokioHandleStreamToIter(contexts)), type_name, property_name, resolve_info);
+        let iter = <Self as Adapter<'vertex>>::resolve_property(self, Box::new(TokioHandleStreamToIter::new(contexts)), type_name, property_name, resolve_info);
         Box::pin(futures::stream::iter(iter))
     }
 
@@ -553,7 +563,7 @@ impl<'vertex, T: Adapter<'vertex>> AsyncAdapter<'vertex> for T {
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
     ) -> Pin<ContextOutcomeStream<'vertex, V, Pin<VertexStream<'vertex, Self::Vertex>>>> {
-        let iter = <Self as Adapter<'vertex>>::resolve_neighbors(self, Box::new(TokioHandleStreamToIter(contexts)), type_name, edge_name, parameters, resolve_info);
+        let iter = <Self as Adapter<'vertex>>::resolve_neighbors(self, Box::new(TokioHandleStreamToIter::new(contexts)), type_name, edge_name, parameters, resolve_info);
 
         #[allow(clippy::type_complexity)]
         let wrapped_neighbors = iter.map(|(ctx, neighbors)| -> (DataContext<V>, Pin<VertexStream<'vertex, Self::Vertex>>) {
@@ -570,7 +580,7 @@ impl<'vertex, T: Adapter<'vertex>> AsyncAdapter<'vertex> for T {
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> Pin<ContextOutcomeStream<'vertex, V, bool>> {
-        let iter = <Self as Adapter<'vertex>>::resolve_coercion(self, Box::new(TokioHandleStreamToIter(contexts)), type_name, coerce_to_type, resolve_info);
+        let iter = <Self as Adapter<'vertex>>::resolve_coercion(self, Box::new(TokioHandleStreamToIter::new(contexts)), type_name, coerce_to_type, resolve_info);
         Box::pin(futures::stream::iter(iter))
     }
 }

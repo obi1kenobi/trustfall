@@ -1,4 +1,6 @@
-use std::{fmt::Debug, ops::Bound, sync::Arc};
+use std::{fmt::Debug, ops::Bound, sync::Arc, pin::Pin};
+
+use futures::StreamExt as _;
 
 use crate::{
     interpreter::{
@@ -8,7 +10,7 @@ use crate::{
         },
         hints::Range,
         Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
-        VertexIterator,
+        VertexIterator, AsyncAdapter, ContextStream, ContextOutcomeStream, VertexStream,
     },
     ir::{
         ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation, Type,
@@ -156,7 +158,7 @@ pub struct DynamicallyResolvedValue<'a> {
 
 macro_rules! compute_candidate_from_tagged_value {
     ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
-        Box::new($iterator.map(move |(ctx, tagged_value)| {
+        Box::pin($iterator.map(move |(ctx, tagged_value)| {
             let mut $candidate = $initial_candidate.clone();
             match tagged_value {
                 TaggedValue::NonexistentOptional => (ctx, $candidate),
@@ -173,7 +175,7 @@ macro_rules! compute_candidate_from_tagged_value {
 
 macro_rules! resolve_fold_specific_field {
     ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
-        Box::new($iterator.map(move |(ctx, tagged_value)| {
+        Box::pin($iterator.map(move |(ctx, tagged_value)| {
             let mut $candidate = $initial_candidate.clone();
             if let TaggedValue::Some($value) = tagged_value {
                 $blk
@@ -194,12 +196,20 @@ impl<'a> DynamicallyResolvedValue<'a> {
         Self { query, resolve_on_component, field, operation, initial_candidate }
     }
 
-    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
-    pub fn resolve<'vertex, AdapterT: Adapter<'vertex>, V: AsVertex<AdapterT::Vertex> + 'vertex>(
+    pub fn resolve<'vertex, AdapterT: AsyncAdapter<'vertex>, V: AsVertex<AdapterT::Vertex> + 'vertex>(
         self,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
     ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
+        Box::new(super::super::TokioHandleStreamToIter::new(self.resolve_async(adapter, Box::pin(futures::stream::iter(contexts)))))
+    }
+
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    pub fn resolve_async<'vertex, AdapterT: AsyncAdapter<'vertex>, V: AsVertex<AdapterT::Vertex> + 'vertex>(
+        self,
+        adapter: &AdapterT,
+        contexts: Pin<ContextStream<'vertex, V>>,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, CandidateValue<FieldValue>>> {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -232,17 +242,17 @@ impl<'a> DynamicallyResolvedValue<'a> {
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
     pub fn resolve_with<
         'vertex,
-        AdapterT: Adapter<'vertex>,
+        AdapterT: AsyncAdapter<'vertex>,
         V: AsVertex<AdapterT::Vertex> + 'vertex,
     >(
         self,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
         mut neighbor_resolver: impl FnMut(
-                &AdapterT::Vertex,
-                CandidateValue<FieldValue>,
-            ) -> VertexIterator<'vertex, AdapterT::Vertex>
-            + 'vertex,
+            &AdapterT::Vertex,
+            CandidateValue<FieldValue>,
+        ) -> VertexIterator<'vertex, AdapterT::Vertex>
+        + 'vertex,
     ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, AdapterT::Vertex>> {
         Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
             let neighbors = match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
@@ -253,16 +263,40 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }))
     }
 
+    #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    pub fn resolve_with_async<
+        'vertex,
+        AdapterT: AsyncAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: Pin<ContextStream<'vertex, V>>,
+        mut neighbor_resolver: impl FnMut(
+                &AdapterT::Vertex,
+                CandidateValue<FieldValue>,
+            ) -> Pin<VertexStream<'vertex, AdapterT::Vertex>>
+            + 'vertex,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, Pin<VertexStream<'vertex, AdapterT::Vertex>>>> {
+        Box::pin(self.resolve_async(adapter, contexts).map(move |(ctx, candidate)| {
+            let neighbors = match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
+                Some(vertex) => neighbor_resolver(vertex, candidate),
+                None => Box::pin(futures::stream::empty()),
+            };
+            (ctx, neighbors)
+        }))
+    }
+
     fn compute_candidate_from_tagged_value<
         'vertex,
-        AdapterT: Adapter<'vertex>,
+        AdapterT: AsyncAdapter<'vertex>,
         V: AsVertex<AdapterT::Vertex> + 'vertex,
     >(
         self,
         context_field: &'a ContextField,
         adapter: &AdapterT,
-        contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
+        contexts: Pin<ContextStream<'vertex, V>>,
+    ) -> Pin<ContextOutcomeStream<'vertex, V, CandidateValue<FieldValue>>> {
         let mut carrier = QueryCarrier { query: Some(self.query) };
         let iterator = compute_context_field_with_separate_value(
             adapter,
@@ -290,10 +324,10 @@ impl<'a> DynamicallyResolvedValue<'a> {
     >(
         self,
         field_ref: &'a FieldRef,
-        contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        contexts: Pin<ContextStream<'vertex, VertexT>>,
+    ) -> Pin<ContextOutcomeStream<'vertex, VertexT, CandidateValue<FieldValue>>> {
         let cloned_field_ref = field_ref.clone();
-        let iterator = Box::new(contexts.map(move |ctx| {
+        let iterator = Box::pin(contexts.map(move |ctx| {
             let value = ctx.imported_tags[&cloned_field_ref].clone();
             (ctx, value)
         }));
@@ -315,8 +349,8 @@ impl<'a> DynamicallyResolvedValue<'a> {
     fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex>(
         self,
         fold_field: &'a FoldSpecificField,
-        contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+        contexts: Pin<ContextStream<'vertex, VertexT>>,
+    ) -> Pin<ContextOutcomeStream<'vertex, VertexT, CandidateValue<FieldValue>>> {
         let iterator = compute_fold_specific_field_with_separate_value(
             fold_field.fold_eid,
             &fold_field.kind,
@@ -395,8 +429,8 @@ fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
     initial_candidate: CandidateValue<FieldValue>,
     field_name: Arc<str>,
     field_type: Type,
-    iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue>,
-) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>> {
+    iterator: Pin<ContextOutcomeStream<'vertex, Vertex, TaggedValue>>,
+) -> Pin<ContextOutcomeStream<'vertex, Vertex, CandidateValue<FieldValue>>> {
     match operation {
         Operation::Equals(_, _) => {
             compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {

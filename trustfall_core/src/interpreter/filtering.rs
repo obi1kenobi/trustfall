@@ -348,86 +348,104 @@ fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'quer
     iterator: Pin<ContextStream<'query, Vertex>>,
 ) -> Pin<ContextStream<'query, Vertex>> {
     match filter {
-        Operation::Equals(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::Equals(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            equals(&left_value, &right_value).then_some(ctx)
+            let output = equals(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::NotEquals(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::NotEquals(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            (!equals(&left_value, &right_value)).then_some(ctx)
+            let output = (!equals(&left_value, &right_value)).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::LessThan(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::LessThan(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            less_than(&left_value, &right_value).then_some(ctx)
+            let output = less_than(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::LessThanOrEqual(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::LessThanOrEqual(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            less_than_or_equal(&left_value, &right_value).then_some(ctx)
+            let output = less_than_or_equal(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::GreaterThan(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::GreaterThan(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            greater_than(&left_value, &right_value).then_some(ctx)
+            let output = greater_than(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::GreaterThanOrEqual(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::GreaterThanOrEqual(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            greater_than_or_equal(&left_value, &right_value).then_some(ctx)
+            let output = greater_than_or_equal(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::Contains(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::Contains(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            contains(&left_value, &right_value).then_some(ctx)
+            let output = contains(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::NotContains(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::NotContains(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            (!contains(&left_value, &right_value)).then_some(ctx)
+            let output = (!contains(&left_value, &right_value)).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::OneOf(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::OneOf(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            one_of(&left_value, &right_value).then_some(ctx)
+            let output = one_of(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::NotOneOf(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::NotOneOf(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            (!one_of(&left_value, &right_value)).then_some(ctx)
+            let output = (!one_of(&left_value, &right_value)).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::HasPrefix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::HasPrefix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            has_prefix(&left_value, &right_value).then_some(ctx)
+            let output = has_prefix(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::NotHasPrefix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::NotHasPrefix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            (!has_prefix(&left_value, &right_value)).then_some(ctx)
+            let output = (!has_prefix(&left_value, &right_value)).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::HasSuffix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::HasSuffix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            has_suffix(&left_value, &right_value).then_some(ctx)
+            let output = has_suffix(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::NotHasSuffix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::NotHasSuffix(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            (!has_suffix(&left_value, &right_value)).then_some(ctx)
+            let output = (!has_suffix(&left_value, &right_value)).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::HasSubstring(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::HasSubstring(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            has_substring(&left_value, &right_value).then_some(ctx)
+            let output = has_substring(&left_value, &right_value).then_some(ctx);
+            futures::future::ready(output)
         })),
-        Operation::NotHasSubstring(_, _) => Box::pin(iterator.filter_map(move |mut ctx| async {
+        Operation::NotHasSubstring(_, _) => Box::pin(iterator.filter_map(move |mut ctx| {
             let left_value = ctx.values.pop().expect("no value present");
-            (!has_substring(&left_value, &right_value)).then_some(ctx)
+            let output = (!has_substring(&left_value, &right_value)).then_some(ctx);
+            futures::future::ready(output)
         })),
         Operation::RegexMatches(_, _) => {
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            Box::pin(iterator.filter_map(move |mut ctx| async {
+            Box::pin(iterator.filter_map(move |mut ctx| {
                 let left_value = ctx.values.pop().expect("no value present");
-                regex_matches_optimized(&left_value, &pattern).then_some(ctx)
+                let output = regex_matches_optimized(&left_value, &pattern).then_some(ctx);
+                futures::future::ready(output)
             }))
         }
         Operation::NotRegexMatches(_, _) => {
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            Box::pin(iterator.filter_map(move |mut ctx| async {
+            Box::pin(iterator.filter_map(move |mut ctx| {
                 let left_value = ctx.values.pop().expect("no value present");
-                (!regex_matches_optimized(&left_value, &pattern)).then_some(ctx)
+                let output = (!regex_matches_optimized(&left_value, &pattern)).then_some(ctx);
+                futures::future::ready(output)
             }))
         }
         Operation::IsNull(_) | Operation::IsNotNull(_) => unreachable!("{filter:?}"),

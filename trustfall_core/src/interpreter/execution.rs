@@ -34,7 +34,7 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 ) -> Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>, QueryArgumentsError>
 {
     interpret_ir_async(adapter, indexed_query, arguments).map(|stream| -> Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query> {
-        Box::new(super::TokioHandleStreamToIter(stream))
+        Box::new(super::TokioHandleStreamToIter::new(stream))
     })
 }
 
@@ -97,7 +97,7 @@ fn perform_coercion<'query, AdapterT: AsyncAdapter<'query>>(
     carrier.query = Some(resolve_info.into_inner());
 
     Box::pin(coercion_iter.filter_map(
-        |(ctx, can_coerce)| async {
+        |(ctx, can_coerce)| async move {
             if can_coerce {
                 Some(ctx)
             } else {
@@ -543,41 +543,47 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         };
 
     let moved_fold = fold.clone();
-    let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| async {
-        let imported_tags = context.imported_tags.clone();
+    let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
+        let cloned_adapter = cloned_adapter.clone();
+        let fold_component = fold_component.clone();
+        let mut cloned_carrier = cloned_carrier.clone();
+        let moved_fold = moved_fold.clone();
+        async move {
+            let imported_tags = context.imported_tags.clone();
 
-        let neighbor_contexts = Box::pin(neighbors.map(move |x| {
-            let mut ctx = DataContext::new(Some(x));
-            ctx.imported_tags = imported_tags.clone();
-            ctx
-        }));
+            let neighbor_contexts = Box::pin(neighbors.map(move |x| {
+                let mut ctx = DataContext::new(Some(x));
+                ctx.imported_tags = imported_tags.clone();
+                ctx
+            }));
 
-        let computed_iterator = compute_component(
-            cloned_adapter.clone(),
-            &mut cloned_carrier,
-            &fold_component,
-            neighbor_contexts,
-        );
+            let computed_iterator = compute_component(
+                cloned_adapter.clone(),
+                &mut cloned_carrier,
+                &fold_component,
+                neighbor_contexts,
+            );
 
-        // Check whether this @fold is inside an @optional that doesn't exist.
-        // This is not the same as having *zero* elements: nonexistent != empty.
-        let fold_exists = context.vertices[&expanding_from_vid].is_some();
-        let fold_elements = if fold_exists {
-            // N.B.: Note the `?` at the end here!
-            //       This lets us early-discard folds that failed a post-processing filter.
-            Some(collect_fold_elements(computed_iterator, &max_fold_size, &min_fold_size).await?)
-        } else {
-            None
-        };
+            // Check whether this @fold is inside an @optional that doesn't exist.
+            // This is not the same as having *zero* elements: nonexistent != empty.
+            let fold_exists = context.vertices[&expanding_from_vid].is_some();
+            let fold_elements = if fold_exists {
+                // N.B.: Note the `?` at the end here!
+                //       This lets us early-discard folds that failed a post-processing filter.
+                Some(collect_fold_elements(computed_iterator, &max_fold_size, &min_fold_size).await?)
+            } else {
+                None
+            };
 
-        context.folded_contexts.insert_or_error(fold_eid, fold_elements).unwrap();
+            context.folded_contexts.insert_or_error(fold_eid, fold_elements).unwrap();
 
-        // Remove no-longer-needed imported tags.
-        for imported_tag in &moved_fold.imported_tags {
-            context.imported_tags.remove(imported_tag).unwrap();
+            // Remove no-longer-needed imported tags.
+            for imported_tag in &moved_fold.imported_tags {
+                context.imported_tags.remove(imported_tag).unwrap();
+            }
+
+            Some(context)
         }
-
-        Some(context)
     });
 
     // Apply post-fold filters.
@@ -599,129 +605,138 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let mut output_names: Vec<Arc<str>> = fold.component.outputs.keys().cloned().collect();
     output_names.sort_unstable(); // to ensure deterministic resolve_property() ordering
 
+    let output_names: Arc<Vec<_>> = Arc::from(output_names);
+
     let cloned_adapter = adapter.clone();
-    let mut cloned_carrier = carrier.clone();
+    let cloned_carrier = carrier.clone();
     let fold_component = fold.component.clone();
-    let final_iterator = post_filtered_iterator.map(move |mut ctx| {
-        let fold_elements = &ctx.folded_contexts[&fold_eid];
-        debug_assert_eq!(
-            // Two ways to check if the `@fold` is inside an `@optional` that didn't exist:
-            ctx.vertices[&expanding_from_vid].is_some(),
-            fold_elements.is_some(),
-            "\
-mismatch on whether the fold below {expanding_from_vid:?} was inside an `@optional`: {ctx:?}",
-        );
-
-        // Add any fold-specific field outputs to the context's folded values.
-        for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
-            // If the @fold is inside an @optional that doesn't exist,
-            // its outputs should be `null` rather than empty lists (the usual for empty folds).
-            // Transformed outputs should also be `null` rather than their usual transformed defaults.
-            let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
-                FoldSpecificFieldKind::Count => {
-                    ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
-                }
-            });
-            ctx.folded_values
-                .insert_or_error((fold_eid, output_name.clone()), value)
-                .expect("this fold output was already computed");
-        }
-
-        // Prepare empty vectors for all the outputs from this @fold component.
-        // If the fold-root vertex didn't exist, the default is `null` instead.
-        let default_value =
-            if fold_elements.is_some() { Some(ValueOrVec::Vec(vec![])) } else { None };
-        let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
-            .iter()
-            .map(|output| ((fold_eid, output.clone()), default_value.clone()))
-            .collect();
-
-        // Don't bother trying to resolve property values on this @fold when it's empty.
-        // Skip the adapter resolve_property() calls and add the empty output values directly.
-        let fold_contains_elements = fold_elements.as_ref().map(|e| !e.is_empty()).unwrap_or(false);
-        if !fold_contains_elements {
-            // We need to make sure any outputs from any nested @fold components (recursively)
-            // are set to the default value (empty list if the @fold existed and was empty,
-            // null if it didn't exist because it was inside an @optional).
-            let mut queue: Vec<_> = fold_component.folds.values().collect();
-            while let Some(inner_fold) = queue.pop() {
-                for output in inner_fold.fold_specific_outputs.keys() {
-                    folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
-                }
-                for output in inner_fold.component.outputs.keys() {
-                    folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
-                }
-                queue.extend(inner_fold.component.folds.values());
-            }
-        } else {
-            // Iterate through the elements of the fold and get the values we need.
-            let mut output_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> = Box::pin(
-                futures::stream::iter(fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter()),
+    let final_iterator = post_filtered_iterator.then(move |mut ctx| {
+        let fold = fold.clone();
+        let fold_component = fold_component.clone();
+        let mut cloned_carrier = cloned_carrier.clone();
+        let cloned_adapter = cloned_adapter.clone();
+        let output_names = output_names.clone();
+        async move {
+            let fold_elements = &ctx.folded_contexts[&fold_eid];
+            debug_assert_eq!(
+                // Two ways to check if the `@fold` is inside an `@optional` that didn't exist:
+                ctx.vertices[&expanding_from_vid].is_some(),
+                fold_elements.is_some(),
+                "\
+    mismatch on whether the fold below {expanding_from_vid:?} was inside an `@optional`: {ctx:?}",
             );
-            for output_name in output_names.iter() {
-                // This is a slimmed-down version of computing a context field:
-                // - it does not restore the prior active vertex after getting each value
-                // - it already knows that the context field is guaranteed to exist
-                let context_field = &fold.component.outputs[output_name.as_ref()];
-                let vertex_id = context_field.vertex_id;
-                let moved_iterator = Box::pin(output_iterator.map(move |context| {
-                    let new_vertex = context.vertices[&vertex_id].clone();
-                    context.move_to_vertex(new_vertex)
-                }));
 
-                let query = cloned_carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-                let field_data_iterator = cloned_adapter.resolve_property(
-                    moved_iterator,
-                    &fold.component.vertices[&vertex_id].type_name,
-                    &context_field.field_name,
-                    &resolve_info,
-                );
-                cloned_carrier.query = Some(resolve_info.into_inner());
-
-                output_iterator = Box::pin(field_data_iterator.map(|(mut context, value)| {
-                    context.values.push(value);
-                    context
-                }));
+            // Add any fold-specific field outputs to the context's folded values.
+            for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
+                // If the @fold is inside an @optional that doesn't exist,
+                // its outputs should be `null` rather than empty lists (the usual for empty folds).
+                // Transformed outputs should also be `null` rather than their usual transformed defaults.
+                let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
+                    FoldSpecificFieldKind::Count => {
+                        ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+                    }
+                });
+                ctx.folded_values
+                    .insert_or_error((fold_eid, output_name.clone()), value)
+                    .expect("this fold output was already computed");
             }
 
-            output_iterator.for_each(|mut folded_context| async {
-                for (key, value) in folded_context.folded_values {
-                    folded_values
-                        .entry(key)
-                        .or_insert_with(|| Some(ValueOrVec::Vec(vec![])))
-                        .as_mut()
-                        .expect("not Some")
-                        .as_mut_vec()
-                        .expect("not a Vec")
-                        .push(value.unwrap_or(ValueOrVec::Value(FieldValue::Null)));
+            // Prepare empty vectors for all the outputs from this @fold component.
+            // If the fold-root vertex didn't exist, the default is `null` instead.
+            let default_value =
+                if fold_elements.is_some() { Some(ValueOrVec::Vec(vec![])) } else { None };
+            let mut folded_values: BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>> = output_names
+                .iter()
+                .map(|output| ((fold_eid, output.clone()), default_value.clone()))
+                .collect();
+
+            // Don't bother trying to resolve property values on this @fold when it's empty.
+            // Skip the adapter resolve_property() calls and add the empty output values directly.
+            let fold_contains_elements = fold_elements.as_ref().map(|e| !e.is_empty()).unwrap_or(false);
+            if !fold_contains_elements {
+                // We need to make sure any outputs from any nested @fold components (recursively)
+                // are set to the default value (empty list if the @fold existed and was empty,
+                // null if it didn't exist because it was inside an @optional).
+                let mut queue: Vec<_> = fold_component.folds.values().collect();
+                while let Some(inner_fold) = queue.pop() {
+                    for output in inner_fold.fold_specific_outputs.keys() {
+                        folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
+                    }
+                    for output in inner_fold.component.outputs.keys() {
+                        folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
+                    }
+                    queue.extend(inner_fold.component.folds.values());
+                }
+            } else {
+                // Iterate through the elements of the fold and get the values we need.
+                let mut output_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> = Box::pin(
+                    futures::stream::iter(fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter()),
+                );
+                for output_name in output_names.iter() {
+                    // This is a slimmed-down version of computing a context field:
+                    // - it does not restore the prior active vertex after getting each value
+                    // - it already knows that the context field is guaranteed to exist
+                    let context_field = &fold.component.outputs[output_name.as_ref()];
+                    let vertex_id = context_field.vertex_id;
+                    let moved_iterator = Box::pin(output_iterator.map(move |context| {
+                        let new_vertex = context.vertices[&vertex_id].clone();
+                        context.move_to_vertex(new_vertex)
+                    }));
+
+                    let query = cloned_carrier.query.take().expect("query was not returned");
+                    let resolve_info = ResolveInfo::new(query, vertex_id, true);
+                    let field_data_iterator = cloned_adapter.resolve_property(
+                        moved_iterator,
+                        &fold.component.vertices[&vertex_id].type_name,
+                        &context_field.field_name,
+                        &resolve_info,
+                    );
+                    cloned_carrier.query = Some(resolve_info.into_inner());
+
+                    output_iterator = Box::pin(field_data_iterator.map(|(mut context, value)| {
+                        context.values.push(value);
+                        context
+                    }));
                 }
 
-                // We pushed values onto folded_context.values with output names in increasing order
-                // and we are now popping from the back. That means we're getting the highest name
-                // first, so we should reverse our output_names iteration order.
-                for output in output_names.iter().rev() {
-                    let value = folded_context.values.pop().unwrap();
-                    folded_values
-                        .get_mut(&(fold_eid, output.clone()))
-                        .expect("key not present")
-                        .as_mut()
-                        .expect("value was None")
-                        .as_mut_vec()
-                        .expect("not a Vec")
-                        .push(ValueOrVec::Value(value));
+                for mut folded_context in output_iterator.next().await {
+                    for (key, value) in folded_context.folded_values {
+                        folded_values
+                            .entry(key)
+                            .or_insert_with(|| Some(ValueOrVec::Vec(vec![])))
+                            .as_mut()
+                            .expect("not Some")
+                            .as_mut_vec()
+                            .expect("not a Vec")
+                            .push(value.unwrap_or(ValueOrVec::Value(FieldValue::Null)));
+                    }
+
+                    // We pushed values onto folded_context.values with output names in increasing order
+                    // and we are now popping from the back. That means we're getting the highest name
+                    // first, so we should reverse our output_names iteration order.
+                    for output in output_names.iter().rev() {
+                        let value = folded_context.values.pop().unwrap();
+                        folded_values
+                            .get_mut(&(fold_eid, output.clone()))
+                            .expect("key not present")
+                            .as_mut()
+                            .expect("value was None")
+                            .as_mut_vec()
+                            .expect("not a Vec")
+                            .push(ValueOrVec::Value(value));
+                    }
                 }
-            });
-        };
+            }
 
-        let prior_folded_values_count = ctx.folded_values.len();
-        let new_folded_values_count = folded_values.len();
-        ctx.folded_values.extend(folded_values);
+            let prior_folded_values_count = ctx.folded_values.len();
+            let new_folded_values_count = folded_values.len();
+            ctx.folded_values.extend(folded_values);
 
-        // Ensure the merged maps had disjoint keys.
-        assert_eq!(ctx.folded_values.len(), prior_folded_values_count + new_folded_values_count);
+            // Ensure the merged maps had disjoint keys.
+            assert_eq!(ctx.folded_values.len(), prior_folded_values_count + new_folded_values_count);
 
-        ctx
+            ctx
+        }
     });
 
     Box::pin(final_iterator)
@@ -926,24 +941,17 @@ impl<'query, Vertex: Clone + Debug + 'query> EdgeExpander<'query, Vertex> {
             ended: false,
         }
     }
-}
 
-impl<'query, Vertex: Clone + Debug + 'query> Stream for EdgeExpander<'query, Vertex> {
-    type Item = DataContext<Vertex>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    async fn next(&mut self) -> Option<DataContext<Vertex>> {
         if self.ended {
-            return Poll::Ready(None);
+            return None;
         }
 
         if !self.neighbors_ended {
-            let neighbor = match self.neighbors.poll_next_unpin(cx) {
-                Poll::Ready(neighbor) => neighbor,
-                Poll::Pending => return Poll::Pending,
-            };
+            let neighbor = self.neighbors.next().await;
             if neighbor.is_some() {
                 self.has_neighbors = true;
-                return Poll::Ready(Some(self.context.split_and_move_to_vertex(neighbor)));
+                return Some(self.context.split_and_move_to_vertex(neighbor));
             } else {
                 self.neighbors_ended = true;
             }
@@ -966,9 +974,9 @@ impl<'query, Vertex: Clone + Debug + 'query> Stream for EdgeExpander<'query, Ver
         // The other case where we have to return a context with no active vertex is when
         // we have a current vertex, but the edge we're traversing is optional and does not exist.
         if self.context.active_vertex.is_none() || (!self.has_neighbors && self.is_optional_edge) {
-            Poll::Ready(Some(self.context.split_and_move_to_vertex(None)))
+            Some(self.context.split_and_move_to_vertex(None))
         } else {
-            Poll::Ready(None)
+            None
         }
     }
 }
@@ -1050,7 +1058,9 @@ fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query>>(
     carrier.query = Some(resolve_info.into_inner());
 
     Box::pin(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
-        EdgeExpander::new(context, neighbor_iterator, is_optional)
+        futures::stream::unfold(EdgeExpander::new(context, neighbor_iterator, is_optional), |mut state| async move {
+            state.next().await.map(move |item| (item, state))
+        })
     }))
 }
 
@@ -1191,7 +1201,9 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query>>(
 
     let result_iterator: Pin<ContextStream<'query, AdapterT::Vertex>> =
         Box::pin(edge_iterator.flat_map(move |(context, neighbor_iterator)| {
-            RecursiveEdgeExpander::new(context, neighbor_iterator)
+            futures::stream::unfold(RecursiveEdgeExpander::new(context, neighbor_iterator), |mut state| async move {
+                state.next().await.map(move |item| (item, state))
+            })
         }));
 
     result_iterator
@@ -1218,17 +1230,10 @@ impl<'query, Vertex: Clone + Debug + 'query> RecursiveEdgeExpander<'query, Verte
             neighbors_ended: false,
         }
     }
-}
 
-impl<'query, Vertex: Clone + Debug + 'query> Stream for RecursiveEdgeExpander<'query, Vertex> {
-    type Item = DataContext<Vertex>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    async fn next(&mut self) -> Option<DataContext<Vertex>> {
         if !self.neighbors_ended {
-            let neighbor = match self.neighbors.poll_next_unpin(cx) {
-                Poll::Ready(neighbor) => neighbor,
-                Poll::Pending => return Poll::Pending,
-            };
+            let neighbor = self.neighbors.next().await;
 
             if let Some(vertex) = neighbor {
                 if let Some(context) = self.context.take() {
@@ -1242,13 +1247,13 @@ impl<'query, Vertex: Clone + Debug + 'query> Stream for RecursiveEdgeExpander<'q
                         .piggyback
                         .get_or_insert_with(Default::default)
                         .push(context.ensure_suspended());
-                    return Poll::Ready(Some(neighbor_context));
+                    return Some(neighbor_context);
                 } else {
                     // The "self" vertex has already been moved out, so use the neighbor base context
                     // as the starting point for constructing a new context.
-                    return Poll::Ready(Some(
+                    return Some(
                         self.neighbor_base.as_ref().unwrap().split_and_move_to_vertex(Some(vertex)),
-                    ));
+                    );
                 }
             } else {
                 self.neighbors_ended = true;
@@ -1264,7 +1269,7 @@ impl<'query, Vertex: Clone + Debug + 'query> Stream for RecursiveEdgeExpander<'q
             }
         }
 
-        std::task::Poll::Ready(self.context.take())
+        self.context.take()
     }
 }
 
