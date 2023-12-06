@@ -135,10 +135,10 @@ pub fn resolve_coercion_using_schema<
 ///
 /// # Examples
 /// ```
-/// # use std::rc::Rc;
 /// # use trustfall_core::{
 /// #     field_property,
 /// #     interpreter::{
+/// #         AsVertex,
 /// #         ContextIterator,
 /// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
@@ -151,13 +151,15 @@ pub fn resolve_coercion_using_schema<
 ///     // ...
 /// }
 ///
-/// // In implementation of `BasicAdapter`
-/// fn resolve_property(
-///     // &mut self,
-///     contexts: ContextIterator<'static, User>,
+/// # struct Adapter<'a>(&'a ());
+/// # impl<'a> Adapter<'a> {
+/// // In implementation of `Adapter`
+/// fn resolve_property<V: AsVertex<User> + 'a>(
+///     &self,
+///     contexts: ContextIterator<'a, User>,
 ///     type_name: &str,
 ///     property_name: &str,
-/// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
+/// ) -> ContextOutcomeIterator<'a, User, FieldValue> {
 ///     match (type_name, property_name) {
 ///         ("User", "id") => {
 ///             resolve_property_with(contexts, field_property!(id)) // Macro used here
@@ -166,17 +168,19 @@ pub fn resolve_coercion_using_schema<
 ///         _ => unreachable!()
 ///     }
 /// }
+/// # }
 /// ```
 ///
 /// Sometimes a vertex may have to be converted to another type before the
 /// property can be accessed. To do this, simply pass a conversion method
-/// implemented on the `Vertex` type (in this case `as_user`) to the macro like
+/// implemented on the `Vertex` type (in this case `as_user()`) to the macro like
 /// in the example below.
 /// ```
 /// # use std::rc::Rc;
 /// # use trustfall_core::{
 /// #     field_property,
 /// #     interpreter::{
+/// #         AsVertex,
 /// #         ContextIterator,
 /// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
@@ -213,30 +217,92 @@ pub fn resolve_coercion_using_schema<
 ///     // ...
 /// }
 ///
-/// // In implementation of `BasicAdapter`
-/// # fn resolve_property(
-/// #    // &mut self,
-/// #    contexts: ContextIterator<'static, Vertex>,
-/// #    type_name: &str,
-/// #    property_name: &str,
-/// # ) -> ContextOutcomeIterator<'static, Vertex, FieldValue> {
-/// #    match (type_name, property_name) {
-/// ("User" | "Bot", "id") => {
-///     resolve_property_with(contexts, field_property!(as_user, id)) // Macro used here
-/// },
-/// #        // ...
-/// #        _ => unreachable!()
-/// #    }
+/// # struct Adapter<'a>(&'a ());
+/// # impl<'a> Adapter<'a> {
+/// // In implementation of `Adapter`
+/// fn resolve_property<V: AsVertex<Vertex> + 'a>(
+///    &self,
+///    contexts: ContextIterator<'a, Vertex>,
+///    type_name: &str,
+///    property_name: &str,
+/// ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
+///    match (type_name, property_name) {
+///        ("User" | "Bot", "id") => {
+///            resolve_property_with(contexts, field_property!(as_user, id)) // Macro used here
+///        },
+///        // ...
+///        _ => unreachable!()
+///    }
+/// }
 /// # }
 /// ```
 ///
-/// It is also possible to pass a code block to additionally handle the
-/// property.
+/// By default, this macro calls `.clone().into()` on the field to convert it
+/// to a Trustfall property value. Most often, this is what we want.
+/// However, not all types implement `Into<FieldValue>` — some aren't even `Clone`!
+///
+/// To handle such cases, this macro can take an optional code block that will be called
+/// to convert the field's value into a Trustfall property value:
+/// ```
+/// # use trustfall_core::{
+/// #     field_property,
+/// #     interpreter::{
+/// #         AsVertex,
+/// #         ContextIterator,
+/// #         ContextOutcomeIterator,
+/// #         helpers::resolve_property_with,
+/// #     },
+/// #     ir::FieldValue,
+/// # };
+/// # pub(crate) mod chrono {
+/// #     #[derive(Debug, Clone)]
+/// #     pub(crate) struct DateTime;
+/// #
+/// #     impl DateTime {
+/// #         pub(crate) fn to_rfc3339(&self) -> String {
+/// #             unimplemented!()
+/// #         }
+/// #     }
+/// # }
+/// #[derive(Debug, Clone)]
+/// struct User {
+///     created_at: Option<chrono::DateTime>,
+/// }
+///
+/// # struct Adapter<'a>(&'a ());
+/// # impl<'a> Adapter<'a> {
+/// // Inside implementation of `Adapter`:
+/// fn resolve_property<V: AsVertex<User> + 'a>(
+///     &self,
+///     contexts: ContextIterator<'a, V>,
+///     type_name: &str,
+///     property_name: &str,
+/// ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+///     match (type_name, property_name) {
+///         ("User", "created_at") => { //      \/ Macro used here
+///             resolve_property_with(contexts, field_property!(created_at, {
+///                 // `created_at` in this block refers to the `User.created_at` field.
+///                 created_at.as_ref().map(|dt| dt.to_rfc3339()).into()
+///             }))
+///         }
+///         // ...
+///         _ => unreachable!()
+///     }
+/// }
+/// # }
+/// ```
 #[macro_export]
 macro_rules! field_property {
     // If the data is a field directly on the vertex type.
     ($field:ident) => {
         move |vertex| -> $crate::ir::value::FieldValue { vertex.$field.clone().into() }
+    };
+    // Field on the vertex type + post-processing block.
+    ($field:ident, $b:block) => {
+        move |vertex| -> $crate::ir::value::FieldValue {
+            let $field = &vertex.$field;
+            $b
+        }
     };
     // If we need to call a fallible conversion method
     // (such as `fn as_foo() -> Option<&Foo>`) before getting the field.
@@ -272,11 +338,11 @@ macro_rules! field_property {
 /// In the following example, `name` would be accessed using a field, but the
 /// age is accessed using a function:
 /// ```rust
-/// # use std::rc::Rc;
 /// # use trustfall_core::{
 /// #     accessor_property,
 /// #     field_property,
 /// #     interpreter::{
+/// #         AsVertex,
 /// #         ContextIterator,
 /// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
@@ -297,13 +363,15 @@ macro_rules! field_property {
 ///     }
 /// }
 ///
-/// // In implementation of `BasicAdapter`
-/// fn resolve_property(
-///     // &mut self,
-///     contexts: ContextIterator<'static, User>,
+/// # struct Adapter<'a>(&'a ());
+/// # impl<'a> Adapter<'a> {
+/// // In implementation of `Adapter`:
+/// fn resolve_property<V: AsVertex<User> + 'a>(
+///     &self,
+///     contexts: ContextIterator<'a, User>,
 ///     type_name: &str,
 ///     property_name: &str,
-/// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
+/// ) -> ContextOutcomeIterator<'a, User, FieldValue> {
 ///     match (type_name, property_name) {
 ///         ("User", "id") => resolve_property_with(contexts, field_property!(id)),
 ///         ("User", "age") => resolve_property_with(contexts, accessor_property!(age)),
@@ -311,16 +379,17 @@ macro_rules! field_property {
 ///         _ => unreachable!()
 ///     }
 /// }
+/// # }
 /// ```
 ///
 /// If the function to be called requires additional arguments, they can be specified
 /// as part of naming the function and the argument values will be moved into the generated closure.
 /// ```rust
-/// # use std::rc::Rc;
 /// # use trustfall_core::{
 /// #     accessor_property,
 /// #     field_property,
 /// #     interpreter::{
+/// #         AsVertex,
 /// #         ContextIterator,
 /// #         ContextOutcomeIterator,
 /// #         helpers::resolve_property_with,
@@ -340,19 +409,22 @@ macro_rules! field_property {
 ///     }
 /// }
 ///
-/// // In implementation of `BasicAdapter`
-/// fn resolve_property(
-///     // &mut self,
-///     contexts: ContextIterator<'static, User>,
+/// # struct Adapter<'a>(&'a ());
+/// # impl<'a> Adapter<'a> {
+/// // In implementation of `Adapter`:
+/// fn resolve_property<V: AsVertex<User> + 'a>(
+///     &self,
+///     contexts: ContextIterator<'a, User>,
 ///     type_name: &str,
 ///     property_name: &str,
-/// ) -> ContextOutcomeIterator<'static, User, FieldValue> {
+/// ) -> ContextOutcomeIterator<'a, User, FieldValue> {
 ///     match (type_name, property_name) {
 ///         ("User", "age") => resolve_property_with(contexts, accessor_property!(age(2024))),
 ///         // ...
 ///         _ => unreachable!()
 ///     }
 /// }
+/// # }
 /// ```
 ///
 /// The usage of conversion functions and possible extra processing with a code
