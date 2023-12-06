@@ -235,55 +235,74 @@ export default function HackerNewsPlayground(): JSX.Element {
     };
   }, [fetcherWorker, queryWorker, handleQueryMessage, handleQueryError]);
 
-  if (BROWSER && BROWSER.name === 'safari') {
-    return (
-      <PlaygroundNonIdealState>
-        <Box>
-          <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
-          <Typography variant="h5">Safari and iOS browsers not supported</Typography>
-          <Typography variant="body1">
-            <p>
-              Due to an{' '}
-              <Link
-                href="https://bugs.webkit.org/show_bug.cgi?id=238442"
-                target="_blank"
-                rel="noreferrer"
-              >
-                open issue
-              </Link>{' '}
-              in the WebKit engine, this demo does not work in Safari.
-            </p>
-            <p>Please use a supported browser, such as Firefox or Chrome.</p>
-          </Typography>
-        </Box>
-      </PlaygroundNonIdealState>
-    );
-  }
+  const ios = BROWSER && BROWSER.os === 'iOS';
+  const oldSafari = BROWSER && BROWSER.name == 'safari' && (BROWSER.version === null || BROWSER.version < "16.6");
 
-  if (BROWSER && BROWSER.os === 'iOS') {
-    return (
-      <PlaygroundNonIdealState>
-        <Box>
-          <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
-          <Typography variant="h5">iOS not supported</Typography>
-          <Typography variant="body1">
-            <p>
-              Due to an{' '}
-              <Link
-                href="https://bugs.webkit.org/show_bug.cgi?id=238442"
-                target="_blank"
-                rel="noreferrer"
-              >
-                open issue
-              </Link>{' '}
-              in the WebKit engine, this demo does not work on iOS-based mobile devices or in the
-              Safari desktop browser.
-            </p>
-            <p>Please try this demo on desktop (in Firefox or Chrome) or on an Android device.</p>
-          </Typography>
-        </Box>
-      </PlaygroundNonIdealState>
-    );
+  if (oldSafari) {
+    const browserVersion = BROWSER.version || '';
+    if (ios && oldSafari) {
+      return (
+        <PlaygroundNonIdealState>
+          <Box>
+            <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
+            <Typography variant="h5">Please update your iOS version</Typography>
+            <Typography variant="body1">
+              <p>
+                Due to an{' '}
+                <Link
+                  href="https://bugs.webkit.org/show_bug.cgi?id=238442"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  open issue
+                </Link>{' '}
+                in the WebKit engine, this page requires Safari 16.6 or newer, which shipped with iOS 16.7.
+              </p>
+              <p>Please update to a newer version of iOS and Safari, or visit this page on another device.</p>
+              <p>
+                We believe you are currently using Safari {browserVersion} on iOS.
+                If this is incorrect, please{' '}<Link
+                  href="https://github.com/obi1kenobi/trustfall/issues/new"
+                  target="_blank"
+                  rel="noreferrer"
+                >let us know</Link>.
+              </p>
+            </Typography>
+          </Box>
+        </PlaygroundNonIdealState>
+      );
+    } else {
+      return (
+        <PlaygroundNonIdealState>
+          <Box>
+            <WebAssetOff sx={{ fontSize: '100px', mb: 2 }} />
+            <Typography variant="h5">Please update your browser version</Typography>
+            <Typography variant="body1">
+              <p>
+                Due to a{' '}
+                <Link
+                  href="https://bugs.webkit.org/show_bug.cgi?id=238442"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  bug
+                </Link>{' '}
+                in the WebKit engine, this page requires Safari 16.6 or newer.
+              </p>
+              <p>Please update to Safari 16.6+, or switch to Firefox or Chrome.</p>
+              <p>
+                We believe you are currently using Safari {browserVersion}.
+                If this is incorrect, please{' '}<Link
+                  href="https://github.com/obi1kenobi/trustfall/issues/new"
+                  target="_blank"
+                  rel="noreferrer"
+                >let us know</Link>.
+              </p>
+            </Typography>
+          </Box>
+        </PlaygroundNonIdealState>
+      );
+    }
   }
 
   if (!ready) {
