@@ -44,6 +44,7 @@
     "monaco-graphql": "^1.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-github-corner": "^2.5.0",
     "react-reverse-portal": "^2.1.1",
     "react-router-dom": "^6.19.0",
     "use-query-params": "^2.2.1"
