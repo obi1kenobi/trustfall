@@ -1,3 +1,6 @@
+#![forbid(unused_lifetimes)]
+#![forbid(elided_lifetimes_in_paths)]
+
 use std::{collections::BTreeMap, sync::Arc};
 
 use gloo_utils::format::JsValueSerdeExt;

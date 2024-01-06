@@ -20,6 +20,9 @@
 //!     Message(Rc<Message>),
 //! }
 //! ```
+#![forbid(unsafe_code)]
+#![forbid(unused_lifetimes)]
+#![forbid(elided_lifetimes_in_paths)]
 
 use quote::quote;
 use syn::punctuated::Punctuated;

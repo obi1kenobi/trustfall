@@ -81,7 +81,7 @@ pub trait VertexInfo: super::sealed::__Sealed {
     ///
     /// If *both* static and dynamic information is known about a property's value, all information
     /// will be merged automatically and presented via the output of this method.
-    fn dynamically_required_property(&self, name: &str) -> Option<DynamicallyResolvedValue>;
+    fn dynamically_required_property(&self, name: &str) -> Option<DynamicallyResolvedValue<'_>>;
 
     /// Returns info for the first not-yet-resolved edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
@@ -236,7 +236,10 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         candidate
     }
 
-    fn dynamically_required_property(&self, property: &str) -> Option<DynamicallyResolvedValue> {
+    fn dynamically_required_property(
+        &self,
+        property: &str,
+    ) -> Option<DynamicallyResolvedValue<'_>> {
         if self.non_binding_filters() {
             // This `VertexInfo` is in a place where the filters applied to fields
             // don't actually constrain their value in the usual way that lends itself

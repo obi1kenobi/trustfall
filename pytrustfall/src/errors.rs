@@ -7,7 +7,7 @@ create_exception!(pytrustfall, FrontendError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, InvalidIRQueryError, pyo3::exceptions::PyException);
 create_exception!(pytrustfall, QueryArgumentsError, pyo3::exceptions::PyException);
 
-pub(crate) fn register(py: Python, m: &PyModule) -> PyResult<()> {
+pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add("InvalidSchemaError", py.get_type::<InvalidSchemaError>())?;
     m.add("ParseError", py.get_type::<ParseError>())?;
     m.add("ValidationError", py.get_type::<ValidationError>())?;

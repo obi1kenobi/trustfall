@@ -185,7 +185,7 @@ fn make_resolve_info_for_property_check(
 
 fn check_properties_are_implemented<'a, A: Adapter<'a>>(
     meta_schema: &Schema,
-    schema_adapter: Arc<SchemaAdapter>,
+    schema_adapter: Arc<SchemaAdapter<'_>>,
     adapter_under_test: &A,
     sample_size: usize,
 ) {
@@ -216,7 +216,8 @@ fn check_properties_are_implemented<'a, A: Adapter<'a>>(
     let typename_property: Arc<str> = Arc::from("__typename");
     let typename_type: Arc<str> = Arc::from("String!");
 
-    for output in run_query::<SchemaAdapter, Output>(meta_schema, schema_adapter, query, variables)
+    for output in
+        run_query::<SchemaAdapter<'_>, Output>(meta_schema, schema_adapter, query, variables)
     {
         let type_name = &output.type_name;
         let property_data = output
@@ -342,7 +343,7 @@ fn make_resolve_edge_info_for_edge_check(
 
 fn check_edges_are_implemented<'a, A: Adapter<'a>>(
     meta_schema: &Schema,
-    schema_adapter: Arc<SchemaAdapter>,
+    schema_adapter: Arc<SchemaAdapter<'_>>,
     adapter_under_test: &A,
     sample_size: usize,
 ) {
@@ -382,7 +383,8 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
         target_type: Arc<str>,
     }
 
-    for output in run_query::<SchemaAdapter, Output>(meta_schema, schema_adapter, query, variables)
+    for output in
+        run_query::<SchemaAdapter<'_>, Output>(meta_schema, schema_adapter, query, variables)
     {
         let type_name = output.type_name;
         let edge_name = output.edge_name;
@@ -510,7 +512,7 @@ fn make_resolve_info_for_type_coercion(
 
 fn check_type_coercions_are_implemented<'a, A: Adapter<'a>>(
     meta_schema: &Schema,
-    schema_adapter: Arc<SchemaAdapter>,
+    schema_adapter: Arc<SchemaAdapter<'_>>,
     adapter_under_test: &A,
     sample_size: usize,
 ) {
@@ -538,7 +540,8 @@ fn check_type_coercions_are_implemented<'a, A: Adapter<'a>>(
 
     let typename_property: Arc<str> = Arc::from("__typename");
 
-    for output in run_query::<SchemaAdapter, Output>(meta_schema, schema_adapter, query, variables)
+    for output in
+        run_query::<SchemaAdapter<'_>, Output>(meta_schema, schema_adapter, query, variables)
     {
         let type_name = &output.type_name;
         let coerce_to = &output.coerce_to;
