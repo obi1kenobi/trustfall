@@ -480,7 +480,7 @@ impl<'de> Deserialize<'de> for Type {
         impl<'de> Visitor<'de> for TypeDeserializer {
             type Value = Type;
 
-            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("GraphQL type")
             }
 

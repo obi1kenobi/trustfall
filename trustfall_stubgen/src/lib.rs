@@ -27,8 +27,9 @@
 //! See an example of
 //! [a generated adapter stub](https://github.com/obi1kenobi/trustfall/tree/main/trustfall_stubgen/test_data/expected_outputs/hackernews/adapter)
 //! from this crate's test suite.
-
 #![forbid(unsafe_code)]
+#![forbid(unused_lifetimes)]
+#![forbid(elided_lifetimes_in_paths)]
 
 mod adapter_creator;
 mod edges_creator;

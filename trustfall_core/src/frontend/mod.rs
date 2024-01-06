@@ -296,7 +296,7 @@ fn infer_variable_type(
 fn make_local_field_filter_expr(
     schema: &Schema,
     component_path: &ComponentPath,
-    tags: &mut TagHandler,
+    tags: &mut TagHandler<'_>,
     current_vertex_vid: Vid,
     property_name: &Arc<str>,
     property_type: &Type,
@@ -311,7 +311,7 @@ fn make_local_field_filter_expr(
 fn make_filter_expr<LeftT: NamedTypedValue>(
     schema: &Schema,
     component_path: &ComponentPath,
-    tags: &mut TagHandler,
+    tags: &mut TagHandler<'_>,
     current_vertex_vid: Vid,
     left_operand: LeftT,
     filter_directive: &FilterDirective,
@@ -881,7 +881,7 @@ fn make_vertex<'query>(
     schema: &Schema,
     property_names_by_vertex: &BTreeMap<Vid, Vec<Arc<str>>>,
     properties: &BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
-    tags: &mut TagHandler,
+    tags: &mut TagHandler<'_>,
     component_path: &ComponentPath,
     vid: Vid,
     uncoerced_type_name: &Arc<str>,

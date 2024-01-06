@@ -32,6 +32,9 @@
 //! semantic versioning linter.
 //! More details on the role Trustfall plays in that use case are available in
 //! [this blog post](https://predr.ag/blog/speeding-up-rust-semver-checking-by-over-2000x/).
+#![forbid(unsafe_code)]
+#![forbid(unused_lifetimes)]
+#![forbid(elided_lifetimes_in_paths)]
 
 use std::{collections::BTreeMap, sync::Arc};
 

@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#![forbid(unused_lifetimes)]
+#![forbid(elided_lifetimes_in_paths)]
 
 use std::path::PathBuf;
 
