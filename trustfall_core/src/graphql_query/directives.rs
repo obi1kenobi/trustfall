@@ -411,7 +411,7 @@ impl TryFrom<&Positioned<Directive>> for OptionalDirective {
     type Error = ParseError;
 
     fn try_from(value: &Positioned<Directive>) -> Result<Self, Self::Error> {
-        if let Some((first_arg_name, _)) = value.node.arguments.get(0) {
+        if let Some((first_arg_name, _)) = value.node.arguments.first() {
             // Found arguments but this directive doesn't take any.
             return Err(ParseError::UnrecognizedDirectiveArgument(
                 "@optional".into(),
@@ -432,7 +432,7 @@ impl TryFrom<&Positioned<Directive>> for FoldDirective {
     type Error = ParseError;
 
     fn try_from(value: &Positioned<Directive>) -> Result<Self, Self::Error> {
-        if let Some((first_arg_name, _)) = value.node.arguments.get(0) {
+        if let Some((first_arg_name, _)) = value.node.arguments.first() {
             // Found arguments but this directive doesn't take any.
             return Err(ParseError::UnrecognizedDirectiveArgument(
                 "@fold".into(),
