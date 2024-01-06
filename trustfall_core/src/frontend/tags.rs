@@ -61,7 +61,7 @@ impl<'a> TagHandler<'a> {
         name: &str,
         use_path: &ComponentPath,
         use_vid: Vid,
-    ) -> Result<&TagEntry, TagLookupError> {
+    ) -> Result<&TagEntry<'_>, TagLookupError> {
         let entry =
             self.tags.get(name).ok_or_else(|| TagLookupError::UndefinedTag(name.to_string()))?;
 

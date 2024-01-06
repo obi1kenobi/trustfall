@@ -11,7 +11,7 @@ use trustfall_core::{
     ir::{EdgeParameters, FieldValue},
 };
 
-pub(crate) fn register(_py: Python, m: &PyModule) -> PyResult<()> {
+pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Schema>()?;
     m.add_class::<AdapterShim>()?;
     m.add_class::<ResultIterator>()?;
@@ -120,11 +120,11 @@ pub struct ResultIterator {
 
 #[pymethods]
 impl ResultIterator {
-    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<BTreeMap<String, Py<PyAny>>> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<BTreeMap<String, Py<PyAny>>> {
         slf.iter.next()
     }
 }
@@ -143,7 +143,7 @@ impl AdapterShim {
     }
 }
 
-fn make_python_value(py: Python, value: &FieldValue) -> Py<PyAny> {
+fn make_python_value(py: Python<'_>, value: &FieldValue) -> Py<PyAny> {
     match value {
         FieldValue::Null => Option::<i64>::None.into_py(py),
         FieldValue::Uint64(x) => x.into_py(py),
@@ -193,7 +193,7 @@ fn make_field_value_from_ref(value: &PyAny) -> Result<FieldValue, ()> {
     }
 }
 
-fn make_iterator(py: Python, value: Py<PyAny>) -> PyResult<Py<PyAny>> {
+fn make_iterator(py: Python<'_>, value: Py<PyAny>) -> PyResult<Py<PyAny>> {
     value.call_method(py, "__iter__", (), None)
 }
 
@@ -245,11 +245,11 @@ impl ContextIterator {
 
 #[pymethods]
 impl ContextIterator {
-    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<Opaque> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Opaque> {
         slf.0.next()
     }
 }

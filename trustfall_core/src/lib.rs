@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![forbid(unused_lifetimes)]
+#![forbid(elided_lifetimes_in_paths)]
 #![allow(clippy::result_large_err)] // TODO: clean this up repo-wide
 #![cfg_attr(docsrs, feature(doc_notable_trait))]
 
