@@ -174,6 +174,20 @@ function* resolvePossiblyLimitedIterator(
   }
 }
 
+/** Simple fetchers used in `resolveStartingVertices`. */
+const fetchersByEdge: Partial<
+  Record<string, (port: MessagePort) => IterableIterator<Vertex>>
+> = {
+  Top: getTopItems,
+  Latest: getLatestItems,
+  Best: getBestItems,
+  AskHN: getAskStories,
+  ShowHN: getShowStories,
+  RecentJob: getJobItems,
+  UpdatedItem: getUpdatedItems,
+  UpdatedUserProfile: getUpdatedUserProfiles,
+}
+
 export class MyAdapter implements Adapter<Vertex> {
   fetchPort: MessagePort;
 
@@ -182,55 +196,13 @@ export class MyAdapter implements Adapter<Vertex> {
   }
 
   *resolveStartingVertices(edge: string, parameters: JsEdgeParameters): IterableIterator<Vertex> {
-    if (edge === 'FrontPage') {
-      yield* limitIterator(getTopItems(this.fetchPort), 30);
-    } else if (
-      edge === 'Top' ||
-      edge === 'Latest' ||
-      edge === 'Best' ||
-      edge === 'AskHN' ||
-      edge === 'ShowHN' ||
-      edge === 'RecentJob' ||
-      edge === 'UpdatedItem' ||
-      edge === 'UpdatedUserProfile'
-    ) {
+    let fetcher = fetchersByEdge[edge]
+
+    if (fetcher) {
       const limit = parameters['max'] as number | undefined;
-      let fetcher: (fetchPort: MessagePort) => IterableIterator<Vertex>;
-      switch (edge) {
-        case 'Top': {
-          fetcher = getTopItems;
-          break;
-        }
-        case 'Latest': {
-          fetcher = getLatestItems;
-          break;
-        }
-        case 'Best': {
-          fetcher = getBestItems;
-          break;
-        }
-        case 'AskHN': {
-          fetcher = getAskStories;
-          break;
-        }
-        case 'ShowHN': {
-          fetcher = getShowStories;
-          break;
-        }
-        case 'RecentJob': {
-          fetcher = getJobItems;
-          break;
-        }
-        case 'UpdatedItem': {
-          fetcher = getUpdatedItems;
-          break;
-        }
-        case 'UpdatedUserProfile': {
-          fetcher = getUpdatedUserProfiles;
-          break;
-        }
-      }
       yield* resolvePossiblyLimitedIterator(fetcher(this.fetchPort), limit);
+    } else if (edge === 'FrontPage') {
+      yield* limitIterator(getTopItems(this.fetchPort), 30);
     } else if (edge === 'User') {
       const username = parameters['name'] as string;
       const user = materializeUser(this.fetchPort, username);
