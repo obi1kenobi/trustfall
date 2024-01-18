@@ -124,7 +124,7 @@ directive @transform(op: String!) on FIELD
                 TypeSystemDefinition::Schema(s) => {
                     assert!(schema.is_none());
                     if s.node.extend {
-                        unimplemented!();
+                        unimplemented!("Trustfall does not support extending schemas");
                     }
 
                     schema = Some(s.node);
@@ -140,7 +140,7 @@ directive @transform(op: String!) on FIELD
                     assert!(!get_builtin_scalars().contains(type_name.as_ref()));
 
                     if node.extend {
-                        unimplemented!();
+                        unimplemented!("Trustfall does not support extending schemas");
                     }
 
                     match &node.kind {
@@ -160,9 +160,9 @@ directive @transform(op: String!) on FIELD
                                 }
                             }
                         }
-                        TypeKind::Enum(_) => unimplemented!(),
-                        TypeKind::Union(_) => unimplemented!(),
-                        TypeKind::InputObject(_) => unimplemented!(),
+                        TypeKind::Enum(_) => unimplemented!("Trustfall does not support enum's"),
+                        TypeKind::Union(_) => unimplemented!("Trustfall does not support unions's"),
+                        TypeKind::InputObject(_) => unimplemented!("Trustfall does not support input objects's"),
                     }
 
                     let field_defs = match node.kind {
