@@ -162,7 +162,9 @@ directive @transform(op: String!) on FIELD
                         }
                         TypeKind::Enum(_) => unimplemented!("Trustfall does not support enum's"),
                         TypeKind::Union(_) => unimplemented!("Trustfall does not support unions's"),
-                        TypeKind::InputObject(_) => unimplemented!("Trustfall does not support input objects's"),
+                        TypeKind::InputObject(_) => {
+                            unimplemented!("Trustfall does not support input objects's")
+                        }
                     }
 
                     let field_defs = match node.kind {
