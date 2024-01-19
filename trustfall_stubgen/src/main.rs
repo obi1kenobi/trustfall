@@ -56,5 +56,10 @@ fn main() -> Result<(), anyhow::Error> {
     let target = &cli.target;
     std::fs::create_dir_all(target).context("failed to create target directory")?;
 
-    trustfall_stubgen::generate_rust_stub(&schema_text, target)
+    trustfall_stubgen::generate_rust_stub(&schema_text, target)?;
+
+    println!("Successfully created stub! Don't forget to:");
+    println!(" - add `trustfall` to your dependencies");
+    println!(" - add `mod adapter;` to your lib.rs");
+    Ok(())
 }
