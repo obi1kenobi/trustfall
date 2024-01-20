@@ -317,9 +317,10 @@ fn check_root_query_type_invariants(
                 field_type.to_string(),
             ));
         } else if !vertex_types.contains_key(base_named_type) {
-            // Somehow the base named type is neither a vertex nor a scalar,
-            // and this field is neither an edge nor a property.
-            unreachable!()
+            errors.push(InvalidSchemaError::UnknownPropertyOrEdgeType(
+                field_defn.node.name.to_string(),
+                field_type.to_string(),
+            ))
         }
     }
 
