@@ -266,15 +266,17 @@ directive @transform(op: String!) on FIELD
             return None;
         }
 
-        Some(self.vertex_types.iter().filter_map(move |(name, defn)| {
-            if name.as_ref() == type_name
-                || get_vertex_type_implements(defn).iter().any(|x| x.node.as_ref() == type_name)
-            {
-                Some(name.as_ref())
-            } else {
-                None
-            }
-        }))
+        Some(self.vertex_types.iter().sorted_by_key(|(name, _)| *name).filter_map(
+            move |(name, defn)| {
+                if name.as_ref() == type_name
+                    || get_vertex_type_implements(defn).iter().any(|x| x.node.as_ref() == type_name)
+                {
+                    Some(name.as_ref())
+                } else {
+                    None
+                }
+            },
+        ))
     }
 
     pub(crate) fn query_type_name(&self) -> &str {
@@ -334,7 +336,7 @@ fn check_type_and_property_and_edge_invariants(
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
-    for (type_name, type_defn) in vertex_types {
+    for (type_name, type_defn) in vertex_types.iter().sorted_by_key(|(name, _)| *name) {
         if type_name.as_ref().starts_with(RESERVED_PREFIX) {
             errors.push(InvalidSchemaError::ReservedTypeName(type_name.to_string()));
         }
@@ -530,7 +532,7 @@ fn check_required_transitive_implementations(
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
-    for (type_name, type_defn) in vertex_types {
+    for (type_name, type_defn) in vertex_types.iter().sorted_by_key(|(name, _)| *name) {
         let implementations: BTreeSet<&str> =
             get_vertex_type_implements(type_defn).iter().map(|x| x.node.as_ref()).collect();
 
@@ -587,7 +589,7 @@ fn check_fields_required_by_interface_implementations(
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
-    for (type_name, type_defn) in vertex_types {
+    for (type_name, type_defn) in vertex_types.iter().sorted_by_key(|(name, _)| *name) {
         let implementations = get_vertex_type_implements(type_defn);
 
         for implementation in implementations {
@@ -626,7 +628,7 @@ fn check_field_type_narrowing(
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
-    for (type_name, type_defn) in vertex_types {
+    for (type_name, type_defn) in vertex_types.iter().sorted_by_key(|(name, _)| *name) {
         let implementations = get_vertex_type_implements(type_defn);
         let type_fields = get_vertex_type_fields(type_defn);
 
@@ -756,6 +758,7 @@ fn get_field_origins(
     // for each type, which types have yet to have their field origins resolved first
     let mut required_resolutions: BTreeMap<&str, BTreeSet<&str>> = vertex_types
         .iter()
+        .sorted_by_key(|(name, _)| *name)
         .map(|(name, defn)| {
             let resolutions: BTreeSet<&str> = get_vertex_type_implements(defn)
                 .iter()
@@ -772,6 +775,7 @@ fn get_field_origins(
     // for each type, which types does it enable resolution of
     let resolvers: BTreeMap<&str, BTreeSet<Arc<str>>> = vertex_types
         .iter()
+        .sorted_by_key(|(name, _)| *name)
         .flat_map(|(name, defn)| {
             get_vertex_type_implements(defn)
                 .iter()
