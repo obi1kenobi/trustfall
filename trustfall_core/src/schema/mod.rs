@@ -222,9 +222,7 @@ directive @transform(op: String!) on FIELD
         {
             errors.extend(e);
         }
-        if let Err(e) =
-            check_root_query_type_invariants(query_type_definition, &query_type)
-        {
+        if let Err(e) = check_root_query_type_invariants(query_type_definition, &query_type) {
             errors.extend(e);
         }
 
