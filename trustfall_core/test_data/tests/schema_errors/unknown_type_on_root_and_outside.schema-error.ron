@@ -1,0 +1,4 @@
+MultipleErrors(DisplayVec([
+    UnknownPropertyOrEdgeType("child", "UnknownChildType"),
+    UnknownPropertyOrEdgeType("unknownroot", "UnknownType"),
+]))

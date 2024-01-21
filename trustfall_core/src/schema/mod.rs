@@ -223,7 +223,7 @@ directive @transform(op: String!) on FIELD
             errors.extend(e);
         }
         if let Err(e) =
-            check_root_query_type_invariants(query_type_definition, &query_type, &vertex_types)
+            check_root_query_type_invariants(query_type_definition, &query_type)
         {
             errors.extend(e);
         }
@@ -303,7 +303,6 @@ directive @transform(op: String!) on FIELD
 fn check_root_query_type_invariants(
     query_type_definition: &TypeDefinition,
     query_type: &ObjectType,
-    vertex_types: &HashMap<Arc<str>, TypeDefinition>,
 ) -> Result<(), Vec<InvalidSchemaError>> {
     let mut errors: Vec<InvalidSchemaError> = vec![];
 
@@ -316,12 +315,14 @@ fn check_root_query_type_invariants(
                 field_defn.node.name.node.to_string(),
                 field_type.to_string(),
             ));
-        } else if !vertex_types.contains_key(base_named_type) {
-            errors.push(InvalidSchemaError::UnknownPropertyOrEdgeType(
-                field_defn.node.name.to_string(),
-                field_type.to_string(),
-            ))
         }
+
+        // The invariant that vertex_types.contains_key(base_named_type) is
+        // ensured by check_type_and_property_and_edge_invariants. This is also
+        // verified by these tests:
+        // unknown_type_not_on_root
+        // unknown_type_on_root
+        // unknown_type_on_root_and_outside
     }
 
     if errors.is_empty() {
