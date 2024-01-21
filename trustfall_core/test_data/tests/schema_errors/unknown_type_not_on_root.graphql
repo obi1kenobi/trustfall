@@ -1,0 +1,11 @@
+schema {
+    query: Query
+}
+
+type Query {
+    children: [Child!]
+}
+
+type Child {
+    unknown: UnknownType
+}
