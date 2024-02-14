@@ -16,9 +16,12 @@ use crate::shim::{
     ReturnedContextIdAndValue,
 };
 
-#[wasm_bindgen]
+#[wasm_bindgen(module = "/js/js_numbers_adapter.js")]
 extern "C" {
     pub type JsAdapter;
+
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> JsAdapter;
 
     #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
     pub fn resolve_starting_vertices(
