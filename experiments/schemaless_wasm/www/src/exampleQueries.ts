@@ -1,13 +1,13 @@
-/* eslint-disable @typescript-eslint/ban-js-comment */
-// @js-ignore
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-ignore
 import actions_in_repos_with_min_hn_pts from '../../../schemaless/example_queries/actions_in_repos_with_min_hn_pts.graphql';
-// @js-ignore
+// @ts-ignore
 import crates_io_github_actions from '../../../schemaless/example_queries/crates_io_github_actions.graphql';
-// @js-ignore
+// @ts-ignore
 import hackernews_patio11_own_post_comments from '../../../schemaless/example_queries/hackernews_patio11_own_post_comments.graphql';
-// @js-ignore
+// @ts-ignore
 import repos_with_min_hackernews_points from '../../../schemaless/example_queries/repos_with_min_hackernews_points.graphql';
-/* eslint-enable @typescript-eslint/ban-js-comment */
+/* eslint-enable @typescript-eslint/ban-ts-comment */
 
 const EXAMPLE_QUERY_MAP = {
     actions_in_repos_with_min_hn_pts: {

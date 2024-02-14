@@ -7,8 +7,8 @@ module.exports = (env) => {
   return {
     entry: {
       index: './src/index.tsx',
-      adapter: './src/hackernews/adapter.js',
-      fetcher: './src/hackernews/fetcher.js',
+      adapter: './src/hackernews/adapter.ts',
+      fetcher: './src/hackernews/fetcher.ts',
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -17,7 +17,7 @@ module.exports = (env) => {
     devtool: isDev ? 'cheap-module-source-map' : 'source-map',
     mode,
     resolve: {
-      extensions: ['.tsx', '.js', '.js', '.json'],
+      extensions: ['.tsx', '.ts', '.js', '.json'],
     },
     experiments: {
       asyncWebAssembly: true,

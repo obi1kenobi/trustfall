@@ -5,7 +5,7 @@ module.exports = (env) => {
     const isDev = env !== 'production';
     const mode = isDev ? 'development' : 'production';
     return {
-        entry: './src/bootstrap.js',
+        entry: './src/bootstrap.ts',
         output: {
             path: path.resolve(__dirname, 'dist'),
             filename: 'bootstrap.js',
@@ -13,7 +13,7 @@ module.exports = (env) => {
         devtool: isDev ? 'cheap-module-source-map' : 'source-map',
         mode,
         resolve: {
-            extensions: ['.tsx', '.js', '.js', '.json'],
+            extensions: ['.tsx', '.ts', '.js', '.json'],
         },
         experiments: {
             asyncWebAssembly: true,
