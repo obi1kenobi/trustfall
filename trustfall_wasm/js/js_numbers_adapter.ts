@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.JsAdapter = void 0;
-class JsAdapter {
+export class JsAdapter {
     /*
     #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
     pub fn resolve_starting_vertices(this: &JsAdapter, edge: &str) -> js_sys::Iterator;
@@ -12,11 +9,11 @@ class JsAdapter {
             for (var i = 1; i <= maxValue; i++) {
                 yield i;
             }
-        }
-        else {
+        } else {
             throw `unreachable edge name: ${edge}`;
         }
     }
+
     /*
     #[wasm_bindgen(structural, method, js_name = "resolveProperty")]
     pub fn resolve_property(
@@ -36,15 +33,14 @@ class JsAdapter {
                     };
                     yield val;
                 }
-            }
-            else {
+            } else {
                 throw `unreachable field name: ${type_name} ${field_name}`;
             }
-        }
-        else {
+        } else {
             throw `unreachable type name: ${type_name} ${field_name}`;
         }
     }
+
     /*
     #[wasm_bindgen(structural, method, js_name = "resolveNeighbors")]
     pub fn resolve_neighbors(
@@ -65,15 +61,14 @@ class JsAdapter {
                     };
                     yield val;
                 }
-            }
-            else {
+            } else {
                 throw `unreachable neighbor name: ${type_name}`;
             }
-        }
-        else {
+        } else {
             throw `unreachable type name: ${type_name}`;
         }
     }
+
     /*
     #[wasm_bindgen(structural, method, js_name = "resolveCoercion")]
     pub fn resolve_coercion(
@@ -104,8 +99,7 @@ class JsAdapter {
                     };
                     yield val;
                 }
-            }
-            else if (coerce_to_type === "Composite") {
+            } else if (coerce_to_type === "Composite") {
                 for (const ctx of contexts) {
                     var can_coerce = false;
                     if (!(ctx.activeVertex in primes || ctx.activeVertex === 1)) {
@@ -117,14 +111,11 @@ class JsAdapter {
                     };
                     yield val;
                 }
-            }
-            else {
+            } else {
                 throw `unreachable coercion type name: ${type_name} ${coerce_to_type}`;
             }
-        }
-        else {
+        } else {
             throw `unreachable type name: ${type_name} ${coerce_to_type}`;
         }
     }
 }
-exports.JsAdapter = JsAdapter;

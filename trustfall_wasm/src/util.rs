@@ -45,14 +45,9 @@ macro_rules! log {
     }
 }
 
-#[wasm_bindgen(inline_js = "
-    export function iterify(obj) {
-        obj[Symbol.iterator] = function () {
-            return this;
-        };
-    }
-")]
+#[wasm_bindgen(module = "/js/iterify.js")]
 extern "C" {
+    #[wasm_bindgen(js_name = "iterify")]
     pub fn iterify(obj: &Object);
 }
 

@@ -16,6 +16,12 @@ use crate::shim::{
     ReturnedContextIdAndValue,
 };
 
+#[wasm_bindgen(module = "/js/web_test_query.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = "testQuery")]
+    pub fn js_test_query();
+}
+
 #[wasm_bindgen(module = "/js/js_numbers_adapter.js")]
 extern "C" {
     pub type JsAdapter;
@@ -23,14 +29,14 @@ extern "C" {
     #[wasm_bindgen(constructor)]
     pub fn new() -> JsAdapter;
 
-    #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
+    #[wasm_bindgen(method, js_name = "resolveStartingVertices")]
     pub fn resolve_starting_vertices(
         this: &JsAdapter,
         edge: &str,
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method, js_name = "resolveProperty")]
+    #[wasm_bindgen(method, js_name = "resolveProperty")]
     pub fn resolve_property(
         this: &JsAdapter,
         contexts: JsContextIterator,
@@ -38,7 +44,7 @@ extern "C" {
         field_name: &str,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method, js_name = "resolveNeighbors")]
+    #[wasm_bindgen(method, js_name = "resolveNeighbors")]
     pub fn resolve_neighbors(
         this: &JsAdapter,
         contexts: JsContextIterator,
@@ -47,7 +53,7 @@ extern "C" {
         parameters: JsValue,
     ) -> js_sys::Iterator;
 
-    #[wasm_bindgen(structural, method, js_name = "resolveCoercion")]
+    #[wasm_bindgen(method, js_name = "resolveCoercion")]
     pub fn resolve_coercion(
         this: &JsAdapter,
         contexts: JsContextIterator,

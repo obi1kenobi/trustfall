@@ -1,4 +1,5 @@
 use std::{collections::BTreeMap, sync::Arc};
+use wasm_bindgen::prelude::wasm_bindgen;
 
 use trustfall_wasm::{
     adapter::{AdapterShim},
