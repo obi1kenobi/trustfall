@@ -45,7 +45,7 @@ macro_rules! log {
     }
 }
 
-#[wasm_bindgen(module = "/js/iterify.js")]
+#[wasm_bindgen(module = "/js/dist/iterify.js")]
 extern "C" {
     #[wasm_bindgen(js_name = "iterify")]
     pub fn iterify(obj: &Object);

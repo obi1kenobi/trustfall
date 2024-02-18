@@ -16,13 +16,13 @@ use crate::shim::{
     ReturnedContextIdAndValue,
 };
 
-#[wasm_bindgen(module = "/js/web_test_query.js")]
+#[wasm_bindgen(module = "/js/dist/web_test_query.js")]
 extern "C" {
     #[wasm_bindgen(js_name = "testQuery")]
     pub fn js_test_query();
 }
 
-#[wasm_bindgen(module = "/js/js_numbers_adapter.js")]
+#[wasm_bindgen(module = "/js/dist/js_numbers_adapter.js")]
 extern "C" {
     pub type JsAdapter;
 
