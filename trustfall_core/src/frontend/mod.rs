@@ -909,28 +909,25 @@ fn make_vertex<'query>(
         errors.push(FrontendError::UnsupportedEdgeTag(field_node.name.as_ref().to_owned()));
     }
 
-    let (type_name, coerced_from_type) = match field_node.coerced_to.clone().map_or_else(
-        || {
-            Result::<(Arc<str>, Option<Arc<str>>), FrontendError>::Ok((
-                uncoerced_type_name.clone(),
-                None,
-            ))
-        },
-        |coerced_to_type| {
-            let coerced_type =
-                get_vertex_type_definition_from_schema(schema, coerced_to_type.as_ref())?;
-            Ok((
-                coerced_type.name.node.as_ref().to_owned().into(),
-                Some(uncoerced_type_name.clone()),
-            ))
-        },
-    ) {
-        Ok(x) => x,
-        Err(e) => {
-            errors.push(e);
-            return Err(errors);
-        }
+    let default_func = || {
+        Result::<(Arc<str>, Option<Arc<str>>), FrontendError>::Ok((
+            uncoerced_type_name.clone(),
+            None,
+        ))
     };
+    let mapper_func = |coerced_to_type: Arc<str>| {
+        let coerced_type =
+            get_vertex_type_definition_from_schema(schema, coerced_to_type.as_ref())?;
+        Ok((coerced_type.name.node.as_ref().to_owned().into(), Some(uncoerced_type_name.clone())))
+    };
+    let (type_name, coerced_from_type) =
+        match field_node.coerced_to.clone().map_or_else(default_func, mapper_func) {
+            Ok(x) => x,
+            Err(e) => {
+                errors.push(e);
+                return Err(errors);
+            }
+        };
 
     let mut filters = vec![];
     for property_name in property_names_by_vertex.get(&vid).into_iter().flatten() {
