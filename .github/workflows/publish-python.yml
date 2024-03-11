@@ -50,7 +50,7 @@ jobs:
       # Trusted publishing is configured on PyPI for the `trustfall` Python package.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
       - name: Publish package distributions to PyPI
