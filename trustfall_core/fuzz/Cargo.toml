@@ -9,17 +9,17 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-async-graphql-parser = "^6.0.4"
-async-graphql-value = "^6.0.4"
+async-graphql-parser = "7"
+async-graphql-value = "7"
 byteorder = "1"
-ron = "0.7.0"
+ron = "0.8.0"
 serde = { version = "^1.0", features = ["derive"] }
 libfuzzer-sys = "0.4"
 trustfall_core = { path = ".." }
 regex = "1.5.4"
 globset = "0.4.6"
 walkdir = "2.3.1"
-itertools = "0.10.5"
+itertools = "0.12"
 maplit = "1.0.2"
 
 # Prevent this from interfering with workspaces
