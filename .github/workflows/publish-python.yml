@@ -100,7 +100,7 @@ jobs:
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -138,7 +138,7 @@ jobs:
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -177,7 +177,7 @@ jobs:
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -219,7 +219,7 @@ jobs:
   #           pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
   #           python3 -c "import trustfall"
   #     - name: Upload wheels
-  #       uses: actions/upload-artifact@v2
+  #       uses: actions/upload-artifact@v4
   #       with:
   #         name: wheels
   #         path: /io/dist
