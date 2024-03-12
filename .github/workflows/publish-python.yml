@@ -50,7 +50,7 @@ jobs:
       # Trusted publishing is configured on PyPI for the `trustfall` Python package.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
       - name: Publish package distributions to PyPI
@@ -71,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
@@ -100,7 +100,7 @@ jobs:
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
@@ -138,7 +138,7 @@ jobs:
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -155,7 +155,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
@@ -177,7 +177,7 @@ jobs:
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -194,7 +194,7 @@ jobs:
   #     - uses: actions/checkout@v4
   #       with:
   #         persist-credentials: false
-  #     - uses: actions/setup-python@v4
+  #     - uses: actions/setup-python@v5
   #       with:
   #         python-version: ${{ matrix.python-version }}
   #         architecture: x64
@@ -219,7 +219,7 @@ jobs:
   #           pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
   #           python3 -c "import trustfall"
   #     - name: Upload wheels
-  #       uses: actions/upload-artifact@v2
+  #       uses: actions/upload-artifact@v4
   #       with:
   #         name: wheels
   #         path: /io/dist
