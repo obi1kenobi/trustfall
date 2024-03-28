@@ -1,6 +1,7 @@
 **/target
 **/.vscode/
 **/.cargo/
+**/.idea/
 **/localdata/
 **/.ipynb_checkpoints/
 
