@@ -6,7 +6,6 @@ use anyhow::Context as _;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet},
-    convert::TryInto,
     env,
     fmt::Debug,
     fs,
