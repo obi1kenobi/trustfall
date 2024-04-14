@@ -1,7 +1,6 @@
 use std::{
     cell::RefCell,
     collections::{btree_map, BTreeMap, VecDeque},
-
     fmt::Debug,
     marker::PhantomData,
     rc::Rc,

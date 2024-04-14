@@ -1,8 +1,6 @@
 //! Frontend for Trustfall: takes a parsed query, validates it, and turns it into IR.
 #![allow(dead_code, unused_variables, unused_mut)]
-use std::{
-    collections::BTreeMap,  iter::successors, num::NonZeroUsize, sync::Arc,
-};
+use std::{collections::BTreeMap, iter::successors, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{
     types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
