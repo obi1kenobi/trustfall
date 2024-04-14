@@ -67,6 +67,16 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
             )),
         }?;
 
+        for (argument_name, _) in value.node.arguments.iter() {
+            if !matches!(argument_name.node.as_str(), "op" | "value") {
+                return Err(ParseError::UnrecognizedDirectiveArgument(
+                    "@filter".to_owned(),
+                    argument_name.node.to_string(),
+                    argument_name.pos,
+                ));
+            }
+        }
+
         let mut parsed_args: SmallVec<[OperatorArgument; 2]> = if let Some(value_argument) =
             value.node.get_argument("value")
         {

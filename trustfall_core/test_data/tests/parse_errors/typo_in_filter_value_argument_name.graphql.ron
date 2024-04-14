@@ -1,0 +1,17 @@
+TestGraphQLQuery (
+    // This test ensures that calling `@filter` with a typo in the `value` parameter
+    // produces an `UnrecognizedDirectiveArgument` error.
+    //
+    // The `values` argument to `@filter` should be `value` instead.
+    // Related to: https://github.com/obi1kenobi/trustfall/discussions/587
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(max: 5) {
+        value @output @filter(op: "<", values: ["$six"])
+    }
+}"#,
+    arguments: {
+        "six": Int64(6)
+    },
+)
