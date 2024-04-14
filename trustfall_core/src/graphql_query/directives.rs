@@ -1,6 +1,6 @@
 //! Directives in Trustfall can be identified by their prefix: `@`.
 //! This module contains the logic for parsing Trustfall query directives.
-use std::{collections::HashSet, convert::TryFrom, num::NonZeroUsize, sync::Arc};
+use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{types::Directive, Positioned};
 use async_graphql_value::Value;

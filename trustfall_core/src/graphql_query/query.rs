@@ -1,6 +1,6 @@
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::sync::Arc;
-use std::{collections::BTreeMap, convert::TryFrom};
 
 use async_graphql_parser::types::Directive;
 use async_graphql_parser::{
