@@ -57,6 +57,9 @@ pub enum ParseError {
     #[error("Unrecognized filter operator: {0}")]
     UnsupportedFilterOperator(String, Pos),
 
+    #[error("Filter is passed an invalid operand argument '{0}': {1}")]
+    InvalidFilterOperandName(String, String, Pos),
+
     #[error("Unrecognized transform operator: {0}")]
     UnsupportedTransformOperator(String, Pos),
 
