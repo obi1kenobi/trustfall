@@ -100,14 +100,16 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                             let (prefix, name) = if s.starts_with('$') || s.starts_with('%') {
                                 s.split_at(1)
                             } else {
-                                return Err(ParseError::OtherError(
+                                return Err(ParseError::InvalidFilterOperandName(
+                                    s.to_owned(),
                                     format!("Filter argument was expected to start with '$' or '%' but did not: {s}"),
                                     value_argument.pos,
                                 ));
                             };
 
                             if name.is_empty() {
-                                return Err(ParseError::OtherError(
+                                return Err(ParseError::InvalidFilterOperandName(
+                                    s.to_owned(),
                                     format!("Filter argument is empty after '{}' prefix.", prefix),
                                     value_argument.pos,
                                 ));
@@ -115,14 +117,16 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
 
                             let first_char = name.chars().next().unwrap();
                             if  !first_char.is_ascii_alphabetic() && first_char != '_' {
-                                return Err(ParseError::OtherError(
+                                return Err(ParseError::InvalidFilterOperandName(
+                                    s.to_owned(),
                                     format!("Filter argument names must start with an ASCII letter or underscore character: {name}"),
                                     value_argument.pos))
                             }
 
                             if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_')
                             {
-                                return Err(ParseError::OtherError(
+                                return Err(ParseError::InvalidFilterOperandName(
+                                    s.to_owned(),
                                     format!("Filter argument names must only contain ASCII alphanumerics or underscore characters: {name}"),
                                     value_argument.pos,
                                 ));
