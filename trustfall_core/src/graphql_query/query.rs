@@ -550,7 +550,7 @@ mod tests {
 
     #[test]
     fn no_invalid_input_files() {
-        let glob = GlobBuilder::new(&"*.ron")
+        let glob = GlobBuilder::new("*.ron")
             .case_insensitive(true)
             .literal_separator(false)
             .build()
