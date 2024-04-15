@@ -516,7 +516,9 @@ mod tests {
 
     use async_graphql_parser::parse_query;
 
+    use globset::GlobBuilder;
     use trustfall_filetests_macros::parameterize;
+    use walkdir::WalkDir;
 
     use super::*;
     use crate::test_types::{
@@ -544,6 +546,50 @@ mod tests {
         let check_parsed: TestParsedGraphQLQueryResult = ron::from_str(&check_data).unwrap();
 
         assert_eq!(check_parsed, constructed_test_item);
+    }
+
+    #[test]
+    fn no_invalid_input_files() {
+        let glob = GlobBuilder::new(&"*.ron")
+            .case_insensitive(true)
+            .literal_separator(false)
+            .build()
+            .unwrap()
+            .compile_matcher();
+
+        let walker = WalkDir::new("test_data/");
+        let mut files_with_unexpected_extensions = vec![];
+
+        for file in walker {
+            let file = file.expect("failed to get file");
+            let path = file.path();
+            if !glob.is_match(path) {
+                continue;
+            }
+
+            // The stem is everything before the final `.` in the file.
+            let stem = path.file_stem().and_then(|x| x.to_str()).expect("failed to get file stem");
+            if !(stem.ends_with(".graphql")
+                || stem.ends_with(".graphql-parsed")
+                || stem.ends_with(".ir")
+                || stem.ends_with(".output")
+                || stem.ends_with(".trace")
+                || stem.ends_with(".parse-error")
+                || stem.ends_with(".frontend-error")
+                || stem.ends_with(".exec-error")
+                || stem.ends_with(".schema-error"))
+            {
+                files_with_unexpected_extensions.push(path.display().to_string());
+            }
+        }
+
+        assert!(
+            files_with_unexpected_extensions.is_empty(),
+            "Found unexpected \".ron\" files in the \"test_data\" directory that don't have a suffix
+            which will be used in tests. This might be unintentional and may cause bugs.\n\n\
+            Did you mean to use a suffix like \".graphql.ron\" or another test-related suffix \
+            instead?\n\nFiles at issue: {files_with_unexpected_extensions:#?}"
+        );
     }
 
     #[parameterize("trustfall_core/test_data/tests/parse_errors")]

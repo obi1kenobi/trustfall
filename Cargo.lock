@@ -3309,6 +3309,7 @@ version = "0.7.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "globset",
  "itertools",
  "maplit",
  "regex",
@@ -3319,6 +3320,7 @@ dependencies = [
  "smallvec 1.13.2",
  "thiserror",
  "trustfall_filetests_macros",
+ "walkdir",
 ]
 
 [[package]]

@@ -40,3 +40,5 @@ itertools = { workspace = true }
 ron = { workspace = true }
 trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version = "0.2.0" }
 similar-asserts = { workspace = true, features = ["serde"] }
+globset = { workspace = true }
+walkdir = { workspace = true }
