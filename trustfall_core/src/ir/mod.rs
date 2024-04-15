@@ -339,7 +339,7 @@ impl Argument {
 ///
 /// In a Trustfall query, the `@filter` directive produces `Operation` values:
 /// ```graphql
-/// name @filter(op: "=", values: ["$input"])
+/// name @filter(op: "=", value: ["$input"])
 /// ```
 /// would produce the `Operation::Equals` variant, for example.
 #[non_exhaustive]
