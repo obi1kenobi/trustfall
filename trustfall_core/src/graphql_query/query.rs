@@ -136,11 +136,7 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
 
             if !root_node.variable_definitions.is_empty() {
                 let first_variable_definition = root_node.variable_definitions.first().unwrap();
-                return Err(ParseError::OtherError(
-                    "Found GraphQL query variable definitions. \
-                    These are not necessary since variables are defined implicitly, \
-                    and must be removed."
-                        .to_string(),
+                return Err(ParseError::VariableDefinitionInRootQuery(
                     first_variable_definition.pos,
                 ));
             }
