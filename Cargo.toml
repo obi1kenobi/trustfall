@@ -24,8 +24,8 @@ license = "Apache-2.0"
 # The dependencies below are part of our public API.
 # Bumping a major version here requires our own major version bump.
 anyhow = "1.0.71"
-async-graphql-parser = "6.0.4"
-async-graphql-value = "6.0.4"
+async-graphql-parser = "7.0"
+async-graphql-value = "7.0"
 serde = "1.0.185"
 serde_json = "1.0.96"
 thiserror = "1.0.30"
@@ -33,7 +33,7 @@ regex = "1.9.1"
 
 # The dependencies below are internal-only.
 # Bumping major versions here should be safe.
-itertools = "0.11.0"
+itertools = "0.12.1"
 ron = "0.8.0"
 similar-asserts = "1.4.2"
 maplit = "1.0.2"

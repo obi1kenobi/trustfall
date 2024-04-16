@@ -79,7 +79,7 @@ jobs:
 
       - name: Set up python
         id: setup-python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -92,7 +92,7 @@ jobs:
 
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: pytrustfall/.venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
@@ -121,7 +121,7 @@ jobs:
           echo "PYTHON_BINDINGS_CHANGED=$(.github/workflows/python_bindings_changed.sh)" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: steps.branch-info.outputs.PYTHON_BINDINGS_CHANGED != 0
         with:
           name: pytrustfall-wheels
@@ -183,7 +183,7 @@ jobs:
           rustflags: ""
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Clear sccache stats
         run: sccache --zero-stats
@@ -308,7 +308,7 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Clear sccache stats
         run: sccache --zero-stats
@@ -338,7 +338,7 @@ jobs:
           tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: steps.branch-info.outputs.WASM_CHANGED != 0
         with:
           name: wasm-module
@@ -374,7 +374,7 @@ jobs:
       - name: Install rust + caching  # necessary for `npm run build:wasm` later
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
