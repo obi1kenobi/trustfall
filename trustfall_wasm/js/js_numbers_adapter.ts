@@ -1,4 +1,4 @@
-export class JsAdapter {
+export default class JsAdapter {
     /*
     #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
     pub fn resolve_starting_vertices(this: &JsAdapter, edge: &str) -> js_sys::Iterator;

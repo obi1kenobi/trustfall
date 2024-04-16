@@ -1,4 +1,4 @@
-export function iterify(obj: any) {
+export default function iterify(obj: any) {
     obj[Symbol.iterator] = function () {
         return this;
     };

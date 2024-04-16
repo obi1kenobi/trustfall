@@ -1,12 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
-use wasm_bindgen::prelude::wasm_bindgen;
 
-use trustfall_wasm::{
-    adapter::{AdapterShim},
-    shim::JsFieldValue,
-    Schema,
-};
 use trustfall_wasm::adapter::JsAdapter;
+use trustfall_wasm::{adapter::AdapterShim, shim::JsFieldValue, Schema};
 
 pub fn run_numbers_query(
     query: &str,

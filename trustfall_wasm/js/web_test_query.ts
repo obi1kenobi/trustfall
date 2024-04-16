@@ -1,6 +1,6 @@
 import {Schema} from "../src/trustfall_wasm";
 
-export function testQuery() {
+export default function testQuery() {
     const numbersSchema = Schema.parse(`
 schema {
     query: RootSchemaQuery

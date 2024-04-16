@@ -1,9 +1,9 @@
 use common::{make_test_schema, run_numbers_query};
 use trustfall_core::ir::FieldValue;
+use trustfall_wasm::adapter::js_test_query;
 use trustfall_wasm::shim::JsFieldValue;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::wasm_bindgen_test;
-use trustfall_wasm::adapter::js_test_query;
 
 #[macro_use]
 extern crate maplit;
