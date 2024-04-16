@@ -1,12 +1,11 @@
 TestGraphQLQuery (
     schema_name: "numbers",
-    query: r#"
-{
-    Number(max: $max) {
-        num: value @output
-    }
+    query: r#"{
+  query Number($max: Int!) {
+    num: $max @output
+  }
 }"#,
     arguments: {
-        "max": 3
+        "max": Int64(3)
     },
 )
