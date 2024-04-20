@@ -135,6 +135,7 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
             } else if let Some(node) = mult.values().next() {
                 parse_operation_definition(node)
             } else {
+                // This should be unreachable if someone is using the library correctly
                 panic!("These aren't the droids you're looking for.")
             }
         }

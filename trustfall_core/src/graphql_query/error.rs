@@ -95,9 +95,6 @@ pub enum ParseError {
     )]
     VariableDefinitionInQuery(Pos),
 
-    #[error("No GraphQL node found.")]
-    NodeNotFound,
-
     #[error("Unexpected error: {0}")]
     OtherError(String, Pos),
 }
