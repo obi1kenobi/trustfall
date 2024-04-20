@@ -3311,6 +3311,7 @@ dependencies = [
  "async-graphql-value",
  "globset",
  "itertools",
+ "log",
  "maplit",
  "regex",
  "ron",

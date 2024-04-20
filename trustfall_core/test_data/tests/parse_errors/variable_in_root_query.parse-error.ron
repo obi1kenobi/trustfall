@@ -1,4 +1,4 @@
 Err(VariableDefinitionInRootQuery(Pos(
-    line: 10,
-    column: 9
+    line: 2,
+    column: 18
 )))
