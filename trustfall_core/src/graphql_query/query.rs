@@ -126,10 +126,9 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
     match &document.operations {
         DocumentOperations::Multiple(mult) => {
             return if mult.values().len() > 1 {
-                mult.values().next().expect("Could not iterate to first value in document.");
                 Err(ParseError::MultipleOperationsInDocument(
                     mult.values()
-                        .next()
+                        .nth(2)
                         .expect("Could not iterate to second value in document.")
                         .pos,
                 ))
