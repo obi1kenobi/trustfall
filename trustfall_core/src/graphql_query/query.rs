@@ -152,12 +152,10 @@ fn parse_operation_definition(
         return Err(ParseError::DocumentNotAQuery(op.pos));
     }
 
-    if !root_node.variable_definitions.is_empty() {
-        let first_variable_definition = root_node.variable_definitions.first().unwrap();
+    if let Some(first_variable_definition) = root_node.variable_definitions.first() {
         return Err(ParseError::VariableDefinitionInQuery(first_variable_definition.pos));
     }
-    if !root_node.directives.is_empty() {
-        let first_directive = root_node.directives.first().unwrap();
+    if let Some(first_directive) = root_node.directives.first() {
         return Err(ParseError::DirectiveNotInsideQueryRoot(
             first_directive.node.name.node.to_string(),
             first_directive.pos,
