@@ -35,7 +35,6 @@ smallvec = { version = "1.6.1", features = ["serde"] }
 regex = { workspace = true }
 thiserror = { workspace = true }
 itertools = { workspace = true }
-log = "0.4.21"
 
 [dev-dependencies]
 ron = { workspace = true }
