@@ -125,7 +125,7 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
 
     match &document.operations {
         DocumentOperations::Multiple(mult) => {
-            return if mult.values().len() > 1 {
+            if mult.values().len() > 1 {
                 Err(ParseError::MultipleOperationsInDocument(
                     mult.values()
                         .nth(2)
@@ -135,7 +135,7 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
             } else if let Some(node) = mult.values().next() {
                 parse_operation_definition(node)
             } else {
-                Err(ParseError::NodeNotFound)
+                panic!("These aren't the droids you're looking for.")
             }
         }
         DocumentOperations::Single(op) => parse_operation_definition(op),
