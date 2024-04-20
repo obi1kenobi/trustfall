@@ -126,10 +126,17 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
     match &document.operations {
         DocumentOperations::Multiple(mult) => {
             return if mult.values().len() > 1 {
-                Err(ParseError::MultipleOperationsInDocument(mult.values().next().unwrap().pos))
-            } else {
-                let node = mult.values().next().unwrap();
+                mult.values().next().expect("Could not iterate to first value in document.");
+                Err(ParseError::MultipleOperationsInDocument(
+                    mult.values()
+                        .next()
+                        .expect("Could not iterate to second value in document.")
+                        .pos,
+                ))
+            } else if let Some(node) = mult.values().next() {
                 parse_operation_definition(node)
+            } else {
+                Err(ParseError::NodeNotFound)
             }
         }
         DocumentOperations::Single(op) => parse_operation_definition(op),
@@ -147,7 +154,7 @@ fn parse_operation_definition(
 
     if !root_node.variable_definitions.is_empty() {
         let first_variable_definition = root_node.variable_definitions.first().unwrap();
-        return Err(ParseError::VariableDefinitionInRootQuery(first_variable_definition.pos));
+        return Err(ParseError::VariableDefinitionInQuery(first_variable_definition.pos));
     }
     if !root_node.directives.is_empty() {
         let first_directive = root_node.directives.first().unwrap();

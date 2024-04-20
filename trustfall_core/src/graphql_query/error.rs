@@ -93,7 +93,10 @@ pub enum ParseError {
     These are not necessary since variables are defined implicitly, \
     and must be removed."
     )]
-    VariableDefinitionInRootQuery(Pos),
+    VariableDefinitionInQuery(Pos),
+
+    #[error("No GraphQL node found.")]
+    NodeNotFound,
 
     #[error("Unexpected error: {0}")]
     OtherError(String, Pos),
