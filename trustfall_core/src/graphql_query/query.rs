@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use async_graphql_parser::types::Directive;
+use async_graphql_parser::types::{Directive, OperationDefinition};
 use async_graphql_parser::{
     types::{DocumentOperations, ExecutableDocument, Field, OperationType, Selection},
     Pos, Positioned,
@@ -125,49 +125,61 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
 
     match &document.operations {
         DocumentOperations::Multiple(mult) => {
-            return Err(ParseError::MultipleOperationsInDocument(mult.values().next().unwrap().pos))
+            if mult.values().len() > 1 {
+                Err(ParseError::MultipleOperationsInDocument(
+                    mult.values()
+                        .nth(2)
+                        .expect("Could not iterate to second value in document.")
+                        .pos,
+                ))
+            } else if let Some(node) = mult.values().next() {
+                parse_operation_definition(node)
+            } else {
+                // This should be unreachable if someone is using the library correctly
+                unreachable!(
+                    "Found a `DocumentOperations::Multiple()` with no query components. \
+                    This shouldn't be possible, and is a bug. Please report it at \
+                    https://github.com/obi1kenobi/trustfall/"
+                )
+            }
         }
-        DocumentOperations::Single(op) => {
-            let root_node = &op.node;
+        DocumentOperations::Single(op) => parse_operation_definition(op),
+    }
+}
 
-            if root_node.ty != OperationType::Query {
-                return Err(ParseError::DocumentNotAQuery(op.pos));
-            }
+fn parse_operation_definition(
+    op: &Positioned<OperationDefinition>,
+) -> Result<&Positioned<Field>, ParseError> {
+    let root_node = &op.node;
 
-            if !root_node.variable_definitions.is_empty() {
-                let first_variable_definition = root_node.variable_definitions.first().unwrap();
-                return Err(ParseError::OtherError(
-                    "Found GraphQL query variable definitions. \
-                    These are not necessary since variables are defined implicitly, \
-                    and must be removed."
-                        .to_string(),
-                    first_variable_definition.pos,
-                ));
-            }
-            if !root_node.directives.is_empty() {
-                let first_directive = root_node.directives.first().unwrap();
-                return Err(ParseError::DirectiveNotInsideQueryRoot(
-                    first_directive.node.name.node.to_string(),
-                    first_directive.pos,
-                ));
-            }
+    if root_node.ty != OperationType::Query {
+        return Err(ParseError::DocumentNotAQuery(op.pos));
+    }
 
-            let root_selection_set = &root_node.selection_set.node;
-            let root_items = &root_selection_set.items;
-            if root_items.len() != 1 {
-                return Err(ParseError::MultipleQueryRoots(root_items[1].pos));
-            }
+    if let Some(first_variable_definition) = root_node.variable_definitions.first() {
+        return Err(ParseError::VariableDefinitionInQuery(first_variable_definition.pos));
+    }
+    if let Some(first_directive) = root_node.directives.first() {
+        return Err(ParseError::DirectiveNotInsideQueryRoot(
+            first_directive.node.name.node.to_string(),
+            first_directive.pos,
+        ));
+    }
 
-            let root_node = root_items.first().unwrap();
-            match &root_node.node {
-                Selection::Field(positioned_field) => Ok(positioned_field),
-                Selection::FragmentSpread(fs) => {
-                    Err(ParseError::UnsupportedQueryRoot("a fragment spread".to_string(), fs.pos))
-                }
-                Selection::InlineFragment(inl) => {
-                    Err(ParseError::UnsupportedQueryRoot("an inline fragment".to_string(), inl.pos))
-                }
-            }
+    let root_selection_set = &root_node.selection_set.node;
+    let root_items = &root_selection_set.items;
+    if root_items.len() != 1 {
+        return Err(ParseError::MultipleQueryRoots(root_items[1].pos));
+    }
+
+    let root_node = root_items.first().unwrap();
+    match &root_node.node {
+        Selection::Field(positioned_field) => Ok(positioned_field),
+        Selection::FragmentSpread(fs) => {
+            Err(ParseError::UnsupportedQueryRoot("a fragment spread".to_string(), fs.pos))
+        }
+        Selection::InlineFragment(inl) => {
+            Err(ParseError::UnsupportedQueryRoot("an inline fragment".to_string(), inl.pos))
         }
     }
 }

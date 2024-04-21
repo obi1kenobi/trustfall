@@ -88,6 +88,13 @@ pub enum ParseError {
     #[error("Edge {1} specifies a duplicated parameter {0}")]
     DuplicatedEdgeParameter(String, String, Pos),
 
+    #[error(
+        "Found GraphQL query variable definition(s). \
+    These are not necessary since variables are defined implicitly, \
+    and must be removed."
+    )]
+    VariableDefinitionInQuery(Pos),
+
     #[error("Unexpected error: {0}")]
     OtherError(String, Pos),
 }
