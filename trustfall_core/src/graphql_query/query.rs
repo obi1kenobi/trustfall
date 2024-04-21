@@ -136,7 +136,9 @@ fn try_get_query_root(document: &ExecutableDocument) -> Result<&Positioned<Field
                 parse_operation_definition(node)
             } else {
                 // This should be unreachable if someone is using the library correctly
-                panic!("These aren't the droids you're looking for.")
+                unreachable!("Found a `DocumentOperations::Multiple()` with no query components. \
+                              This shouldn't be possible, and is a bug. Please report it at \
+                              https://github.com/obi1kenobi/trustfall/")
             }
         }
         DocumentOperations::Single(op) => parse_operation_definition(op),
