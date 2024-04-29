@@ -67,14 +67,14 @@ pub enum FrontendError {
     #[error("Found an unsupported {1} directive on an edge with @fold: {0}")]
     UnsupportedDirectiveOnFoldedEdge(String, String),
 
-    #[error("Missing required edge parameter {0} on edge {1}")]
+    #[error("Missing required edge parameter \"{0}\" on edge {1}")]
     MissingRequiredEdgeParameter(String, String),
 
-    #[error("Unexpected edge parameter {0} on edge {1}")]
+    #[error("Unexpected edge parameter \"{0}\" on edge {1}")]
     UnexpectedEdgeParameter(String, String),
 
     #[error(
-        "Invalid value for edge parameter {0} on edge {1}. \
+        "Invalid value for edge parameter \"{0}\" on edge {1}. \
         Expected a value of type {2}, but got: {3:?}"
     )]
     InvalidEdgeParameterType(String, String, String, FieldValue),
