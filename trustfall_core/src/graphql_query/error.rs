@@ -63,6 +63,9 @@ pub enum ParseError {
     #[error("Unrecognized transform operator: {0}")]
     UnsupportedTransformOperator(String, Pos),
 
+    #[error("Unrecognized fold directive: {0}")]
+    UnsupportedFoldDirective(String, Pos),
+
     #[error("Output name \"{0}\" contains invalid characters: {1:?}")]
     InvalidOutputName(String, Vec<char>, Pos),
 
