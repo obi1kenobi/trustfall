@@ -408,7 +408,11 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
             }
             Some(ParsedDirective::Fold(fold, _)) => break Some(fold),
             Some(ParsedDirective::Transform(_, pos)) => {
-                return Err(ParseError::UnsupportedFoldDirective("@transform".to_string(), pos));
+                return Err(ParseError::UnsupportedDirectivePosition(
+                    "@transform".to_owned(),
+                    "this directive cannot appear as a first directive".to_owned(),
+                    pos,
+                ));
             }
             Some(
                 ParsedDirective::Filter(..)

@@ -1,0 +1,4 @@
+Err(UnsupportedDirectivePosition("@transform", "this directive cannot appear as a first directive", Pos(
+    line: 4,
+    column: 29,
+)))
