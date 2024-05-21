@@ -1,3 +1,7 @@
+// TODO: Remove this once new `wasm_bindgen` version is released.
+//       The lint is raised inside that macro. The fix is on the main branch but not released yet.
+#![allow(clippy::empty_docs)]
+
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc, sync::Arc};
 
 use gloo_utils::format::JsValueSerdeExt;
