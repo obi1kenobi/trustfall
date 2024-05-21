@@ -5,6 +5,7 @@ use trustfall_derive::TrustfallEnumVertex;
 
 #[test]
 fn empty_enum() {
+    #[allow(dead_code)]
     #[derive(Debug, Clone, TrustfallEnumVertex)]
     enum NoVariants {}
 }
