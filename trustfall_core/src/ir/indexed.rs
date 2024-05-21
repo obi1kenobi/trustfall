@@ -114,7 +114,7 @@ fn add_data_from_component(
     let component_optional_vertices = get_optional_vertices_in_component(component);
 
     // the root vertex Vid must belong to an existing vertex in the component
-    if component.vertices.get(&component.root).is_none() {
+    if !component.vertices.contains_key(&component.root) {
         return Err(InvalidIRQueryError::GetBetterVariant(-1));
     }
 

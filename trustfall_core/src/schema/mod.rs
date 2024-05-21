@@ -550,7 +550,7 @@ fn check_required_transitive_implementations(
                             // (`expected_impl_name != type_name`) since we have a dedicated
                             // check for those elsewhere.
                             if expected_impl_name != type_name.as_ref()
-                                && implementations.get(expected_impl_name).is_none()
+                                && !implementations.contains(expected_impl_name)
                             {
                                 errors.push(
                                     InvalidSchemaError::MissingTransitiveInterfaceImplementation(
