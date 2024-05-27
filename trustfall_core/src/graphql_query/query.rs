@@ -172,15 +172,23 @@ fn parse_operation_definition(
         return Err(ParseError::MultipleQueryRoots(root_items[1].pos));
     }
 
-    let root_node = root_items.first().unwrap();
-    match &root_node.node {
-        Selection::Field(positioned_field) => Ok(positioned_field),
-        Selection::FragmentSpread(fs) => {
-            Err(ParseError::UnsupportedQueryRoot("a fragment spread".to_string(), fs.pos))
+    if let Some(root_node) = root_items.first() {
+        match &root_node.node {
+            Selection::Field(positioned_field) => Ok(positioned_field),
+            Selection::FragmentSpread(fs) => {
+                Err(ParseError::UnsupportedQueryRoot("a fragment spread".to_string(), fs.pos))
+            }
+            Selection::InlineFragment(inl) => {
+                Err(ParseError::UnsupportedQueryRoot("an inline fragment".to_string(), inl.pos))
+            }
         }
-        Selection::InlineFragment(inl) => {
-            Err(ParseError::UnsupportedQueryRoot("an inline fragment".to_string(), inl.pos))
-        }
+    } else {
+        unreachable!(
+            "Found a root_node with no items. \
+            This should have been caught in a previous selection statement, this is a bug. \
+            Please report it at \
+            https://github.com/obi1kenobi/trustfall/"
+        )
     }
 }
 
@@ -400,9 +408,11 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
             }
             Some(ParsedDirective::Fold(fold, _)) => break Some(fold),
             Some(ParsedDirective::Transform(_, pos)) => {
-                return Err(ParseError::OtherError(
-                    // TODO: do better
-                    "@transform applied to non-folded edge field".to_string(),
+                return Err(ParseError::UnsupportedDirectivePosition(
+                    "@transform".to_owned(),
+                    "Cannot transform an edge prior to a @fold directive. \
+                    Consider adding @fold before the @transform here."
+                        .to_owned(),
                     pos,
                 ));
             }
