@@ -38,6 +38,23 @@ pub struct Schema {
     pub(crate) vertex_types: HashMap<Arc<str>, TypeDefinition>,
     pub(crate) fields: HashMap<(Arc<str>, Arc<str>), FieldDefinition>,
     pub(crate) field_origins: BTreeMap<(Arc<str>, Arc<str>), FieldOrigin>,
+    pub(crate) custom_filters: BTreeMap<Arc<str>, CustomFilter>,
+    pub(crate) custom_scalars: BTreeMap<Arc<str>, CustomScalar>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct CustomScalar {
+    name: Arc<str>,
+    uuid: Arc<str>,
+    allowed_operators: BTreeSet<Arc<str>>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct CustomFilter {
+    operator: Arc<str>,
+    operands: Vec<crate::ir::OperandType>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -248,6 +265,8 @@ directive @transform(op: String!) on FIELD
                 vertex_types,
                 fields,
                 field_origins: field_origins.expect("no field origins but also no errors"),
+                custom_filters: Default::default(),
+                custom_scalars: Default::default(),
             })
         } else {
             Err(errors.into())
