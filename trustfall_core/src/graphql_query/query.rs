@@ -410,7 +410,9 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
             Some(ParsedDirective::Transform(_, pos)) => {
                 return Err(ParseError::UnsupportedDirectivePosition(
                     "@transform".to_owned(),
-                    "this directive cannot appear as a first directive".to_owned(),
+                    "Cannot transform property prior to @fold directive.\
+                    Please make sure you are using @fold before @transform."
+                        .to_owned(),
                     pos,
                 ));
             }
