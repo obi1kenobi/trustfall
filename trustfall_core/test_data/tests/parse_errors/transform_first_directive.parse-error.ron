@@ -1,4 +1,4 @@
-Err(UnsupportedDirectivePosition("@transform", "this directive cannot appear as a first directive", Pos(
+Err(UnsupportedDirectivePosition("@transform", "Cannot transform an edge prior to a @fold directive. Consider adding @fold before the @transform here.", Pos(
     line: 4,
     column: 29,
 )))

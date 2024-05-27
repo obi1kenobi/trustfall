@@ -3,7 +3,7 @@ TestGraphQLQuery (
     query: r#"
 {
     OriginDirectory {
-        out_Directory_Count @transform(op: "count") @output {
+        out_Directory_ContainsFile @transform(op: "count") @output {
             name @output
         }
     }
