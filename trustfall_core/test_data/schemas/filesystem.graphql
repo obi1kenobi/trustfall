@@ -1,3 +1,9 @@
+# This is an old schema used for testing.
+#
+# Consider it DEPRECATED — general purpose tests should target the `numbers` schema instead,
+# whereas specialized tests that need to trigger specific schema-related edge cases should
+# either use one of the other schemas or create their own schema file.
+
 schema {
     query: RootSchemaQuery
 }
@@ -8,6 +14,10 @@ directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
 directive @transform(op: String!) on FIELD
+
+# This is an old and DEPRECATED schema.
+#
+# Consider using the `numbers` schema instead, and see above for more details.
 
 type RootSchemaQuery {
     OriginDirectory: [Directory]
