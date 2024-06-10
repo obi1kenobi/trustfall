@@ -33,7 +33,7 @@ regex = "1.9.1"
 
 # The dependencies below are internal-only.
 # Bumping major versions here should be safe.
-itertools = "0.12.1"
+itertools = "0.13.0"
 ron = "0.8.0"
 similar-asserts = "1.4.2"
 maplit = "1.0.2"
