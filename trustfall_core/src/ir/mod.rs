@@ -117,7 +117,7 @@ pub struct IRQueryComponent {
     pub folds: BTreeMap<Eid, Arc<IRFold>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub outputs: BTreeMap<Arc<str>, ContextField>,
+    pub outputs: BTreeMap<Arc<str>, FieldRef>,
 }
 
 /// Intermediate representation of a query
@@ -315,6 +315,13 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(c) => c.field_name.as_ref(),
             FieldRef::FoldSpecificField(f) => f.kind.field_name(),
+        }
+    }
+
+    pub fn field_name_arc(&self) -> Arc<str> {
+        match self {
+            FieldRef::ContextField(c) => c.field_name.clone(),
+            FieldRef::FoldSpecificField(f) => f.kind.field_name().into(),
         }
     }
 

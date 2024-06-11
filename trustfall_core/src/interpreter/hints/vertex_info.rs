@@ -166,8 +166,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let properties = current_component
             .outputs
             .values()
-            .filter(|c| c.vertex_id == current_vertex.vid)
-            .map(|c| RequiredProperty::new(c.field_name.clone()));
+            .filter(|c| c.defined_at() == current_vertex.vid)
+            .map(|c| RequiredProperty::new(c.field_name_arc()));
 
         let properties = properties.chain(
             current_vertex

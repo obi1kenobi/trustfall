@@ -53,11 +53,11 @@ Ok(TestIRQuery(
                           ),
                         },
                         outputs: {
-                          "next_successors": ContextField(
+                          "next_successors": ContextField(ContextField(
                             vertex_id: Vid(4),
                             field_name: "value",
                             field_type: "Int",
-                          ),
+                          )),
                         },
                       ),
                       fold_specific_outputs: {
@@ -66,11 +66,11 @@ Ok(TestIRQuery(
                     ),
                   },
                   outputs: {
-                    "successors": ContextField(
+                    "successors": ContextField(ContextField(
                       vertex_id: Vid(3),
                       field_name: "value",
                       field_type: "Int",
-                    ),
+                    )),
                   },
                 ),
                 fold_specific_outputs: {
@@ -79,21 +79,21 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "predecessor": ContextField(
+              "predecessor": ContextField(ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
         ),
       },
       outputs: {
-        "zero": ContextField(
+        "zero": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

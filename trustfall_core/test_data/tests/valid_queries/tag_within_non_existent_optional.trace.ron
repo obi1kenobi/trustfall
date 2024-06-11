@@ -2207,21 +2207,21 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "mult": ContextField(
+          "mult": ContextField(ContextField(
             vertex_id: Vid(2),
             field_name: "value",
             field_type: "Int",
-          ),
-          "start": ContextField(
+          )),
+          "start": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
-          "succ": ContextField(
+          )),
+          "succ": ContextField(ContextField(
             vertex_id: Vid(7),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
       variables: {
