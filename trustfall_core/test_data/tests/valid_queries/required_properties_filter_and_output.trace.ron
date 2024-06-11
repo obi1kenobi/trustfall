@@ -199,16 +199,16 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "value": ContextField(
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
-          "vowelsInName": ContextField(
+          )),
+          "vowelsInName": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "vowelsInName",
             field_type: "[String]",
-          ),
+          )),
         },
       ),
       variables: {

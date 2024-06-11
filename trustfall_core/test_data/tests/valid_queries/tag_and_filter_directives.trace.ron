@@ -1119,16 +1119,16 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "start": ContextField(
+          "start": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
-          "target": ContextField(
+          )),
+          "target": ContextField(ContextField(
             vertex_id: Vid(4),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
     ),
