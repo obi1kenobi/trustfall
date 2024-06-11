@@ -171,7 +171,11 @@ TestInterpreterOutputTrace(
               },
             ),
             fold_specific_outputs: {
-              "factor_count": Count,
+              "factor_count": FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )),
             },
           ),
         },

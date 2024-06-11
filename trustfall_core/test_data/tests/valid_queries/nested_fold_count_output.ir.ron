@@ -59,7 +59,11 @@ Ok(TestIRQuery(
                   },
                 ),
                 fold_specific_outputs: {
-                  "multiplecount": Count,
+                  "multiplecount": FoldSpecificField(FoldSpecificField(
+                    fold_eid: Eid(2),
+                    fold_root_vid: Vid(3),
+                    kind: Count,
+                  )),
                 },
               ),
             },
@@ -72,7 +76,11 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "primeFactorcount": Count,
+            "primeFactorcount": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(1),
+              fold_root_vid: Vid(2),
+              kind: Count,
+            )),
           },
         ),
       },

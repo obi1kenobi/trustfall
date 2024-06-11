@@ -1309,7 +1309,7 @@ where
             };
 
             let prior_output_by_that_name =
-                fold_specific_outputs.insert(final_output_name.clone(), fold_specific_field.kind);
+                fold_specific_outputs.insert(final_output_name.clone(), field_ref.clone());
             if let Some(prior_output_kind) = prior_output_by_that_name {
                 errors.push(FrontendError::MultipleOutputsWithSameName(DuplicatedNamesConflict {
                     duplicates: btreemap! {
@@ -1324,9 +1324,7 @@ where
         for tag_directive in &transform_group.tag {
             let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref());
             if let Some(tag_name) = tag_name {
-                let field = FieldRef::FoldSpecificField(fold_specific_field.clone());
-
-                if let Err(e) = tags.register_tag(tag_name, field, component_path) {
+                if let Err(e) = tags.register_tag(tag_name, field_ref.clone(), component_path) {
                     errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
             } else {

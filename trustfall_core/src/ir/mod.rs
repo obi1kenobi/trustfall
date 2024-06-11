@@ -210,8 +210,12 @@ pub struct IRFold {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub imported_tags: Vec<FieldRef>,
 
+    /// Outputs from this fold that are derived from fold-specific fields.
+    ///
+    /// All [`FieldRef`] values in the map are guaranteed to have
+    /// `[FieldRef].refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificFieldKind>,
+    pub fold_specific_outputs: BTreeMap<Arc<str>, FieldRef>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub post_filters: Vec<Operation<FoldSpecificFieldKind, Argument>>,
@@ -324,6 +328,13 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(c) => c.vertex_id,
             FieldRef::FoldSpecificField(f) => f.fold_root_vid,
+        }
+    }
+
+    pub fn refers_to_fold_specific_field(&self) -> Option<&FoldSpecificField> {
+        match self {
+            FieldRef::ContextField(_) => None,
+            FieldRef::FoldSpecificField(fold_specific) => Some(fold_specific),
         }
     }
 }

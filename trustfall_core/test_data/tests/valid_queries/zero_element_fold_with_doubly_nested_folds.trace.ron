@@ -226,7 +226,11 @@ TestInterpreterOutputTrace(
                           },
                         ),
                         fold_specific_outputs: {
-                          "next_successor_counts": Count,
+                          "next_successor_counts": FoldSpecificField(FoldSpecificField(
+                            fold_eid: Eid(3),
+                            fold_root_vid: Vid(4),
+                            kind: Count,
+                          )),
                         },
                       ),
                     },
@@ -239,7 +243,11 @@ TestInterpreterOutputTrace(
                     },
                   ),
                   fold_specific_outputs: {
-                    "successor_counts": Count,
+                    "successor_counts": FoldSpecificField(FoldSpecificField(
+                      fold_eid: Eid(2),
+                      fold_root_vid: Vid(3),
+                      kind: Count,
+                    )),
                   },
                 ),
               },

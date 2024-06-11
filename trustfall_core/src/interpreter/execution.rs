@@ -500,33 +500,42 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     //
     // For example, if `@filter(op: ">", value: ["$ten"])` is our only filter on the count
     // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
-    let min_fold_size =
-        if let Some(min_fold_size) = get_min_fold_count_limit(carrier, fold.as_ref()) {
-            let no_outputs_in_fold = fold.component.outputs.is_empty();
-            let has_output_on_fold_count =
-                fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
-            let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
-                vertex.filters.iter().any(|filter| {
-                    let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) =
-                        filter.right()
-                    else {
-                        return false;
-                    };
+    let min_fold_size = if let Some(min_fold_size) =
+        get_min_fold_count_limit(carrier, fold.as_ref())
+    {
+        let no_outputs_in_fold = fold.component.outputs.is_empty();
+        let has_output_on_fold_count = fold.fold_specific_outputs.values().any(|x| {
+            x.refers_to_fold_specific_field()
+                .is_some_and(|f| f.kind == FoldSpecificFieldKind::Count)
+        });
+        let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
+            // TODO: If we allow referencing the tagged values located inside a fold in filters
+            //       outside that fold, then this logic will be buggy (not conservative enough).
+            //       It currently assumes that use of tags on `@fold @transform(op: "count")`
+            //       can only happen within the direct parent component of that fold.
+            vertex.filters.iter().any(|filter| {
+                let Some(Argument::Tag(field_ref)) = filter.right() else {
+                    return false;
+                };
 
-                    tagged_fold_count.fold_root_vid == fold.to_vid
-                        && tagged_fold_count.fold_eid == fold.eid
-                        && tagged_fold_count.kind == FoldSpecificFieldKind::Count
-                })
-            });
+                let Some(fold_specific_field) = field_ref.refers_to_fold_specific_field() else {
+                    return false;
+                };
 
-            if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
-                Some(min_fold_size)
-            } else {
-                None
-            }
+                fold_specific_field.fold_root_vid == fold.to_vid
+                    && fold_specific_field.fold_eid == fold.eid
+                    && fold_specific_field.kind == FoldSpecificFieldKind::Count
+            })
+        });
+
+        if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
+            Some(min_fold_size)
         } else {
             None
-        };
+        }
+    } else {
+        None
+    };
 
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
@@ -599,14 +608,19 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
         );
 
         // Add any fold-specific field outputs to the context's folded values.
-        for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
+        for (output_name, field_ref) in &fold.fold_specific_outputs {
             // If the @fold is inside an @optional that doesn't exist,
             // its outputs should be `null` rather than empty lists (the usual for empty folds).
             // Transformed outputs should also be `null` rather than their usual transformed defaults.
-            let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
-                FoldSpecificFieldKind::Count => {
-                    ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
-                }
+            let value = fold_elements.as_ref().map(|elements| match field_ref {
+                FieldRef::FoldSpecificField(field) => match field.kind {
+                    FoldSpecificFieldKind::Count => {
+                        ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+                    }
+                },
+                FieldRef::ContextField(_) => unreachable!(
+                    "found ContextField inside a fold's fold-specific outputs: {fold:#?}"
+                ),
             });
             ctx.folded_values
                 .insert_or_error((fold_eid, output_name.clone()), value)
