@@ -49,7 +49,11 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "primeFactorcount": Count,
+            "primeFactorcount": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(1),
+              fold_root_vid: Vid(2),
+              kind: Count,
+            )),
           },
           post_filters: [
             Equals(Count, Variable(VariableRef(
