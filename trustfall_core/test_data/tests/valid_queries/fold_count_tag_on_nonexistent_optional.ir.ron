@@ -74,7 +74,11 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "count": Count,
+            "count": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(3),
+              fold_root_vid: Vid(4),
+              kind: Count,
+            )),
           },
         ),
       },
