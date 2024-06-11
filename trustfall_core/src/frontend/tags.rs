@@ -66,17 +66,8 @@ impl<'a> TagHandler<'a> {
             self.tags.get(name).ok_or_else(|| TagLookupError::UndefinedTag(name.to_string()))?;
 
         if entry.path.is_parent(use_path) {
-            match &entry.field {
-                FieldRef::ContextField(field) => {
-                    if field.vertex_id > use_vid {
-                        return Err(TagLookupError::TagUsedBeforeDefinition(name.to_string()));
-                    }
-                }
-                FieldRef::FoldSpecificField(field) => {
-                    if field.fold_root_vid > use_vid {
-                        return Err(TagLookupError::TagUsedBeforeDefinition(name.to_string()));
-                    }
-                }
+            if entry.field.defined_at() > use_vid {
+                return Err(TagLookupError::TagUsedBeforeDefinition(name.to_string()));
             }
 
             if &entry.path != use_path {
