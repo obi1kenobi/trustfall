@@ -3,8 +3,8 @@ use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 use crate::{
     interpreter::{Adapter, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo},
     ir::{
-        ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent, IRVertex,
-        TransparentValue, Type, Vid,
+        ContextField, EdgeParameters, Eid, FieldRef, FieldValue, IREdge, IRQuery, IRQueryComponent,
+        IRVertex, TransparentValue, Type, Vid,
     },
     schema::{Schema, SchemaAdapter},
     TryIntoStruct,
@@ -166,11 +166,11 @@ fn make_resolve_info_for_property_check(
             edges: Default::default(),
             folds: Default::default(),
             outputs: btreemap! {
-                property_name.clone() => ContextField {
+                property_name.clone() => FieldRef::ContextField(ContextField {
                     vertex_id: vid,
                     field_name: property_name.clone(),
                     field_type: Type::parse(property_type).expect("not a valid type"),
-                }
+                })
             },
         }),
         variables: Default::default(),
@@ -324,11 +324,11 @@ fn make_resolve_edge_info_for_edge_check(
             },
             folds: Default::default(),
             outputs: btreemap! {
-                property_name.clone() => ContextField {
+                property_name.clone() => FieldRef::ContextField(ContextField {
                     vertex_id: vid,
                     field_name: property_name,
                     field_type: Type::parse("String!").expect("not a valid type"),
-                }
+                })
             },
         }),
         variables: Default::default(),
@@ -493,11 +493,11 @@ fn make_resolve_info_for_type_coercion(
             edges: Default::default(),
             folds: Default::default(),
             outputs: btreemap! {
-                typename_property.clone() => ContextField {
+                typename_property.clone() => FieldRef::ContextField(ContextField {
                     vertex_id: vid,
                     field_name: typename_property.clone(),
                     field_type: Type::parse("String!").expect("not a valid type"),
-                }
+                })
             },
         }),
         variables: Default::default(),

@@ -278,11 +278,11 @@ TestInterpreterOutputTrace(
                 ),
               },
               outputs: {
-                "factors": ContextField(
+                "factors": ContextField(ContextField(
                   vertex_id: Vid(2),
                   field_name: "value",
                   field_type: "Int",
-                ),
+                )),
               },
             ),
             post_filters: [
@@ -294,11 +294,11 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "value": ContextField(
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
       variables: {

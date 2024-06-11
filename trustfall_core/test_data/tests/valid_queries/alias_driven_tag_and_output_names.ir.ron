@@ -33,16 +33,16 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "one": ContextField(
+        "one": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
-        "successor": ContextField(
+        )),
+        "successor": ContextField(ContextField(
           vertex_id: Vid(2),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

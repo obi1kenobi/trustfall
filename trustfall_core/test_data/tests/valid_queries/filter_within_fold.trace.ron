@@ -326,11 +326,11 @@ TestInterpreterOutputTrace(
                 ),
               },
               outputs: {
-                "name": ContextField(
+                "name": ContextField(ContextField(
                   vertex_id: Vid(2),
                   field_name: "name",
                   field_type: "String",
-                ),
+                )),
               },
             ),
           ),
