@@ -318,6 +318,14 @@ impl FieldRef {
             FieldRef::FoldSpecificField(f) => f.kind.field_name(),
         }
     }
+
+    /// The vertex ID at which this reference is considered defined.
+    pub fn defined_at(&self) -> Vid {
+        match self {
+            FieldRef::ContextField(c) => c.vertex_id,
+            FieldRef::FoldSpecificField(f) => f.fold_root_vid,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
