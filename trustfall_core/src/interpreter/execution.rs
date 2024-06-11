@@ -193,29 +193,37 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     let mut output_iterator = iterator;
 
     for output_name in output_names.iter() {
-        let context_field = &root_component.outputs[output_name];
-        let vertex_id = context_field.vertex_id;
+        let field_ref = &root_component.outputs[output_name];
 
-        let moved_iterator = Box::new(output_iterator.map(move |context| {
-            let new_vertex = context.vertices[&vertex_id].clone();
-            context.move_to_vertex(new_vertex)
-        }));
+        match field_ref {
+            FieldRef::ContextField(context_field) => {
+                let vertex_id = context_field.vertex_id;
 
-        let resolve_info = ResolveInfo::new(query, vertex_id, true);
+                let moved_iterator = Box::new(output_iterator.map(move |context| {
+                    let new_vertex = context.vertices[&vertex_id].clone();
+                    context.move_to_vertex(new_vertex)
+                }));
 
-        let type_name = &root_component.vertices[&vertex_id].type_name;
-        let field_data_iterator = adapter.resolve_property(
-            moved_iterator,
-            type_name,
-            &context_field.field_name,
-            &resolve_info,
-        );
-        query = resolve_info.into_inner();
+                let resolve_info = ResolveInfo::new(query, vertex_id, true);
 
-        output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
-            context.values.push(value);
-            context
-        }));
+                let type_name = &root_component.vertices[&vertex_id].type_name;
+                let field_data_iterator = adapter.resolve_property(
+                    moved_iterator,
+                    type_name,
+                    &context_field.field_name,
+                    &resolve_info,
+                );
+                query = resolve_info.into_inner();
+
+                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
+                    context.values.push(value);
+                    context
+                }));
+            }
+            FieldRef::FoldSpecificField(_) => {
+                unreachable!("found fold-specific field in component outputs: {root_component:#?}")
+            }
+        }
     }
     let expected_output_names: BTreeSet<_> = query.indexed_query.outputs.keys().cloned().collect();
     carrier.query = Some(query);
@@ -648,27 +656,36 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                 // This is a slimmed-down version of computing a context field:
                 // - it does not restore the prior active vertex after getting each value
                 // - it already knows that the context field is guaranteed to exist
-                let context_field = &fold.component.outputs[output_name.as_ref()];
-                let vertex_id = context_field.vertex_id;
-                let moved_iterator = Box::new(output_iterator.map(move |context| {
-                    let new_vertex = context.vertices[&vertex_id].clone();
-                    context.move_to_vertex(new_vertex)
-                }));
+                let field_ref = &fold.component.outputs[output_name.as_ref()];
 
-                let query = cloned_carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-                let field_data_iterator = cloned_adapter.resolve_property(
-                    moved_iterator,
-                    &fold.component.vertices[&vertex_id].type_name,
-                    &context_field.field_name,
-                    &resolve_info,
-                );
-                cloned_carrier.query = Some(resolve_info.into_inner());
+                match field_ref {
+                    FieldRef::ContextField(context_field) => {
+                        let vertex_id = context_field.vertex_id;
+                        let moved_iterator = Box::new(output_iterator.map(move |context| {
+                            let new_vertex = context.vertices[&vertex_id].clone();
+                            context.move_to_vertex(new_vertex)
+                        }));
 
-                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
-                    context.values.push(value);
-                    context
-                }));
+                        let query = cloned_carrier.query.take().expect("query was not returned");
+                        let resolve_info = ResolveInfo::new(query, vertex_id, true);
+                        let field_data_iterator = cloned_adapter.resolve_property(
+                            moved_iterator,
+                            &fold.component.vertices[&vertex_id].type_name,
+                            &context_field.field_name,
+                            &resolve_info,
+                        );
+                        cloned_carrier.query = Some(resolve_info.into_inner());
+
+                        output_iterator =
+                            Box::new(field_data_iterator.map(|(mut context, value)| {
+                                context.values.push(value);
+                                context
+                            }));
+                    }
+                    FieldRef::FoldSpecificField(_) => {
+                        unreachable!("found fold-specific field in component outputs: {fold:#?}")
+                    }
+                }
             }
 
             for mut folded_context in output_iterator {

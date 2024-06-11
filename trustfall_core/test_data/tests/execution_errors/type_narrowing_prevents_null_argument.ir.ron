@@ -27,16 +27,16 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "intNonNullList": ContextField(
+        "intNonNullList": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "intNonNullList",
           field_type: "[Int]!",
-        ),
-        "nonNullIntList": ContextField(
+        )),
+        "nonNullIntList": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "nonNullIntList",
           field_type: "[Int!]",
-        ),
+        )),
       },
     ),
     variables: {

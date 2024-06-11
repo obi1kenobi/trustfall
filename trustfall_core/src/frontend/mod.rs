@@ -731,10 +731,7 @@ where
     // TODO: fixme, temporary hack to avoid changing the IRQueryComponent struct
     let hacked_outputs = component_outputs
         .into_iter()
-        .filter_map(|(k, v)| match v {
-            FieldRef::ContextField(c) => Some((k, c)),
-            FieldRef::FoldSpecificField(_) => None,
-        })
+        .filter(|(k, v)| !matches!(&v, FieldRef::FoldSpecificField(..)))
         .collect();
 
     Ok(IRQueryComponent {

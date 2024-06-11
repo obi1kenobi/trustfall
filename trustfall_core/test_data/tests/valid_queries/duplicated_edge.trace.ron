@@ -275,16 +275,16 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "one": ContextField(
+          "one": ContextField(ContextField(
             vertex_id: Vid(2),
             field_name: "value",
             field_type: "Int",
-          ),
-          "one2": ContextField(
+          )),
+          "one2": ContextField(ContextField(
             vertex_id: Vid(3),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
     ),

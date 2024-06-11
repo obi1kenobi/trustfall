@@ -63,16 +63,16 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "composite_value": ContextField(
+        "composite_value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
-        "prime_factors": ContextField(
+        )),
+        "prime_factors": ContextField(ContextField(
           vertex_id: Vid(3),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
     variables: {

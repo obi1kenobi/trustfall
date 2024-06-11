@@ -47,11 +47,11 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "inner": ContextField(
+              "inner": ContextField(ContextField(
                 vertex_id: Vid(3),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           imported_tags: [
@@ -70,11 +70,11 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
     variables: {
