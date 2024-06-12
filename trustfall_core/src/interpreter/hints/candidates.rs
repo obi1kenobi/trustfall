@@ -1,7 +1,12 @@
 #![allow(dead_code)]
 
-use std::{fmt::Debug, ops::Bound};
+use std::{
+    borrow::{Borrow, Cow},
+    fmt::Debug,
+    ops::Bound,
+};
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::FieldValue;
@@ -39,6 +44,75 @@ impl<T: Clone> CandidateValue<&T> {
             }
             CandidateValue::Range(r) => CandidateValue::Range(r.cloned()),
             CandidateValue::All => CandidateValue::All,
+        }
+    }
+}
+
+impl<T: Clone> CandidateValue<T> {
+    /// Converts from `CandidateValue<T>` to `CandidateValue<&T>`.
+    pub(crate) fn as_ref(&self) -> CandidateValue<&T> {
+        match self {
+            CandidateValue::Impossible => CandidateValue::Impossible,
+            CandidateValue::Single(s) => CandidateValue::Single(s),
+            CandidateValue::Multiple(m) => CandidateValue::Multiple(m.iter().collect()),
+            CandidateValue::Range(r) => CandidateValue::Range(r.as_ref()),
+            CandidateValue::All => CandidateValue::All,
+        }
+    }
+}
+
+impl<'a, T: Clone> CandidateValue<Cow<'a, T>> {
+    pub(super) fn into_owned(self) -> CandidateValue<T> {
+        match self {
+            CandidateValue::Impossible => CandidateValue::Impossible,
+            CandidateValue::Single(s) => CandidateValue::Single(s.into_owned()),
+            CandidateValue::Multiple(mult) => {
+                CandidateValue::Multiple(mult.into_iter().map(|x| x.into_owned()).collect())
+            }
+            CandidateValue::Range(range) => CandidateValue::Range(range.into_owned()),
+            CandidateValue::All => CandidateValue::All,
+        }
+    }
+
+    pub(super) fn as_deref(&self) -> CandidateValue<&T> {
+        match self {
+            CandidateValue::Impossible => CandidateValue::Impossible,
+            CandidateValue::Single(s) => CandidateValue::Single(s.as_ref()),
+            CandidateValue::Multiple(mult) => {
+                CandidateValue::Multiple(mult.iter().map(|x| x.as_ref()).collect())
+            }
+            CandidateValue::Range(range) => CandidateValue::Range(range.as_deref()),
+            CandidateValue::All => CandidateValue::All,
+        }
+    }
+}
+
+impl<'a, T: Clone + PartialEq> PartialEq<CandidateValue<&T>> for CandidateValue<Cow<'a, T>> {
+    fn eq(&self, other: &CandidateValue<&T>) -> bool {
+        match (self, other) {
+            (CandidateValue::Impossible, CandidateValue::Impossible) => true,
+            (CandidateValue::Single(l), CandidateValue::Single(r)) => l.as_ref() == *r,
+            (CandidateValue::Multiple(mult_l), CandidateValue::Multiple(mult_r)) => {
+                mult_l.len() == mult_r.len() && mult_l.iter().zip(mult_r.iter()).all_equal()
+            }
+            (CandidateValue::Range(l), CandidateValue::Range(r)) => l.as_deref() == *r,
+            (CandidateValue::All, CandidateValue::All) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<'a, T: Clone + PartialEq> PartialEq<CandidateValue<T>> for CandidateValue<Cow<'a, T>> {
+    fn eq(&self, other: &CandidateValue<T>) -> bool {
+        match (self, other) {
+            (CandidateValue::Impossible, CandidateValue::Impossible) => true,
+            (CandidateValue::Single(l), CandidateValue::Single(r)) => l.as_ref() == r,
+            (CandidateValue::Multiple(mult_l), CandidateValue::Multiple(mult_r)) => {
+                mult_l.len() == mult_r.len() && mult_l.iter().zip(mult_r.iter()).all_equal()
+            }
+            (CandidateValue::Range(l), CandidateValue::Range(r)) => l.as_deref() == r.as_ref(),
+            (CandidateValue::All, CandidateValue::All) => true,
+            _ => false,
         }
     }
 }
@@ -117,16 +191,21 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
         self.normalize();
     }
 
-    pub(super) fn exclude_single_value(&mut self, value: &T) {
+    pub(super) fn exclude_single_value<U: PartialEq + Eq + PartialOrd + NullableValue>(
+        &mut self,
+        value: &U,
+    ) where
+        T: Borrow<U>,
+    {
         match self {
             CandidateValue::Impossible => {} // nothing further to exclude
             CandidateValue::Single(s) => {
-                if &*s == value {
+                if <T as Borrow<U>>::borrow(s) == value {
                     *self = CandidateValue::Impossible;
                 }
             }
             CandidateValue::Multiple(multiple) => {
-                multiple.retain(|v| v != value);
+                multiple.retain(|v| v.borrow() != value);
                 self.normalize();
             }
             CandidateValue::Range(range) => {
@@ -137,12 +216,12 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                     //       we can move from one included bound to another, tighter included bound.
                     //       This can allow subsequent value exclusions through other heuristics.
                     if let Bound::Included(incl) = range.start_bound() {
-                        if incl == value {
+                        if incl.borrow() == value {
                             range.start = Bound::Excluded(incl.clone());
                         }
                     }
                     if let Bound::Included(incl) = range.end_bound() {
-                        if incl == value {
+                        if incl.borrow() == value {
                             range.end = Bound::Excluded(incl.clone());
                         }
                     }
@@ -219,6 +298,15 @@ impl NullableValue for &FieldValue {
     }
 }
 
+impl<'a> NullableValue for Cow<'a, FieldValue> {
+    fn is_null(&self) -> bool {
+        match self {
+            Cow::Borrowed(v) => v.is_null(),
+            Cow::Owned(v) => v.is_null(),
+        }
+    }
+}
+
 /// A range of values. Both its endpoints may be included or excluded in the range, or unbounded.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -240,6 +328,28 @@ impl<T: Clone> Range<&T> {
             Bound::Unbounded => Bound::Unbounded,
             Bound::Included(b) => Bound::Included(b.clone()),
             Bound::Excluded(b) => Bound::Excluded(b.clone()),
+        };
+        Range { start, end, null_included: self.null_included }
+    }
+}
+
+impl<'a, T: Clone> Range<Cow<'a, T>> {
+    fn into_owned(self) -> Range<T> {
+        let start = self.start.map(|b| b.into_owned());
+        let end = self.end.map(|b| b.into_owned());
+        Range { start, end, null_included: self.null_included }
+    }
+
+    fn as_deref(&self) -> Range<&T> {
+        let start = match &self.start {
+            Bound::Included(incl) => Bound::Included(incl.as_ref()),
+            Bound::Excluded(excl) => Bound::Excluded(excl.as_ref()),
+            Bound::Unbounded => Bound::Unbounded,
+        };
+        let end = match &self.end {
+            Bound::Included(incl) => Bound::Included(incl.as_ref()),
+            Bound::Excluded(excl) => Bound::Excluded(excl.as_ref()),
+            Bound::Unbounded => Bound::Unbounded,
         };
         Range { start, end, null_included: self.null_included }
     }

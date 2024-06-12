@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::{
     collections::BTreeMap,
@@ -226,7 +227,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 
         let candidate =
             compute_statically_known_candidate(field, relevant_filters, query_variables)
-                .map(|x| x.cloned());
+                .map(|x| x.into_owned());
         debug_assert!(
             // Ensure we never return a range variant with a completely unrestricted range.
             candidate.clone().unwrap_or(CandidateValue::All) != CandidateValue::Range(Range::full()),
@@ -397,7 +398,7 @@ fn compute_statically_known_candidate<'a, 'b>(
     field: &'a LocalField,
     relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
-) -> Option<CandidateValue<&'b FieldValue>> {
+) -> Option<CandidateValue<Cow<'b, FieldValue>>> {
     let is_subject_field_nullable = field.field_type.nullable();
     super::filters::candidate_from_statically_evaluated_filters(
         relevant_filters,
@@ -582,7 +583,9 @@ mod tests {
         for (filters, expected_output) in test_data {
             assert_eq!(
                 expected_output,
-                compute_statically_known_candidate(&local_field, filters.iter(), &variables),
+                compute_statically_known_candidate(&local_field, filters.iter(), &variables)
+                    .as_ref()
+                    .map(|x| x.as_deref()),
                 "with {filters:?}",
             );
         }
@@ -654,7 +657,9 @@ mod tests {
         for (filters, expected_output) in test_data {
             assert_eq!(
                 expected_output,
-                compute_statically_known_candidate(&local_field, filters.iter(), &variables),
+                compute_statically_known_candidate(&local_field, filters.iter(), &variables)
+                    .as_ref()
+                    .map(|x| x.as_deref()),
                 "with {filters:?}",
             );
         }

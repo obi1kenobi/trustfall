@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Debug, ops::Bound, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, fmt::Debug, ops::Bound, sync::Arc};
 
 use itertools::Itertools;
 
@@ -10,57 +10,47 @@ pub(super) fn candidate_from_statically_evaluated_filters<'a, 'b, T: Debug + Clo
     relevant_filters: impl Iterator<Item = &'a Operation<T, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
     is_subject_field_nullable: bool, // whether the field being filtered is nullable in the schema
-) -> Option<CandidateValue<&'b FieldValue>> {
+) -> Option<CandidateValue<Cow<'b, FieldValue>>> {
     let (candidates, post_processing_filters): (Vec<_>, Vec<&Operation<_, _>>) = relevant_filters
-        .partition_map(|op| match op {
-            Operation::IsNull(..) => {
-                itertools::Either::Left(CandidateValue::Single(&FieldValue::NULL))
+        .partition_map(|op| {
+            let argument_value = op.right().and_then(|r| r.evaluate_statically(query_variables));
+            match (op, argument_value) {
+                (Operation::IsNull(..), _) => {
+                    itertools::Either::Left(CandidateValue::Single(Cow::Owned(FieldValue::NULL)))
+                }
+                (Operation::IsNotNull(..), _) => {
+                    itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
+                }
+                (Operation::Equals(_, _), Some(value)) => {
+                    itertools::Either::Left(CandidateValue::Single(value))
+                }
+                (Operation::LessThan(_, _), Some(value)) => itertools::Either::Left(
+                    CandidateValue::Range(Range::with_end(Bound::Excluded(value), true)),
+                ),
+                (Operation::LessThanOrEqual(_, _), Some(value)) => itertools::Either::Left(
+                    CandidateValue::Range(Range::with_end(Bound::Included(value), true)),
+                ),
+                (Operation::GreaterThan(_, _), Some(value)) => itertools::Either::Left(
+                    CandidateValue::Range(Range::with_start(Bound::Excluded(value), true)),
+                ),
+                (Operation::GreaterThanOrEqual(_, _), Some(value)) => itertools::Either::Left(
+                    CandidateValue::Range(Range::with_start(Bound::Included(value), true)),
+                ),
+                (Operation::OneOf(_, _), Some(value)) => {
+                    itertools::Either::Left(CandidateValue::Multiple(
+                        value
+                            .as_ref()
+                            .as_vec_with(|x| Some(Cow::Owned(x.to_owned())))
+                            .expect("query variable was not list-typed"),
+                    ))
+                }
+                (Operation::NotEquals(_, _), Some(value)) if value.is_null() => {
+                    // Special case: `!= null` can generate candidates;
+                    // it's the only `!=` operand for which this is true.
+                    itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
+                }
+                _ => itertools::Either::Right(op),
             }
-            Operation::IsNotNull(..) => {
-                itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
-            }
-            Operation::Equals(_, Argument::Variable(var)) => itertools::Either::Left(
-                CandidateValue::Single(&query_variables[var.variable_name.as_ref()]),
-            ),
-            Operation::LessThan(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_end(
-                    Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::LessThanOrEqual(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_end(
-                    Bound::Included(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::GreaterThan(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_start(
-                    Bound::Excluded(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::GreaterThanOrEqual(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Range(Range::with_start(
-                    Bound::Included(&query_variables[var.variable_name.as_ref()]),
-                    true,
-                )))
-            }
-            Operation::OneOf(_, Argument::Variable(var)) => {
-                itertools::Either::Left(CandidateValue::Multiple(
-                    query_variables[var.variable_name.as_ref()]
-                        .as_vec_with(Option::Some)
-                        .expect("query variable was not list-typed"),
-                ))
-            }
-            Operation::NotEquals(_, Argument::Variable(var))
-                if query_variables[var.variable_name.as_ref()].is_null() =>
-            {
-                // Special case: `!= null` can generate candidates;
-                // it's the only `!=` operand for which this is true.
-                itertools::Either::Left(CandidateValue::Range(Range::full_non_null()))
-            }
-            _ => itertools::Either::Right(op),
         });
 
     let mut candidate = if candidates.is_empty() {
@@ -112,7 +102,7 @@ pub(super) fn candidate_from_statically_evaluated_filters<'a, 'b, T: Debug + Clo
         })
         .flatten();
     for disallowed in disallowed_values {
-        candidate.exclude_single_value(&disallowed);
+        candidate.exclude_single_value(disallowed);
     }
 
     // TODO: use the other kinds of filters to exclude more candidate values

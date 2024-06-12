@@ -16,7 +16,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.77"
 authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
 license = "Apache-2.0"
 
