@@ -1,6 +1,7 @@
 //! Trustfall intermediate representation (IR)
 
 use std::{
+    borrow::Cow,
     cmp::Ordering,
     collections::BTreeMap,
     fmt::Debug,
@@ -339,6 +340,18 @@ impl Argument {
         match self {
             Argument::Tag(t) => Some(t),
             Argument::Variable(_) => None,
+        }
+    }
+
+    pub(crate) fn evaluate_statically<'a>(
+        &self,
+        query_variables: &'a BTreeMap<Arc<str>, FieldValue>,
+    ) -> Option<Cow<'a, FieldValue>> {
+        match self {
+            Argument::Tag(..) => None,
+            Argument::Variable(var) => {
+                Some(Cow::Borrowed(&query_variables[var.variable_name.as_ref()]))
+            }
         }
     }
 }

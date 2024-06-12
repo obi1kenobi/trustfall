@@ -1719,8 +1719,10 @@ mod dynamic_property_values {
 
                 let destination = info.destination();
 
-                let expected_values =
-                    [CandidateValue::Range(Range::with_end(Bound::Excluded("two".into()), true))];
+                let expected_values = [CandidateValue::Range(Range::with_end(
+                    Bound::Excluded(FieldValue::String("two".into())),
+                    true,
+                ))];
                 let candidate = destination.dynamically_required_property("name");
                 Box::new(
                     candidate
@@ -1817,7 +1819,7 @@ mod dynamic_property_values {
                         let destination = info.destination();
 
                         let expected_values = [CandidateValue::Range(Range::with_end(
-                            Bound::Excluded("two".into()),
+                            Bound::Excluded(FieldValue::String("two".into())),
                             true,
                         ))];
                         let candidate = destination.dynamically_required_property("name");
