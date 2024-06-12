@@ -48,7 +48,11 @@ Ok(TestIRQuery(
                   },
                 ),
                 post_filters: [
-                  GreaterThanOrEqual(Count, Variable(VariableRef(
+                  GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                    fold_eid: Eid(2),
+                    fold_root_vid: Vid(3),
+                    kind: Count,
+                  )), Variable(VariableRef(
                     variable_name: "two",
                     variable_type: "Int!",
                   ))),
@@ -57,7 +61,11 @@ Ok(TestIRQuery(
             },
           ),
           post_filters: [
-            GreaterThanOrEqual(Count, Variable(VariableRef(
+            GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(1),
+              fold_root_vid: Vid(2),
+              kind: Count,
+            )), Variable(VariableRef(
               variable_name: "two",
               variable_type: "Int!",
             ))),

@@ -357,7 +357,11 @@ TestInterpreterOutputTrace(
               },
             ),
             post_filters: [
-              GreaterThanOrEqual(Count, Variable(VariableRef(
+              GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(2),
+                fold_root_vid: Vid(3),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "one",
                 variable_type: "Int!",
               ))),

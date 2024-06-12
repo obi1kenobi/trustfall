@@ -195,11 +195,19 @@ TestInterpreterOutputTrace(
               },
             ),
             post_filters: [
-              LessThan(Count, Variable(VariableRef(
+              LessThan(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "four",
                 variable_type: "Int!",
               ))),
-              LessThan(Count, Variable(VariableRef(
+              LessThan(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "two",
                 variable_type: "Int!",
               ))),
