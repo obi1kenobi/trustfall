@@ -212,12 +212,18 @@ pub struct IRFold {
     /// Outputs from this fold that are derived from fold-specific fields.
     ///
     /// All [`FieldRef`] values in the map are guaranteed to have
-    /// `[FieldRef].refers_to_fold_specific_field().is_some() == true`.
+    /// `FieldRef.refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub fold_specific_outputs: BTreeMap<Arc<str>, FieldRef>,
 
+    /// Filters that are applied on the fold as a whole.
+    ///
+    /// For example, as in `@fold @transform(op: "count") @filter(op: "=", value: ["$zero"])`.
+    ///
+    /// All [`FieldRef`] values inside each [`Operation`] within the `Vec` are guaranteed to have
+    /// `FieldRef.refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Vec<Operation<FoldSpecificFieldKind, Argument>>,
+    pub post_filters: Vec<Operation<FieldRef, Argument>>,
 }
 
 #[non_exhaustive]

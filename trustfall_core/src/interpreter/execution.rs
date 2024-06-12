@@ -270,26 +270,42 @@ fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
     }
 }
 
-/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// If this [`IRFold`] has a filter on the folded element count, and that filter imposes
 /// a max size that can be statically determined, return that max size so it can
-/// be used for further optimizations. Otherwise, return None.
+/// be used for further optimizations. Otherwise, return `None`.
 fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
+        let left = post_fold_filter.left();
+        if !left
+            .refers_to_fold_specific_field()
+            .is_some_and(|f| f.kind == FoldSpecificFieldKind::Count)
+        {
+            // This filter is not using the count of the fold.
+            continue;
+        }
+
+        if !matches!(left, FieldRef::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+        {
+            // The filter expression is doing something more complex than we can currently analyze.
+            // Conservatively return `None` to disable optimizations here.
+            //
+            // TODO: Once `@transform` may be applied to property-like values, update the analysis
+            //       here to be able to optimize in such cases as well.
+            return None;
+        }
+
         let next_limit = match post_fold_filter {
-            Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
-            | Operation::LessThanOrEqual(
-                FoldSpecificFieldKind::Count,
-                Argument::Variable(var_ref),
-            ) => {
+            Operation::Equals(_, Argument::Variable(var_ref))
+            | Operation::LessThanOrEqual(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
-            Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+            Operation::LessThan(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
@@ -300,7 +316,7 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 // The later full application of filters ensures correctness.
                 Some(variable_value.saturating_sub(1))
             }
-            Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+            Operation::OneOf(_, Argument::Variable(var_ref)) => {
                 match &query_arguments[&var_ref.variable_name] {
                     FieldValue::List(v) => v
                         .iter()
@@ -325,25 +341,41 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     result
 }
 
-/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// If this [`IRFold`] has a filter on the folded element count, and that filter imposes
 /// a min size that can be statically determined, return that min size so it can
-/// be used for further optimizations. Otherwise, return None.
+/// be used for further optimizations. Otherwise, return `None`.
 fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
+        let left = post_fold_filter.left();
+        if !left
+            .refers_to_fold_specific_field()
+            .is_some_and(|f| f.kind == FoldSpecificFieldKind::Count)
+        {
+            // This filter is not using the count of the fold.
+            continue;
+        }
+
+        if !matches!(left, FieldRef::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+        {
+            // The filter expression is doing something more complex than we can currently analyze.
+            // Conservatively return `None` to disable optimizations here.
+            //
+            // TODO: Once `@transform` may be applied to property-like values, update the analysis
+            //       here to be able to optimize in such cases as well.
+            return None;
+        }
+
         let next_limit = match post_fold_filter {
-            Operation::GreaterThanOrEqual(
-                FoldSpecificFieldKind::Count,
-                Argument::Variable(var_ref),
-            ) => {
+            Operation::GreaterThanOrEqual(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
-            Operation::GreaterThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+            Operation::GreaterThan(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
@@ -587,15 +619,24 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let mut post_filtered_iterator: ContextIterator<'query, AdapterT::Vertex> =
         Box::new(folded_iterator);
     for post_fold_filter in fold.post_filters.iter() {
-        post_filtered_iterator = apply_fold_specific_filter(
-            adapter.as_ref(),
-            carrier,
-            parent_component,
-            fold.as_ref(),
-            expanding_from.vid,
-            post_fold_filter,
-            post_filtered_iterator,
-        );
+        let left = post_fold_filter.left();
+        match left {
+            FieldRef::ContextField(_) => {
+                unreachable!("unexpectedly found a fold post-filtering step that references a ContextField: {fold:#?}");
+            }
+            FieldRef::FoldSpecificField(fold_specific_field) => {
+                let remapped_operation = post_fold_filter.map(|_| fold_specific_field.kind, |x| x);
+                post_filtered_iterator = apply_fold_specific_filter(
+                    adapter.as_ref(),
+                    carrier,
+                    parent_component,
+                    fold.as_ref(),
+                    expanding_from.vid,
+                    &remapped_operation,
+                    post_filtered_iterator,
+                );
+            }
+        }
     }
 
     // Compute the outputs from this fold.
@@ -772,7 +813,7 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     component: &IRQueryComponent,
     fold: &IRFold,
     current_vid: Vid,
-    filter: &Operation<FoldSpecificFieldKind, Argument>,
+    filter: &Operation<FoldSpecificFieldKind, &Argument>,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let fold_specific_field = filter.left();
@@ -792,7 +833,7 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
         carrier,
         component,
         current_vid,
-        &filter.map(|_| (), |r| r),
+        &filter.map(|_| (), |r| *r),
         field_iterator,
     )
 }

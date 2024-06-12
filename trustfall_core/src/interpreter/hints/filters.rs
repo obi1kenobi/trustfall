@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::BTreeMap, fmt::Debug, ops::Bound, sync::Arc}
 
 use itertools::Itertools;
 
-use crate::ir::{Argument, FieldValue, FoldSpecificFieldKind, IRFold, Operation};
+use crate::ir::{Argument, FieldRef, FieldValue, FoldSpecificFieldKind, IRFold, Operation};
 
 use super::{candidates::NullableValue, CandidateValue, Range};
 
@@ -114,8 +114,11 @@ pub(super) fn fold_requires_at_least_one_element(
     query_variables: &BTreeMap<Arc<str>, FieldValue>,
     fold: &IRFold,
 ) -> bool {
-    let relevant_filters =
-        fold.post_filters.iter().filter(|op| matches!(op.left(), FoldSpecificFieldKind::Count));
+    // TODO: When we support applying `@transform` to property-like values, we can update this logic
+    //       to be smarter and less conservative.
+    let relevant_filters = fold.post_filters.iter().filter(|op| {
+        matches!(op.left(), FieldRef::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+    });
     let is_subject_field_nullable = false; // the "count" value can't be null
     candidate_from_statically_evaluated_filters(
         relevant_filters,

@@ -1141,7 +1141,7 @@ where
                 component_path,
                 tags,
                 starting_vid,
-                fold_specific_field.kind,
+                field_ref.clone(),
                 filter_directive,
             ) {
                 Ok(filter) => post_filters.push(filter),
