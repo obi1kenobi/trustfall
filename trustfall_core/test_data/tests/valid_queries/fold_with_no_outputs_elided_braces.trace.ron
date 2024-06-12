@@ -275,7 +275,11 @@ TestInterpreterOutputTrace(
               },
             ),
             post_filters: [
-              GreaterThanOrEqual(Count, Variable(VariableRef(
+              GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "min_primes",
                 variable_type: "Int!",
               ))),
