@@ -15,10 +15,10 @@ Ok(TestIRQuery(
           vid: Vid(1),
           type_name: "Number",
           filters: [
-            IsNotNull(LocalField(
+            IsNotNull(LocalField(LocalField(
               field_name: "name",
               field_type: "String",
-            )),
+            ))),
           ],
         ),
       },

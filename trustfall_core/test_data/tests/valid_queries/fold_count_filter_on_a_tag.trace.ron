@@ -373,10 +373,10 @@ TestInterpreterOutputTrace(
             vid: Vid(2),
             type_name: "Composite",
             filters: [
-              Equals(LocalField(
+              Equals(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "six",
                 variable_type: "Int",
               ))),

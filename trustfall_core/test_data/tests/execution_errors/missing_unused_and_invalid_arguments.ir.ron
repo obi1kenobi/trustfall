@@ -15,24 +15,24 @@ Ok(TestIRQuery(
           vid: Vid(1),
           type_name: "Number",
           filters: [
-            HasSubstring(LocalField(
+            HasSubstring(LocalField(LocalField(
               field_name: "name",
               field_type: "String",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "substr",
               variable_type: "String!",
             ))),
-            Equals(LocalField(
+            Equals(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "num",
               variable_type: "Int",
             ))),
-            LessThan(LocalField(
+            LessThan(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "max",
               variable_type: "Int!",
             ))),

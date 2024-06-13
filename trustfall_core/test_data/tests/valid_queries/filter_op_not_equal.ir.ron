@@ -15,10 +15,10 @@ Ok(TestIRQuery(
           vid: Vid(1),
           type_name: "Number",
           filters: [
-            NotEquals(LocalField(
+            NotEquals(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "num",
               variable_type: "Int",
             ))),

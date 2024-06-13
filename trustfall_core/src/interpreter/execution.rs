@@ -7,8 +7,8 @@ use std::{
 use crate::{
     ir::{
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
-        IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation, Recursive,
-        Vid,
+        IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation,
+        OperationSubject, Recursive, Vid,
     },
     util::BTreeMapTryInsertExt,
 };
@@ -105,7 +105,7 @@ fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
     iterator = coerce_if_needed(adapter.as_ref(), carrier, root_vertex, iterator);
 
     for filter_expr in &root_vertex.filters {
-        iterator = apply_local_field_filter(
+        iterator = apply_filter_with_arbitrary_subject(
             adapter.as_ref(),
             carrier,
             component,
@@ -713,12 +713,35 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
     Box::new(final_iterator)
 }
 
+fn apply_filter_with_arbitrary_subject<'query, AdapterT: Adapter<'query>>(
+    adapter: &AdapterT,
+    carrier: &mut QueryCarrier,
+    component: &IRQueryComponent,
+    current_vid: Vid,
+    filter: &Operation<OperationSubject, Argument>,
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> ContextIterator<'query, AdapterT::Vertex> {
+    let subject = filter.left();
+
+    match subject {
+        OperationSubject::LocalField(field) => apply_local_field_filter(
+            adapter,
+            carrier,
+            component,
+            current_vid,
+            filter.map_left(|_| field),
+            iterator,
+        ),
+        OperationSubject::TransformedField(_) => todo!(),
+    }
+}
+
 fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
-    filter: &Operation<LocalField, Argument>,
+    filter: Operation<&LocalField, &Argument>,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let local_field = filter.left();
@@ -730,7 +753,7 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
         carrier,
         component,
         current_vid,
-        &filter.map(|_| (), |r| r),
+        &filter.map(|_| (), |r| *r),
         field_iterator,
     )
 }
@@ -1051,8 +1074,14 @@ fn perform_entry_into_new_vertex<'query, AdapterT: Adapter<'query>>(
     let vertex_id = vertex.vid;
     let mut iterator = coerce_if_needed(adapter, carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
-        iterator =
-            apply_local_field_filter(adapter, carrier, component, vertex_id, filter_expr, iterator);
+        iterator = apply_filter_with_arbitrary_subject(
+            adapter,
+            carrier,
+            component,
+            vertex_id,
+            filter_expr,
+            iterator,
+        );
     }
     Box::new(iterator.map(move |mut x| {
         x.record_vertex(vertex_id);

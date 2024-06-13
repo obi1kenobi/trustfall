@@ -228,10 +228,10 @@ TestInterpreterOutputTrace(
             vid: Vid(2),
             type_name: "Number",
             filters: [
-              GreaterThanOrEqual(LocalField(
+              GreaterThanOrEqual(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Tag(ContextField(ContextField(
+              )), Tag(ContextField(ContextField(
                 vertex_id: Vid(1),
                 field_name: "value",
                 field_type: "Int",

@@ -2126,10 +2126,10 @@ TestInterpreterOutputTrace(
             vid: Vid(3),
             type_name: "Prime",
             filters: [
-              Equals(LocalField(
+              Equals(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "prime",
                 variable_type: "Int",
               ))),
@@ -2151,10 +2151,10 @@ TestInterpreterOutputTrace(
             vid: Vid(7),
             type_name: "Number",
             filters: [
-              LessThan(LocalField(
+              LessThan(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Tag(ContextField(ContextField(
+              )), Tag(ContextField(ContextField(
                 vertex_id: Vid(6),
                 field_name: "value",
                 field_type: "Int",

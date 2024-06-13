@@ -715,10 +715,10 @@ TestInterpreterOutputTrace(
             vid: Vid(2),
             type_name: "Number",
             filters: [
-              Equals(LocalField(
+              Equals(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "bound",
                 variable_type: "Int",
               ))),
