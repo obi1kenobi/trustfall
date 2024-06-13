@@ -21,18 +21,17 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use trustfall_core::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemVertex},
-    graphql_query::error::ParseError,
-    graphql_query::parse_document,
-    interpreter::error::QueryArgumentsError,
+    graphql_query::{error::ParseError, parse_document},
     interpreter::{
+        error::QueryArgumentsError,
         execution,
         trace::{tap_results, AdapterTap, Trace},
         Adapter,
     },
     ir::{FieldValue, IndexedQuery},
+    nullables_interpreter::NullablesAdapter,
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
-    schema::error::InvalidSchemaError,
-    schema::Schema,
+    schema::{error::InvalidSchemaError, Schema},
     test_types::{
         TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputData,
         TestInterpreterOutputTrace, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult,
@@ -161,6 +160,10 @@ fn outputs(path: &str) {
             let adapter = NumbersAdapter::new();
             outputs_with_adapter(adapter, test_query);
         }
+        "nullables" => {
+            let adapter = NullablesAdapter;
+            outputs_with_adapter(adapter, test_query);
+        }
         _ => unreachable!("Unknown schema name: {}", test_query.schema_name),
     };
 }
@@ -168,7 +171,7 @@ fn outputs(path: &str) {
 fn trace_with_adapter<'a, AdapterT>(
     adapter: AdapterT,
     test_query: TestIRQuery,
-    expected_results: &Vec<BTreeMap<Arc<str>, FieldValue>>,
+    expected_results_func: impl FnOnce() -> Vec<BTreeMap<Arc<str>, FieldValue>>,
 ) where
     AdapterT: Adapter<'a> + Clone + 'a,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
@@ -186,8 +189,9 @@ fn trace_with_adapter<'a, AdapterT>(
     match execution_result {
         Ok(results_iter) => {
             let results = tap_results(adapter_tap.clone(), results_iter).collect_vec();
+            let expected_results = expected_results_func();
             assert_eq!(
-                expected_results, &results,
+                &expected_results, &results,
                 "tracing execution produced different outputs from expected (untraced) outputs"
             );
 
@@ -212,20 +216,27 @@ fn trace(path: &str) {
     let outputs_file_name = ir_file_name.replace(".ir.ron", ".output.ron");
     outputs_path.pop();
     outputs_path.push(&outputs_file_name);
-    let outputs_data =
-        fs::read_to_string(outputs_path).expect("failed to read expected outputs file");
-    let test_outputs: TestInterpreterOutputData =
-        ron::from_str(&outputs_data).expect("failed to parse outputs file");
-    let expected_results = &test_outputs.results;
+
+    let expected_results_func = || {
+        let outputs_data =
+            fs::read_to_string(outputs_path).expect("failed to read expected outputs file");
+        let test_outputs: TestInterpreterOutputData =
+            ron::from_str(&outputs_data).expect("failed to parse outputs file");
+        test_outputs.results
+    };
 
     match test_query.schema_name.as_str() {
         "filesystem" => {
             let adapter = FilesystemInterpreter::new(".".to_owned());
-            trace_with_adapter(adapter, test_query, expected_results);
+            trace_with_adapter(adapter, test_query, expected_results_func);
         }
         "numbers" => {
             let adapter = NumbersAdapter::new();
-            trace_with_adapter(adapter, test_query, expected_results);
+            trace_with_adapter(adapter, test_query, expected_results_func);
+        }
+        "nullables" => {
+            let adapter = NullablesAdapter;
+            trace_with_adapter(adapter, test_query, expected_results_func);
         }
         _ => unreachable!("Unknown schema name: {}", test_query.schema_name),
     };

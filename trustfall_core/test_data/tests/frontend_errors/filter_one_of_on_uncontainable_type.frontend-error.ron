@@ -1,1 +1,1 @@
-Err(FilterTypeError(TypeMismatchBetweenTagAndFilter("one_of", "string", "String", "my_tag", "intList", "[Int]")))
+Err(FilterTypeError(TypeMismatchBetweenFilterSubjectAndArgument("one_of", "property \"string\" of type \"String\"", "tag \"my_tag\" of type \"[Int]\"")))

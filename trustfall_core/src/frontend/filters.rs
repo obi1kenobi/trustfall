@@ -92,7 +92,7 @@ fn infer_variable_type(
             // Direct equality comparison.
             // If the field is nullable, then the input should be nullable too
             // so that the null valued fields can be matched.
-            Ok(property_type.clone())
+            Ok(property_type)
         }
         Operation::LessThan(..)
         | Operation::LessThanOrEqual(..)
@@ -110,14 +110,13 @@ fn infer_variable_type(
         Operation::Contains(..) | Operation::NotContains(..) => {
             // To be able to check whether the property's value contains the operand,
             // the property needs to be a list. If it's not a list, this is a bad filter.
-            // let value = property_type.value();
             let inner_type = if let Some(list) = property_type.as_list() {
                 list
             } else {
-                return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
-                    operation.operation_name().to_string(),
-                    property_name.to_string(),
-                    property_type.to_string(),
+                return Err(Box::new(FilterTypeError::non_list_property_with_list_filter(
+                    operation.operation_name(),
+                    property_name,
+                    &property_type,
                 )));
             };
 
@@ -129,7 +128,7 @@ fn infer_variable_type(
             // Whatever the property's type is, the argument must be a non-nullable list of
             // the same type, so that the elements of that list may be checked for equality
             // against that property's value.
-            Ok(Type::new_list_type(property_type.clone(), false))
+            Ok(Type::new_list_type(property_type, false))
         }
         Operation::HasPrefix(..)
         | Operation::NotHasPrefix(..)
@@ -219,10 +218,10 @@ mod validity {
         if left_type.nullable() {
             Ok(())
         } else {
-            Err(vec![FilterTypeError::NonNullableTypeFilteredForNullability(
-                operation.operation_name().to_owned(),
-                left.named().to_string(),
-                left_type.to_string(),
+            Err(vec![FilterTypeError::non_nullable_property_with_nullability_filter(
+                operation.operation_name(),
+                left.named(),
+                left_type,
                 matches!(operation, Operation::IsNotNull(..)),
             )])
         }
@@ -250,13 +249,12 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            Err(vec![FilterTypeError::type_mismatch_between_property_and_tag(
+                operation.operation_name(),
+                left.named(),
+                left_type,
+                tag_name.unwrap(),
+                tag.field_type(),
             )])
         }
     }
@@ -276,10 +274,10 @@ mod validity {
 
         let mut errors = vec![];
         if !left_type.is_orderable() {
-            errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableField(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
+            errors.push(FilterTypeError::non_orderable_property_with_ordering_filter(
+                operation.operation_name(),
+                left.named(),
+                left_type,
             ));
         }
 
@@ -289,11 +287,10 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            errors.push(FilterTypeError::OrderingFilterOperationOnNonOrderableTag(
-                operation.operation_name().to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            errors.push(FilterTypeError::non_orderable_tag_argument_to_ordering_filter(
+                operation.operation_name(),
+                tag_name.unwrap(),
+                tag.field_type(),
             ));
         }
 
@@ -305,13 +302,12 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            errors.push(FilterTypeError::TypeMismatchBetweenTagAndFilter(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            errors.push(FilterTypeError::type_mismatch_between_property_and_tag(
+                operation.operation_name(),
+                left.named(),
+                left_type,
+                tag_name.unwrap(),
+                tag.field_type(),
             ));
         }
 
@@ -334,10 +330,10 @@ mod validity {
         // The left-hand operand needs to be a list, ignoring nullability.
         // The right-hand operand may be anything, if considered individually.
         let inner_type = left_type.as_list().ok_or_else(|| {
-            vec![FilterTypeError::ListFilterOperationOnNonListField(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
+            vec![FilterTypeError::non_list_property_with_list_filter(
+                operation.operation_name(),
+                left.named(),
+                left_type,
             )]
         })?;
 
@@ -353,13 +349,12 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            Err(vec![FilterTypeError::type_mismatch_between_property_and_tag(
+                operation.operation_name(),
+                left.named(),
+                left_type,
+                tag_name.unwrap(),
+                tag.field_type(),
             )])
         }
     }
@@ -384,11 +379,10 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            Err(vec![FilterTypeError::ListFilterOperationOnNonListTag(
-                operation.operation_name().to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            Err(vec![FilterTypeError::non_list_tag_argument_to_list_filter(
+                operation.operation_name(),
+                tag_name.unwrap(),
+                tag.field_type(),
             )])
         }?;
 
@@ -402,13 +396,12 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            Err(vec![FilterTypeError::TypeMismatchBetweenTagAndFilter(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            Err(vec![FilterTypeError::type_mismatch_between_property_and_tag(
+                operation.operation_name(),
+                left.named(),
+                left_type,
+                tag_name.unwrap(),
+                tag.field_type(),
             )])
         }
     }
@@ -426,10 +419,10 @@ mod validity {
 
         // Both operands need to be strings, ignoring nullability.
         if left_type.is_list() || left_type.base_type() != "String" {
-            errors.push(FilterTypeError::StringFilterOperationOnNonStringField(
-                operation.operation_name().to_string(),
-                left.named().to_string(),
-                left_type.to_string(),
+            errors.push(FilterTypeError::non_string_property_with_string_filter(
+                operation.operation_name(),
+                left.named(),
+                left_type,
             ));
         }
 
@@ -439,11 +432,10 @@ mod validity {
         let right_type = right_type.unwrap();
         if right_type.is_list() || right_type.base_type() != "String" {
             let tag = right.unwrap().as_tag().unwrap();
-            errors.push(FilterTypeError::StringFilterOperationOnNonStringTag(
-                operation.operation_name().to_string(),
-                tag_name.unwrap().to_string(),
-                tag.field_name().to_string(),
-                tag.field_type().to_string(),
+            errors.push(FilterTypeError::non_string_tag_argument_to_string_filter(
+                operation.operation_name(),
+                tag_name.unwrap(),
+                tag.field_type(),
             ));
         }
 

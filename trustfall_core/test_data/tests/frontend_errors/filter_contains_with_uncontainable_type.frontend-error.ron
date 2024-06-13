@@ -1,1 +1,1 @@
-Err(FilterTypeError(TypeMismatchBetweenTagAndFilter("contains", "intList", "[Int]", "my_tag", "string", "String")))
+Err(FilterTypeError(TypeMismatchBetweenFilterSubjectAndArgument("contains", "property \"intList\" of type \"[Int]\"", "tag \"my_tag\" of type \"String\"")))

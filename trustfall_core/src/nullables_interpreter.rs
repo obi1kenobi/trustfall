@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interpreter::{
-        Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
@@ -26,7 +26,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
     ) -> VertexIterator<'a, Self::Vertex> {
-        unimplemented!()
+        Box::new(std::iter::empty())
     }
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(

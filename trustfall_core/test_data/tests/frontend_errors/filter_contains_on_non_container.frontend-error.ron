@@ -1,1 +1,1 @@
-Err(FilterTypeError(ListFilterOperationOnNonListField("contains", "integer", "Int")))
+Err(FilterTypeError(ListFilterOperationOnNonListSubject("contains", "property \"integer\" of type \"Int\"")))
