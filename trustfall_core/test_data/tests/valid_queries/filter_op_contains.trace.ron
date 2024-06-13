@@ -397,10 +397,10 @@ TestInterpreterOutputTrace(
             vid: Vid(1),
             type_name: "Number",
             filters: [
-              Contains(LocalField(
+              Contains(LocalField(LocalField(
                 field_name: "vowelsInName",
                 field_type: "[String]",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "vowel",
                 variable_type: "String",
               ))),

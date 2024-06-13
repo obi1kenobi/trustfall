@@ -19,10 +19,10 @@ Ok(TestIRQuery(
           vid: Vid(2),
           type_name: "Number",
           filters: [
-            Equals(LocalField(
+            Equals(LocalField(LocalField(
               field_name: "__typename",
               field_type: "String!",
-            ), Tag(ContextField(ContextField(
+            )), Tag(ContextField(ContextField(
               vertex_id: Vid(1),
               field_name: "__typename",
               field_type: "String!",

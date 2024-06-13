@@ -50,6 +50,18 @@ impl Eid {
     }
 }
 
+/// Unique ID of a value term in a Trustfall query, such as a vertex property
+/// or a computed value like the number of elements in a `@fold`.
+#[doc(alias("term"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct Tid(pub(crate) NonZeroUsize);
+
+impl Tid {
+    pub fn new(id: NonZeroUsize) -> Tid {
+        Tid(id)
+    }
+}
+
 /// Parameter values for an edge expansion.
 ///
 /// Passed as an argument to the [`Adapter::resolve_starting_vertices`] and
@@ -189,7 +201,7 @@ pub struct IRVertex {
     pub coerced_from_type: Option<Arc<str>>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub filters: Vec<Operation<LocalField, Argument>>,
+    pub filters: Vec<Operation<OperationSubject, Argument>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -351,6 +363,16 @@ impl FieldRef {
     }
 }
 
+/// The right-hand side of a Trustfall operation.
+///
+/// In a Trustfall query, the `@filter` directive produces [`Operation`] values.
+/// The right-hand side of [`Operation`] is usually [`Argument`].
+///
+/// For example:
+/// ```graphql
+/// name @filter(op: "=", value: ["$input"])
+/// ```
+/// produces a value like `Operation::Equals(..., Argument::Variable(...))`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Argument {
     Tag(FieldRef),
@@ -378,13 +400,42 @@ impl Argument {
     }
 }
 
-/// Operations that can be made in the graph.
+/// The left-hand side of a Trustfall operation.
 ///
-/// In a Trustfall query, the `@filter` directive produces `Operation` values:
+/// In a Trustfall query, the `@filter` directive produces [`Operation`] values.
+/// The left-hand side of [`Operation`] is usually [`OperationSubject`].
+///
+/// For example:
 /// ```graphql
 /// name @filter(op: "=", value: ["$input"])
 /// ```
-/// would produce the `Operation::Equals` variant, for example.
+/// produces a value like `Operation::Equals(OperationSubject::LocalField(...), ...)`.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OperationSubject {
+    LocalField(LocalField),
+    TransformedField(TransformedField),
+}
+
+impl From<LocalField> for OperationSubject {
+    fn from(value: LocalField) -> Self {
+        Self::LocalField(value)
+    }
+}
+
+impl From<TransformedField> for OperationSubject {
+    fn from(value: TransformedField) -> Self {
+        Self::TransformedField(value)
+    }
+}
+
+/// Operations that can be made in the graph.
+///
+/// In a Trustfall query, the `@filter` directive produces [`Operation`] values:
+/// ```graphql
+/// name @filter(op: "=", value: ["$input"])
+/// ```
+/// would produce the [`Operation::Equals`] variant, for example.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation<LeftT, RightT>
@@ -492,6 +543,29 @@ where
             Operation::RegexMatches(..) => "regex",
             Operation::NotRegexMatches(..) => "not_regex",
         }
+    }
+
+    pub(crate) fn map_left<'a, LeftF, LeftOutT>(
+        &'a self,
+        map_left: LeftF,
+    ) -> Operation<LeftOutT, &RightT>
+    where
+        LeftOutT: Debug + Clone + PartialEq + Eq,
+        LeftF: FnOnce(&'a LeftT) -> LeftOutT,
+    {
+        self.map(map_left, |x| x)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn map_right<'a, RightF, RightOutT>(
+        &'a self,
+        map_right: RightF,
+    ) -> Operation<&LeftT, RightOutT>
+    where
+        RightOutT: Debug + Clone + PartialEq + Eq,
+        RightF: FnOnce(&'a RightT) -> RightOutT,
+    {
+        self.map(|x| x, map_right)
     }
 
     pub(crate) fn map<'a, LeftF, LeftOutT, RightF, RightOutT>(
@@ -642,6 +716,20 @@ pub struct ContextField {
 pub struct LocalField {
     pub field_name: Arc<str>,
 
+    pub field_type: Type,
+}
+
+/// The outcome of a `@transform` operation applied to a vertex property or property-like value
+/// such as the element count of a fold.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransformedField {
+    /// Which vertex's field is this a transformation of.
+    pub vertex_id: Vid,
+
+    /// The unique identifier of the transformation this represents.
+    pub tid: Tid,
+
+    /// The resulting type of the value produced by this transformation.
     pub field_type: Type,
 }
 

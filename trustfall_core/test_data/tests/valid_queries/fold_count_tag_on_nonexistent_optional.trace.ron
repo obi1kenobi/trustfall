@@ -468,10 +468,10 @@ TestInterpreterOutputTrace(
             vid: Vid(5),
             type_name: "Number",
             filters: [
-              LessThan(LocalField(
+              LessThan(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Tag(FoldSpecificField(FoldSpecificField(
+              )), Tag(FoldSpecificField(FoldSpecificField(
                 fold_eid: Eid(3),
                 fold_root_vid: Vid(4),
                 kind: Count,

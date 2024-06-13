@@ -357,10 +357,10 @@ TestInterpreterOutputTrace(
                   vid: Vid(3),
                   type_name: "Number",
                   filters: [
-                    Equals(LocalField(
+                    Equals(LocalField(LocalField(
                       field_name: "value",
                       field_type: "Int",
-                    ), Tag(FoldSpecificField(FoldSpecificField(
+                    )), Tag(FoldSpecificField(FoldSpecificField(
                       fold_eid: Eid(1),
                       fold_root_vid: Vid(2),
                       kind: Count,

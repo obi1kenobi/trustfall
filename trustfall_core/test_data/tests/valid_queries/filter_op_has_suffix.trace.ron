@@ -621,10 +621,10 @@ TestInterpreterOutputTrace(
             vid: Vid(1),
             type_name: "Number",
             filters: [
-              HasSuffix(LocalField(
+              HasSuffix(LocalField(LocalField(
                 field_name: "name",
                 field_type: "String",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "suffix",
                 variable_type: "String!",
               ))),

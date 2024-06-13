@@ -17,8 +17,8 @@ use crate::{
     ir::{
         get_typename_meta_field, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
         FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
-        IRVertex, IndexedQuery, LocalField, Operation, Recursive, TransformationKind, Type, Vid,
-        TYPENAME_META_FIELD,
+        IRVertex, IndexedQuery, LocalField, Operation, OperationSubject, Recursive,
+        TransformationKind, Type, Vid, TYPENAME_META_FIELD,
     },
     schema::{get_builtin_scalars, FieldOrigin, Schema},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -232,7 +232,7 @@ fn make_local_field_filter_expr(
     property_name: &Arc<str>,
     property_type: &Type,
     filter_directive: &FilterDirective,
-) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
+) -> Result<Operation<OperationSubject, Argument>, Vec<FrontendError>> {
     let left = LocalField { field_name: property_name.clone(), field_type: property_type.clone() };
 
     filters::make_filter_expr(
@@ -240,7 +240,7 @@ fn make_local_field_filter_expr(
         component_path,
         tags,
         current_vertex_vid,
-        left,
+        OperationSubject::LocalField(left),
         filter_directive,
     )
 }

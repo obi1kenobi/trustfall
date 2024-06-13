@@ -319,10 +319,10 @@ TestInterpreterOutputTrace(
             vid: Vid(1),
             type_name: "Number",
             filters: [
-              RegexMatches(LocalField(
+              RegexMatches(LocalField(LocalField(
                 field_name: "name",
                 field_type: "String",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "pattern",
                 variable_type: "String!",
               ))),
