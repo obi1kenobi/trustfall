@@ -1,1 +1,1 @@
-Err(FilterTypeError(NonNullableTypeFilteredForNullability("is_null", "nonNullString", "String!", false)))
+Err(FilterTypeError(NonNullableTypeFilteredForNullability("is_null", "property \"nonNullString\" of type \"String!\"", false)))

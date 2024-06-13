@@ -1,1 +1,1 @@
-Err(FilterTypeError(TypeMismatchBetweenTagAndFilter("=", "nonNullString", "String!", "my_tag", "integer", "Int")))
+Err(FilterTypeError(TypeMismatchBetweenFilterSubjectAndArgument("=", "property \"nonNullString\" of type \"String!\"", "tag \"my_tag\" of type \"Int\"")))

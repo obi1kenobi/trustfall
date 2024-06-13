@@ -1,4 +1,4 @@
 Err(VariableDefinitionInQuery(Pos(
-    line: 2,
-    column: 18
+  line: 2,
+  column: 18,
 )))
