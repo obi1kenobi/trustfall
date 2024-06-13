@@ -545,10 +545,10 @@ TestInterpreterOutputTrace(
                         vid: Vid(3),
                         type_name: "Composite",
                         filters: [
-                          LessThan(LocalField(
+                          LessThan(LocalField(LocalField(
                             field_name: "name",
                             field_type: "String",
-                          ), Tag(ContextField(ContextField(
+                          )), Tag(ContextField(ContextField(
                             vertex_id: Vid(2),
                             field_name: "name",
                             field_type: "String",

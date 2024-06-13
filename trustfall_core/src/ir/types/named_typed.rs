@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use super::{
     super::{
         Argument, ContextField, FieldRef, FoldSpecificField, FoldSpecificFieldKind, LocalField,
-        VariableRef,
+        OperationSubject, VariableRef,
     },
     Type,
 };
@@ -12,6 +12,22 @@ pub trait NamedTypedValue: Debug + Clone + PartialEq + Eq {
     fn typed(&self) -> &Type;
 
     fn named(&self) -> &str;
+}
+
+impl NamedTypedValue for OperationSubject {
+    fn typed(&self) -> &Type {
+        match self {
+            OperationSubject::LocalField(inner) => inner.typed(),
+            OperationSubject::TransformedField(_) => todo!(),
+        }
+    }
+
+    fn named(&self) -> &str {
+        match self {
+            OperationSubject::LocalField(inner) => inner.named(),
+            OperationSubject::TransformedField(_) => todo!(),
+        }
+    }
 }
 
 impl NamedTypedValue for LocalField {

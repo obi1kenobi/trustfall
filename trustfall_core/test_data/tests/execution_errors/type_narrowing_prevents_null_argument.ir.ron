@@ -9,17 +9,17 @@ Ok(TestIRQuery(
           vid: Vid(1),
           type_name: "MainType",
           filters: [
-            Equals(LocalField(
+            Equals(LocalField(LocalField(
               field_name: "nonNullIntList",
               field_type: "[Int!]",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "arg",
               variable_type: "[Int!]",
             ))),
-            Equals(LocalField(
+            Equals(LocalField(LocalField(
               field_name: "intNonNullList",
               field_type: "[Int]!",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "arg",
               variable_type: "[Int]!",
             ))),
