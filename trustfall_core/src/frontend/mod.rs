@@ -6,18 +6,19 @@ use async_graphql_parser::{
     types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
     Positioned,
 };
+use filters::make_filter_expr;
 use smallvec::SmallVec;
 
 use crate::{
     graphql_query::{
-        directives::{FilterDirective, FoldGroup, OperatorArgument, RecurseDirective},
+        directives::{FilterDirective, FoldGroup, RecurseDirective},
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
         get_typename_meta_field, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
         FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
-        IRVertex, IndexedQuery, LocalField, NamedTypedValue, Operation, Recursive,
-        TransformationKind, Type, VariableRef, Vid, TYPENAME_META_FIELD,
+        IRVertex, IndexedQuery, LocalField, Operation, Recursive, TransformationKind, Type, Vid,
+        TYPENAME_META_FIELD,
     },
     schema::{get_builtin_scalars, FieldOrigin, Schema},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -26,12 +27,13 @@ use crate::{
 use self::{
     error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
     outputs::OutputHandler,
-    tags::{TagHandler, TagLookupError},
+    tags::TagHandler,
     util::{get_underlying_named_type, ComponentPath},
     validation::validate_query_against_schema,
 };
 
 pub mod error;
+mod filters;
 mod outputs;
 mod tags;
 mod util;
@@ -221,75 +223,6 @@ fn make_edge_parameters(
     }
 }
 
-fn infer_variable_type(
-    property_name: &str,
-    property_type: Type,
-    operation: &Operation<(), OperatorArgument>,
-) -> Result<Type, Box<FilterTypeError>> {
-    match operation {
-        Operation::Equals(..) | Operation::NotEquals(..) => {
-            // Direct equality comparison.
-            // If the field is nullable, then the input should be nullable too
-            // so that the null valued fields can be matched.
-            Ok(property_type.clone())
-        }
-        Operation::LessThan(..)
-        | Operation::LessThanOrEqual(..)
-        | Operation::GreaterThan(..)
-        | Operation::GreaterThanOrEqual(..) => {
-            // The null value isn't orderable relative to non-null values of its type.
-            // Use a type that is structurally the same but non-null at the top level.
-            //
-            // Why only the top level? Consider a comparison against type [[Int]].
-            // Using a "null" valued variable doesn't make sense as a comparison.
-            // However, [[1], [2], null] is a valid value to use in the comparison, since
-            // there are definitely values that it is smaller than or bigger than.
-            Ok(property_type.with_nullability(false))
-        }
-        Operation::Contains(..) | Operation::NotContains(..) => {
-            // To be able to check whether the property's value contains the operand,
-            // the property needs to be a list. If it's not a list, this is a bad filter.
-            // let value = property_type.value();
-            let inner_type = if let Some(list) = property_type.as_list() {
-                list
-            } else {
-                return Err(Box::new(FilterTypeError::ListFilterOperationOnNonListField(
-                    operation.operation_name().to_string(),
-                    property_name.to_string(),
-                    property_type.to_string(),
-                )));
-            };
-
-            // We're trying to see if a list of element contains our element, so its type
-            // is whatever is inside the list -- nullable or not.
-            Ok(inner_type)
-        }
-        Operation::OneOf(..) | Operation::NotOneOf(..) => {
-            // Whatever the property's type is, the argument must be a non-nullable list of
-            // the same type, so that the elements of that list may be checked for equality
-            // against that property's value.
-            Ok(Type::new_list_type(property_type.clone(), false))
-        }
-        Operation::HasPrefix(..)
-        | Operation::NotHasPrefix(..)
-        | Operation::HasSuffix(..)
-        | Operation::NotHasSuffix(..)
-        | Operation::HasSubstring(..)
-        | Operation::NotHasSubstring(..)
-        | Operation::RegexMatches(..)
-        | Operation::NotRegexMatches(..) => {
-            // Filtering operations involving strings only take non-nullable strings as inputs.
-            Ok(Type::new_named_type("String", false))
-        }
-        Operation::IsNull(..) | Operation::IsNotNull(..) => {
-            // These are unary operations, there's no place where a variable can be used.
-            // There's nothing to be inferred, and this function must never be called
-            // for such operations.
-            unreachable!()
-        }
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 fn make_local_field_filter_expr(
     schema: &Schema,
@@ -302,79 +235,14 @@ fn make_local_field_filter_expr(
 ) -> Result<Operation<LocalField, Argument>, Vec<FrontendError>> {
     let left = LocalField { field_name: property_name.clone(), field_type: property_type.clone() };
 
-    make_filter_expr(schema, component_path, tags, current_vertex_vid, left, filter_directive)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn make_filter_expr<LeftT: NamedTypedValue>(
-    schema: &Schema,
-    component_path: &ComponentPath,
-    tags: &mut TagHandler<'_>,
-    current_vertex_vid: Vid,
-    left_operand: LeftT,
-    filter_directive: &FilterDirective,
-) -> Result<Operation<LeftT, Argument>, Vec<FrontendError>> {
-    let filter_operation = filter_directive
-        .operation
-        .try_map(
-            |_| Ok(left_operand.clone()),
-            |arg| {
-                Ok(match arg {
-                    OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
-                        variable_name: var_name.clone(),
-                        variable_type: infer_variable_type(
-                            left_operand.named(),
-                            left_operand.typed().clone(),
-                            &filter_directive.operation,
-                        )
-                        .map_err(|e| *e)?,
-                    }),
-                    OperatorArgument::TagRef(tag_name) => {
-                        let defined_tag = match tags.reference_tag(
-                            tag_name.as_ref(),
-                            component_path,
-                            current_vertex_vid,
-                        ) {
-                            Ok(defined_tag) => defined_tag,
-                            Err(TagLookupError::UndefinedTag(tag_name)) => {
-                                return Err(FrontendError::UndefinedTagInFilter(
-                                    left_operand.named().to_string(),
-                                    tag_name,
-                                ));
-                            }
-                            Err(TagLookupError::TagDefinedInsideFold(tag_name)) => {
-                                return Err(FrontendError::TagUsedOutsideItsFoldedSubquery(
-                                    left_operand.named().to_string(),
-                                    tag_name,
-                                ));
-                            }
-                            Err(TagLookupError::TagUsedBeforeDefinition(tag_name)) => {
-                                return Err(FrontendError::TagUsedBeforeDefinition(
-                                    left_operand.named().to_string(),
-                                    tag_name,
-                                ))
-                            }
-                        };
-
-                        Argument::Tag(defined_tag.field.clone())
-                    }
-                })
-            },
-        )
-        .map_err(|e| vec![e])?;
-
-    // Get the tag name, if one was used.
-    // The tag name is used to improve the diagnostics raised in case of bad query input.
-    let maybe_tag_name = match filter_directive.operation.right() {
-        Some(OperatorArgument::TagRef(tag_name)) => Some(tag_name.as_ref()),
-        _ => None,
-    };
-
-    if let Err(e) = filter_operation.operand_types_valid(maybe_tag_name) {
-        Err(e.into_iter().map(|x| x.into()).collect())
-    } else {
-        Ok(filter_operation)
-    }
+    filters::make_filter_expr(
+        schema,
+        component_path,
+        tags,
+        current_vertex_vid,
+        left,
+        filter_directive,
+    )
 }
 
 pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, FrontendError> {
