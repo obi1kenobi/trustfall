@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ir::FieldValue, util::DisplayVec};
+use crate::{
+    ir::{FieldValue, Type},
+    util::DisplayVec,
+};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
@@ -127,52 +130,154 @@ pub enum FilterTypeError {
     IncompatibleVariableTypeRequirements(String, String, String),
 
     #[error(
-        "Filter operation \"{0}\" unexpectedly used on non-nullable field \"{1}\" of type \"{2}\". \
-        The filter's result would always be {3}. Please rewrite the query to avoid this filter."
+        "Filter operation \"{0}\" is applied on non-nullable {1}. \
+        The filter's result would always be {2}. Please rewrite the query to avoid this filter."
     )]
-    NonNullableTypeFilteredForNullability(String, String, String, bool),
+    NonNullableTypeFilteredForNullability(String, String, bool),
 
     #[error(
-        "Type mismatch in @filter operation \"{0}\" between field \"{1}\" of type \"{2}\" \
-        and tag \"{3}\" representing field \"{4}\" of type \"{5}\""
+        "Filter operation \"{0}\" is comparing values with incompatible type: {1} versus {2}."
     )]
-    TypeMismatchBetweenTagAndFilter(String, String, String, String, String, String),
+    TypeMismatchBetweenFilterSubjectAndArgument(String, String, String),
 
     #[error(
-        "Non-orderable field \"{1}\" (type \"{2}\") used with @filter operation \"{0}\" which \"
-        only supports orderable types."
+        "Filter operation \"{0}\" can only be applied to orderable values, but is applied to {1} \
+        which does not support ordering comparisons."
     )]
-    OrderingFilterOperationOnNonOrderableField(String, String, String),
+    OrderingFilterOperationOnNonOrderableSubject(String, String),
 
     #[error(
-        "Tag \"{1}\" represents non-orderable field \"{2}\" (type \"{3}\"), but is used with \
-        @filter operation \"{0}\" which only supports orderable types."
+        "Filter operation \"{0}\" requires an argument that supports ordering comparisons, \
+        but is being used with non-orderable {1}."
     )]
-    OrderingFilterOperationOnNonOrderableTag(String, String, String, String),
+    OrderingFilterOperationWithNonOrderableArgument(String, String),
 
     #[error(
-        "Non-string field \"{1}\" (type \"{2}\") used with @filter operation \"{0}\" which \"
-        only supports strings."
+        "Filter operation \"{0}\" can only be applied to string values, but is applied to {1} \
+        which is not a string."
     )]
-    StringFilterOperationOnNonStringField(String, String, String),
+    StringFilterOperationOnNonStringSubject(String, String),
 
     #[error(
-        "Tag \"{1}\" represents non-string field \"{2}\" (type \"{3}\"), but is used with @filter \
-        operation \"{0}\" which only supports strings."
+        "Filter operation \"{0}\" requires an argument of string type, but is being used \
+        with non-string {1}."
     )]
-    StringFilterOperationOnNonStringTag(String, String, String, String),
+    StringFilterOperationOnNonStringArgument(String, String),
 
     #[error(
-        "Non-list field \"{1}\" (type \"{2}\") used with @filter operation \"{0}\" which can \"
-        only be used on lists."
+        "Filter operation \"{0}\" can only be applied to list values, but is applied to {1} \
+        which is not a list."
     )]
-    ListFilterOperationOnNonListField(String, String, String),
+    ListFilterOperationOnNonListSubject(String, String),
 
     #[error(
-        "Tag \"{1}\" represents non-list field \"{2}\" (type \"{3}\"), but is used with @filter \
-        operation \"{0}\" which requires a list type."
+        "Filter operation \"{0}\" requires an argument of list type, but is being used \
+        with non-list {1}."
     )]
-    ListFilterOperationOnNonListTag(String, String, String, String),
+    ListFilterOperationOnNonListArgument(String, String),
+}
+
+impl FilterTypeError {
+    fn represent_property_and_type(property_name: &str, property_type: &Type) -> String {
+        format!("property \"{property_name}\" of type \"{property_type}\"")
+    }
+
+    fn represent_tag_name_and_type(tag_name: &str, tag_type: &Type) -> String {
+        format!("tag \"{tag_name}\" of type \"{tag_type}\"")
+    }
+
+    pub(crate) fn non_nullable_property_with_nullability_filter(
+        filter_operator: &str,
+        property_name: &str,
+        property_type: &Type,
+        filter_outcome: bool,
+    ) -> Self {
+        Self::NonNullableTypeFilteredForNullability(
+            filter_operator.to_string(),
+            Self::represent_property_and_type(property_name, property_type),
+            filter_outcome,
+        )
+    }
+
+    pub(crate) fn type_mismatch_between_property_and_tag(
+        filter_operator: &str,
+        property_name: &str,
+        property_type: &Type,
+        tag_name: &str,
+        tag_type: &Type,
+    ) -> Self {
+        Self::TypeMismatchBetweenFilterSubjectAndArgument(
+            filter_operator.to_string(),
+            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_tag_name_and_type(tag_name, tag_type),
+        )
+    }
+
+    pub(crate) fn non_orderable_property_with_ordering_filter(
+        filter_operator: &str,
+        property_name: &str,
+        property_type: &Type,
+    ) -> Self {
+        Self::OrderingFilterOperationOnNonOrderableSubject(
+            filter_operator.to_string(),
+            Self::represent_property_and_type(property_name, property_type),
+        )
+    }
+
+    pub(crate) fn non_orderable_tag_argument_to_ordering_filter(
+        filter_operator: &str,
+        tag_name: &str,
+        tag_type: &Type,
+    ) -> Self {
+        Self::OrderingFilterOperationWithNonOrderableArgument(
+            filter_operator.to_string(),
+            Self::represent_tag_name_and_type(tag_name, tag_type),
+        )
+    }
+
+    pub(crate) fn non_string_property_with_string_filter(
+        filter_operator: &str,
+        property_name: &str,
+        property_type: &Type,
+    ) -> Self {
+        Self::StringFilterOperationOnNonStringSubject(
+            filter_operator.to_string(),
+            Self::represent_property_and_type(property_name, property_type),
+        )
+    }
+
+    pub(crate) fn non_string_tag_argument_to_string_filter(
+        filter_operator: &str,
+        tag_name: &str,
+        tag_type: &Type,
+    ) -> Self {
+        Self::StringFilterOperationOnNonStringArgument(
+            filter_operator.to_string(),
+            Self::represent_tag_name_and_type(tag_name, tag_type),
+        )
+    }
+
+    pub(crate) fn non_list_property_with_list_filter(
+        filter_operator: &str,
+        property_name: &str,
+        property_type: &Type,
+    ) -> Self {
+        Self::ListFilterOperationOnNonListSubject(
+            filter_operator.to_string(),
+            Self::represent_property_and_type(property_name, property_type),
+        )
+    }
+
+    pub(crate) fn non_list_tag_argument_to_list_filter(
+        filter_operator: &str,
+        tag_name: &str,
+        tag_type: &Type,
+    ) -> Self {
+        Self::ListFilterOperationOnNonListArgument(
+            filter_operator.to_string(),
+            Self::represent_tag_name_and_type(tag_name, tag_type),
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
