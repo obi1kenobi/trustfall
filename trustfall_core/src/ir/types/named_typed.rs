@@ -18,7 +18,8 @@ impl NamedTypedValue for OperationSubject {
     fn typed(&self) -> &Type {
         match self {
             OperationSubject::LocalField(inner) => inner.typed(),
-            OperationSubject::TransformedField(_) => todo!(),
+            OperationSubject::TransformedField(inner) => &inner.field_type,
+            OperationSubject::FoldSpecificField(inner) => inner.typed(),
         }
     }
 
@@ -26,6 +27,7 @@ impl NamedTypedValue for OperationSubject {
         match self {
             OperationSubject::LocalField(inner) => inner.named(),
             OperationSubject::TransformedField(_) => todo!(),
+            OperationSubject::FoldSpecificField(inner) => inner.named(),
         }
     }
 }

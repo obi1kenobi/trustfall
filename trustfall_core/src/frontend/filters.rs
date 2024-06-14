@@ -1,6 +1,6 @@
 use crate::{
     graphql_query::directives::{FilterDirective, OperatorArgument},
-    ir::{Argument, NamedTypedValue, Operation, Type, VariableRef, Vid},
+    ir::{Argument, NamedTypedValue, Operation, OperationSubject, Type, VariableRef, Vid},
     schema::Schema,
 };
 
@@ -11,14 +11,14 @@ use super::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn make_filter_expr<LeftT: NamedTypedValue>(
+pub(super) fn make_filter_expr(
     schema: &Schema,
     component_path: &ComponentPath,
     tags: &mut TagHandler<'_>,
     current_vertex_vid: Vid,
-    left_operand: LeftT,
+    left_operand: OperationSubject,
     filter_directive: &FilterDirective,
-) -> Result<Operation<LeftT, Argument>, Vec<FrontendError>> {
+) -> Result<Operation<OperationSubject, Argument>, Vec<FrontendError>> {
     let filter_operation = filter_directive
         .operation
         .try_map(
@@ -28,8 +28,7 @@ pub(super) fn make_filter_expr<LeftT: NamedTypedValue>(
                     OperatorArgument::VariableRef(var_name) => Argument::Variable(VariableRef {
                         variable_name: var_name.clone(),
                         variable_type: infer_variable_type(
-                            left_operand.named(),
-                            left_operand.typed().clone(),
+                            &left_operand,
                             &filter_directive.operation,
                         )
                         .map_err(|e| *e)?,
@@ -83,16 +82,16 @@ pub(super) fn make_filter_expr<LeftT: NamedTypedValue>(
 }
 
 fn infer_variable_type(
-    property_name: &str,
-    property_type: Type,
+    subject: &OperationSubject,
     operation: &Operation<(), OperatorArgument>,
 ) -> Result<Type, Box<FilterTypeError>> {
+    let left_type = subject.typed();
     match operation {
         Operation::Equals(..) | Operation::NotEquals(..) => {
             // Direct equality comparison.
             // If the field is nullable, then the input should be nullable too
             // so that the null valued fields can be matched.
-            Ok(property_type)
+            Ok(left_type.to_owned())
         }
         Operation::LessThan(..)
         | Operation::LessThanOrEqual(..)
@@ -105,18 +104,17 @@ fn infer_variable_type(
             // Using a "null" valued variable doesn't make sense as a comparison.
             // However, [[1], [2], null] is a valid value to use in the comparison, since
             // there are definitely values that it is smaller than or bigger than.
-            Ok(property_type.with_nullability(false))
+            Ok(left_type.with_nullability(false))
         }
         Operation::Contains(..) | Operation::NotContains(..) => {
             // To be able to check whether the property's value contains the operand,
             // the property needs to be a list. If it's not a list, this is a bad filter.
-            let inner_type = if let Some(list) = property_type.as_list() {
+            let inner_type = if let Some(list) = left_type.as_list() {
                 list
             } else {
-                return Err(Box::new(FilterTypeError::non_list_property_with_list_filter(
+                return Err(Box::new(FilterTypeError::non_list_subject_with_list_filter(
                     operation.operation_name(),
-                    property_name,
-                    &property_type,
+                    subject,
                 )));
             };
 
@@ -128,7 +126,7 @@ fn infer_variable_type(
             // Whatever the property's type is, the argument must be a non-nullable list of
             // the same type, so that the elements of that list may be checked for equality
             // against that property's value.
-            Ok(Type::new_list_type(property_type, false))
+            Ok(Type::new_list_type(left_type.to_owned(), false))
         }
         Operation::HasPrefix(..)
         | Operation::NotHasPrefix(..)
@@ -150,8 +148,8 @@ fn infer_variable_type(
     }
 }
 
-fn operand_types_valid<LeftT: NamedTypedValue>(
-    operation: &Operation<LeftT, Argument>,
+fn operand_types_valid(
+    operation: &Operation<OperationSubject, Argument>,
     tag_name: Option<&str>,
 ) -> Result<(), Vec<FilterTypeError>> {
     let left = operation.left();
@@ -204,93 +202,92 @@ fn operand_types_valid<LeftT: NamedTypedValue>(
 mod validity {
     use crate::{
         frontend::error::FilterTypeError,
-        ir::{Argument, NamedTypedValue, Operation},
+        ir::{Argument, Operation, OperationSubject},
     };
 
-    pub(super) fn nullability_types_valid<LeftT: NamedTypedValue>(
-        operation: &Operation<LeftT, Argument>,
+    pub(super) fn nullability_types_valid(
+        operation: &Operation<OperationSubject, Argument>,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = operation.left();
-        let left_type = left.typed();
+        let left_type = left.field_type();
 
         // Checking non-nullable types for null or non-null is pointless.
         if left_type.nullable() {
             Ok(())
         } else {
-            Err(vec![FilterTypeError::non_nullable_property_with_nullability_filter(
+            Err(vec![FilterTypeError::non_nullable_subject_with_nullability_filter(
                 operation.operation_name(),
-                left.named(),
-                left_type,
+                left,
                 matches!(operation, Operation::IsNotNull(..)),
             )])
         }
     }
 
-    pub(super) fn equality_types_valid<LeftT: NamedTypedValue>(
-        operation: &Operation<LeftT, Argument>,
+    pub(super) fn equality_types_valid(
+        operation: &Operation<OperationSubject, Argument>,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = operation.left();
         let right = operation.right();
-        let left_type = left.typed();
-        let right_type = right.map(|x| x.typed());
+        let argument = right.unwrap();
+        let left_type = left.field_type();
+        let right_type = argument.field_type();
 
         // Individually, any operands are valid for equality operations.
         //
         // For the operands relative to each other, nullability doesn't matter,
         // but the rest of the type must be the same.
-        let right_type = right_type.unwrap();
         if left_type.equal_ignoring_nullability(right_type) {
             Ok(())
         } else {
-            // The right argument must be a tag at this point. If it is not a tag
-            // and the second .unwrap() below panics, then our type inference
-            // has inferred an incorrect type for the variable in the argument.
-            let tag = right.unwrap().as_tag().unwrap();
+            let argument = right.unwrap();
+            assert!(
+                argument.as_variable().is_none(),
+                "type inference for variable {argument:?} has failed to produce a valid type; \
+                this is a bug since the issue should have been caught in an earlier stage"
+            );
 
-            Err(vec![FilterTypeError::type_mismatch_between_property_and_tag(
+            Err(vec![FilterTypeError::type_mismatch_between_subject_and_argument(
                 operation.operation_name(),
-                left.named(),
-                left_type,
-                tag_name.unwrap(),
-                tag.field_type(),
+                left,
+                argument,
+                tag_name,
             )])
         }
     }
 
-    pub(super) fn ordering_types_valid<LeftT: NamedTypedValue>(
-        operation: &Operation<LeftT, Argument>,
+    pub(super) fn ordering_types_valid(
+        operation: &Operation<OperationSubject, Argument>,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = operation.left();
         let right = operation.right();
-        let left_type = left.typed();
-        let right_type = right.map(|x| x.typed());
+        let argument = right.unwrap();
+        let left_type = left.field_type();
+        let right_type = argument.field_type();
 
         // Individually, the operands' types must be non-nullable or list, recursively,
         // versions of orderable types.
-        let right_type = right_type.unwrap();
-
         let mut errors = vec![];
         if !left_type.is_orderable() {
-            errors.push(FilterTypeError::non_orderable_property_with_ordering_filter(
+            errors.push(FilterTypeError::non_orderable_subject_with_ordering_filter(
                 operation.operation_name(),
-                left.named(),
-                left_type,
+                left,
             ));
         }
 
         if !right_type.is_orderable() {
-            // The right argument must be a tag at this point. If it is not a tag
-            // and the second .unwrap() below panics, then our type inference
-            // has inferred an incorrect type for the variable in the argument.
-            let tag = right.unwrap().as_tag().unwrap();
+            assert!(
+                argument.as_variable().is_none(),
+                "type inference for variable {argument:?} has failed to produce a valid type; \
+                this is a bug since the issue should have been caught in an earlier stage"
+            );
 
-            errors.push(FilterTypeError::non_orderable_tag_argument_to_ordering_filter(
+            errors.push(FilterTypeError::non_orderable_argument_to_ordering_filter(
                 operation.operation_name(),
-                tag_name.unwrap(),
-                tag.field_type(),
+                argument,
+                tag_name,
             ));
         }
 
@@ -302,12 +299,11 @@ mod validity {
             // has inferred an incorrect type for the variable in the argument.
             let tag = right.unwrap().as_tag().unwrap();
 
-            errors.push(FilterTypeError::type_mismatch_between_property_and_tag(
+            errors.push(FilterTypeError::type_mismatch_between_subject_and_argument(
                 operation.operation_name(),
-                left.named(),
-                left_type,
-                tag_name.unwrap(),
-                tag.field_type(),
+                left,
+                argument,
+                tag_name,
             ));
         }
 
@@ -318,71 +314,70 @@ mod validity {
         }
     }
 
-    pub(super) fn list_containment_types_valid<LeftT: NamedTypedValue>(
-        operation: &Operation<LeftT, Argument>,
+    pub(super) fn list_containment_types_valid(
+        operation: &Operation<OperationSubject, Argument>,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = operation.left();
         let right = operation.right();
-        let left_type = left.typed();
-        let right_type = right.map(|x| x.typed());
+        let argument = right.unwrap();
+        let left_type = left.field_type();
+        let right_type = argument.field_type();
 
         // The left-hand operand needs to be a list, ignoring nullability.
         // The right-hand operand may be anything, if considered individually.
         let inner_type = left_type.as_list().ok_or_else(|| {
-            vec![FilterTypeError::non_list_property_with_list_filter(
+            vec![FilterTypeError::non_list_subject_with_list_filter(
                 operation.operation_name(),
-                left.named(),
-                left_type,
+                left,
             )]
         })?;
-
-        let right_type = right_type.unwrap();
 
         // However, the type inside the left-hand list must be equal,
         // ignoring nullability, to the type of the right-hand operand.
         if inner_type.equal_ignoring_nullability(right_type) {
             Ok(())
         } else {
-            // The right argument must be a tag at this point. If it is not a tag
-            // and the second .unwrap() below panics, then our type inference
-            // has inferred an incorrect type for the variable in the argument.
-            let tag = right.unwrap().as_tag().unwrap();
+            assert!(
+                argument.as_variable().is_none(),
+                "type inference for variable {argument:?} has failed to produce a valid type; \
+                this is a bug since the issue should have been caught in an earlier stage"
+            );
 
-            Err(vec![FilterTypeError::type_mismatch_between_property_and_tag(
+            Err(vec![FilterTypeError::type_mismatch_between_subject_and_argument(
                 operation.operation_name(),
-                left.named(),
-                left_type,
-                tag_name.unwrap(),
-                tag.field_type(),
+                left,
+                argument,
+                tag_name,
             )])
         }
     }
 
-    pub(super) fn bulk_equality_types_valid<LeftT: NamedTypedValue>(
-        operation: &Operation<LeftT, Argument>,
+    pub(super) fn bulk_equality_types_valid(
+        operation: &Operation<OperationSubject, Argument>,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = operation.left();
         let right = operation.right();
-        let left_type = left.typed();
-        let right_type = right.map(|x| x.typed());
+        let argument = right.unwrap();
+        let left_type = left.field_type();
+        let right_type = argument.field_type();
 
         // The right-hand operand needs to be a list, ignoring nullability.
         // The left-hand operand may be anything, if considered individually.
-        let right_type = right_type.unwrap();
         let inner_type = if let Some(list) = right_type.as_list() {
             Ok(list)
         } else {
-            // The right argument must be a tag at this point. If it is not a tag
-            // and the second .unwrap() below panics, then our type inference
-            // has inferred an incorrect type for the variable in the argument.
-            let tag = right.unwrap().as_tag().unwrap();
+            assert!(
+                argument.as_variable().is_none(),
+                "type inference for variable {argument:?} has failed to produce a valid type; \
+                this is a bug since the issue should have been caught in an earlier stage"
+            );
 
-            Err(vec![FilterTypeError::non_list_tag_argument_to_list_filter(
+            Err(vec![FilterTypeError::non_list_argument_to_list_filter(
                 operation.operation_name(),
-                tag_name.unwrap(),
-                tag.field_type(),
+                argument,
+                tag_name,
             )])
         }?;
 
@@ -391,51 +386,52 @@ mod validity {
         if left_type.equal_ignoring_nullability(&inner_type) {
             Ok(())
         } else {
-            // The right argument must be a tag at this point. If it is not a tag
-            // and the second .unwrap() below panics, then our type inference
-            // has inferred an incorrect type for the variable in the argument.
-            let tag = right.unwrap().as_tag().unwrap();
+            assert!(
+                argument.as_variable().is_none(),
+                "type inference for variable {argument:?} has failed to produce a valid type; \
+                this is a bug since the issue should have been caught in an earlier stage"
+            );
 
-            Err(vec![FilterTypeError::type_mismatch_between_property_and_tag(
+            Err(vec![FilterTypeError::type_mismatch_between_subject_and_argument(
                 operation.operation_name(),
-                left.named(),
-                left_type,
-                tag_name.unwrap(),
-                tag.field_type(),
+                left,
+                argument,
+                tag_name,
             )])
         }
     }
 
-    pub(super) fn string_operation_types_valid<LeftT: NamedTypedValue>(
-        operation: &Operation<LeftT, Argument>,
+    pub(super) fn string_operation_types_valid(
+        operation: &Operation<OperationSubject, Argument>,
         tag_name: Option<&str>,
     ) -> Result<(), Vec<FilterTypeError>> {
         let left = operation.left();
         let right = operation.right();
-        let left_type = left.typed();
-        let right_type = right.map(|x| x.typed());
+        let argument = right.unwrap();
+        let left_type = left.field_type();
+        let right_type = argument.field_type();
 
         let mut errors = vec![];
 
         // Both operands need to be strings, ignoring nullability.
         if left_type.is_list() || left_type.base_type() != "String" {
-            errors.push(FilterTypeError::non_string_property_with_string_filter(
+            errors.push(FilterTypeError::non_string_subject_with_string_filter(
                 operation.operation_name(),
-                left.named(),
-                left_type,
+                left,
             ));
         }
 
-        // The right argument must be a tag at this point. If it is not a tag
-        // and the second .unwrap() below panics, then our type inference
-        // has inferred an incorrect type for the variable in the argument.
-        let right_type = right_type.unwrap();
         if right_type.is_list() || right_type.base_type() != "String" {
-            let tag = right.unwrap().as_tag().unwrap();
-            errors.push(FilterTypeError::non_string_tag_argument_to_string_filter(
+            assert!(
+                argument.as_variable().is_none(),
+                "type inference for variable {argument:?} has failed to produce a valid type; \
+                this is a bug since the issue should have been caught in an earlier stage"
+            );
+
+            errors.push(FilterTypeError::non_string_argument_to_string_filter(
                 operation.operation_name(),
-                tag_name.unwrap(),
-                tag.field_type(),
+                argument,
+                tag_name,
             ));
         }
 

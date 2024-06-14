@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::ir::TransformBase;
 use crate::{
     interpreter::InterpretedQuery,
     ir::{
@@ -169,10 +170,16 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             .filter(|c| c.defined_at() == current_vertex.vid)
             .map(|c| RequiredProperty::new(c.field_name_arc()));
 
-        let properties = properties.chain(current_vertex.filters.iter().map(|f| {
+        let properties = properties.chain(current_vertex.filters.iter().map(move |f| {
             RequiredProperty::new(match f.left() {
                 OperationSubject::LocalField(field) => field.field_name.clone(),
-                OperationSubject::TransformedField(_) => todo!(),
+                OperationSubject::TransformedField(transformed) => {
+                    match &current_vertex.transformed_values[&transformed.tid].base {
+                        TransformBase::LocalField(field) => field.field_name.clone(),
+                        TransformBase::FoldSpecificField(_) => unreachable!("illegal transformed vertex in filter of current_vertex: {current_vertex:#?}"),
+                    }
+                }
+                OperationSubject::FoldSpecificField(..) => unreachable!("found fold-specific field in vertex filters: {current_vertex:#?}"),
             })
         }));
 
@@ -238,6 +245,9 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let local_field = match first_filter.left() {
             OperationSubject::LocalField(field) => field,
             OperationSubject::TransformedField(_) => return None,
+            OperationSubject::FoldSpecificField(..) => {
+                unreachable!("found fold-specific field in vertex filters: {vertex:#?}")
+            }
         };
 
         let candidate =
@@ -268,6 +278,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             return None;
         }
 
+        let current_vertex = self.current_vertex();
+
         // We only care about filtering operations that are all of the following:
         // - on the requested property of this vertex;
         // - dynamically-resolvable, i.e. depend on tagged arguments,
@@ -275,7 +287,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         //   at the time this call was made, and
         // - use a supported filtering operation using those tagged arguments.
         let resolved_range = (Bound::Unbounded, self.execution_frontier());
-        let relevant_filters: Vec<_> = filters_on_local_property(self.current_vertex(), property)
+        let relevant_filters: Vec<_> = filters_on_local_property(current_vertex, property)
             .filter(|op| {
                 matches!(
                     op,
@@ -315,6 +327,9 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         let local_field = match first_filter.left() {
             OperationSubject::LocalField(field) => field,
             OperationSubject::TransformedField(_) => return None,
+            OperationSubject::FoldSpecificField(..) => {
+                unreachable!("found fold-specific field in vertex filters: {current_vertex:#?}")
+            }
         };
 
         let initial_candidate = self.statically_required_property(property).unwrap_or_else(|| {
@@ -432,6 +447,9 @@ fn filters_on_local_property<'a: 'b, 'b>(
                 //
                 // TODO: This is an opportunity for further optimization.
                 false
+            }
+            OperationSubject::FoldSpecificField(..) => {
+                unreachable!("found fold-specific field in vertex filters: {vertex:#?}")
             }
         }
     })

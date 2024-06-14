@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ir::{FieldValue, Type},
+    ir::{Argument, FieldValue, OperationSubject, Type},
     util::DisplayVec,
 };
 
@@ -186,96 +186,120 @@ impl FilterTypeError {
         format!("tag \"{tag_name}\" of type \"{tag_type}\"")
     }
 
-    pub(crate) fn non_nullable_property_with_nullability_filter(
+    fn represent_variable_name_and_type(var_name: &str, var_type: &Type) -> String {
+        format!("variable \"{var_name}\" of type \"{var_type}\"")
+    }
+
+    fn represent_subject(subject: &OperationSubject) -> String {
+        match subject {
+            OperationSubject::LocalField(field) => {
+                Self::represent_property_and_type(&field.field_name, &field.field_type)
+            }
+            OperationSubject::TransformedField(_) => todo!(),
+            OperationSubject::FoldSpecificField(_) => todo!(),
+        }
+    }
+
+    /// Represent a filter argument as a human-readable string suitable for use in an error message.
+    /// Tag arguments don't carry a name inside the [`Argument`] type, so we look up and supply
+    /// the tag name separately if needed.
+    fn represent_argument(argument: &Argument, tag_name: Option<&str>) -> String {
+        match argument {
+            Argument::Tag(tag) => Self::represent_tag_name_and_type(
+                tag_name.expect("tag argument without a name"),
+                tag.field_type(),
+            ),
+            Argument::Variable(var) => {
+                Self::represent_variable_name_and_type(&var.variable_name, &var.variable_type)
+            }
+        }
+    }
+
+    pub(crate) fn non_nullable_subject_with_nullability_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
         filter_outcome: bool,
     ) -> Self {
         Self::NonNullableTypeFilteredForNullability(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
             filter_outcome,
         )
     }
 
-    pub(crate) fn type_mismatch_between_property_and_tag(
+    pub(crate) fn type_mismatch_between_subject_and_argument(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
-        tag_name: &str,
-        tag_type: &Type,
+        subject: &OperationSubject,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::TypeMismatchBetweenFilterSubjectAndArgument(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_subject(subject),
+            Self::represent_argument(argument, tag_name),
         )
     }
 
-    pub(crate) fn non_orderable_property_with_ordering_filter(
+    pub(crate) fn non_orderable_subject_with_ordering_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
     ) -> Self {
         Self::OrderingFilterOperationOnNonOrderableSubject(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
         )
     }
 
-    pub(crate) fn non_orderable_tag_argument_to_ordering_filter(
+    pub(crate) fn non_orderable_argument_to_ordering_filter(
         filter_operator: &str,
-        tag_name: &str,
-        tag_type: &Type,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::OrderingFilterOperationWithNonOrderableArgument(
             filter_operator.to_string(),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_argument(argument, tag_name),
         )
     }
 
-    pub(crate) fn non_string_property_with_string_filter(
+    pub(crate) fn non_string_subject_with_string_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
     ) -> Self {
         Self::StringFilterOperationOnNonStringSubject(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
         )
     }
 
-    pub(crate) fn non_string_tag_argument_to_string_filter(
+    pub(crate) fn non_string_argument_to_string_filter(
         filter_operator: &str,
-        tag_name: &str,
-        tag_type: &Type,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::StringFilterOperationOnNonStringArgument(
             filter_operator.to_string(),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_argument(argument, tag_name),
         )
     }
 
-    pub(crate) fn non_list_property_with_list_filter(
+    pub(crate) fn non_list_subject_with_list_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
     ) -> Self {
         Self::ListFilterOperationOnNonListSubject(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
         )
     }
 
-    pub(crate) fn non_list_tag_argument_to_list_filter(
+    pub(crate) fn non_list_argument_to_list_filter(
         filter_operator: &str,
-        tag_name: &str,
-        tag_type: &Type,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::ListFilterOperationOnNonListArgument(
             filter_operator.to_string(),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_argument(argument, tag_name),
         )
     }
 }

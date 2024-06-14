@@ -105,7 +105,7 @@ fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
     iterator = coerce_if_needed(adapter.as_ref(), carrier, root_vertex, iterator);
 
     for filter_expr in &root_vertex.filters {
-        iterator = apply_filter_with_arbitrary_subject(
+        iterator = apply_filter_with_non_folded_field_subject(
             adapter.as_ref(),
             carrier,
             component,
@@ -287,7 +287,7 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
             continue;
         }
 
-        if !matches!(left, FieldRef::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+        if !matches!(left, OperationSubject::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
         {
             // The filter expression is doing something more complex than we can currently analyze.
             // Conservatively return `None` to disable optimizations here.
@@ -358,7 +358,7 @@ fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
             continue;
         }
 
-        if !matches!(left, FieldRef::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+        if !matches!(left, OperationSubject::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
         {
             // The filter expression is doing something more complex than we can currently analyze.
             // Conservatively return `None` to disable optimizations here.
@@ -621,10 +621,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     for post_fold_filter in fold.post_filters.iter() {
         let left = post_fold_filter.left();
         match left {
-            FieldRef::ContextField(_) => {
-                unreachable!("unexpectedly found a fold post-filtering step that references a ContextField: {fold:#?}");
-            }
-            FieldRef::FoldSpecificField(fold_specific_field) => {
+            OperationSubject::FoldSpecificField(fold_specific_field) => {
                 let remapped_operation = post_fold_filter.map(|_| fold_specific_field.kind, |x| x);
                 post_filtered_iterator = apply_fold_specific_filter(
                     adapter.as_ref(),
@@ -635,6 +632,10 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                     &remapped_operation,
                     post_filtered_iterator,
                 );
+            }
+            OperationSubject::TransformedField(_) => todo!(),
+            OperationSubject::LocalField(_) => {
+                unreachable!("unexpectedly found a fold post-filtering step that references a LocalField: {fold:#?}");
             }
         }
     }
@@ -785,7 +786,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
     Box::new(final_iterator)
 }
 
-fn apply_filter_with_arbitrary_subject<'query, AdapterT: Adapter<'query>>(
+fn apply_filter_with_non_folded_field_subject<'query, AdapterT: Adapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -805,6 +806,9 @@ fn apply_filter_with_arbitrary_subject<'query, AdapterT: Adapter<'query>>(
             iterator,
         ),
         OperationSubject::TransformedField(_) => todo!(),
+        OperationSubject::FoldSpecificField(..) => unreachable!(
+            "illegal filter over fold-specific field passed to this function: {filter:?}"
+        ),
     }
 }
 
@@ -1146,7 +1150,7 @@ fn perform_entry_into_new_vertex<'query, AdapterT: Adapter<'query>>(
     let vertex_id = vertex.vid;
     let mut iterator = coerce_if_needed(adapter, carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
-        iterator = apply_filter_with_arbitrary_subject(
+        iterator = apply_filter_with_non_folded_field_subject(
             adapter,
             carrier,
             component,

@@ -161,6 +161,7 @@ fn make_resolve_info_for_property_check(
                     type_name: type_name.clone(),
                     coerced_from_type: None,
                     filters: vec![],
+                    transformed_values: Default::default(),
                 },
             },
             edges: Default::default(),
@@ -303,12 +304,14 @@ fn make_resolve_edge_info_for_edge_check(
                     type_name: type_name.clone(),
                     coerced_from_type: None,
                     filters: vec![],
+                    transformed_values: Default::default(),
                 },
                 to_vid => IRVertex {
                     vid: to_vid,
                     type_name: target_type.clone(),
                     coerced_from_type: None,
                     filters: vec![],
+                    transformed_values: Default::default(),
                 }
             },
             edges: btreemap! {
@@ -488,6 +491,7 @@ fn make_resolve_info_for_type_coercion(
                     type_name: coerce_to.clone(),
                     coerced_from_type: Some(type_name.clone()),
                     filters: vec![],
+                    transformed_values: Default::default(),
                 },
             },
             edges: Default::default(),
