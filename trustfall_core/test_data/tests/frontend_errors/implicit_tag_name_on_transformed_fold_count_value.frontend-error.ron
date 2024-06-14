@@ -1,0 +1,4 @@
+Err(MultipleErrors(DisplayVec([
+  ExplicitTagNameRequired("transformed field \"@fold.count\""),
+  UndefinedTagInFilter("property \"value\"", "successorcount"),
+])))

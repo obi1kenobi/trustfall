@@ -174,8 +174,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             RequiredProperty::new(match f.left() {
                 OperationSubject::LocalField(field) => field.field_name.clone(),
                 OperationSubject::TransformedField(transformed) => {
-                    match &current_vertex.transformed_values[&transformed.tid].base {
-                        TransformBase::LocalField(field) => field.field_name.clone(),
+                    match &transformed.value.base {
+                        TransformBase::ContextField(field) => field.field_name.clone(),
                         TransformBase::FoldSpecificField(_) => unreachable!("illegal transformed vertex in filter of current_vertex: {current_vertex:#?}"),
                     }
                 }

@@ -13,7 +13,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-pub use self::types::{NamedTypedValue, Type};
+pub use self::types::Type;
 pub use self::value::{FieldValue, TransparentValue};
 
 mod indexed;
@@ -202,9 +202,6 @@ pub struct IRVertex {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub filters: Vec<Operation<OperationSubject, Argument>>,
-
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub transformed_values: BTreeMap<Tid, TransformedValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -230,9 +227,6 @@ pub struct IRFold {
     /// `FieldRef.refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub fold_specific_outputs: BTreeMap<Arc<str>, FieldRef>,
-
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub transformed_values: BTreeMap<Tid, TransformedValue>,
 
     /// Filters that are applied on the fold as a whole.
     ///
@@ -757,23 +751,14 @@ pub struct LocalField {
     pub field_type: Type,
 }
 
-/// The source of the data we're transforming. Either a vertex property, or a fold.
-#[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TransformSource {
-    Property(Vid),
-    Fold(Eid),
-}
-
 #[non_exhaustive]
 /// The outcome of a `@transform` operation applied to a vertex property or property-like value
 /// such as the element count of a fold.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TransformedField {
-    /// Which vertex's or fold's data this is a transformation of.
-    pub source: TransformSource,
+    pub value: Arc<TransformedValue>,
 
-    /// The unique identifier of the transformation this represents.
+    /// The unique identifier of the transformed value this struct represents.
     pub tid: Tid,
 
     /// The resulting type of the value produced by this transformation.
@@ -790,8 +775,8 @@ pub struct TransformedValue {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransformBase {
-    LocalField(LocalField),
-    FoldSpecificField(FoldSpecificFieldKind),
+    ContextField(ContextField),
+    FoldSpecificField(FoldSpecificField),
 }
 
 #[non_exhaustive]
@@ -800,6 +785,16 @@ pub enum Transform {
     Len,
     Abs,
     Add(FieldRef),
+}
+
+impl Transform {
+    pub(crate) fn operation_name(&self) -> &str {
+        match self {
+            Self::Len => "len",
+            Self::Abs => "abs",
+            Self::Add(..) => "add",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

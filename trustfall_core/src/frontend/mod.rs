@@ -793,7 +793,6 @@ fn make_vertex<'query>(
         };
 
     let mut filters = vec![];
-    let mut transformed_values = Default::default();
     for property_name in property_names_by_vertex.get(&vid).into_iter().flatten() {
         let (_, property_type, property_fields) =
             properties.get(&(vid, property_name.clone())).unwrap();
@@ -821,7 +820,7 @@ fn make_vertex<'query>(
     }
 
     if errors.is_empty() {
-        Ok(IRVertex { vid, type_name, coerced_from_type, filters, transformed_values })
+        Ok(IRVertex { vid, type_name, coerced_from_type, filters })
     } else {
         Err(errors)
     }
@@ -1119,7 +1118,6 @@ where
         errors.push(FrontendError::UnsupportedEdgeOutput(starting_field.name.as_ref().to_owned()));
     }
 
-    let mut transformed_values = Default::default();
     let mut post_filters = vec![];
     let mut fold_specific_outputs = BTreeMap::new();
 
@@ -1196,9 +1194,7 @@ where
                     errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
             } else {
-                errors.push(FrontendError::ExplicitTagNameRequired(
-                    starting_field.name.as_ref().to_owned(),
-                ))
+                errors.push(FrontendError::explicit_tag_name_required(&subject))
             }
         }
     }
@@ -1217,7 +1213,6 @@ where
         imported_tags,
         post_filters,
         fold_specific_outputs,
-        transformed_values,
     })
 }
 

@@ -1,6 +1,6 @@
 use crate::{
     graphql_query::directives::{FilterDirective, OperatorArgument},
-    ir::{Argument, NamedTypedValue, Operation, OperationSubject, Type, VariableRef, Vid},
+    ir::{Argument, Operation, OperationSubject, Type, VariableRef, Vid},
     schema::Schema,
 };
 
@@ -41,20 +41,20 @@ pub(super) fn make_filter_expr(
                         ) {
                             Ok(defined_tag) => defined_tag,
                             Err(TagLookupError::UndefinedTag(tag_name)) => {
-                                return Err(FrontendError::UndefinedTagInFilter(
-                                    left_operand.named().to_string(),
+                                return Err(FrontendError::undefined_tag_in_filter(
+                                    &left_operand,
                                     tag_name,
                                 ));
                             }
                             Err(TagLookupError::TagDefinedInsideFold(tag_name)) => {
-                                return Err(FrontendError::TagUsedOutsideItsFoldedSubquery(
-                                    left_operand.named().to_string(),
+                                return Err(FrontendError::tag_used_outside_its_folded_subquery(
+                                    &left_operand,
                                     tag_name,
                                 ));
                             }
                             Err(TagLookupError::TagUsedBeforeDefinition(tag_name)) => {
-                                return Err(FrontendError::TagUsedBeforeDefinition(
-                                    left_operand.named().to_string(),
+                                return Err(FrontendError::tag_used_before_definition(
+                                    &left_operand,
                                     tag_name,
                                 ))
                             }
@@ -85,7 +85,7 @@ fn infer_variable_type(
     subject: &OperationSubject,
     operation: &Operation<(), OperatorArgument>,
 ) -> Result<Type, Box<FilterTypeError>> {
-    let left_type = subject.typed();
+    let left_type = subject.field_type();
     match operation {
         Operation::Equals(..) | Operation::NotEquals(..) => {
             // Direct equality comparison.
@@ -154,8 +154,7 @@ fn operand_types_valid(
 ) -> Result<(), Vec<FilterTypeError>> {
     let left = operation.left();
     let right = operation.right();
-    let left_type = left.typed();
-    let right_type = right.map(|x| x.typed());
+    let left_type = left.field_type();
 
     // Check the left and right operands match the operator's needs individually.
     // For example:

@@ -1,0 +1,1 @@
+Err(FilterTypeError(StringFilterOperationOnNonStringSubject("regex", "transformed field \"@fold.count\" of type \"Int!\"")))
