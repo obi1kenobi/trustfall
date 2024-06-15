@@ -1,1 +1,1 @@
-Err(UnsupportedDirectiveOnProperty("@optional", "vowelsInName"))
+Err(UnsupportedDirectiveOnProperty("@recurse", "vowelsInName"))

@@ -981,7 +981,7 @@ where
             // @recurse is not allowed on a property
             if connection.recurse.is_some() {
                 errors.push(FrontendError::UnsupportedDirectiveOnProperty(
-                    "@optional".into(),
+                    "@recurse".into(),
                     subfield.name.to_string(),
                 ));
             }
