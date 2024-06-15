@@ -784,7 +784,7 @@ pub enum TransformBase {
 pub enum Transform {
     Len,
     Abs,
-    Add(FieldRef),
+    Add(Argument),
 }
 
 impl Transform {

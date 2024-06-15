@@ -17,7 +17,9 @@ mod filtering;
 pub mod helpers;
 mod hints;
 pub mod replay;
+mod tags;
 pub mod trace;
+mod transformation;
 
 pub use hints::{
     CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,

@@ -8,15 +8,17 @@ use crate::{
     ir::{
         Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
         IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation,
-        OperationSubject, Recursive, Vid,
+        OperationSubject, Recursive, TransformBase, Vid,
     },
     util::BTreeMapTryInsertExt,
 };
 
 use super::{
-    error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextIterator,
-    ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
-    TaggedValue, ValueOrVec, VertexIterator,
+    error::QueryArgumentsError,
+    filtering::apply_filter,
+    transformation::{apply_transforms, push_transform_argument_tag_values_onto_stack},
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+    ResolveEdgeInfo, ResolveInfo, TaggedValue, ValueOrVec, VertexIterator,
 };
 
 #[derive(Debug, Clone)]
@@ -619,25 +621,15 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let mut post_filtered_iterator: ContextIterator<'query, AdapterT::Vertex> =
         Box::new(folded_iterator);
     for post_fold_filter in fold.post_filters.iter() {
-        let left = post_fold_filter.left();
-        match left {
-            OperationSubject::FoldSpecificField(fold_specific_field) => {
-                let remapped_operation = post_fold_filter.map(|_| fold_specific_field.kind, |x| x);
-                post_filtered_iterator = apply_fold_specific_filter(
-                    adapter.as_ref(),
-                    carrier,
-                    parent_component,
-                    fold.as_ref(),
-                    expanding_from.vid,
-                    &remapped_operation,
-                    post_filtered_iterator,
-                );
-            }
-            OperationSubject::TransformedField(_) => todo!(),
-            OperationSubject::LocalField(_) => {
-                unreachable!("unexpectedly found a fold post-filtering step that references a LocalField: {fold:#?}");
-            }
-        }
+        post_filtered_iterator = apply_fold_specific_filter(
+            adapter.as_ref(),
+            carrier,
+            parent_component,
+            fold.as_ref(),
+            expanding_from.vid,
+            post_fold_filter,
+            post_filtered_iterator,
+        );
     }
 
     // Compute the outputs from this fold.
@@ -805,7 +797,63 @@ fn apply_filter_with_non_folded_field_subject<'query, AdapterT: Adapter<'query>>
             filter.map_left(|_| field),
             iterator,
         ),
-        OperationSubject::TransformedField(_) => todo!(),
+        OperationSubject::TransformedField(transformed) => {
+            let prepped_iterator = push_transform_argument_tag_values_onto_stack(
+                adapter,
+                carrier,
+                component,
+                current_vid,
+                &transformed.value.transforms,
+                iterator,
+            );
+
+            let query_variables =
+                Arc::clone(&carrier.query.as_ref().expect("query was not returned").arguments);
+            let transform_data = Arc::clone(&transformed.value);
+
+            match &transformed.value.base {
+                TransformBase::ContextField(field) => {
+                    assert_eq!(current_vid, field.vertex_id, "filter left-hand side was a transformed field from a different vertex: {current_vid:?} {filter:?}");
+                    let local_field = LocalField {
+                        field_name: field.field_name.clone(),
+                        field_type: field.field_type.clone(),
+                    };
+
+                    let filter_input_iterator = Box::new(
+                        compute_local_field_with_separate_value(
+                            adapter,
+                            carrier,
+                            component,
+                            current_vid,
+                            &local_field,
+                            prepped_iterator,
+                        )
+                        .map(move |(mut ctx, mut value)| {
+                            value = apply_transforms(
+                                &transform_data,
+                                &query_variables,
+                                &mut ctx.values,
+                                value,
+                            );
+                            ctx.values.push(value);
+                            ctx
+                        }),
+                    );
+
+                    apply_filter(
+                        adapter,
+                        carrier,
+                        component,
+                        current_vid,
+                        &filter.map(|_| (), |r| r),
+                        filter_input_iterator,
+                    )
+                }
+                TransformBase::FoldSpecificField(..) => unreachable!(
+                    "illegal filter over fold-specific field passed to this function: {filter:?}"
+                ),
+            }
+        }
         OperationSubject::FoldSpecificField(..) => unreachable!(
             "illegal filter over fold-specific field passed to this function: {filter:?}"
         ),
@@ -840,27 +888,70 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     component: &IRQueryComponent,
     fold: &IRFold,
     current_vid: Vid,
-    filter: &Operation<FoldSpecificFieldKind, &Argument>,
+    filter: &Operation<OperationSubject, Argument>,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
-    let fold_specific_field = filter.left();
-    let field_iterator = Box::new(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
-        let value = match tagged_value {
-            TaggedValue::Some(value) => value,
-            TaggedValue::NonexistentOptional => {
-                unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+    let left = filter.left();
+    let (fold_specific_field, transform_data) = match left {
+        OperationSubject::FoldSpecificField(field) => (field, None),
+        OperationSubject::TransformedField(transformed) => match &transformed.value.base {
+            TransformBase::FoldSpecificField(field) => (field, Some(&transformed.value)),
+            TransformBase::ContextField(_) => {
+                unreachable!("post-fold filter does not refer to a fold-specific field: {left:?}")
             }
-        };
-        ctx.values.push(value);
-        ctx
-    }));
+        },
+        OperationSubject::LocalField(_) => {
+            unreachable!("post-fold filter does not refer to a fold-specific field: {left:?}")
+        }
+    };
+
+    let field_iterator: ContextIterator<'query, AdapterT::Vertex> = if let Some(transform_data) =
+        transform_data
+    {
+        let prepped_iterator = push_transform_argument_tag_values_onto_stack(
+            adapter,
+            carrier,
+            component,
+            current_vid,
+            &transform_data.transforms,
+            iterator,
+        );
+
+        let query_variables =
+            Arc::clone(&carrier.query.as_ref().expect("query was not returned").arguments);
+        let transform_data = Arc::clone(transform_data);
+        Box::new(compute_fold_specific_field_with_separate_value(fold.eid, &fold_specific_field.kind, prepped_iterator).map(move |(mut ctx, tagged_value)| {
+            let mut value = match tagged_value {
+                TaggedValue::Some(value) => value,
+                TaggedValue::NonexistentOptional => {
+                    unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+                }
+            };
+
+            value = apply_transforms(&transform_data, &query_variables, &mut ctx.values, value);
+
+            ctx.values.push(value);
+            ctx
+        }))
+    } else {
+        Box::new(compute_fold_specific_field_with_separate_value(fold.eid, &fold_specific_field.kind, iterator).map(|(mut ctx, tagged_value)| {
+            let value = match tagged_value {
+                TaggedValue::Some(value) => value,
+                TaggedValue::NonexistentOptional => {
+                    unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+                }
+            };
+            ctx.values.push(value);
+            ctx
+        }))
+    };
 
     apply_filter(
         adapter,
         carrier,
         component,
         current_vid,
-        &filter.map(|_| (), |r| *r),
+        &filter.map(|_| (), |r| r),
         field_iterator,
     )
 }
