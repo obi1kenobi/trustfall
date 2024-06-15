@@ -1,9 +1,12 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Write};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ir::{FieldValue, Type},
+    ir::{
+        Argument, FieldValue, FoldSpecificField, OperationSubject, TransformBase, TransformedField,
+        Type,
+    },
     util::DisplayVec,
 };
 
@@ -16,11 +19,11 @@ pub enum FrontendError {
     #[error("{0}")]
     ParseError(#[from] crate::graphql_query::error::ParseError),
 
-    #[error("Filter on property name \"{0}\" uses undefined tag: %{1}")]
+    #[error("Filter on {0} uses undefined tag: %{1}")]
     UndefinedTagInFilter(String, String),
 
     #[error(
-        "Filter on property name \"{0}\" uses tag \"{1}\" which is not yet defined at that point \
+        "Filter on {0} uses tag \"{1}\" which is not yet defined at that point \
         in the query. Please reorder the query components so that the @tag directive \
         comes before all uses of its tagged value."
     )]
@@ -28,7 +31,7 @@ pub enum FrontendError {
 
     #[error(
         "Tag \"{1}\" is defined within a @fold but is used outside that @fold in a filter on \
-        property name \"{0}\". This is not supported; if possible, please consider reorganizing \
+        {0}. This is not supported; if possible, please consider reorganizing \
         the query so that the tagged values are captured outside the @fold and \
         their use in @filter moves inside the @fold."
     )]
@@ -48,7 +51,7 @@ pub enum FrontendError {
 
     #[error(
         "Tagged fields with an applied @transform must explicitly specify the tag name, like this: \
-        @tag(name: \"some_name\"). Affected field: {0}"
+        @tag(name: \"some_name\"). Affected location: {0}"
     )]
     ExplicitTagNameRequired(String),
 
@@ -119,6 +122,52 @@ pub enum FrontendError {
     OtherError(String),
 }
 
+impl FrontendError {
+    #[inline]
+    fn represent_subject(subject: &OperationSubject) -> String {
+        match subject {
+            OperationSubject::LocalField(field) => {
+                let property_name = &field.field_name;
+                format!("property \"{property_name}\"")
+            }
+            OperationSubject::TransformedField(field) => {
+                let mut buf = String::with_capacity(32);
+                write_name_of_transformed_field(&mut buf, field);
+                buf
+            }
+            OperationSubject::FoldSpecificField(field) => {
+                let field_name = field.kind.field_name();
+                format!("transformed field \"{field_name}\"")
+            }
+        }
+    }
+
+    pub(super) fn undefined_tag_in_filter(
+        subject: &OperationSubject,
+        tag_name: impl Into<String>,
+    ) -> Self {
+        Self::UndefinedTagInFilter(Self::represent_subject(subject), tag_name.into())
+    }
+
+    pub(super) fn tag_used_before_definition(
+        subject: &OperationSubject,
+        tag_name: impl Into<String>,
+    ) -> Self {
+        Self::TagUsedBeforeDefinition(Self::represent_subject(subject), tag_name.into())
+    }
+
+    pub(super) fn tag_used_outside_its_folded_subquery(
+        subject: &OperationSubject,
+        tag_name: impl Into<String>,
+    ) -> Self {
+        Self::TagUsedOutsideItsFoldedSubquery(Self::represent_subject(subject), tag_name.into())
+    }
+
+    pub(super) fn explicit_tag_name_required(subject: &OperationSubject) -> Self {
+        Self::ExplicitTagNameRequired(Self::represent_subject(subject))
+    }
+}
+
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FilterTypeError {
@@ -178,106 +227,167 @@ pub enum FilterTypeError {
 }
 
 impl FilterTypeError {
+    #[inline]
     fn represent_property_and_type(property_name: &str, property_type: &Type) -> String {
         format!("property \"{property_name}\" of type \"{property_type}\"")
     }
 
+    #[inline]
     fn represent_tag_name_and_type(tag_name: &str, tag_type: &Type) -> String {
         format!("tag \"{tag_name}\" of type \"{tag_type}\"")
     }
 
-    pub(crate) fn non_nullable_property_with_nullability_filter(
+    #[inline]
+    fn represent_variable_name_and_type(var_name: &str, var_type: &Type) -> String {
+        format!("variable \"{var_name}\" of type \"{var_type}\"")
+    }
+
+    #[inline]
+    fn represent_fold_specific_field(field: &FoldSpecificField) -> String {
+        let field_name = field.kind.field_name();
+        let field_type = field.kind.field_type();
+        format!("transformed field \"{field_name}\" of type \"{field_type}\"")
+    }
+
+    #[inline]
+    fn represent_transformed_field(field: &TransformedField) -> String {
+        let mut buf = String::with_capacity(64);
+
+        write_name_of_transformed_field(&mut buf, field);
+
+        let field_type = &field.field_type;
+        write!(buf, " of type \"{field_type}\"").expect("write failed");
+        buf
+    }
+
+    fn represent_subject(subject: &OperationSubject) -> String {
+        match subject {
+            OperationSubject::LocalField(field) => {
+                Self::represent_property_and_type(&field.field_name, &field.field_type)
+            }
+            OperationSubject::TransformedField(field) => Self::represent_transformed_field(field),
+            OperationSubject::FoldSpecificField(field) => {
+                Self::represent_fold_specific_field(field)
+            }
+        }
+    }
+
+    /// Represent a filter argument as a human-readable string suitable for use in an error message.
+    /// Tag arguments don't carry a name inside the [`Argument`] type, so we look up and supply
+    /// the tag name separately if needed.
+    fn represent_argument(argument: &Argument, tag_name: Option<&str>) -> String {
+        match argument {
+            Argument::Tag(tag) => Self::represent_tag_name_and_type(
+                tag_name.expect("tag argument without a name"),
+                tag.field_type(),
+            ),
+            Argument::Variable(var) => {
+                Self::represent_variable_name_and_type(&var.variable_name, &var.variable_type)
+            }
+        }
+    }
+
+    pub(crate) fn non_nullable_subject_with_nullability_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
         filter_outcome: bool,
     ) -> Self {
         Self::NonNullableTypeFilteredForNullability(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
             filter_outcome,
         )
     }
 
-    pub(crate) fn type_mismatch_between_property_and_tag(
+    pub(crate) fn type_mismatch_between_subject_and_argument(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
-        tag_name: &str,
-        tag_type: &Type,
+        subject: &OperationSubject,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::TypeMismatchBetweenFilterSubjectAndArgument(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_subject(subject),
+            Self::represent_argument(argument, tag_name),
         )
     }
 
-    pub(crate) fn non_orderable_property_with_ordering_filter(
+    pub(crate) fn non_orderable_subject_with_ordering_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
     ) -> Self {
         Self::OrderingFilterOperationOnNonOrderableSubject(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
         )
     }
 
-    pub(crate) fn non_orderable_tag_argument_to_ordering_filter(
+    pub(crate) fn non_orderable_argument_to_ordering_filter(
         filter_operator: &str,
-        tag_name: &str,
-        tag_type: &Type,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::OrderingFilterOperationWithNonOrderableArgument(
             filter_operator.to_string(),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_argument(argument, tag_name),
         )
     }
 
-    pub(crate) fn non_string_property_with_string_filter(
+    pub(crate) fn non_string_subject_with_string_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
     ) -> Self {
         Self::StringFilterOperationOnNonStringSubject(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
         )
     }
 
-    pub(crate) fn non_string_tag_argument_to_string_filter(
+    pub(crate) fn non_string_argument_to_string_filter(
         filter_operator: &str,
-        tag_name: &str,
-        tag_type: &Type,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::StringFilterOperationOnNonStringArgument(
             filter_operator.to_string(),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_argument(argument, tag_name),
         )
     }
 
-    pub(crate) fn non_list_property_with_list_filter(
+    pub(crate) fn non_list_subject_with_list_filter(
         filter_operator: &str,
-        property_name: &str,
-        property_type: &Type,
+        subject: &OperationSubject,
     ) -> Self {
         Self::ListFilterOperationOnNonListSubject(
             filter_operator.to_string(),
-            Self::represent_property_and_type(property_name, property_type),
+            Self::represent_subject(subject),
         )
     }
 
-    pub(crate) fn non_list_tag_argument_to_list_filter(
+    pub(crate) fn non_list_argument_to_list_filter(
         filter_operator: &str,
-        tag_name: &str,
-        tag_type: &Type,
+        argument: &Argument,
+        tag_name: Option<&str>,
     ) -> Self {
         Self::ListFilterOperationOnNonListArgument(
             filter_operator.to_string(),
-            Self::represent_tag_name_and_type(tag_name, tag_type),
+            Self::represent_argument(argument, tag_name),
         )
     }
+}
+
+fn write_name_of_transformed_field(buf: &mut String, field: &TransformedField) {
+    buf.push_str("transformed field \"");
+
+    buf.push_str(match &field.value.base {
+        TransformBase::ContextField(c) => &c.field_name,
+        TransformBase::FoldSpecificField(f) => f.kind.field_name(),
+    });
+    for transform in &field.value.transforms {
+        buf.push('.');
+        buf.push_str(transform.operation_name());
+    }
+    buf.push('"');
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

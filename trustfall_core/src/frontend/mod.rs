@@ -1134,6 +1134,7 @@ where
             },
         };
         let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
+        let subject = OperationSubject::FoldSpecificField(fold_specific_field.clone());
 
         for filter_directive in &transform_group.filter {
             match make_filter_expr(
@@ -1141,7 +1142,7 @@ where
                 component_path,
                 tags,
                 starting_vid,
-                field_ref.clone(),
+                subject.clone(),
                 filter_directive,
             ) {
                 Ok(filter) => post_filters.push(filter),
@@ -1193,9 +1194,7 @@ where
                     errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
             } else {
-                errors.push(FrontendError::ExplicitTagNameRequired(
-                    starting_field.name.as_ref().to_owned(),
-                ))
+                errors.push(FrontendError::explicit_tag_name_required(&subject))
             }
         }
     }
