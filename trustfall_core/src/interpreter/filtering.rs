@@ -333,6 +333,9 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
             };
             apply_filter_with_tagged_argument_value(filter, argument_value_iterator)
         }
+        Some(Argument::Tag(FieldRef::TransformedField(_))) => {
+            todo!()
+        }
         None => unreachable!(
             "no argument present for filter, but not handled in unary filters fn: {filter:?}"
         ),

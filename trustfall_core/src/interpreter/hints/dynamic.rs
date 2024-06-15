@@ -226,6 +226,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                     self.resolve_fold_specific_field(fold_field, contexts)
                 }
             }
+            FieldRef::TransformedField(_) => todo!(),
         }
     }
 
@@ -302,6 +303,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
             FieldRef::FoldSpecificField(f) => {
                 (f.kind.field_name().into(), f.kind.field_type().clone())
             }
+            FieldRef::TransformedField(_) => todo!(),
         };
         compute_candidate_from_operation(
             &self.operation,

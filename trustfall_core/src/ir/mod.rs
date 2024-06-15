@@ -289,6 +289,7 @@ pub enum TransformationKind {
 pub enum FieldRef {
     ContextField(ContextField),
     FoldSpecificField(FoldSpecificField),
+    TransformedField(TransformedField),
 }
 
 impl Ord for FieldRef {
@@ -298,11 +299,20 @@ impl Ord for FieldRef {
                 .vertex_id
                 .cmp(&f2.vertex_id)
                 .then(f1.field_name.as_ref().cmp(f2.field_name.as_ref())),
-            (FieldRef::ContextField(_), FieldRef::FoldSpecificField(_)) => Ordering::Less,
+            (
+                FieldRef::ContextField(_),
+                FieldRef::FoldSpecificField(_) | FieldRef::TransformedField(..),
+            ) => Ordering::Less,
             (FieldRef::FoldSpecificField(_), FieldRef::ContextField(_)) => Ordering::Greater,
+            (FieldRef::FoldSpecificField(..), FieldRef::TransformedField(..)) => Ordering::Less,
             (FieldRef::FoldSpecificField(f1), FieldRef::FoldSpecificField(f2)) => {
                 f1.fold_eid.cmp(&f2.fold_eid).then(f1.kind.cmp(&f2.kind))
             }
+            (
+                FieldRef::TransformedField(..),
+                FieldRef::ContextField(..) | FieldRef::FoldSpecificField(..),
+            ) => Ordering::Greater,
+            (FieldRef::TransformedField(f1), FieldRef::TransformedField(f2)) => f1.tid.cmp(&f2.tid),
         }
     }
 }
@@ -325,11 +335,18 @@ impl From<FoldSpecificField> for FieldRef {
     }
 }
 
+impl From<TransformedField> for FieldRef {
+    fn from(f: TransformedField) -> Self {
+        Self::TransformedField(f)
+    }
+}
+
 impl FieldRef {
     pub fn field_type(&self) -> &Type {
         match self {
             FieldRef::ContextField(c) => &c.field_type,
             FieldRef::FoldSpecificField(f) => f.kind.field_type(),
+            FieldRef::TransformedField(f) => &f.field_type,
         }
     }
 
@@ -337,6 +354,7 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(c) => c.field_name.as_ref(),
             FieldRef::FoldSpecificField(f) => f.kind.field_name(),
+            FieldRef::TransformedField(..) => todo!(),
         }
     }
 
@@ -344,6 +362,7 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(c) => c.field_name.clone(),
             FieldRef::FoldSpecificField(f) => f.kind.field_name().into(),
+            FieldRef::TransformedField(..) => todo!(),
         }
     }
 
@@ -352,6 +371,10 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(c) => c.vertex_id,
             FieldRef::FoldSpecificField(f) => f.fold_root_vid,
+            FieldRef::TransformedField(f) => match &f.value.base {
+                TransformBase::ContextField(c) => c.vertex_id,
+                TransformBase::FoldSpecificField(f) => f.fold_root_vid,
+            },
         }
     }
 
@@ -359,6 +382,10 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(_) => None,
             FieldRef::FoldSpecificField(fold_specific) => Some(fold_specific),
+            FieldRef::TransformedField(t) => match &t.value.base {
+                TransformBase::ContextField(_) => None,
+                TransformBase::FoldSpecificField(fold_specific) => Some(fold_specific),
+            },
         }
     }
 }
