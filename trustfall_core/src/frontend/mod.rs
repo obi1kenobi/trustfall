@@ -421,6 +421,7 @@ fn make_duplicated_output_names_error(
                                 ),
                             }
                         }
+                        FieldRef::TransformedField(field) => todo!(),
                     })
                     .collect();
                 (k.to_string(), duplicate_values)

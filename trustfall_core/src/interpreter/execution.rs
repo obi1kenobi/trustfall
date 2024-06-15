@@ -220,6 +220,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
                     context
                 }));
             }
+            FieldRef::TransformedField(_) => todo!(),
             FieldRef::FoldSpecificField(_) => {
                 unreachable!("found fold-specific field in component outputs: {root_component:#?}")
             }
@@ -505,6 +506,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                     }),
                 );
             }
+            FieldRef::TransformedField(_) => todo!(),
         }
     }
 
@@ -668,6 +670,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                         ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
                     }
                 },
+                FieldRef::TransformedField(field) => todo!(),
                 FieldRef::ContextField(_) => unreachable!(
                     "found ContextField inside a fold's fold-specific outputs: {fold:#?}"
                 ),
@@ -738,6 +741,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                                 context
                             }));
                     }
+                    FieldRef::TransformedField(_) => todo!(),
                     FieldRef::FoldSpecificField(_) => {
                         unreachable!("found fold-specific field in component outputs: {fold:#?}")
                     }
