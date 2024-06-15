@@ -13,7 +13,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-pub use self::types::{NamedTypedValue, Type};
+pub use self::types::Type;
 pub use self::value::{FieldValue, TransparentValue};
 
 mod indexed;
@@ -235,7 +235,7 @@ pub struct IRFold {
     /// All [`FieldRef`] values inside each [`Operation`] within the `Vec` are guaranteed to have
     /// `FieldRef.refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Vec<Operation<FieldRef, Argument>>,
+    pub post_filters: Vec<Operation<OperationSubject, Argument>>,
 }
 
 #[non_exhaustive]
@@ -380,6 +380,13 @@ pub enum Argument {
 }
 
 impl Argument {
+    pub(crate) fn as_variable(&self) -> Option<&VariableRef> {
+        match self {
+            Argument::Variable(var) => Some(var),
+            _ => None,
+        }
+    }
+
     pub(crate) fn as_tag(&self) -> Option<&FieldRef> {
         match self {
             Argument::Tag(t) => Some(t),
@@ -398,6 +405,13 @@ impl Argument {
             }
         }
     }
+
+    pub fn field_type(&self) -> &Type {
+        match self {
+            Argument::Tag(tag) => tag.field_type(),
+            Argument::Variable(var) => &var.variable_type,
+        }
+    }
 }
 
 /// The left-hand side of a Trustfall operation.
@@ -414,6 +428,7 @@ impl Argument {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperationSubject {
     LocalField(LocalField),
+    FoldSpecificField(FoldSpecificField),
     TransformedField(TransformedField),
 }
 
@@ -426,6 +441,23 @@ impl From<LocalField> for OperationSubject {
 impl From<TransformedField> for OperationSubject {
     fn from(value: TransformedField) -> Self {
         Self::TransformedField(value)
+    }
+}
+
+impl OperationSubject {
+    pub fn refers_to_fold_specific_field(&self) -> Option<&FoldSpecificField> {
+        match self {
+            OperationSubject::FoldSpecificField(fold_specific) => Some(fold_specific),
+            _ => None,
+        }
+    }
+
+    pub fn field_type(&self) -> &Type {
+        match self {
+            OperationSubject::LocalField(inner) => &inner.field_type,
+            OperationSubject::TransformedField(inner) => &inner.field_type,
+            OperationSubject::FoldSpecificField(inner) => inner.kind.field_type(),
+        }
     }
 }
 
@@ -719,18 +751,50 @@ pub struct LocalField {
     pub field_type: Type,
 }
 
+#[non_exhaustive]
 /// The outcome of a `@transform` operation applied to a vertex property or property-like value
 /// such as the element count of a fold.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TransformedField {
-    /// Which vertex's field is this a transformation of.
-    pub vertex_id: Vid,
+    pub value: Arc<TransformedValue>,
 
-    /// The unique identifier of the transformation this represents.
+    /// The unique identifier of the transformed value this struct represents.
     pub tid: Tid,
 
     /// The resulting type of the value produced by this transformation.
     pub field_type: Type,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransformedValue {
+    pub base: TransformBase,
+    pub transforms: Vec<Transform>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TransformBase {
+    ContextField(ContextField),
+    FoldSpecificField(FoldSpecificField),
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Transform {
+    Len,
+    Abs,
+    Add(FieldRef),
+}
+
+impl Transform {
+    pub(crate) fn operation_name(&self) -> &str {
+        match self {
+            Self::Len => "len",
+            Self::Abs => "abs",
+            Self::Add(..) => "add",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,4 +1,0 @@
-Err(MultipleErrors(DisplayVec([
-  ExplicitTagNameRequired("successor"),
-  UndefinedTagInFilter("value", "successorcount"),
-])))

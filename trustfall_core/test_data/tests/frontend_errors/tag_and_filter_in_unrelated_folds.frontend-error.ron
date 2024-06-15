@@ -1,1 +1,1 @@
-Err(TagUsedOutsideItsFoldedSubquery("value", "folded"))
+Err(TagUsedOutsideItsFoldedSubquery("property \"value\"", "folded"))
