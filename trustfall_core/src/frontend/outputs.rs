@@ -1,7 +1,5 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use itertools::Itertools;
-
 use crate::ir::{FieldRef, Vid};
 
 #[derive(Debug)]
@@ -47,13 +45,26 @@ impl<'query> OutputHandler<'query> {
         self.component_outputs_stack.pop().expect("stack was unexpectedly empty")
     }
 
-    fn make_output_name(&self, local_name: &str, transforms: Option<&[&str]>) -> Arc<str> {
-        let name = std::iter::once(self.root_prefix)
-            .chain(self.vid_stack.iter().map(|vid| self.prefixes[vid]))
-            .flatten()
-            .chain(std::iter::once(local_name))
-            .chain(transforms.into_iter().flatten().copied())
-            .join("");
+    fn make_output_name(
+        &self,
+        local_name: &str,
+        transforms: impl Iterator<Item = &'query str> + 'query,
+    ) -> Arc<str> {
+        let mut name = String::with_capacity(16);
+        if let Some(prefix) = &self.root_prefix {
+            name.push_str(prefix);
+        }
+        for vid in &self.vid_stack {
+            if let Some(prefix) = &self.prefixes[vid] {
+                name.push_str(prefix);
+            }
+        }
+
+        name.push_str(local_name);
+
+        for suffix in transforms {
+            name.push_str(suffix);
+        }
 
         Arc::from(name)
     }
@@ -75,7 +86,10 @@ impl<'query> OutputHandler<'query> {
         transforms: Option<&[&str]>,
         value: FieldRef,
     ) -> Arc<str> {
-        let complete_name = self.make_output_name(local_name, transforms);
+        let complete_name = self.make_output_name(
+            local_name,
+            transforms.map(|inner| inner.iter().copied()).into_iter().flatten(),
+        );
         self.register_output(complete_name.clone(), value);
         complete_name
     }
