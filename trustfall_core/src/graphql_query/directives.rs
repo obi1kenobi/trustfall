@@ -7,7 +7,7 @@ use async_graphql_value::Value;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::ir::{Operation, Tid, TransformationKind};
+use crate::ir::{Operation, Tid};
 
 use super::error::ParseError;
 
@@ -279,12 +279,12 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
 /// and
 ///
 /// ```ignore
-/// TransformDirective { kind: TransformationKind::Count }
+/// TransformDirective { kind: TransformOp::Count }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformDirective {
-    /// The `op` in a GraphQL `@transform`
-    pub kind: TransformationKind,
+    /// The `op` in a GraphQL `@transform`, including any `value` operands that may be required.
+    pub kind: TransformOp,
 }
 
 impl TryFrom<&Positioned<Directive>> for TransformDirective {
@@ -332,7 +332,15 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
         };
 
         let kind = match transform_argument.as_ref() {
-            "count" => TransformationKind::Count,
+            "count" => TransformOp::Count,
+            "len" => TransformOp::Len,
+            "abs" => TransformOp::Abs,
+            "+" => {
+                todo!()
+            }
+            "+f" => {
+                todo!()
+            }
             _ => {
                 return Err(ParseError::UnsupportedTransformOperator(
                     transform_argument.to_string(),
@@ -343,6 +351,15 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
 
         Ok(Self { kind })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) enum TransformOp {
+    Count,
+    Len,
+    Abs,
+    Add(OperatorArgument),
+    Fadd(OperatorArgument),
 }
 
 /// A Trustfall `@tag` directive.

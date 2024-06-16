@@ -1,0 +1,17 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 4, max: 6) {
+        ... on Composite {
+            value @output
+
+            # `@fold` must come before `@transform` so this invocation is invalid.
+            primeFactor @transform(op: "count") @output @fold {
+                factors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

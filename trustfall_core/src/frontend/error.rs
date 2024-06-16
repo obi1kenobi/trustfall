@@ -73,6 +73,9 @@ pub enum FrontendError {
     #[error("Found an unsupported {1} directive on an edge with @fold: {0}")]
     UnsupportedDirectiveOnFoldedEdge(String, String),
 
+    #[error("Found a @transform directive applied to edge \"{0}\" which is not marked @fold, and therefore cannot be transformed. Did you mean to apply @fold to the edge before the @transform directive?")]
+    CannotTransformEdgeWithoutFold(String),
+
     #[error("Missing required edge parameter \"{0}\" on edge {1}")]
     MissingRequiredEdgeParameter(String, String),
 
@@ -103,7 +106,7 @@ pub enum FrontendError {
     // This error type may or may not be reachable in practice.
     // At the time of writing, schemas containing fields with ambiguous origin are disallowed,
     // though they may be allowed in the future. If they are allowed, then this error is reachable.
-    #[error("Edge {0} has an ambiguous origin, and cannot be used for recursion.")]
+    #[error("Edge \"{0}\" has an ambiguous origin, and cannot be used for recursion.")]
     AmbiguousOriginEdgeRecursion(String),
 
     #[error(

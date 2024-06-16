@@ -315,10 +315,7 @@ fn make_field_node(
                 //   keep processing these directives either way.
                 break None;
             }
-            Some(
-                ParsedDirective::Optional(..)
-                | ParsedDirective::Recurse(..),
-            ) => {
+            Some(ParsedDirective::Optional(..) | ParsedDirective::Recurse(..)) => {
                 // edge-specific directives, ignore them
             }
             None => break None,
@@ -421,19 +418,11 @@ fn make_field_connection(
                 }
             }
             Some(ParsedDirective::Fold(fold, _)) => break Some(fold),
-            Some(ParsedDirective::Transform(_, pos)) => {
-                return Err(ParseError::UnsupportedDirectivePosition(
-                    "@transform".to_owned(),
-                    "Cannot transform an edge prior to a @fold directive. \
-                    Consider adding @fold before the @transform here."
-                        .to_owned(),
-                    pos,
-                ));
-            }
             Some(
                 ParsedDirective::Filter(..)
                 | ParsedDirective::Output(..)
-                | ParsedDirective::Tag(..),
+                | ParsedDirective::Tag(..)
+                | ParsedDirective::Transform(..),
             ) => {}
             None => break None,
         }
@@ -469,6 +458,13 @@ fn make_fold_group(
             ParsedDirective::Fold(_, pos) => {
                 return Err(ParseError::UnsupportedDuplicatedDirective("@fold".to_string(), pos));
             }
+            ParsedDirective::Filter(_, pos) | ParsedDirective::Output(_, pos) | ParsedDirective::Tag(_, pos) => {
+                return Err(ParseError::UnsupportedDirectivePosition(
+                    directive.kind().to_string(),
+                    "this directive can only be used together with @fold if it's placed after `@fold @transform(op: \"count\")`".to_string(),
+                    pos,
+                ))
+            }
             _ => {
                 return Err(ParseError::UnsupportedDirectivePosition(
                     directive.kind().to_string(),
@@ -501,11 +497,20 @@ fn make_transform_group(
                 ParsedDirective::Output(o, _) => output.push(o),
                 ParsedDirective::Tag(t, _) => tag.push(t),
                 ParsedDirective::Transform(xform, _) => {
-                    break Some(Box::new(make_transform_group(xform, directive_iter, tid_generator)?));
+                    break Some(Box::new(make_transform_group(
+                        xform,
+                        directive_iter,
+                        tid_generator,
+                    )?));
                 }
-                ParsedDirective::Fold(..)
-                | ParsedDirective::Optional(..)
-                | ParsedDirective::Recurse(..) => {
+                ParsedDirective::Fold(..) => {
+                    return Err(ParseError::UnsupportedDirectivePosition(
+                        directive.kind().to_string(),
+                        "this directive cannot appear after a @transform directive, did you mean to apply the @fold first?".to_string(),
+                        directive.pos(),
+                    ))
+                }
+                ParsedDirective::Optional(..) | ParsedDirective::Recurse(..) => {
                     return Err(ParseError::UnsupportedDirectivePosition(
                         directive.kind().to_string(),
                         "this directive cannot appear after a @transform directive".to_string(),

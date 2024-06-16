@@ -809,9 +809,21 @@ pub enum TransformBase {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Transform {
+    /// List length. Null on null inputs.
     Len,
+
+    /// Absolute value. Allowed on both integer and floating-point types.
+    /// Null on null inputs.
     Abs,
+
+    /// Integer addition. For floating-point addition, use [`Transform::Fadd`] instead.
     Add(Argument),
+
+    /// The floating-point equivalent of [`Transform::Add`].
+    /// Separate because we want clean and explicit type-inference for variables:
+    /// what's the type of `"$arg"` in `@transform(op: "add", value: ["$arg"])`?
+    /// It's `Int!` because the operator is `add` -- and would have been `Float!` for `fadd`.
+    Fadd(Argument),
 }
 
 impl Transform {
@@ -820,6 +832,7 @@ impl Transform {
             Self::Len => "len",
             Self::Abs => "abs",
             Self::Add(..) => "add",
+            Self::Fadd(..) => "fadd",
         }
     }
 }

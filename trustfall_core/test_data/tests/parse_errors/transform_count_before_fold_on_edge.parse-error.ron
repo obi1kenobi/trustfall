@@ -1,0 +1,4 @@
+Err(UnsupportedDirectivePosition("@fold", "this directive cannot appear after a @transform directive, did you mean to apply the @fold first?", Pos(
+  line: 8,
+  column: 57,
+)))

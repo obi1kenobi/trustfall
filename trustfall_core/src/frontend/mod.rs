@@ -11,14 +11,17 @@ use smallvec::SmallVec;
 
 use crate::{
     graphql_query::{
-        directives::{FilterDirective, FoldGroup, RecurseDirective},
+        directives::{
+            FilterDirective, FoldGroup, OperatorArgument, RecurseDirective, TransformDirective,
+            TransformOp,
+        },
         query::{parse_document, FieldConnection, FieldNode, Query},
     },
     ir::{
         get_typename_meta_field, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
         FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
-        IRVertex, IndexedQuery, LocalField, Operation, OperationSubject, Recursive,
-        TransformationKind, Type, Vid, TYPENAME_META_FIELD,
+        IRVertex, IndexedQuery, LocalField, Operation, OperationSubject, Recursive, Tid, Transform,
+        TransformBase, TransformedField, TransformedValue, Type, Vid, TYPENAME_META_FIELD,
     },
     schema::{get_builtin_scalars, FieldOrigin, Schema},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
@@ -874,6 +877,21 @@ where
             output_handler
                 .begin_nested_scope(next_vid, subfield.alias.as_ref().map(|x| x.as_ref()));
 
+            // Ensure we don't have `@transform` applied to the edge directly,
+            // either completely without `@fold` or placed before it.
+            // Both cases are an error, though a different error for each for better UX.
+            if subfield.transform_group.is_some() {
+                if connection.fold.is_none() {
+                    // `@transform` used without `@fold` on the edge at all.
+                    errors.push(FrontendError::CannotTransformEdgeWithoutFold(
+                        subfield.name.to_string(),
+                    ));
+                } else {
+                    // `@transform` placed before `@fold` on the edge.
+                    unreachable!("@transform placed before @fold, but this error wasn't caught in the parser")
+                }
+            }
+
             if let Some(fold_group) = &connection.fold {
                 if connection.optional.is_some() {
                     errors.push(FrontendError::UnsupportedDirectiveOnFoldedEdge(
@@ -1002,58 +1020,113 @@ where
                     (subfield_name, subfield_raw_type.clone(), SmallVec::from([subfield]))
                 });
 
-            for output_directive in &subfield.output {
-                // TODO: handle outputs of non-fold-related transformed fields here.
-                let field_ref = FieldRef::ContextField(ContextField {
-                    vertex_id: current_vid,
-                    field_name: subfield.name.clone(),
-                    field_type: subfield_raw_type.clone(),
-                });
+            let mut transforms: Vec<Transform> = vec![];
+            let mut current_tid: Option<Tid> = None;
+            let mut current_type = subfield_raw_type.clone();
+            let mut output_directives = subfield.output.as_slice();
+            let mut tag_directives = subfield.tag.as_slice();
+            let mut next_transform_group = subfield.transform_group.as_ref();
+            loop {
+                for output_directive in output_directives {
+                    let context_field = ContextField {
+                        vertex_id: current_vid,
+                        field_name: subfield.name.clone(),
+                        field_type: subfield_raw_type.clone(),
+                    };
+                    let field_ref = if let Some(tid) = current_tid {
+                        FieldRef::TransformedField(TransformedField {
+                            value: Arc::new(TransformedValue {
+                                base: TransformBase::ContextField(context_field),
+                                transforms: transforms.clone(),
+                            }),
+                            tid,
+                            field_type: current_type.clone(),
+                        })
+                    } else {
+                        FieldRef::ContextField(context_field)
+                    };
 
-                // The output's name can be either explicit or local (i.e. implicitly prefixed).
-                // Explicit names are given explicitly in the directive:
-                //     @output(name: "foo")
-                // This would result in a "foo" output name, regardless of any prefixes.
-                // Local names use the field's alias, if present, falling back to the field's name
-                // otherwise. The local name is appended to any prefixes given as aliases
-                // applied to the edges whose scopes enclose the output.
-                if let Some(explicit_name) = output_directive.name.as_ref() {
-                    output_handler
-                        .register_explicitly_named_output(explicit_name.clone(), field_ref);
-                } else {
-                    let local_name = subfield
-                        .alias
-                        .as_ref()
-                        .map(|x| x.as_ref())
-                        .unwrap_or_else(|| subfield.name.as_ref());
-                    output_handler.register_locally_named_output(local_name, None, field_ref);
-                }
-            }
-
-            for tag_directive in &subfield.tag {
-                // The tag's name is the first of the following that is defined:
-                // - the explicit "name" parameter in the @tag directive itself
-                // - the alias of the field with the @tag directive
-                // - the name of the field with the @tag directive
-                let tag_name =
-                    tag_directive.name.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| {
-                        subfield
+                    // The output's name can be either explicit or local (i.e. implicitly prefixed).
+                    // Explicit names are given explicitly in the directive:
+                    //     @output(name: "foo")
+                    // This would result in a "foo" output name, regardless of any prefixes.
+                    // Local names use the field's alias, if present, falling back to the field's name
+                    // otherwise. The local name is appended to any prefixes given as aliases
+                    // applied to the edges whose scopes enclose the output.
+                    if let Some(explicit_name) = output_directive.name.as_ref() {
+                        output_handler
+                            .register_explicitly_named_output(explicit_name.clone(), field_ref);
+                    } else {
+                        let local_name = subfield
                             .alias
                             .as_ref()
                             .map(|x| x.as_ref())
-                            .unwrap_or_else(|| subfield.name.as_ref())
-                    });
-                let tag_field = ContextField {
-                    vertex_id: current_vid,
-                    field_name: subfield.name.clone(),
-                    field_type: subfield_raw_type.clone(),
-                };
+                            .unwrap_or_else(|| subfield.name.as_ref());
+                        output_handler.register_locally_named_output(
+                            local_name,
+                            Some(Box::new(transforms.iter().map(|t| t.operation_name()))),
+                            field_ref,
+                        );
+                    }
+                }
 
-                // TODO: handle tags on non-fold-related transformed fields here
-                if let Err(e) =
-                    tags.register_tag(tag_name, FieldRef::ContextField(tag_field), component_path)
-                {
-                    errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
+                for tag_directive in tag_directives {
+                    // The tag's name is the first of the following that is defined:
+                    // - the explicit "name" parameter in the @tag directive itself
+                    // - the alias of the field with the @tag directive
+                    // - the name of the field with the @tag directive
+                    let tag_name =
+                        tag_directive.name.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| {
+                            subfield
+                                .alias
+                                .as_ref()
+                                .map(|x| x.as_ref())
+                                .unwrap_or_else(|| subfield.name.as_ref())
+                        });
+
+                    // TODO: deduplicate this block, it's identical to the above.
+                    let context_field = ContextField {
+                        vertex_id: current_vid,
+                        field_name: subfield.name.clone(),
+                        field_type: subfield_raw_type.clone(),
+                    };
+                    let tag_field = if let Some(tid) = current_tid {
+                        FieldRef::TransformedField(TransformedField {
+                            value: Arc::new(TransformedValue {
+                                base: TransformBase::ContextField(context_field),
+                                transforms: transforms.clone(),
+                            }),
+                            tid,
+                            field_type: current_type.clone(),
+                        })
+                    } else {
+                        FieldRef::ContextField(context_field)
+                    };
+
+                    if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
+                        errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
+                    }
+                }
+
+                if let Some(transform_group) = next_transform_group {
+                    let next_transform =
+                        extract_property_like_transform_from_directive(&transform_group.transform);
+                    current_tid = Some(transform_group.tid);
+                    output_directives = transform_group.output.as_slice();
+                    tag_directives = transform_group.tag.as_slice();
+                    next_transform_group = transform_group.retransform.as_deref();
+
+                    current_type =
+                        match determine_transformed_field_type(current_type, &next_transform) {
+                            Ok(t) => t,
+                            Err(e) => {
+                                errors.push(e);
+                                break;
+                            }
+                        };
+                    transforms.push(next_transform);
+                } else {
+                    break;
                 }
             }
         } else {
@@ -1065,6 +1138,88 @@ where
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+fn extract_property_like_transform_from_directive(
+    transform_directive: &TransformDirective,
+) -> Transform {
+    match &transform_directive.kind {
+        TransformOp::Len => Transform::Len,
+        TransformOp::Abs => Transform::Abs,
+        TransformOp::Add(arg) => Transform::Add(resolve_transform_argument(arg)),
+        TransformOp::Fadd(arg) => Transform::Fadd(resolve_transform_argument(arg)),
+        TransformOp::Count => {
+            // TODO: Add a test for this: it should produce an error, not a panic.
+            unreachable!("unexpected @transform on property: {transform_directive:?}")
+        }
+    }
+}
+
+fn resolve_transform_argument(arg: &OperatorArgument) -> Argument {
+    todo!()
+}
+
+fn determine_transformed_field_type(
+    initial_type: Type,
+    next_transform: &Transform,
+) -> Result<Type, FrontendError> {
+    // TODO: refactor type-checking errors into helpers + three categories:
+    // - inappropriate left-hand type for transform
+    // - inappropriate tag type for transform
+    // - inappropriate (conflicting) variable type for transform;
+    //   for this last one, ensure inferring `Int` vs `Int!` narrows to `Int!` correctly
+    //   but other inference mismatches get reported as errors just like from filters
+    match next_transform {
+        Transform::Len => {
+            if initial_type.is_list() {
+                Ok(Type::new_named_type("Int", initial_type.nullable()))
+            } else {
+                Err(todo!())
+            }
+        }
+        Transform::Abs => {
+            let base_type = initial_type.base_type();
+            if base_type == "Int" || base_type == "Float" {
+                Ok(initial_type)
+            } else {
+                Err(todo!())
+            }
+        }
+        Transform::Add(op) => {
+            match op {
+                Argument::Tag(tag) => {
+                    let op_type = tag.field_type();
+                    if op_type.base_type() != "Int" {
+                        return Err(todo!());
+                    }
+                }
+                Argument::Variable(var) => {
+                    let op_type = &var.variable_type;
+                    if op_type.base_type() != "Int" {
+                        return Err(todo!());
+                    }
+                }
+            };
+            Ok(Type::new_named_type("Int", initial_type.nullable()))
+        }
+        Transform::Fadd(op) => {
+            match op {
+                Argument::Tag(tag) => {
+                    let op_type = tag.field_type();
+                    if op_type.base_type() != "Float" {
+                        return Err(todo!());
+                    }
+                }
+                Argument::Variable(var) => {
+                    let op_type = &var.variable_type;
+                    if op_type.base_type() != "Float" {
+                        return Err(todo!());
+                    }
+                }
+            };
+            Ok(Type::new_named_type("Float", initial_type.nullable()))
+        }
     }
 }
 
@@ -1124,15 +1279,21 @@ where
 
     if let Some(transform_group) = &fold_group.transform {
         if transform_group.retransform.is_some() {
+            // TODO: add support for this, this should work
             unimplemented!("re-transforming a @fold @transform value is currently not supported");
         }
 
         let fold_specific_field = match transform_group.transform.kind {
-            TransformationKind::Count => FoldSpecificField {
+            TransformOp::Count => FoldSpecificField {
                 fold_eid,
                 fold_root_vid: starting_vid,
                 kind: FoldSpecificFieldKind::Count,
             },
+            _ => {
+                // TODO: Add a test where we transform a `@fold` with an inappropriate operator,
+                //       to make sure this produces an error, not a panic.
+                unreachable!("unexpected @transform operator on @fold: {transform_group:?}")
+            }
         };
         let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
         let subject = OperationSubject::FoldSpecificField(fold_specific_field.clone());
@@ -1169,7 +1330,7 @@ where
                     };
                     output_handler.register_locally_named_output(
                         local_name,
-                        Some(&[fold_specific_field.kind.transform_suffix()]),
+                        Some(Box::new([fold_specific_field.kind.transform_suffix()].into_iter())),
                         field_ref.clone(),
                     )
                 }

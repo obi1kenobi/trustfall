@@ -20,7 +20,7 @@ pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Ad
     // We push them on the stack in reverse order, since the stack is LIFO.
     for transform in transforms.iter().rev() {
         match transform {
-            Transform::Add(op) => match op {
+            Transform::Add(op) | Transform::Fadd(op) => match op {
                 Argument::Tag(tag) => {
                     iterator = Box::new(
                         compute_tag_with_separate_value(
@@ -87,6 +87,18 @@ fn apply_one_transform(
                 apply_add_transform(value, &operand)
             }
         },
+        Transform::Fadd(argument) => match argument {
+            Argument::Variable(var) => {
+                let operand = &variables[&var.variable_name];
+                apply_fadd_transform(value, operand)
+            }
+            Argument::Tag(_) => {
+                let operand = stack.pop().expect(
+                    "empty stack while attempting to resolve transform operand: {transform:?}",
+                );
+                apply_fadd_transform(value, &operand)
+            }
+        },
     }
 }
 
@@ -121,11 +133,18 @@ fn apply_add_transform(value: &FieldValue, operand: &FieldValue) -> FieldValue {
         | (FieldValue::Uint64(unsigned), FieldValue::Int64(signed)) => {
             add_unlike_signedness_integers(*signed, *unsigned)
         }
+        _ => unreachable!("{value:?} {operand:?}"),
+    }
+}
+
+#[inline]
+fn apply_fadd_transform(value: &FieldValue, operand: &FieldValue) -> FieldValue {
+    match (value, operand) {
+        (FieldValue::Null, _) => FieldValue::Null,
+        (_, FieldValue::Null) => FieldValue::Null,
+        (FieldValue::Int64(x), FieldValue::Float64(y)) => FieldValue::Float64(y + (*x as f64)),
+        (FieldValue::Uint64(x), FieldValue::Float64(y)) => FieldValue::Float64(y + (*x as f64)),
         (FieldValue::Float64(x), FieldValue::Float64(y)) => FieldValue::Float64(x + y),
-        (FieldValue::Float64(x), FieldValue::Int64(y))
-        | (FieldValue::Int64(y), FieldValue::Float64(x)) => FieldValue::Float64(x + (*y as f64)),
-        (FieldValue::Float64(x), FieldValue::Uint64(y))
-        | (FieldValue::Uint64(y), FieldValue::Float64(x)) => FieldValue::Float64(x + (*y as f64)),
         _ => unreachable!("{value:?} {operand:?}"),
     }
 }
