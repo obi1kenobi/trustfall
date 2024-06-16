@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use async_graphql_parser::types::{Directive, OperationDefinition};
@@ -10,7 +11,7 @@ use async_graphql_parser::{
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::ir::FieldValue;
+use crate::ir::{FieldValue, Tid};
 use crate::util::BTreeMapTryInsertExt;
 
 use super::directives::{FoldGroup, TransformDirective, TransformGroup};
@@ -239,7 +240,10 @@ fn make_directives(
     Ok(parsed_directives)
 }
 
-fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
+fn make_field_node(
+    field: &Positioned<Field>,
+    tid_generator: &mut impl Iterator<Item = Tid>,
+) -> Result<FieldNode, ParseError> {
     let name = &field.node.name.node;
     let alias = field.node.alias.as_ref().map(|x| &x.node);
 
@@ -303,9 +307,16 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
             Some(ParsedDirective::Output(o, _)) => output.push(o),
             Some(ParsedDirective::Tag(t, _)) => tag.push(t),
             Some(ParsedDirective::Transform(t, _)) => break Some(t),
+            Some(ParsedDirective::Fold(..)) => {
+                // Any subsequent `@transform` directives apply to the `@fold`, which means either:
+                // - this is an edge, so we don't need to process its transform directives
+                //   here -- we've already handled them in edge processing earlier, or
+                // - this query is invalid and will generate an error anyway, so we don't need to
+                //   keep processing these directives either way.
+                break None;
+            }
             Some(
                 ParsedDirective::Optional(..)
-                | ParsedDirective::Fold(..)
                 | ParsedDirective::Recurse(..),
             ) => {
                 // edge-specific directives, ignore them
@@ -315,7 +326,7 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
     };
 
     let transform_group = if let Some(transform) = maybe_transform {
-        Some(make_transform_group(transform, &mut directives_iter)?)
+        Some(make_transform_group(transform, &mut directives_iter, tid_generator)?)
     } else {
         None
     };
@@ -333,8 +344,8 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
                 return Err(ParseError::NestedTypeCoercion(selection.pos));
             }
             Selection::Field(f) => {
-                let edge = make_field_connection(f)?;
-                let vertex = make_field_node(f)?;
+                let edge = make_field_connection(f, tid_generator)?;
+                let vertex = make_field_node(f, tid_generator)?;
                 connections.push((edge, vertex));
             }
         }
@@ -353,7 +364,10 @@ fn make_field_node(field: &Positioned<Field>) -> Result<FieldNode, ParseError> {
     })
 }
 
-fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, ParseError> {
+fn make_field_connection(
+    field: &Positioned<Field>,
+    tid_generator: &mut impl Iterator<Item = Tid>,
+) -> Result<FieldConnection, ParseError> {
     let arguments = field.node.arguments.iter().try_fold(
         BTreeMap::new(),
         |mut acc, (name, value)| -> Result<BTreeMap<Arc<str>, FieldValue>, ParseError> {
@@ -426,7 +440,7 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
     };
 
     let fold_group = if let Some(fold) = maybe_fold {
-        Some(make_fold_group(fold, &mut directives_iter)?)
+        Some(make_fold_group(fold, &mut directives_iter, tid_generator)?)
     } else {
         None
     };
@@ -445,11 +459,12 @@ fn make_field_connection(field: &Positioned<Field>) -> Result<FieldConnection, P
 fn make_fold_group(
     fold: FoldDirective,
     directive_iter: &mut impl Iterator<Item = ParsedDirective>,
+    tid_generator: &mut impl Iterator<Item = Tid>,
 ) -> Result<FoldGroup, ParseError> {
     let transform_group = if let Some(directive) = directive_iter.next() {
         match directive {
             ParsedDirective::Transform(transform, _) => {
-                Some(make_transform_group(transform, directive_iter)?)
+                Some(make_transform_group(transform, directive_iter, tid_generator)?)
             }
             ParsedDirective::Fold(_, pos) => {
                 return Err(ParseError::UnsupportedDuplicatedDirective("@fold".to_string(), pos));
@@ -472,10 +487,12 @@ fn make_fold_group(
 fn make_transform_group(
     transform: TransformDirective,
     directive_iter: &mut impl Iterator<Item = ParsedDirective>,
+    tid_generator: &mut impl Iterator<Item = Tid>,
 ) -> Result<TransformGroup, ParseError> {
     let mut output = vec![];
     let mut tag = vec![];
     let mut filter = vec![];
+    let tid = tid_generator.next().expect("failed to get next tid");
 
     let retransform = loop {
         if let Some(directive) = directive_iter.next() {
@@ -484,7 +501,7 @@ fn make_transform_group(
                 ParsedDirective::Output(o, _) => output.push(o),
                 ParsedDirective::Tag(t, _) => tag.push(t),
                 ParsedDirective::Transform(xform, _) => {
-                    break Some(Box::new(make_transform_group(xform, directive_iter)?));
+                    break Some(Box::new(make_transform_group(xform, directive_iter, tid_generator)?));
                 }
                 ParsedDirective::Fold(..)
                 | ParsedDirective::Optional(..)
@@ -505,11 +522,12 @@ fn make_transform_group(
     // all other directives apply to the transformed value and are processed here.
     assert!(directive_iter.next().is_none());
 
-    Ok(TransformGroup { transform, output, tag, filter, retransform })
+    Ok(TransformGroup { tid, transform, output, tag, filter, retransform })
 }
 
 /// Parses a query document. May fail if there is no query root.
 pub fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError> {
+    let mut tid_generator = (1usize..).map(|x| Tid(NonZeroUsize::new(x).unwrap()));
     let query_root = try_get_query_root(document)?;
 
     if let Some(dir) = query_root.node.directives.first() {
@@ -519,12 +537,12 @@ pub fn parse_document(document: &ExecutableDocument) -> Result<Query, ParseError
         ));
     }
 
-    let root_connection = make_field_connection(query_root)?;
+    let root_connection = make_field_connection(query_root, &mut tid_generator)?;
     assert!(root_connection.optional.is_none());
     assert!(root_connection.recurse.is_none());
     assert!(root_connection.fold.is_none());
 
-    let root_field = make_field_node(query_root)?;
+    let root_field = make_field_node(query_root, &mut tid_generator)?;
 
     Ok(Query { root_connection, root_field })
 }

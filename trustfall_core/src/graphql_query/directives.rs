@@ -7,7 +7,7 @@ use async_graphql_value::Value;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::ir::{Operation, TransformationKind};
+use crate::ir::{Operation, Tid, TransformationKind};
 
 use super::error::ParseError;
 
@@ -531,6 +531,8 @@ impl TryFrom<&Positioned<Directive>> for RecurseDirective {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformGroup {
+    pub tid: Tid,
+
     pub transform: TransformDirective,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

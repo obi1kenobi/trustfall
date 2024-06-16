@@ -45,6 +45,7 @@ Ok(TestParsedGraphQLQuery(
           fold: Some(FoldGroup(
             fold: FoldDirective(),
             transform: Some(TransformGroup(
+              tid: Tid(1),
               transform: TransformDirective(
                 kind: Count,
               ),
@@ -76,16 +77,6 @@ Ok(TestParsedGraphQLQuery(
               name: "__typename",
             )),
           ],
-          transform_group: Some(TransformGroup(
-            transform: TransformDirective(
-              kind: Count,
-            ),
-            filter: [
-              FilterDirective(
-                operation: LessThan((), VariableRef("min_primes")),
-              ),
-            ],
-          )),
         )),
       ],
     ),
