@@ -359,7 +359,7 @@ pub(crate) enum TransformOp {
     Len,
     Abs,
     Add(OperatorArgument),
-    Fadd(OperatorArgument),
+    AddF(OperatorArgument),
 }
 
 /// A Trustfall `@tag` directive.

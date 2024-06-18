@@ -1064,7 +1064,7 @@ where
                             .unwrap_or_else(|| subfield.name.as_ref());
                         output_handler.register_locally_named_output(
                             local_name,
-                            Some(Box::new(transforms.iter().map(|t| t.operation_name()))),
+                            Some(Box::new(transforms.iter().map(|t| t.operation_output_name()))),
                             field_ref,
                         );
                     }
@@ -1148,7 +1148,7 @@ fn extract_property_like_transform_from_directive(
         TransformOp::Len => Transform::Len,
         TransformOp::Abs => Transform::Abs,
         TransformOp::Add(arg) => Transform::Add(resolve_transform_argument(arg)),
-        TransformOp::Fadd(arg) => Transform::Fadd(resolve_transform_argument(arg)),
+        TransformOp::AddF(arg) => Transform::AddF(resolve_transform_argument(arg)),
         TransformOp::Count => {
             // TODO: Add a test for this: it should produce an error, not a panic.
             unreachable!("unexpected @transform on property: {transform_directive:?}")
@@ -1203,7 +1203,7 @@ fn determine_transformed_field_type(
             };
             Ok(Type::new_named_type("Int", initial_type.nullable()))
         }
-        Transform::Fadd(op) => {
+        Transform::AddF(op) => {
             match op {
                 Argument::Tag(tag) => {
                     let op_type = tag.field_type();

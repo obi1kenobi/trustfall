@@ -816,23 +816,26 @@ pub enum Transform {
     /// Null on null inputs.
     Abs,
 
-    /// Integer addition. For floating-point addition, use [`Transform::Fadd`] instead.
+    /// Integer addition. For floating-point addition, use [`Transform::AddF`] instead.
     Add(Argument),
 
     /// The floating-point equivalent of [`Transform::Add`].
     /// Separate because we want clean and explicit type-inference for variables:
     /// what's the type of `"$arg"` in `@transform(op: "add", value: ["$arg"])`?
     /// It's `Int!` because the operator is `add` -- and would have been `Float!` for `fadd`.
-    Fadd(Argument),
+    AddF(Argument),
 }
 
 impl Transform {
-    pub(crate) fn operation_name(&self) -> &str {
+    /// The human-readable, symbol-free name of the transform operation.
+    ///
+    /// Symbol-free means the name is alphanumeric, so the `+` operation is `"add"` etc.
+    pub(crate) fn operation_output_name(&self) -> &str {
         match self {
             Self::Len => "len",
             Self::Abs => "abs",
             Self::Add(..) => "add",
-            Self::Fadd(..) => "fadd",
+            Self::AddF(..) => "addf",
         }
     }
 }

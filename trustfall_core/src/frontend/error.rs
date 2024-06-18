@@ -388,7 +388,7 @@ fn write_name_of_transformed_field(buf: &mut String, field: &TransformedField) {
     });
     for transform in &field.value.transforms {
         buf.push('.');
-        buf.push_str(transform.operation_name());
+        buf.push_str(transform.operation_output_name());
     }
     buf.push('"');
 }

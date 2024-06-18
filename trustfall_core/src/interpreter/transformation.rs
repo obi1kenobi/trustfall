@@ -1,18 +1,65 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::ir::{Argument, FieldValue, IRQueryComponent, Transform, TransformedValue, Vid};
+use crate::ir::{
+    Argument, FieldRef, FieldValue, IRQueryComponent, Transform, TransformedValue, Vid,
+};
 
 use super::{
     execution::QueryCarrier, tags::compute_tag_with_separate_value, Adapter, ContextIterator,
     TaggedValue,
 };
 
-pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Adapter<'query>>(
+pub(super) fn push_transform_argument_tag_values_onto_stack_during_main_query<
+    'query,
+    AdapterT: Adapter<'query>,
+>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
     transforms: &[Transform],
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> ContextIterator<'query, AdapterT::Vertex> {
+    let tag_func = move |inner_carrier: &mut QueryCarrier,
+                         tag: &FieldRef,
+                         inner_iterator: ContextIterator<'query, AdapterT::Vertex>|
+          -> ContextIterator<'query, AdapterT::Vertex> {
+        Box::new(
+            compute_tag_with_separate_value(
+                adapter,
+                inner_carrier,
+                component,
+                current_vid,
+                tag,
+                inner_iterator,
+            )
+            .map(|(mut ctx, tag_value)| {
+                let value = match tag_value {
+                    TaggedValue::NonexistentOptional => FieldValue::Null,
+                    TaggedValue::Some(value) => value,
+                };
+                ctx.values.push(value);
+                ctx
+            }),
+        )
+    };
+
+    push_transform_argument_tag_values_onto_stack::<AdapterT>(
+        carrier, transforms, tag_func, iterator,
+    )
+}
+
+/// At different points during query evaluation, we compute tag values differently.
+/// The `tag_func` argument allows us to generalize over the tag value computation
+/// while reusing the logic for determining which tag values are necessary.
+pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Adapter<'query>>(
+    carrier: &mut QueryCarrier,
+    transforms: &[Transform],
+    mut tag_func: impl FnMut(
+        &mut QueryCarrier,
+        &FieldRef,
+        ContextIterator<'query, AdapterT::Vertex>,
+    ) -> ContextIterator<'query, AdapterT::Vertex>,
     mut iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     // Ensure any non-immediate operands (like values coming from tags) are pushed
@@ -20,26 +67,9 @@ pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Ad
     // We push them on the stack in reverse order, since the stack is LIFO.
     for transform in transforms.iter().rev() {
         match transform {
-            Transform::Add(op) | Transform::Fadd(op) => match op {
+            Transform::Add(op) | Transform::AddF(op) => match op {
                 Argument::Tag(tag) => {
-                    iterator = Box::new(
-                        compute_tag_with_separate_value(
-                            adapter,
-                            carrier,
-                            component,
-                            current_vid,
-                            tag,
-                            iterator,
-                        )
-                        .map(|(mut ctx, tag_value)| {
-                            let value = match tag_value {
-                                TaggedValue::NonexistentOptional => FieldValue::Null,
-                                TaggedValue::Some(value) => value,
-                            };
-                            ctx.values.push(value);
-                            ctx
-                        }),
-                    );
+                    iterator = tag_func(carrier, tag, iterator);
                 }
                 Argument::Variable(..) => {}
             },
@@ -87,7 +117,7 @@ fn apply_one_transform(
                 apply_add_transform(value, &operand)
             }
         },
-        Transform::Fadd(argument) => match argument {
+        Transform::AddF(argument) => match argument {
             Argument::Variable(var) => {
                 let operand = &variables[&var.variable_name];
                 apply_fadd_transform(value, operand)
