@@ -796,6 +796,12 @@ fn make_vertex<'query>(
             }
         };
 
+    // Filters have to be processed here, and cannot be processed inside `fill_in_vertex_data()`.
+    // This is because filters may reference data that won't be complete until all of
+    // `fill_in_vertex_data()` has finished running: for example, if a filter on one property
+    // in a given vertex references a tag produced from another property on the same vertex.
+    //
+    // For similar reasons, we have to process filters over transformed property values here too.
     let mut filters = vec![];
     for property_name in property_names_by_vertex.get(&vid).into_iter().flatten() {
         let (_, property_type, property_fields) =
@@ -819,6 +825,61 @@ fn make_vertex<'query>(
                         errors.extend(e);
                     }
                 }
+            }
+
+            let mut transforms: Vec<Transform> = vec![];
+            let mut current_type = property_type.clone();
+            let mut next_transform_group = property_field.transform_group.as_ref();
+            while let Some(transform_group) = next_transform_group {
+                let next_transform =
+                    extract_property_like_transform_from_directive(&transform_group.transform);
+                current_type = match determine_transformed_field_type(current_type, &next_transform)
+                {
+                    Ok(t) => t,
+                    Err(e) => {
+                        // This error should already have been reported while initially
+                        // processing transforms for output and tag purposes
+                        // in `fill_in_vertex_data()`.
+                        //
+                        // Ignore it here.
+                        break;
+                    }
+                };
+                transforms.push(next_transform);
+
+                for filter_directive in &transform_group.filter {
+                    let base = ContextField {
+                        field_name: property_name.clone(),
+                        field_type: property_type.clone(),
+                        vertex_id: vid,
+                    };
+                    let transformed_field = TransformedField {
+                        value: Arc::new(TransformedValue {
+                            base: TransformBase::ContextField(base),
+                            transforms: transforms.clone(),
+                        }),
+                        tid: transform_group.tid,
+                        field_type: current_type.clone(),
+                    };
+
+                    match filters::make_filter_expr(
+                        schema,
+                        component_path,
+                        tags,
+                        vid,
+                        OperationSubject::TransformedField(transformed_field),
+                        filter_directive,
+                    ) {
+                        Ok(filter_operation) => {
+                            filters.push(filter_operation);
+                        }
+                        Err(e) => {
+                            errors.extend(e);
+                        }
+                    }
+                }
+
+                next_transform_group = transform_group.retransform.as_deref();
             }
         }
     }

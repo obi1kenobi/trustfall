@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: -1, max: 1) {
+        value @output @tag
+
+        value @transform(op: "abs") @filter(op: ">", value: ["%value"])
+    }
+}"#,
+    arguments: {},
+)
