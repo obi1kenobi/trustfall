@@ -362,6 +362,22 @@ pub(crate) enum TransformOp {
     AddF(OperatorArgument),
 }
 
+impl TransformOp {
+    /// The exact operation name we parse from `@transform` directives.
+    ///
+    /// For example: `@transform(op: "+", value: ["$value"])` corresponds to [`TransformOp::Add`],
+    /// so `TransformOp::Add.op_name() == "+"`.
+    pub(crate) fn op_name(&self) -> &'static str {
+        match self {
+            TransformOp::Count => "count",
+            TransformOp::Len => "len",
+            TransformOp::Abs => "abs",
+            TransformOp::Add(_) => "+",
+            TransformOp::AddF(_) => "+f",
+        }
+    }
+}
+
 /// A Trustfall `@tag` directive.
 ///
 /// For example, the following Trustfall and Rust would be equivalent:

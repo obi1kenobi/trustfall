@@ -6,6 +6,7 @@ use async_graphql_parser::{
     types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
     Positioned,
 };
+use error::TransformTypeError;
 use filters::make_filter_expr;
 use smallvec::SmallVec;
 
@@ -807,7 +808,7 @@ fn make_vertex<'query>(
         let (_, property_type, property_fields) =
             properties.get(&(vid, property_name.clone())).unwrap();
 
-        for property_field in property_fields.iter() {
+        for property_field in property_fields {
             for filter_directive in property_field.filter.iter() {
                 match make_local_field_filter_expr(
                     schema,
@@ -831,8 +832,23 @@ fn make_vertex<'query>(
             let mut current_type = property_type.clone();
             let mut next_transform_group = property_field.transform_group.as_ref();
             while let Some(transform_group) = next_transform_group {
-                let next_transform =
-                    extract_property_like_transform_from_directive(&transform_group.transform);
+                let next_transform = match extract_property_like_transform_from_directive(
+                    &transform_group.transform,
+                    property_name,
+                    &transforms,
+                    &current_type,
+                ) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        // This error should already have been reported while initially
+                        // processing transforms for output and tag purposes
+                        // in `fill_in_vertex_data()`.
+                        // We have tests enforcing this.
+                        //
+                        // Ignore it here.
+                        break;
+                    }
+                };
                 current_type = match determine_transformed_field_type(current_type, &next_transform)
                 {
                     Ok(t) => t,
@@ -840,6 +856,7 @@ fn make_vertex<'query>(
                         // This error should already have been reported while initially
                         // processing transforms for output and tag purposes
                         // in `fill_in_vertex_data()`.
+                        // We have tests enforcing this.
                         //
                         // Ignore it here.
                         break;
@@ -1186,8 +1203,18 @@ fn fill_in_property_data<'query>(
         }
 
         if let Some(transform_group) = next_transform_group {
-            let next_transform =
-                extract_property_like_transform_from_directive(&transform_group.transform);
+            let next_transform = match extract_property_like_transform_from_directive(
+                &transform_group.transform,
+                &property_node.name,
+                &transforms,
+                &current_type,
+            ) {
+                Ok(t) => t,
+                Err(e) => {
+                    errors.push(e.into());
+                    break;
+                }
+            };
             current_tid = Some(transform_group.tid);
             output_directives = transform_group.output.as_slice();
             tag_directives = transform_group.tag.as_slice();
@@ -1247,15 +1274,22 @@ fn make_field_ref_for_possibly_transformed_property(
 
 fn extract_property_like_transform_from_directive(
     transform_directive: &TransformDirective,
-) -> Transform {
+    property_name: &str,
+    transforms_so_far: &[Transform],
+    type_so_far: &Type,
+) -> Result<Transform, TransformTypeError> {
     match &transform_directive.kind {
-        TransformOp::Len => Transform::Len,
-        TransformOp::Abs => Transform::Abs,
-        TransformOp::Add(arg) => Transform::Add(resolve_transform_argument(arg)),
-        TransformOp::AddF(arg) => Transform::AddF(resolve_transform_argument(arg)),
+        TransformOp::Len => Ok(Transform::Len),
+        TransformOp::Abs => Ok(Transform::Abs),
+        TransformOp::Add(arg) => Ok(Transform::Add(resolve_transform_argument(arg))),
+        TransformOp::AddF(arg) => Ok(Transform::AddF(resolve_transform_argument(arg))),
         TransformOp::Count => {
-            // TODO: Add a test for this: it should produce an error, not a panic.
-            unreachable!("unexpected @transform on property: {transform_directive:?}")
+            Err(TransformTypeError::fold_specific_transform_on_propertylike_value(
+                transform_directive.kind.op_name(),
+                property_name,
+                transforms_so_far,
+                type_so_far,
+            ))
         }
     }
 }

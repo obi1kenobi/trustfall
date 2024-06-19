@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ir::{
-        Argument, FieldValue, FoldSpecificField, OperationSubject, TransformBase, TransformedField,
-        Type,
+        Argument, FieldValue, FoldSpecificField, OperationSubject, Transform, TransformBase,
+        TransformedField, Type,
     },
     util::DisplayVec,
 };
@@ -57,6 +57,9 @@ pub enum FrontendError {
 
     #[error("Incompatible types encountered in @filter: {0}")]
     FilterTypeError(#[from] FilterTypeError),
+
+    #[error("Incompatible types encountered in @transform: {0}")]
+    TransformTypeError(#[from] TransformTypeError),
 
     #[error("Found {0} applied to \"{1}\" property, which is not supported since that directive can only be applied to edges.")]
     UnsupportedDirectiveOnProperty(String, String),
@@ -379,14 +382,62 @@ impl FilterTypeError {
     }
 }
 
-fn write_name_of_transformed_field(buf: &mut String, field: &TransformedField) {
-    buf.push_str("transformed field \"");
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
+pub enum TransformTypeError {
+    #[error(
+        "Transform operation \"{0}\" may only be applied to edges that are marked @fold, \
+        but is used on {1}.{2}"
+    )]
+    FoldSpecificTransformUsedOnProperty(String, String, String),
+}
 
-    buf.push_str(match &field.value.base {
+impl TransformTypeError {
+    pub(crate) fn fold_specific_transform_on_propertylike_value(
+        transform_op: &str,
+        property_name: &str,
+        transforms_so_far: &[Transform],
+        type_so_far: &Type,
+    ) -> Self {
+        let base_name = if transforms_so_far.is_empty() {
+            format!("property \"{property_name}\"")
+        } else {
+            let mut buf = String::with_capacity(16);
+            write_name_of_transformed_field_by_parts(&mut buf, property_name, transforms_so_far);
+            buf
+        };
+
+        let advice = if type_so_far.is_list() {
+            format!(
+                " To get the number of elements in the list value here (type \"{type_so_far}\"), \
+                use the \"len\" transform operation instead.",
+            )
+        } else {
+            String::new()
+        };
+
+        Self::FoldSpecificTransformUsedOnProperty(transform_op.to_string(), base_name, advice)
+    }
+}
+
+fn write_name_of_transformed_field(buf: &mut String, field: &TransformedField) {
+    let base_name = match &field.value.base {
         TransformBase::ContextField(c) => &c.field_name,
         TransformBase::FoldSpecificField(f) => f.kind.field_name(),
-    });
-    for transform in &field.value.transforms {
+    };
+
+    write_name_of_transformed_field_by_parts(buf, base_name, &field.value.transforms);
+}
+
+fn write_name_of_transformed_field_by_parts(
+    buf: &mut String,
+    base_name: &str,
+    transforms: &[Transform],
+) {
+    buf.push_str("transformed field \"");
+
+    buf.push_str(base_name);
+    for transform in transforms {
         buf.push('.');
         buf.push_str(transform.operation_output_name());
     }
