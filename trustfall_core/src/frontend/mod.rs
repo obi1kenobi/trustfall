@@ -1038,158 +1038,19 @@ where
             || subfield_name == TYPENAME_META_FIELD
         {
             // Processing a property.
-
-            // @fold is not allowed on a property
-            if connection.fold.is_some() {
-                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
-                    "@fold".into(),
-                    subfield.name.to_string(),
-                ));
-            }
-
-            // @optional is not allowed on a property
-            if connection.optional.is_some() {
-                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
-                    "@optional".into(),
-                    subfield.name.to_string(),
-                ));
-            }
-
-            // @recurse is not allowed on a property
-            if connection.recurse.is_some() {
-                errors.push(FrontendError::UnsupportedDirectiveOnProperty(
-                    "@recurse".into(),
-                    subfield.name.to_string(),
-                ));
-            }
-
-            let subfield_name: Arc<str> = subfield_name.into();
-            let key = (current_vid, subfield_name.clone());
-            properties
-                .entry(key)
-                .and_modify(|(prior_name, prior_type, subfields)| {
-                    assert_eq!(subfield_name.as_ref(), prior_name.as_ref());
-                    assert_eq!(&subfield_raw_type, prior_type);
-                    subfields.push(subfield);
-                })
-                .or_insert_with(|| {
-                    property_names_by_vertex
-                        .entry(current_vid)
-                        .or_default()
-                        .push(subfield_name.clone());
-
-                    (subfield_name, subfield_raw_type.clone(), SmallVec::from([subfield]))
-                });
-
-            let mut transforms: Vec<Transform> = vec![];
-            let mut current_tid: Option<Tid> = None;
-            let mut current_type = subfield_raw_type.clone();
-            let mut output_directives = subfield.output.as_slice();
-            let mut tag_directives = subfield.tag.as_slice();
-            let mut next_transform_group = subfield.transform_group.as_ref();
-            loop {
-                for output_directive in output_directives {
-                    let context_field = ContextField {
-                        vertex_id: current_vid,
-                        field_name: subfield.name.clone(),
-                        field_type: subfield_raw_type.clone(),
-                    };
-                    let field_ref = if let Some(tid) = current_tid {
-                        FieldRef::TransformedField(TransformedField {
-                            value: Arc::new(TransformedValue {
-                                base: TransformBase::ContextField(context_field),
-                                transforms: transforms.clone(),
-                            }),
-                            tid,
-                            field_type: current_type.clone(),
-                        })
-                    } else {
-                        FieldRef::ContextField(context_field)
-                    };
-
-                    // The output's name can be either explicit or local (i.e. implicitly prefixed).
-                    // Explicit names are given explicitly in the directive:
-                    //     @output(name: "foo")
-                    // This would result in a "foo" output name, regardless of any prefixes.
-                    // Local names use the field's alias, if present, falling back to the field's name
-                    // otherwise. The local name is appended to any prefixes given as aliases
-                    // applied to the edges whose scopes enclose the output.
-                    if let Some(explicit_name) = output_directive.name.as_ref() {
-                        output_handler
-                            .register_explicitly_named_output(explicit_name.clone(), field_ref);
-                    } else {
-                        let local_name = subfield
-                            .alias
-                            .as_ref()
-                            .map(|x| x.as_ref())
-                            .unwrap_or_else(|| subfield.name.as_ref());
-                        output_handler.register_locally_named_output(
-                            local_name,
-                            Some(Box::new(transforms.iter().map(|t| t.operation_output_name()))),
-                            field_ref,
-                        );
-                    }
-                }
-
-                for tag_directive in tag_directives {
-                    // The tag's name is the first of the following that is defined:
-                    // - the explicit "name" parameter in the @tag directive itself
-                    // - the alias of the field with the @tag directive
-                    // - the name of the field with the @tag directive
-                    let tag_name =
-                        tag_directive.name.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| {
-                            subfield
-                                .alias
-                                .as_ref()
-                                .map(|x| x.as_ref())
-                                .unwrap_or_else(|| subfield.name.as_ref())
-                        });
-
-                    // TODO: deduplicate this block, it's identical to the above.
-                    let context_field = ContextField {
-                        vertex_id: current_vid,
-                        field_name: subfield.name.clone(),
-                        field_type: subfield_raw_type.clone(),
-                    };
-                    let tag_field = if let Some(tid) = current_tid {
-                        FieldRef::TransformedField(TransformedField {
-                            value: Arc::new(TransformedValue {
-                                base: TransformBase::ContextField(context_field),
-                                transforms: transforms.clone(),
-                            }),
-                            tid,
-                            field_type: current_type.clone(),
-                        })
-                    } else {
-                        FieldRef::ContextField(context_field)
-                    };
-
-                    if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
-                        errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
-                    }
-                }
-
-                if let Some(transform_group) = next_transform_group {
-                    let next_transform =
-                        extract_property_like_transform_from_directive(&transform_group.transform);
-                    current_tid = Some(transform_group.tid);
-                    output_directives = transform_group.output.as_slice();
-                    tag_directives = transform_group.tag.as_slice();
-                    next_transform_group = transform_group.retransform.as_deref();
-
-                    current_type =
-                        match determine_transformed_field_type(current_type, &next_transform) {
-                            Ok(t) => t,
-                            Err(e) => {
-                                errors.push(e);
-                                break;
-                            }
-                        };
-                    transforms.push(next_transform);
-                } else {
-                    break;
-                }
-            }
+            fill_in_property_data(
+                property_names_by_vertex,
+                properties,
+                component_path,
+                output_handler,
+                tags,
+                current_vid,
+                subfield,
+                connection,
+                subfield_name,
+                subfield_raw_type,
+                &mut errors,
+            );
         } else {
             unreachable!("field name: {}", subfield_name);
         }
@@ -1199,6 +1060,188 @@ where
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+#[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
+fn fill_in_property_data<'query>(
+    property_names_by_vertex: &mut BTreeMap<Vid, Vec<Arc<str>>>,
+    properties: &mut BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
+    component_path: &mut ComponentPath,
+    output_handler: &mut OutputHandler<'query>,
+    tags: &mut TagHandler<'query>,
+    current_vid: Vid,
+    property_node: &'query FieldNode,
+    connection: &'query FieldConnection,
+    property_name: &str,
+    property_type: Type,
+    errors: &mut Vec<FrontendError>,
+) {
+    // @fold is not allowed on a property
+    if connection.fold.is_some() {
+        errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+            "@fold".into(),
+            property_node.name.to_string(),
+        ));
+    }
+
+    // @optional is not allowed on a property
+    if connection.optional.is_some() {
+        errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+            "@optional".into(),
+            property_node.name.to_string(),
+        ));
+    }
+
+    // @recurse is not allowed on a property
+    if connection.recurse.is_some() {
+        errors.push(FrontendError::UnsupportedDirectiveOnProperty(
+            "@recurse".into(),
+            property_node.name.to_string(),
+        ));
+    }
+
+    let property_name: Arc<str> = property_name.into();
+    let key = (current_vid, property_name.clone());
+    properties
+        .entry(key)
+        .and_modify(|(prior_name, prior_type, subfields)| {
+            assert_eq!(property_name.as_ref(), prior_name.as_ref());
+            assert_eq!(&property_type, prior_type);
+            subfields.push(property_node);
+        })
+        .or_insert_with(|| {
+            property_names_by_vertex.entry(current_vid).or_default().push(property_name.clone());
+
+            (property_name, property_type.clone(), SmallVec::from([property_node]))
+        });
+
+    let mut transforms: Vec<Transform> = vec![];
+    let mut current_tid: Option<Tid> = None;
+    let mut current_type = property_type.clone();
+    let mut output_directives = property_node.output.as_slice();
+    let mut tag_directives = property_node.tag.as_slice();
+    let mut next_transform_group = property_node.transform_group.as_ref();
+
+    loop {
+        for output_directive in output_directives {
+            let field_ref = make_field_ref_for_possibly_transformed_property(
+                current_vid,
+                &property_node.name,
+                &property_type,
+                current_tid,
+                &transforms,
+                &current_type,
+            );
+
+            // The output's name can be either explicit or local (i.e. implicitly prefixed).
+            // Explicit names are given explicitly in the directive:
+            //     @output(name: "foo")
+            // This would result in a "foo" output name, regardless of any prefixes.
+            // Local names use the field's alias, if present, falling back to the field's name
+            // otherwise. The local name is appended to any prefixes given as aliases
+            // applied to the edges whose scopes enclose the output.
+            if let Some(explicit_name) = output_directive.name.as_ref() {
+                output_handler.register_explicitly_named_output(explicit_name.clone(), field_ref);
+            } else {
+                let local_name = property_node
+                    .alias
+                    .as_ref()
+                    .map(|x| x.as_ref())
+                    .unwrap_or_else(|| property_node.name.as_ref());
+                output_handler.register_locally_named_output(
+                    local_name,
+                    Some(Box::new(transforms.iter().map(|t| t.operation_output_name()))),
+                    field_ref,
+                );
+            }
+        }
+
+        for tag_directive in tag_directives {
+            // The tag's name is the first of the following that is defined:
+            // - the explicit "name" parameter in the @tag directive itself
+            // - the alias of the field with the @tag directive
+            // - the name of the field with the @tag directive
+            let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref()).unwrap_or_else(|| {
+                property_node
+                    .alias
+                    .as_ref()
+                    .map(|x| x.as_ref())
+                    .unwrap_or_else(|| property_node.name.as_ref())
+            });
+
+            let tag_field = make_field_ref_for_possibly_transformed_property(
+                current_vid,
+                &property_node.name,
+                &property_type,
+                current_tid,
+                &transforms,
+                &current_type,
+            );
+
+            if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
+                errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
+            }
+        }
+
+        if let Some(transform_group) = next_transform_group {
+            let next_transform =
+                extract_property_like_transform_from_directive(&transform_group.transform);
+            current_tid = Some(transform_group.tid);
+            output_directives = transform_group.output.as_slice();
+            tag_directives = transform_group.tag.as_slice();
+            next_transform_group = transform_group.retransform.as_deref();
+
+            current_type = match determine_transformed_field_type(current_type, &next_transform) {
+                Ok(t) => t,
+                Err(e) => {
+                    errors.push(e);
+                    break;
+                }
+            };
+            transforms.push(next_transform);
+        } else {
+            break;
+        }
+    }
+}
+
+fn make_field_ref_for_possibly_transformed_property(
+    current_vid: Vid,
+    property_name: &Arc<str>,
+    property_type: &Type,
+    current_tid: Option<Tid>,
+    transforms: &[Transform],
+    transformed_type: &Type,
+) -> FieldRef {
+    let context_field = ContextField {
+        vertex_id: current_vid,
+        field_name: Arc::clone(property_name),
+        field_type: property_type.clone(),
+    };
+    if let Some(tid) = current_tid {
+        FieldRef::TransformedField(TransformedField {
+            value: Arc::new(TransformedValue {
+                base: TransformBase::ContextField(context_field),
+                // TODO: This `.to_owned()` is a full copy of the `Vec<Transform>`,
+                //       so if we have a very deep chain of `@transform` directives where each
+                //       intermediate result is used in a tag, filter, or output,
+                //       that would result in O(n^2) copies.
+                //
+                //       In principle, we should be able to make a "smarter" data type here:
+                //       we only ever append to the underlying `Vec<Transform>` as we process
+                //       new `@transform` directives, so prior uses of it see an immutable
+                //       prefix of the full final `Vec<Transform>`. This may lend itself to
+                //       an `Arc`-ed shared-ownership prefix view over an underlying allocation.
+                //       This is a potential future optimization opportunity!
+                transforms: transforms.to_owned(),
+            }),
+            tid,
+            field_type: transformed_type.clone(),
+        })
+    } else {
+        FieldRef::ContextField(context_field)
     }
 }
 
