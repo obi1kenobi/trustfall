@@ -1299,7 +1299,6 @@ fn extract_property_like_transform_from_directive(
 fn extract_transform_on_fold_count_from_directive(
     transform_directive: &TransformDirective,
     edge_name: &str,
-    subsequent_transforms: &[Transform],
     type_so_far: &Type,
 ) -> Result<Transform, TransformTypeError> {
     extract_transform_from_directive(transform_directive, type_so_far, || {
@@ -1307,7 +1306,7 @@ fn extract_transform_on_fold_count_from_directive(
         // For example: `some_edge @fold @transform(op: "count") @transform(op: "count")`
         //                                                       ^^^^^^^^^^^^^^^^^^^^^^^
         //                                                       we are here, this is the error
-        todo!("cover this with tests, it shouldn't panic")
+        TransformTypeError::duplicated_count_transform_on_folded_edge(edge_name)
     })
 }
 
@@ -1457,7 +1456,6 @@ where
             let next_transform = match extract_transform_on_fold_count_from_directive(
                 &transform_group.transform,
                 edge_name.as_ref(),
-                &subsequent_transforms,
                 &current_type,
             ) {
                 Ok(t) => t,

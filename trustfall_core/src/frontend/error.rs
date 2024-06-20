@@ -390,6 +390,12 @@ pub enum TransformTypeError {
     FoldSpecificTransformUsedOnProperty(String, String, String),
 
     #[error(
+        "Folded edge \"{0}\" has more than one @transform(op: \"count\") directive applied to it, \
+        which is not allowed. Please remove all but the first such directive after the @fold."
+    )]
+    DuplicatedCountTransformOnEdge(String),
+
+    #[error(
         "Transform operation \"{0}\" is not supported on edges, but was applied to edge \"{1}\".{2}"
     )]
     UnsupportedTransformUsedOnEdge(String, String, String),
@@ -472,6 +478,10 @@ impl TransformTypeError {
             edge_name.to_string(),
             " Did you mean to use @transform(op: \"count\") instead?".to_string(),
         )
+    }
+
+    pub(crate) fn duplicated_count_transform_on_folded_edge(edge_name: &str) -> Self {
+        Self::DuplicatedCountTransformOnEdge(edge_name.to_string())
     }
 }
 
