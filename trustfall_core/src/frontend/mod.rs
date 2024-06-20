@@ -958,12 +958,14 @@ where
             // Ensure we don't have `@transform` applied to the edge directly,
             // either completely without `@fold` or placed before it.
             // Both cases are an error, though a different error for each for better UX.
-            if subfield.transform_group.is_some() {
+            if let Some(transform_group) = &subfield.transform_group {
                 if connection.fold.is_none() {
                     // `@transform` used without `@fold` on the edge at all.
-                    errors.push(FrontendError::CannotTransformEdgeWithoutFold(
-                        subfield.name.to_string(),
-                    ));
+                    TransformTypeError::add_errors_for_transform_used_on_unfolded_edge(
+                        subfield_name,
+                        &transform_group.transform,
+                        &mut errors,
+                    );
                 } else {
                     // `@transform` placed before `@fold` on the edge.
                     unreachable!("@transform placed before @fold, but this error wasn't caught in the parser")
@@ -1421,80 +1423,95 @@ where
             unimplemented!("re-transforming a @fold @transform value is currently not supported");
         }
 
-        let fold_specific_field = match transform_group.transform.kind {
-            TransformOp::Count => FoldSpecificField {
+        let maybe_field = match transform_group.transform.kind {
+            TransformOp::Count => Ok(FoldSpecificField {
                 fold_eid,
                 fold_root_vid: starting_vid,
                 kind: FoldSpecificFieldKind::Count,
-            },
-            _ => {
-                // TODO: Add a test where we transform a `@fold` with an inappropriate operator,
-                //       to make sure this produces an error, not a panic.
-                unreachable!("unexpected @transform operator on @fold: {transform_group:?}")
-            }
+            }),
+            _ => Err(TransformTypeError::unsupported_transform_used_on_folded_edge(
+                &edge_name,
+                transform_group.transform.kind.op_name(),
+            )
+            .into()),
         };
-        let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
-        let subject = OperationSubject::FoldSpecificField(fold_specific_field.clone());
+        match maybe_field {
+            Ok(fold_specific_field) => {
+                let field_ref = FieldRef::FoldSpecificField(fold_specific_field.clone());
+                let subject = OperationSubject::FoldSpecificField(fold_specific_field.clone());
 
-        for filter_directive in &transform_group.filter {
-            match make_filter_expr(
-                schema,
-                component_path,
-                tags,
-                starting_vid,
-                subject.clone(),
-                filter_directive,
-            ) {
-                Ok(filter) => post_filters.push(filter),
-                Err(e) => errors.extend(e),
-            }
-        }
-        for output in &transform_group.output {
-            let final_output_name = match output.name.as_ref() {
-                Some(explicit_name) => {
-                    output_handler
-                        .register_explicitly_named_output(explicit_name.clone(), field_ref.clone());
-                    explicit_name.clone()
-                }
-                None => {
-                    let local_name = if starting_field.alias.is_some() {
-                        // The field has an alias already, so don't bother adding the edge name
-                        // to the output name.
-                        ""
-                    } else {
-                        // The field does not have an alias, so use the edge name as the base
-                        // of the name.
-                        starting_field.name.as_ref()
-                    };
-                    output_handler.register_locally_named_output(
-                        local_name,
-                        Some(Box::new([fold_specific_field.kind.transform_suffix()].into_iter())),
-                        field_ref.clone(),
-                    )
-                }
-            };
-
-            let prior_output_by_that_name =
-                fold_specific_outputs.insert(final_output_name.clone(), field_ref.clone());
-            if let Some(prior_output_kind) = prior_output_by_that_name {
-                errors.push(FrontendError::MultipleOutputsWithSameName(DuplicatedNamesConflict {
-                    duplicates: btreemap! {
-                        final_output_name.to_string() => vec![
-                            (starting_field.name.to_string(), prior_output_kind.field_name().to_string()),
-                            (starting_field.name.to_string(), fold_specific_field.kind.field_name().to_string()),
-                        ]
+                for filter_directive in &transform_group.filter {
+                    match make_filter_expr(
+                        schema,
+                        component_path,
+                        tags,
+                        starting_vid,
+                        subject.clone(),
+                        filter_directive,
+                    ) {
+                        Ok(filter) => post_filters.push(filter),
+                        Err(e) => errors.extend(e),
                     }
-                }))
-            }
-        }
-        for tag_directive in &transform_group.tag {
-            let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref());
-            if let Some(tag_name) = tag_name {
-                if let Err(e) = tags.register_tag(tag_name, field_ref.clone(), component_path) {
-                    errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
-            } else {
-                errors.push(FrontendError::explicit_tag_name_required(&subject))
+                for output in &transform_group.output {
+                    let final_output_name = match output.name.as_ref() {
+                        Some(explicit_name) => {
+                            output_handler.register_explicitly_named_output(
+                                explicit_name.clone(),
+                                field_ref.clone(),
+                            );
+                            explicit_name.clone()
+                        }
+                        None => {
+                            let local_name = if starting_field.alias.is_some() {
+                                // The field has an alias already, so don't bother adding the edge name
+                                // to the output name.
+                                ""
+                            } else {
+                                // The field does not have an alias, so use the edge name as the base
+                                // of the name.
+                                starting_field.name.as_ref()
+                            };
+                            output_handler.register_locally_named_output(
+                                local_name,
+                                Some(Box::new(
+                                    [fold_specific_field.kind.transform_suffix()].into_iter(),
+                                )),
+                                field_ref.clone(),
+                            )
+                        }
+                    };
+
+                    let prior_output_by_that_name =
+                        fold_specific_outputs.insert(final_output_name.clone(), field_ref.clone());
+                    if let Some(prior_output_kind) = prior_output_by_that_name {
+                        errors.push(FrontendError::MultipleOutputsWithSameName(DuplicatedNamesConflict {
+                            duplicates: btreemap! {
+                                final_output_name.to_string() => vec![
+                                    (starting_field.name.to_string(), prior_output_kind.field_name().to_string()),
+                                    (starting_field.name.to_string(), fold_specific_field.kind.field_name().to_string()),
+                                ]
+                            }
+                        }))
+                    }
+                }
+                for tag_directive in &transform_group.tag {
+                    let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref());
+                    if let Some(tag_name) = tag_name {
+                        if let Err(e) =
+                            tags.register_tag(tag_name, field_ref.clone(), component_path)
+                        {
+                            errors.push(FrontendError::MultipleTagsWithSameName(
+                                tag_name.to_string(),
+                            ));
+                        }
+                    } else {
+                        errors.push(FrontendError::explicit_tag_name_required(&subject))
+                    }
+                }
+            }
+            Err(e) => {
+                errors.push(e);
             }
         }
     }

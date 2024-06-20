@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, fmt::Write};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    graphql_query::directives::{TransformDirective, TransformOp},
     ir::{
         Argument, FieldValue, FoldSpecificField, OperationSubject, Transform, TransformBase,
         TransformedField, Type,
@@ -75,9 +76,6 @@ pub enum FrontendError {
 
     #[error("Found an unsupported {1} directive on an edge with @fold: {0}")]
     UnsupportedDirectiveOnFoldedEdge(String, String),
-
-    #[error("Found a @transform directive applied to edge \"{0}\" which is not marked @fold, and therefore cannot be transformed. Did you mean to apply @fold to the edge before the @transform directive?")]
-    CannotTransformEdgeWithoutFold(String),
 
     #[error("Missing required edge parameter \"{0}\" on edge {1}")]
     MissingRequiredEdgeParameter(String, String),
@@ -390,6 +388,14 @@ pub enum TransformTypeError {
         but is used on {1}.{2}"
     )]
     FoldSpecificTransformUsedOnProperty(String, String, String),
+
+    #[error(
+        "Transform operation \"{0}\" is not supported on edges, but was applied to edge \"{1}\".{2}"
+    )]
+    UnsupportedTransformUsedOnEdge(String, String, String),
+
+    #[error("Found a @transform directive applied to edge \"{0}\" which is not marked @fold, and therefore cannot be transformed.{1}")]
+    CannotTransformEdgeWithoutFold(String, String),
 }
 
 impl TransformTypeError {
@@ -417,6 +423,55 @@ impl TransformTypeError {
         };
 
         Self::FoldSpecificTransformUsedOnProperty(transform_op.to_string(), base_name, advice)
+    }
+
+    pub(crate) fn add_errors_for_transform_used_on_unfolded_edge(
+        edge_name: &str,
+        transform_directive: &TransformDirective,
+        errors: &mut Vec<FrontendError>,
+    ) {
+        match &transform_directive.kind {
+            TransformOp::Count => {
+                // The user probably just forgot `@fold` on the edge, let's suggest that advice.
+                errors.push(
+                    Self::CannotTransformEdgeWithoutFold(
+                        edge_name.to_string(),
+                        " Did you mean to apply @fold to the edge before the @transform directive?"
+                            .into(),
+                    )
+                    .into(),
+                );
+            }
+            _ => {
+                // The user is using a transform operation that is inappropriate for edges,
+                // regardless of whether `@fold` is used or not.
+                // They might have meant to apply the `@transform` on a property instead.
+                // We should suggest that instead of suggesting adding `@fold` on the edge.
+                errors.push(
+                    Self::CannotTransformEdgeWithoutFold(edge_name.to_string(), "".into()).into(),
+                );
+                errors.push(
+                    Self::UnsupportedTransformUsedOnEdge(
+                        transform_directive.kind.op_name().to_string(),
+                        edge_name.to_string(),
+                        " Did you mean to apply the @transform directive to some property instead?"
+                            .to_string(),
+                    )
+                    .into(),
+                );
+            }
+        }
+    }
+
+    pub(crate) fn unsupported_transform_used_on_folded_edge(
+        edge_name: &str,
+        transform_op: &str,
+    ) -> Self {
+        Self::UnsupportedTransformUsedOnEdge(
+            transform_op.to_string(),
+            edge_name.to_string(),
+            " Did you mean to use @transform(op: \"count\") instead?".to_string(),
+        )
     }
 }
 
