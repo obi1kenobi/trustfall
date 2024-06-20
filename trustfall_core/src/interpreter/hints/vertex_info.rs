@@ -164,11 +164,22 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 
         let current_vertex = self.current_vertex();
 
-        let properties = current_component
-            .outputs
-            .values()
-            .filter(|c| c.defined_at() == current_vertex.vid)
-            .map(|c| RequiredProperty::new(c.field_name_arc()));
+        let properties = current_component.outputs.values().filter_map(|c| {
+            let maybe_name = match c {
+                FieldRef::ContextField(field) => {
+                    (field.vertex_id == current_vertex.vid).then_some(&field.field_name)
+                }
+                FieldRef::FoldSpecificField(..) => None,
+                FieldRef::TransformedField(transformed) => match &transformed.value.base {
+                    TransformBase::ContextField(field) => {
+                        (field.vertex_id == current_vertex.vid).then_some(&field.field_name)
+                    }
+                    TransformBase::FoldSpecificField(..) => None,
+                },
+            };
+
+            maybe_name.map(Arc::clone).map(RequiredProperty::new)
+        });
 
         let properties = properties.chain(current_vertex.filters.iter().map(move |f| {
             RequiredProperty::new(match f.left() {

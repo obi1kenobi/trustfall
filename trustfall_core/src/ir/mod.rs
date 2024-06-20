@@ -350,22 +350,6 @@ impl FieldRef {
         }
     }
 
-    pub fn field_name(&self) -> &str {
-        match self {
-            FieldRef::ContextField(c) => c.field_name.as_ref(),
-            FieldRef::FoldSpecificField(f) => f.kind.field_name(),
-            FieldRef::TransformedField(..) => todo!(),
-        }
-    }
-
-    pub fn field_name_arc(&self) -> Arc<str> {
-        match self {
-            FieldRef::ContextField(c) => c.field_name.clone(),
-            FieldRef::FoldSpecificField(f) => f.kind.field_name().into(),
-            FieldRef::TransformedField(..) => todo!(),
-        }
-    }
-
     /// The vertex ID at which this reference is considered defined.
     pub fn defined_at(&self) -> Vid {
         match self {

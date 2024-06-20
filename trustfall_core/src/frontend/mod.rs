@@ -1,6 +1,6 @@
 //! Frontend for Trustfall: takes a parsed query, validates it, and turns it into IR.
 #![allow(dead_code, unused_variables, unused_mut)]
-use std::{collections::BTreeMap, iter::successors, num::NonZeroUsize, sync::Arc};
+use std::{collections::BTreeMap, fmt::Write, iter::successors, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{
     types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
@@ -312,8 +312,8 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
 
     let all_outputs = output_handler.finish();
     if let Err(duplicates) = check_for_duplicate_output_names(all_outputs) {
-        let all_vertices = collect_ir_vertices(&root_component);
-        let errs = make_duplicated_output_names_error(&all_vertices, duplicates);
+        let (all_vertices, all_folds) = collect_ir_vertices_and_folds(&root_component);
+        let errs = make_duplicated_output_names_error(&all_vertices, &all_folds, duplicates);
         errors.extend(errs);
     }
 
@@ -329,22 +329,27 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
     }
 }
 
-fn collect_ir_vertices(root_component: &IRQueryComponent) -> BTreeMap<Vid, IRVertex> {
-    let mut result = Default::default();
-    collect_ir_vertices_recursive_step(&mut result, root_component);
-    result
+fn collect_ir_vertices_and_folds(
+    root_component: &IRQueryComponent,
+) -> (BTreeMap<Vid, IRVertex>, BTreeMap<Eid, Arc<IRFold>>) {
+    let mut vertices = Default::default();
+    let mut folds = Default::default();
+    collect_ir_vertices_and_folds_recursive_step(&mut vertices, &mut folds, root_component);
+    (vertices, folds)
 }
 
-fn collect_ir_vertices_recursive_step(
-    result: &mut BTreeMap<Vid, IRVertex>,
+fn collect_ir_vertices_and_folds_recursive_step(
+    vertices: &mut BTreeMap<Vid, IRVertex>,
+    folds: &mut BTreeMap<Eid, Arc<IRFold>>,
     component: &IRQueryComponent,
 ) {
-    result.extend(component.vertices.iter().map(|(k, v)| (*k, v.clone())));
+    vertices.extend(component.vertices.iter().map(|(k, v)| (*k, v.clone())));
 
-    component
-        .folds
-        .values()
-        .for_each(move |fold| collect_ir_vertices_recursive_step(result, &fold.component))
+    component.folds.iter().for_each(move |(eid, fold)| {
+        folds.insert(*eid, Arc::clone(fold));
+
+        collect_ir_vertices_and_folds_recursive_step(vertices, folds, &fold.component);
+    })
 }
 
 fn fill_in_query_variables(
@@ -403,6 +408,7 @@ fn fill_in_query_variables(
 
 fn make_duplicated_output_names_error(
     ir_vertices: &BTreeMap<Vid, IRVertex>,
+    folds: &BTreeMap<Eid, Arc<IRFold>>,
     duplicates: BTreeMap<Arc<str>, Vec<FieldRef>>,
 ) -> Vec<FrontendError> {
     let conflict_info = DuplicatedNamesConflict {
@@ -411,21 +417,38 @@ fn make_duplicated_output_names_error(
             .map(|(k, fields)| {
                 let duplicate_values = fields
                     .iter()
-                    .map(|field| match field {
-                        FieldRef::ContextField(field) => {
-                            let vid = field.vertex_id;
-                            (ir_vertices[&vid].type_name.to_string(), field.field_name.to_string())
-                        }
-                        FieldRef::FoldSpecificField(field) => {
-                            let vid = field.fold_root_vid;
-                            match field.kind {
-                                FoldSpecificFieldKind::Count => (
-                                    ir_vertices[&vid].type_name.to_string(),
-                                    "fold count value".to_string(),
-                                ),
+                    .map(|field| {
+                        let field_name = describe_field_ref(field);
+
+                        let type_name = match field {
+                            FieldRef::ContextField(field) => {
+                                let vid = field.vertex_id;
+                                ir_vertices[&vid].type_name.to_string()
                             }
-                        }
-                        FieldRef::TransformedField(field) => todo!(),
+                            FieldRef::FoldSpecificField(field) => match field.kind {
+                                FoldSpecificFieldKind::Count => {
+                                    folds[&field.fold_eid].edge_name.to_string()
+                                }
+                            },
+                            FieldRef::TransformedField(transformed) => {
+                                match &transformed.value.base {
+                                    TransformBase::ContextField(field) => {
+                                        let vid = field.vertex_id;
+                                        ir_vertices[&vid].type_name.to_string()
+                                    }
+                                    TransformBase::FoldSpecificField(field) => {
+                                        let vid = field.fold_root_vid;
+                                        match field.kind {
+                                            FoldSpecificFieldKind::Count => {
+                                                folds[&field.fold_eid].edge_name.to_string()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
+
+                        (type_name, field_name)
                     })
                     .collect();
                 (k.to_string(), duplicate_values)
@@ -597,7 +620,7 @@ where
     let component_outputs = match check_for_duplicate_output_names(maybe_duplicated_outputs) {
         Ok(outputs) => outputs,
         Err(duplicates) => {
-            return Err(make_duplicated_output_names_error(&ir_vertices, duplicates))
+            return Err(make_duplicated_output_names_error(&ir_vertices, &folds, duplicates))
         }
     };
 
@@ -1568,15 +1591,17 @@ where
 
             let prior_output_by_that_name =
                 fold_specific_outputs.insert(final_output_name.clone(), field_ref.clone());
-            if let Some(prior_output_kind) = prior_output_by_that_name {
+            if let Some(prior_output) = prior_output_by_that_name {
+                let new_field_description =
+                    describe_edge_with_fold_count_and_transforms(&subsequent_transforms);
+
                 errors.push(FrontendError::MultipleOutputsWithSameName(DuplicatedNamesConflict {
                     duplicates: btreemap! {
                         final_output_name.to_string() => vec![
-                            (starting_field.name.to_string(), prior_output_kind.field_name().to_string()),
-                            todo!(),
-                            // (starting_field.name.to_string(), fold_specific_field.kind.field_name().to_string()),
+                            (edge_name.to_string(), describe_field_ref(&prior_output)),
+                            (edge_name.to_string(), new_field_description),
                         ]
-                    }
+                    },
                 }))
             }
         }
@@ -1607,6 +1632,40 @@ where
         post_filters,
         fold_specific_outputs,
     })
+}
+
+fn describe_edge_with_fold_count_and_transforms(subsequent_transforms: &[Transform]) -> String {
+    let mut buf = String::with_capacity(32);
+    buf.write_str(FoldSpecificFieldKind::Count.field_name()).expect("write failed");
+    for transform in subsequent_transforms {
+        buf.write_char('.').expect("write failed");
+        buf.write_str(transform.operation_output_name()).expect("write failed");
+    }
+    buf
+}
+
+fn describe_field_ref(field_ref: &FieldRef) -> String {
+    match field_ref {
+        FieldRef::ContextField(f) => f.field_name.to_string(),
+        FieldRef::FoldSpecificField(f) => f.kind.field_name().to_string(),
+        FieldRef::TransformedField(transformed) => {
+            let mut buf = String::with_capacity(32);
+            match &transformed.value.base {
+                TransformBase::ContextField(f) => {
+                    buf.write_str(&f.field_name).expect("write failed");
+                }
+                TransformBase::FoldSpecificField(f) => {
+                    buf.write_str(f.kind.field_name()).expect("write failed");
+                }
+            }
+
+            for transform in &transformed.value.transforms {
+                buf.write_char('.').expect("write failed");
+                buf.write_str(transform.operation_output_name()).expect("write failed");
+            }
+            buf
+        }
+    }
 }
 
 #[cfg(test)]
