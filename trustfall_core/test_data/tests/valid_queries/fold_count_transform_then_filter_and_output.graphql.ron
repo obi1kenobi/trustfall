@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 28, max: 31) {
+        ... on Composite {
+            primeFactor
+                @fold
+                @transform(op: "count")
+                @transform(op: "abs")
+                @filter(op: ">", value: ["$two"])
+                @output
+            {
+                factors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "two": Uint64(2),
+    },
+)
