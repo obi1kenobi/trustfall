@@ -16,6 +16,7 @@ use crate::{
 use super::{
     error::QueryArgumentsError,
     filtering::apply_filter,
+    tags::compute_tag_with_separate_value,
     transformation::{
         apply_transforms, push_transform_argument_tag_values_onto_stack,
         push_transform_argument_tag_values_onto_stack_during_main_query,
@@ -570,56 +571,21 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     // Get any imported tag values needed inside the fold component or one of its subcomponents.
     for imported_field in fold.imported_tags.iter() {
-        match &imported_field {
-            FieldRef::ContextField(field) => {
-                let vertex_id = field.vertex_id;
-                let activated_vertex_iterator: ContextIterator<'query, AdapterT::Vertex> =
-                    Box::new(iterator.map(move |x| x.activate_vertex(&vertex_id)));
-
-                let field_vertex = &parent_component.vertices[&field.vertex_id];
-                let type_name = &field_vertex.type_name;
-
-                let query = carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-
-                let context_and_value_iterator = adapter.resolve_property(
-                    activated_vertex_iterator,
-                    type_name,
-                    &field.field_name,
-                    &resolve_info,
-                );
-                carrier.query = Some(resolve_info.into_inner());
-
-                let cloned_field = imported_field.clone();
-                iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
-                    // Check whether the tagged value is coming from an `@optional` scope
-                    // that did not exist, in order to satisfy its filtering semantics.
-                    let tag_value = if context.vertices[&vertex_id].is_some() {
-                        TaggedValue::Some(value)
-                    } else {
-                        TaggedValue::NonexistentOptional
-                    };
-                    context.imported_tags.insert(cloned_field.clone(), tag_value);
-                    context
-                }));
-            }
-            FieldRef::FoldSpecificField(fold_specific_field) => {
-                let cloned_field = imported_field.clone();
-                let fold_eid = fold_specific_field.fold_eid;
-                iterator = Box::new(
-                    compute_fold_specific_field_with_separate_value(
-                        fold_specific_field.fold_eid,
-                        &fold_specific_field.kind,
-                        iterator,
-                    )
-                    .map(move |(mut ctx, tagged_value)| {
-                        ctx.imported_tags.insert(cloned_field.clone(), tagged_value);
-                        ctx
-                    }),
-                );
-            }
-            FieldRef::TransformedField(_) => todo!(),
-        }
+        let cloned_field = imported_field.clone();
+        iterator = Box::new(
+            compute_tag_with_separate_value::<AdapterT, false>(
+                adapter.as_ref(),
+                carrier,
+                parent_component,
+                expanding_from.vid,
+                imported_field,
+                iterator,
+            )
+            .map(move |(mut ctx, tagged_value)| {
+                ctx.imported_tags.insert(cloned_field.clone(), tagged_value);
+                ctx
+            }),
+        );
     }
 
     // Get the initial vertices inside the folded scope.
@@ -1074,6 +1040,10 @@ pub(super) fn compute_context_field_with_separate_value<
     'query,
     AdapterT: Adapter<'query>,
     V: AsVertex<AdapterT::Vertex> + 'query,
+    // For the contexts inside the input iterator, we sometimes may need to change what their
+    // `ctx.active_vertex` value holds. This const generic controls whether we restore
+    // the contents of `ctx.active_vertex` to its prior value after we're done, or not.
+    const RESTORE_CONTEXT: bool,
 >(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -1084,12 +1054,17 @@ pub(super) fn compute_context_field_with_separate_value<
     let vertex_id = context_field.vertex_id;
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
-        let moved_iterator = iterator.map(move |mut context| {
-            let active_vertex = context.active_vertex.clone();
-            let new_vertex = context.vertices[&vertex_id].clone();
-            context.suspended_vertices.push(active_vertex);
-            context.move_to_vertex(new_vertex)
-        });
+        let resolve_property_input_iterator: Box<dyn Iterator<Item = DataContext<V>> + 'query> =
+            if RESTORE_CONTEXT {
+                Box::new(iterator.map(move |mut context| {
+                    let active_vertex = context.active_vertex.clone();
+                    let new_vertex = context.vertices[&vertex_id].clone();
+                    context.suspended_vertices.push(active_vertex);
+                    context.move_to_vertex(new_vertex)
+                }))
+            } else {
+                Box::new(iterator.map(move |ctx| ctx.activate_vertex(&vertex_id)))
+            };
 
         let type_name = &vertex.type_name;
         let query = carrier.query.take().expect("query was not returned");
@@ -1097,23 +1072,27 @@ pub(super) fn compute_context_field_with_separate_value<
 
         let context_and_value_iterator = adapter
             .resolve_property(
-                Box::new(moved_iterator),
+                resolve_property_input_iterator,
                 type_name,
                 &context_field.field_name,
                 &resolve_info,
             )
-            .map(move |(mut context, value)| {
-                let tagged_value = if context.vertices[&vertex_id].is_some() {
+            .map(move |(mut ctx, value)| {
+                let tagged_value = if ctx.vertices[&vertex_id].is_some() {
                     TaggedValue::Some(value)
                 } else {
                     // The value is coming from an @optional scope that didn't exist.
                     TaggedValue::NonexistentOptional
                 };
 
-                // Make sure that the context has the same "current" token
-                // as before evaluating the context field.
-                let old_current_token = context.suspended_vertices.pop().unwrap();
-                (context.move_to_vertex(old_current_token), tagged_value)
+                if RESTORE_CONTEXT {
+                    // Make sure that the context has the same "current" token
+                    // as before evaluating the context field.
+                    let old_current_token = ctx.suspended_vertices.pop().unwrap();
+                    (ctx.move_to_vertex(old_current_token), tagged_value)
+                } else {
+                    (ctx, tagged_value)
+                }
             });
         carrier.query = Some(resolve_info.into_inner());
 

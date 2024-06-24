@@ -25,7 +25,9 @@ pub(super) fn push_transform_argument_tag_values_onto_stack_during_main_query<
                          inner_iterator: ContextIterator<'query, AdapterT::Vertex>|
           -> ContextIterator<'query, AdapterT::Vertex> {
         Box::new(
-            compute_tag_with_separate_value(
+            // TODO: We should propagate `RESTORE_CONTEXT` here instead of setting it to `true`,
+            //       because it might be unnecessary.
+            compute_tag_with_separate_value::<AdapterT, true>(
                 adapter,
                 inner_carrier,
                 component,

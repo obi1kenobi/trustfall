@@ -279,7 +279,7 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
             apply_filter_with_static_argument_value(filter, right_value, iterator)
         }
         Some(Argument::Tag(field_ref)) => {
-            let argument_value_iterator = compute_tag_with_separate_value(
+            let argument_value_iterator = compute_tag_with_separate_value::<AdapterT, true>(
                 adapter,
                 carrier,
                 component,

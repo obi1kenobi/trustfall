@@ -265,7 +265,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         contexts: ContextIterator<'vertex, V>,
     ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
         let mut carrier = QueryCarrier { query: Some(self.query) };
-        let iterator = compute_context_field_with_separate_value(
+        let iterator = compute_context_field_with_separate_value::<AdapterT, V, true>(
             adapter,
             &mut carrier,
             self.resolve_on_component,
