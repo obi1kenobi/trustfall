@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        name @tag
+
+        # The tag provided here is the wrong type:
+        # we can't add a string to an integer.
+        value @transform(op: "+", value: ["%name"]) @output
+    }
+}"#,
+    arguments: {},
+)

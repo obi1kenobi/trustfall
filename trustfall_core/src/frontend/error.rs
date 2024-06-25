@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     graphql_query::directives::{TransformDirective, TransformOp},
     ir::{
-        Argument, FieldValue, FoldSpecificField, OperationSubject, Transform, TransformBase,
-        TransformedField, Type,
+        Argument, FieldValue, FoldSpecificField, FoldSpecificFieldKind, OperationSubject,
+        Transform, TransformBase, TransformedField, Type,
     },
     util::DisplayVec,
 };
@@ -23,8 +23,11 @@ pub enum FrontendError {
     #[error("Filter on {0} uses undefined tag: %{1}")]
     UndefinedTagInFilter(String, String),
 
+    #[error("Transform on {0} uses undefined tag: %{1}")]
+    UndefinedTagInTransform(String, String),
+
     #[error(
-        "Filter on {0} uses tag \"{1}\" which is not yet defined at that point \
+        "An operation on {0} uses tag \"{1}\" which is not yet defined at that point \
         in the query. Please reorder the query components so that the @tag directive \
         comes before all uses of its tagged value."
     )]
@@ -128,11 +131,21 @@ pub enum FrontendError {
 
 impl FrontendError {
     #[inline]
+    pub(super) fn represent_property(property_name: &str) -> String {
+        format!("property \"{property_name}\"")
+    }
+
+    #[inline]
+    pub(super) fn represent_fold_specific_field(kind: &FoldSpecificFieldKind) -> String {
+        format!("transformed field \"{}\"", kind.field_name())
+    }
+
+    #[inline]
     fn represent_subject(subject: &OperationSubject) -> String {
         match subject {
             OperationSubject::LocalField(field) => {
                 let property_name = &field.field_name;
-                format!("property \"{property_name}\"")
+                Self::represent_property(property_name)
             }
             OperationSubject::TransformedField(field) => {
                 let mut buf = String::with_capacity(32);
@@ -140,8 +153,7 @@ impl FrontendError {
                 buf
             }
             OperationSubject::FoldSpecificField(field) => {
-                let field_name = field.kind.field_name();
-                format!("transformed field \"{field_name}\"")
+                Self::represent_fold_specific_field(&field.kind)
             }
         }
     }
@@ -402,6 +414,16 @@ pub enum TransformTypeError {
 
     #[error("Found a @transform directive applied to edge \"{0}\" which is not marked @fold, and therefore cannot be transformed.{1}")]
     CannotTransformEdgeWithoutFold(String, String),
+
+    #[error(
+        "Transform operation \"{0}\" can only be applied on {1}, but was used on {2} of incompatible type \"{3}\"."
+    )]
+    TypeMismatchBetweenTransformOperationAndSubject(String, String, String, String),
+
+    #[error(
+        "Transform operation \"{0}\" requires an argument of type {1}, but was used with an argument of incompatible type \"{2}\"."
+    )]
+    TypeMismatchBetweenTransformOperationAndArgument(String, String, String),
 }
 
 impl TransformTypeError {
@@ -412,7 +434,7 @@ impl TransformTypeError {
         type_so_far: &Type,
     ) -> Self {
         let base_name = if transforms_so_far.is_empty() {
-            format!("property \"{property_name}\"")
+            FrontendError::represent_property(property_name)
         } else {
             let mut buf = String::with_capacity(16);
             write_name_of_transformed_field_by_parts(&mut buf, property_name, transforms_so_far);
@@ -483,6 +505,33 @@ impl TransformTypeError {
     pub(crate) fn duplicated_count_transform_on_folded_edge(edge_name: &str) -> Self {
         Self::DuplicatedCountTransformOnEdge(edge_name.to_string())
     }
+
+    pub(crate) fn operation_requires_list_type_subject(op: &str, subject_representation: String, subject_type: &Type) -> Self {
+        Self::TypeMismatchBetweenTransformOperationAndSubject(
+            op.to_string(),
+            "list-typed values".to_string(),
+            subject_representation,
+            subject_type.to_string(),
+        )
+    }
+
+    pub(crate) fn operation_requires_different_type_subject(op: &str, required_type: &Type, subject_representation: String, subject_type: &Type) -> Self {
+        Self::TypeMismatchBetweenTransformOperationAndSubject(
+            op.to_string(),
+            format!("values of type \"{required_type}\""),
+            subject_representation,
+            subject_type.to_string(),
+        )
+    }
+
+    pub(crate) fn operation_requires_different_choice_of_type_subject(op: &str, required_type_a: &Type, required_type_b: &Type, subject_representation: String, subject_type: &Type) -> Self {
+        Self::TypeMismatchBetweenTransformOperationAndSubject(
+            op.to_string(),
+            format!("values of type \"{required_type_a}\" or \"{required_type_b}\""),
+            subject_representation,
+            subject_type.to_string(),
+        )
+    }
 }
 
 fn write_name_of_transformed_field(buf: &mut String, field: &TransformedField) {
@@ -494,7 +543,7 @@ fn write_name_of_transformed_field(buf: &mut String, field: &TransformedField) {
     write_name_of_transformed_field_by_parts(buf, base_name, &field.value.transforms);
 }
 
-fn write_name_of_transformed_field_by_parts(
+pub(super) fn write_name_of_transformed_field_by_parts(
     buf: &mut String,
     base_name: &str,
     transforms: &[Transform],

@@ -6,8 +6,6 @@ use async_graphql_parser::{
     types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
     Positioned,
 };
-use error::TransformTypeError;
-use filters::make_filter_expr;
 use smallvec::SmallVec;
 
 use crate::{
@@ -22,16 +20,21 @@ use crate::{
         get_typename_meta_field, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
         FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
         IRVertex, IndexedQuery, LocalField, Operation, OperationSubject, Recursive, Tid, Transform,
-        TransformBase, TransformedField, TransformedValue, Type, Vid, TYPENAME_META_FIELD,
+        TransformBase, TransformedField, TransformedValue, Type, VariableRef, Vid,
+        TYPENAME_META_FIELD,
     },
     schema::{get_builtin_scalars, FieldOrigin, Schema},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
 };
 
 use self::{
-    error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
+    error::{
+        DuplicatedNamesConflict, FilterTypeError, FrontendError, TransformTypeError,
+        ValidationError,
+    },
+    filters::make_filter_expr,
     outputs::OutputHandler,
-    tags::TagHandler,
+    tags::{TagHandler, TagLookupError},
     util::{get_underlying_named_type, ComponentPath},
     validation::validate_query_against_schema,
 };
@@ -374,6 +377,11 @@ fn fill_in_query_variables(
             Some(Argument::Variable(vref)) => Some(vref),
             _ => None,
         });
+    // TODO: include transformed uses of variables here:
+    //       - transform on output property
+    //       - transform on output of fold-specific field
+    //       - transform on filter subject
+    //       - retransform of transformed property
     for vref in all_variable_uses {
         let existing_type = variables
             .entry(vref.variable_name.clone())
@@ -861,36 +869,28 @@ fn make_vertex<'query>(
             let mut current_type = property_type.clone();
             let mut next_transform_group = property_field.transform_group.as_ref();
             while let Some(transform_group) = next_transform_group {
-                let next_transform = match extract_property_like_transform_from_directive(
-                    &transform_group.transform,
-                    property_name,
-                    &transforms,
-                    &current_type,
-                ) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        // This error should already have been reported while initially
-                        // processing transforms for output and tag purposes
-                        // in `fill_in_vertex_data()`.
-                        // We have tests enforcing this.
-                        //
-                        // Ignore it here.
-                        break;
-                    }
-                };
-                current_type = match determine_transformed_field_type(current_type, &next_transform)
-                {
-                    Ok(t) => t,
-                    Err(e) => {
-                        // This error should already have been reported while initially
-                        // processing transforms for output and tag purposes
-                        // in `fill_in_vertex_data()`.
-                        // We have tests enforcing this.
-                        //
-                        // Ignore it here.
-                        break;
-                    }
-                };
+                let (next_transform, next_type) =
+                    match extract_property_like_transform_from_directive(
+                        tags,
+                        component_path,
+                        vid,
+                        &transform_group.transform,
+                        property_name,
+                        &transforms,
+                        &current_type,
+                    ) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            // This error should already have been reported while initially
+                            // processing transforms for output and tag purposes
+                            // in `fill_in_vertex_data()`.
+                            // We have tests enforcing this.
+                            //
+                            // Ignore it here.
+                            break;
+                        }
+                    };
+                current_type = next_type;
                 transforms.push(next_transform);
 
                 for filter_directive in &transform_group.filter {
@@ -1234,7 +1234,10 @@ fn fill_in_property_data<'query>(
         }
 
         if let Some(transform_group) = next_transform_group {
-            let next_transform = match extract_property_like_transform_from_directive(
+            let (next_transform, next_type) = match extract_property_like_transform_from_directive(
+                tags,
+                component_path,
+                current_vid,
                 &transform_group.transform,
                 &property_node.name,
                 &transforms,
@@ -1242,7 +1245,7 @@ fn fill_in_property_data<'query>(
             ) {
                 Ok(t) => t,
                 Err(e) => {
-                    errors.push(e.into());
+                    errors.push(e);
                     break;
                 }
             };
@@ -1251,13 +1254,7 @@ fn fill_in_property_data<'query>(
             tag_directives = transform_group.tag.as_slice();
             next_transform_group = transform_group.retransform.as_deref();
 
-            current_type = match determine_transformed_field_type(current_type, &next_transform) {
-                Ok(t) => t,
-                Err(e) => {
-                    errors.push(e);
-                    break;
-                }
-            };
+            current_type = next_type;
             transforms.push(next_transform);
         } else {
             break;
@@ -1303,114 +1300,286 @@ fn make_field_ref_for_possibly_transformed_property(
     }
 }
 
+enum TransformErrorSource {
+    TypeCheck(TransformTypeError),
+    Tag(TagLookupError),
+}
+
+impl From<TagLookupError> for TransformErrorSource {
+    fn from(value: TagLookupError) -> Self {
+        Self::Tag(value)
+    }
+}
+
+impl From<TransformTypeError> for TransformErrorSource {
+    fn from(value: TransformTypeError) -> Self {
+        Self::TypeCheck(value)
+    }
+}
+
 fn extract_property_like_transform_from_directive(
+    tags: &mut TagHandler<'_>,
+    use_path: &ComponentPath,
+    use_vid: Vid,
     transform_directive: &TransformDirective,
     property_name: &str,
     transforms_so_far: &[Transform],
     type_so_far: &Type,
-) -> Result<Transform, TransformTypeError> {
-    extract_transform_from_directive(transform_directive, type_so_far, || {
-        TransformTypeError::fold_specific_transform_on_propertylike_value(
-            transform_directive.kind.op_name(),
-            property_name,
-            transforms_so_far,
-            type_so_far,
-        )
+) -> Result<(Transform, Type), FrontendError> {
+    extract_transform_and_next_type_from_directive(
+        tags,
+        use_path,
+        use_vid,
+        transform_directive,
+        type_so_far,
+        || {
+            if transforms_so_far.is_empty() {
+                FrontendError::represent_property(property_name)
+            } else {
+                let mut buf = String::with_capacity(32);
+                error::write_name_of_transformed_field_by_parts(
+                    &mut buf,
+                    property_name,
+                    transforms_so_far,
+                );
+                buf
+            }
+        },
+        || {
+            TransformTypeError::fold_specific_transform_on_propertylike_value(
+                transform_directive.kind.op_name(),
+                property_name,
+                transforms_so_far,
+                type_so_far,
+            )
+        },
+    )
+    .map_err(|e| match e {
+        TransformErrorSource::TypeCheck(type_err) => type_err.into(),
+        TransformErrorSource::Tag(tag_err) => {
+            let subject = if transforms_so_far.is_empty() {
+                FrontendError::represent_property(property_name)
+            } else {
+                let mut buf = String::with_capacity(32);
+                error::write_name_of_transformed_field_by_parts(
+                    &mut buf,
+                    property_name,
+                    transforms_so_far,
+                );
+                buf
+            };
+
+            match tag_err {
+                TagLookupError::UndefinedTag(tag_name) => {
+                    FrontendError::UndefinedTagInTransform(subject, tag_name)
+                }
+                TagLookupError::TagUsedBeforeDefinition(tag_name) => {
+                    FrontendError::TagUsedBeforeDefinition(subject, tag_name)
+                }
+                TagLookupError::TagDefinedInsideFold(tag_name) => {
+                    FrontendError::TagUsedOutsideItsFoldedSubquery(subject, tag_name)
+                }
+            }
+        }
     })
 }
 
 fn extract_transform_on_fold_count_from_directive(
+    tags: &mut TagHandler<'_>,
+    use_path: &ComponentPath,
+    use_vid: Vid,
     transform_directive: &TransformDirective,
     edge_name: &str,
+    transforms_so_far: &[Transform],
     type_so_far: &Type,
-) -> Result<Transform, TransformTypeError> {
-    extract_transform_from_directive(transform_directive, type_so_far, || {
-        // A fold-specific filter is used *after* a fold-count value has already been created.
-        // For example: `some_edge @fold @transform(op: "count") @transform(op: "count")`
-        //                                                       ^^^^^^^^^^^^^^^^^^^^^^^
-        //                                                       we are here, this is the error
-        TransformTypeError::duplicated_count_transform_on_folded_edge(edge_name)
+) -> Result<(Transform, Type), FrontendError> {
+    extract_transform_and_next_type_from_directive(
+        tags,
+        use_path,
+        use_vid,
+        transform_directive,
+        type_so_far,
+        || {
+            if transforms_so_far.is_empty() {
+                FrontendError::represent_fold_specific_field(&FoldSpecificFieldKind::Count)
+            } else {
+                let mut buf = String::with_capacity(32);
+                error::write_name_of_transformed_field_by_parts(
+                    &mut buf,
+                    FoldSpecificFieldKind::Count.field_name(),
+                    transforms_so_far,
+                );
+                buf
+            }
+        },
+        || {
+            // A fold-specific filter is used *after* a fold-count value has already been created.
+            // For example: `some_edge @fold @transform(op: "count") @transform(op: "count")`
+            //                                                       ^^^^^^^^^^^^^^^^^^^^^^^
+            //                                                       we are here, this is the error
+            TransformTypeError::duplicated_count_transform_on_folded_edge(edge_name)
+        },
+    )
+    .map_err(|e| match e {
+        TransformErrorSource::TypeCheck(type_err) => type_err.into(),
+        TransformErrorSource::Tag(tag_err) => {
+            let subject = if transforms_so_far.is_empty() {
+                FrontendError::represent_fold_specific_field(&FoldSpecificFieldKind::Count)
+            } else {
+                let mut buf = String::with_capacity(32);
+                error::write_name_of_transformed_field_by_parts(
+                    &mut buf,
+                    FoldSpecificFieldKind::Count.field_name(),
+                    transforms_so_far,
+                );
+                buf
+            };
+
+            match tag_err {
+                TagLookupError::UndefinedTag(tag_name) => {
+                    FrontendError::UndefinedTagInTransform(subject, tag_name)
+                }
+                TagLookupError::TagUsedBeforeDefinition(tag_name) => {
+                    FrontendError::TagUsedBeforeDefinition(subject, tag_name)
+                }
+                TagLookupError::TagDefinedInsideFold(tag_name) => {
+                    FrontendError::TagUsedOutsideItsFoldedSubquery(subject, tag_name)
+                }
+            }
+        }
     })
 }
 
-fn extract_transform_from_directive(
+fn extract_transform_and_next_type_from_directive(
+    tags: &mut TagHandler<'_>,
+    use_path: &ComponentPath,
+    use_vid: Vid,
     transform_directive: &TransformDirective,
     type_so_far: &Type,
-    err_func: impl FnOnce() -> TransformTypeError,
-) -> Result<Transform, TransformTypeError> {
+    represent_subject: impl FnOnce() -> String,
+    invalid_count_op: impl FnOnce() -> TransformTypeError,
+) -> Result<(Transform, Type), TransformErrorSource> {
     match &transform_directive.kind {
-        TransformOp::Len => Ok(Transform::Len),
-        TransformOp::Abs => Ok(Transform::Abs),
-        TransformOp::Add(arg) => Ok(Transform::Add(resolve_transform_argument(arg)?)),
-        TransformOp::AddF(arg) => Ok(Transform::AddF(resolve_transform_argument(arg)?)),
-        TransformOp::Count => Err(err_func()),
+        TransformOp::Len => {
+            if type_so_far.is_list() {
+                Ok((Transform::Len, Type::new_named_type("Int", type_so_far.nullable())))
+            } else {
+                Err(TransformTypeError::operation_requires_list_type_subject(
+                    transform_directive.kind.op_name(),
+                    represent_subject(),
+                    type_so_far,
+                )
+                .into())
+            }
+        }
+        TransformOp::Abs => {
+            let base_type = type_so_far.base_type();
+            if base_type == "Int" || base_type == "Float" {
+                Ok((Transform::Abs, Type::new_named_type("Int", type_so_far.nullable())))
+            } else {
+                Err(TransformTypeError::operation_requires_different_choice_of_type_subject(
+                    transform_directive.kind.op_name(),
+                    &Type::new_named_type("Int", true),
+                    &Type::new_named_type("Float", true),
+                    represent_subject(),
+                    type_so_far,
+                )
+                .into())
+            }
+        }
+        TransformOp::Add(arg) => {
+            let base_type = type_so_far.base_type();
+            if base_type != "Int" {
+                return Err(TransformTypeError::operation_requires_different_type_subject(
+                    transform_directive.kind.op_name(),
+                    &Type::new_named_type("Int", true),
+                    represent_subject(),
+                    type_so_far,
+                )
+                .into());
+            }
+
+            let required_type = Type::new_named_type("Int", true);
+            let transform = Transform::Add(resolve_transform_argument(
+                tags,
+                use_path,
+                use_vid,
+                arg,
+                required_type,
+                true,
+                &transform_directive.kind,
+            )?);
+
+            let next_type = Type::new_named_type("Int", type_so_far.nullable());
+            Ok((transform, next_type))
+        }
+        TransformOp::AddF(arg) => {
+            let base_type = type_so_far.base_type();
+            if base_type != "Float" {
+                return Err(TransformTypeError::operation_requires_different_type_subject(
+                    transform_directive.kind.op_name(),
+                    &Type::new_named_type("Float", true),
+                    represent_subject(),
+                    type_so_far,
+                )
+                .into());
+            }
+
+            let required_type = Type::new_named_type("Float", true);
+            let transform = Transform::AddF(resolve_transform_argument(
+                tags,
+                use_path,
+                use_vid,
+                arg,
+                required_type,
+                true,
+                &transform_directive.kind,
+            )?);
+
+            let next_type = Type::new_named_type("Int", type_so_far.nullable());
+            Ok((transform, next_type))
+        }
+        TransformOp::Count => Err(invalid_count_op().into()),
     }
 }
 
-fn resolve_transform_argument(arg: &OperatorArgument) -> Result<Argument, TransformTypeError> {
-    todo!()
-}
-
-fn determine_transformed_field_type(
-    initial_type: Type,
-    next_transform: &Transform,
-) -> Result<Type, FrontendError> {
-    // TODO: refactor type-checking errors into helpers + three categories:
-    // - inappropriate left-hand type for transform
-    // - inappropriate tag type for transform
-    // - inappropriate (conflicting) variable type for transform;
-    //   for this last one, ensure inferring `Int` vs `Int!` narrows to `Int!` correctly
-    //   but other inference mismatches get reported as errors just like from filters
-    match next_transform {
-        Transform::Len => {
-            if initial_type.is_list() {
-                Ok(Type::new_named_type("Int", initial_type.nullable()))
+fn resolve_transform_argument(
+    tags: &mut TagHandler<'_>,
+    use_path: &ComponentPath,
+    use_vid: Vid,
+    arg: &OperatorArgument,
+    required_type: Type,
+    require_non_null_in_variables: bool,
+    transform_op: &TransformOp,
+) -> Result<Argument, TransformErrorSource> {
+    match arg {
+        OperatorArgument::VariableRef(var_name) => {
+            let variable_type = if required_type.nullable() && require_non_null_in_variables {
+                required_type.with_nullability(false)
             } else {
-                Err(todo!())
-            }
-        }
-        Transform::Abs => {
-            let base_type = initial_type.base_type();
-            if base_type == "Int" || base_type == "Float" {
-                Ok(initial_type)
-            } else {
-                Err(todo!())
-            }
-        }
-        Transform::Add(op) => {
-            match op {
-                Argument::Tag(tag) => {
-                    let op_type = tag.field_type();
-                    if op_type.base_type() != "Int" {
-                        return Err(todo!());
-                    }
-                }
-                Argument::Variable(var) => {
-                    let op_type = &var.variable_type;
-                    if op_type.base_type() != "Int" {
-                        return Err(todo!());
-                    }
-                }
+                required_type
             };
-            Ok(Type::new_named_type("Int", initial_type.nullable()))
+            Ok(Argument::Variable(VariableRef {
+                variable_name: Arc::clone(var_name),
+                variable_type,
+            }))
         }
-        Transform::AddF(op) => {
-            match op {
-                Argument::Tag(tag) => {
-                    let op_type = tag.field_type();
-                    if op_type.base_type() != "Float" {
-                        return Err(todo!());
-                    }
+        OperatorArgument::TagRef(name) => match tags.reference_tag(name, use_path, use_vid) {
+            Ok(tag_entry) => {
+                let tag_type = tag_entry.field.field_type();
+                if !tag_type.equal_ignoring_nullability(&required_type) {
+                    Err(TransformTypeError::TypeMismatchBetweenTransformOperationAndArgument(
+                        transform_op.op_name().to_string(),
+                        required_type.to_string(),
+                        tag_type.to_string(),
+                    )
+                    .into())
+                } else {
+                    Ok(Argument::Tag(tag_entry.field.to_owned()))
                 }
-                Argument::Variable(var) => {
-                    let op_type = &var.variable_type;
-                    if op_type.base_type() != "Float" {
-                        return Err(todo!());
-                    }
-                }
-            };
-            Ok(Type::new_named_type("Float", initial_type.nullable()))
-        }
+            }
+            Err(e) => Err(TransformErrorSource::Tag(e)),
+        },
     }
 }
 
@@ -1476,25 +1645,23 @@ where
         next_transform_group = transform_group.retransform.as_deref();
 
         let (field_ref, subject) = if let Some(base_field) = maybe_base_field.as_ref() {
-            let next_transform = match extract_transform_on_fold_count_from_directive(
+            let (next_transform, next_type) = match extract_transform_on_fold_count_from_directive(
+                tags,
+                component_path,
+                parent_vid,
                 &transform_group.transform,
                 edge_name.as_ref(),
+                &subsequent_transforms,
                 &current_type,
             ) {
-                Ok(t) => t,
-                Err(e) => {
-                    errors.push(e.into());
-                    break;
-                }
-            };
-
-            current_type = match determine_transformed_field_type(current_type, &next_transform) {
                 Ok(t) => t,
                 Err(e) => {
                     errors.push(e);
                     break;
                 }
             };
+
+            current_type = next_type;
             subsequent_transforms.push(next_transform);
 
             let transformed_field = TransformedField {

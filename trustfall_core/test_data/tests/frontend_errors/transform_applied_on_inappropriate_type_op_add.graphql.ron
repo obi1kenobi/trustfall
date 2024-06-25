@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "+" transform operator does not operate on `String` values.
+        # This is an error.
+        name @transform(op: "+", value: ["$arg"]) @output
+    }
+}"#,
+    arguments: {
+        "arg": Uint64(0),
+    },
+)

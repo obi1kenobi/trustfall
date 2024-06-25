@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "len" transform operator does not operate on `Int` values.
+        # This is an error.
+        value @transform(op: "len") @output
+    }
+}"#,
+    arguments: {},
+)

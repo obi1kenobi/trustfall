@@ -737,7 +737,7 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                 FieldRef::FoldSpecificField(field) => ValueOrVec::Value(compute_fold_specific_value::<AdapterT>(field, elements)),
                 FieldRef::TransformedField(field) => {
                     let base_value = match &field.value.base {
-                        TransformBase::FoldSpecificField(fold_field) => compute_fold_specific_value::<AdapterT>(fold_field, &elements),
+                        TransformBase::FoldSpecificField(fold_field) => compute_fold_specific_value::<AdapterT>(fold_field, elements),
                         TransformBase::ContextField(_) => unreachable!("found transformed ContextField inside a fold's fold-specific outputs: {fold:#?} {field_ref:#?}"),
                     };
 

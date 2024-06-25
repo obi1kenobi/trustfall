@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "+" transform operator accepts only a single argument.
+        value @transform(op: "+", value: ["$first", "$second"]) @output
+    }
+}"#,
+    arguments: {
+        "first": Int64(1),
+        "second": Int64(2),
+    },
+)

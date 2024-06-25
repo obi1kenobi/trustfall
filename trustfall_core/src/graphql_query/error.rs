@@ -25,10 +25,16 @@ pub enum ParseError {
     InappropriateTypeForDirectiveArgument(String, String, Pos),
 
     #[error(
-        "Value argument in @filter directive is a string instead of a list. \
-        Did you mean to put '@filter(op: \"{0}\", value: [\"{1}\"])' instead?"
+        "Filter directives require a list-typed \"value\" argument, but received a string instead. \
+        Did you mean to write '@filter(op: \"{0}\", value: [\"{1}\"])' instead?"
     )]
     FilterExpectsListNotString(String, String, Pos),
+
+    #[error(
+        "Transform directives allow a list-typed \"value\" argument, but received a string instead. \
+        Did you mean to write '@transform(op: \"{0}\", value: [\"{1}\"])' instead?"
+    )]
+    TransformExpectsListNotString(String, String, Pos),
 
     #[error("Field {0} received an invalid value for argument {1}: {2}")]
     InvalidFieldArgument(String, String, Value, Pos),
@@ -59,6 +65,9 @@ pub enum ParseError {
 
     #[error("Filter is passed an invalid operand argument '{0}': {1}")]
     InvalidFilterOperandName(String, String, Pos),
+
+    #[error("Transform is passed an invalid operand argument '{0}': {1}")]
+    InvalidTransformOperandName(String, String, Pos),
 
     #[error("Unrecognized transform operator: {0}")]
     UnsupportedTransformOperator(String, Pos),
