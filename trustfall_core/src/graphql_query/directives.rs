@@ -197,12 +197,11 @@ fn parse_operand(operand: &str) -> Result<OperatorArgument, InvalidOperandError<
     }
 
     let first_char = name.chars().next().unwrap();
-    if  !first_char.is_ascii_alphabetic() && first_char != '_' {
-        return Err(InvalidOperandError::InvalidNameStartChar(name))
+    if !first_char.is_ascii_alphabetic() && first_char != '_' {
+        return Err(InvalidOperandError::InvalidNameStartChar(name));
     }
 
-    if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_')
-    {
+    if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_') {
         return Err(InvalidOperandError::InvalidCharsInName(name));
     }
 
@@ -365,16 +364,18 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
             }
         };
 
-        let mut transform_value: SmallVec<[OperatorArgument; 2]> = match value.node.get_argument("value") {
+        let mut transform_value: SmallVec<[OperatorArgument; 2]> = match value
+            .node
+            .get_argument("value")
+        {
             None => SmallVec::new(),
-            Some(content) => {
-                match &content.node {
-                    Value::List(value_contents) => {
-                        let mut values = SmallVec::new();
-                        for v in value_contents {
-                            match v {
-                                Value::String(operand) => {
-                                    let operator_argument = parse_operand(operand).map_err(|e| {
+            Some(content) => match &content.node {
+                Value::List(value_contents) => {
+                    let mut values = SmallVec::new();
+                    for v in value_contents {
+                        match v {
+                            Value::String(operand) => {
+                                let operator_argument = parse_operand(operand).map_err(|e| {
                                         match e {
                                             InvalidOperandError::InvalidPrefix => ParseError::InvalidTransformOperandName(
                                                 operand.to_owned(),
@@ -398,31 +399,34 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
                                             ),
                                         }
                                     })?;
-                                    values.push(operator_argument);
-                                }
-                                _ => return Err(ParseError::InappropriateTypeForDirectiveArgument(
+                                values.push(operator_argument);
+                            }
+                            _ => {
+                                return Err(ParseError::InappropriateTypeForDirectiveArgument(
                                     "@transform".to_owned(),
                                     "value".to_owned(),
                                     content.pos,
-                                )),
+                                ))
                             }
                         }
-                        values
                     }
-                    Value::String(argument_value) => return Err(ParseError::TransformExpectsListNotString(
+                    values
+                }
+                Value::String(argument_value) => {
+                    return Err(ParseError::TransformExpectsListNotString(
                         transform_op.to_string(),
                         argument_value.to_owned(),
                         content.pos,
-                    )),
-                    _ => {
-                        return Err(ParseError::InappropriateTypeForDirectiveArgument(
-                            "@transform".to_owned(),
-                            "value".to_owned(),
-                            content.pos,
-                        ))
-                    }
+                    ))
                 }
-            }
+                _ => {
+                    return Err(ParseError::InappropriateTypeForDirectiveArgument(
+                        "@transform".to_owned(),
+                        "value".to_owned(),
+                        content.pos,
+                    ))
+                }
+            },
         };
 
         let operands_span = value.node.get_argument("value").map(|p| &p.pos).unwrap_or(&value.pos);
@@ -459,7 +463,11 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
     }
 }
 
-fn assert_operand_count(operands: &[OperatorArgument], expected_count: usize, pos: &Pos) -> Result<(), ParseError> {
+fn assert_operand_count(
+    operands: &[OperatorArgument],
+    expected_count: usize,
+    pos: &Pos,
+) -> Result<(), ParseError> {
     let provided = operands.len();
     if provided != expected_count {
         Err(unexpected_arguments_provided(expected_count, provided, pos))
@@ -468,10 +476,17 @@ fn assert_operand_count(operands: &[OperatorArgument], expected_count: usize, po
     }
 }
 
-fn unexpected_arguments_provided(expected_count: usize, actual_count: usize, pos: &Pos) -> ParseError {
-    ParseError::OtherError(format!(
-        "Transform argument count mismatch: expected {expected_count} but found {actual_count}"
-    ), pos.to_owned())
+fn unexpected_arguments_provided(
+    expected_count: usize,
+    actual_count: usize,
+    pos: &Pos,
+) -> ParseError {
+    ParseError::OtherError(
+        format!(
+            "Transform argument count mismatch: expected {expected_count} but found {actual_count}"
+        ),
+        pos.to_owned(),
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

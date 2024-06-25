@@ -59,6 +59,13 @@ pub enum FrontendError {
     )]
     ExplicitTagNameRequired(String),
 
+    #[error(
+        "Variable \"{0}\" is used in multiple places in the query that require values of \
+        incompatible types \"{1}\" and \"{2}\". Please split up the uses that require different \
+        types into separate variables."
+    )]
+    IncompatibleVariableTypeRequirements(String, String, String),
+
     #[error("Incompatible types encountered in @filter: {0}")]
     FilterTypeError(#[from] FilterTypeError),
 
@@ -187,13 +194,6 @@ impl FrontendError {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum FilterTypeError {
-    #[error(
-        "Variable \"{0}\" is used in multiple places in the query that require values of \
-        incompatible types \"{1}\" and \"{2}\". Please split up the uses that require different \
-        types into separate variables."
-    )]
-    IncompatibleVariableTypeRequirements(String, String, String),
-
     #[error(
         "Filter operation \"{0}\" is applied on non-nullable {1}. \
         The filter's result would always be {2}. Please rewrite the query to avoid this filter."
@@ -506,7 +506,11 @@ impl TransformTypeError {
         Self::DuplicatedCountTransformOnEdge(edge_name.to_string())
     }
 
-    pub(crate) fn operation_requires_list_type_subject(op: &str, subject_representation: String, subject_type: &Type) -> Self {
+    pub(crate) fn operation_requires_list_type_subject(
+        op: &str,
+        subject_representation: String,
+        subject_type: &Type,
+    ) -> Self {
         Self::TypeMismatchBetweenTransformOperationAndSubject(
             op.to_string(),
             "list-typed values".to_string(),
@@ -515,7 +519,12 @@ impl TransformTypeError {
         )
     }
 
-    pub(crate) fn operation_requires_different_type_subject(op: &str, required_type: &Type, subject_representation: String, subject_type: &Type) -> Self {
+    pub(crate) fn operation_requires_different_type_subject(
+        op: &str,
+        required_type: &Type,
+        subject_representation: String,
+        subject_type: &Type,
+    ) -> Self {
         Self::TypeMismatchBetweenTransformOperationAndSubject(
             op.to_string(),
             format!("values of type \"{required_type}\""),
@@ -524,7 +533,13 @@ impl TransformTypeError {
         )
     }
 
-    pub(crate) fn operation_requires_different_choice_of_type_subject(op: &str, required_type_a: &Type, required_type_b: &Type, subject_representation: String, subject_type: &Type) -> Self {
+    pub(crate) fn operation_requires_different_choice_of_type_subject(
+        op: &str,
+        required_type_a: &Type,
+        required_type_b: &Type,
+        subject_representation: String,
+        subject_type: &Type,
+    ) -> Self {
         Self::TypeMismatchBetweenTransformOperationAndSubject(
             op.to_string(),
             format!("values of type \"{required_type_a}\" or \"{required_type_b}\""),

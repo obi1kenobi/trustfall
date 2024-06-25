@@ -28,10 +28,7 @@ use crate::{
 };
 
 use self::{
-    error::{
-        DuplicatedNamesConflict, FilterTypeError, FrontendError, TransformTypeError,
-        ValidationError,
-    },
+    error::{DuplicatedNamesConflict, FrontendError, TransformTypeError, ValidationError},
     filters::make_filter_expr,
     outputs::OutputHandler,
     tags::{TagHandler, TagLookupError},
@@ -305,9 +302,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
         }
     };
     let mut variables: BTreeMap<Arc<str>, Type> = Default::default();
-    if let Err(v) = fill_in_query_variables(&mut variables, &root_component) {
-        errors.extend(v.into_iter().map(|x| x.into()));
-    }
+    fill_in_query_variables(&mut variables, &root_component, &mut errors);
 
     if let Err(e) = tags.finish() {
         errors.push(FrontendError::UnusedTags(e.into_iter().map(String::from).collect()));
@@ -358,59 +353,96 @@ fn collect_ir_vertices_and_folds_recursive_step(
 fn fill_in_query_variables(
     variables: &mut BTreeMap<Arc<str>, Type>,
     component: &IRQueryComponent,
-) -> Result<(), Vec<FilterTypeError>> {
-    let mut errors: Vec<FilterTypeError> = vec![];
+    errors: &mut Vec<FrontendError>,
+) {
+    for vertex in component.vertices.values() {
+        for filter in &vertex.filters {
+            process_variable_uses_in_filter(variables, filter, errors);
+        }
+    }
 
-    let all_variable_uses = component
-        .vertices
-        .values()
-        .flat_map(|vertex| &vertex.filters)
-        .map(|filter| filter.right())
-        .chain(
-            component
-                .folds
-                .values()
-                .flat_map(|fold| &fold.post_filters)
-                .map(|filter| filter.right()),
-        )
-        .filter_map(|rhs| match rhs {
-            Some(Argument::Variable(vref)) => Some(vref),
-            _ => None,
-        });
-    // TODO: include transformed uses of variables here:
-    //       - transform on output property
-    //       - transform on output of fold-specific field
-    //       - transform on filter subject
-    //       - retransform of transformed property
-    for vref in all_variable_uses {
-        let existing_type = variables
-            .entry(vref.variable_name.clone())
-            .or_insert_with(|| vref.variable_type.clone());
-
-        match existing_type.intersect(&vref.variable_type) {
-            Some(intersection) => {
-                *existing_type = intersection;
-            }
-            None => {
-                errors.push(FilterTypeError::IncompatibleVariableTypeRequirements(
-                    vref.variable_name.to_string(),
-                    existing_type.to_string(),
-                    vref.variable_type.to_string(),
-                ));
-            }
+    for output in component.outputs.values() {
+        if let FieldRef::TransformedField(transformed) = output {
+            process_variable_uses_in_transforms(variables, &transformed.value.transforms, errors);
         }
     }
 
     for fold in component.folds.values() {
-        if let Err(e) = fill_in_query_variables(variables, fold.component.as_ref()) {
-            errors.extend(e);
+        fill_in_query_variables(variables, fold.component.as_ref(), errors);
+
+        for output in fold.fold_specific_outputs.values() {
+            if let FieldRef::TransformedField(transformed) = output {
+                process_variable_uses_in_transforms(
+                    variables,
+                    &transformed.value.transforms,
+                    errors,
+                );
+            }
+        }
+
+        for filter in &fold.post_filters {
+            process_variable_uses_in_filter(variables, filter, errors);
         }
     }
+}
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
+fn process_variable_uses_in_filter(
+    variables: &mut BTreeMap<Arc<str>, Type>,
+    filter: &Operation<OperationSubject, Argument>,
+    errors: &mut Vec<FrontendError>,
+) {
+    // Handle variable uses when the left-hand side of the filter is a `@transform`,
+    // which might take operands. For example: `@transform(op: "+", value: ["$number"])`
+    if let OperationSubject::TransformedField(transformed) = filter.left() {
+        process_variable_uses_in_transforms(variables, &transformed.value.transforms, errors);
+    }
+
+    // Handle variable uses as part of the filter operands.
+    // For example: `@filter(op: "=", value: ["$expected"])`
+    if let Some(Argument::Variable(vref)) = filter.right() {
+        process_variable_use(variables, vref, errors);
+    }
+}
+
+fn process_variable_uses_in_transforms(
+    variables: &mut BTreeMap<Arc<str>, Type>,
+    transforms: &[Transform],
+    errors: &mut Vec<FrontendError>,
+) {
+    for transform in transforms {
+        match transform {
+            Transform::Add(operand) | Transform::AddF(operand) => match operand {
+                Argument::Variable(vref) => {
+                    process_variable_use(variables, vref, errors);
+                }
+                Argument::Tag(..) => {}
+            },
+            Transform::Len | Transform::Abs => {
+                // These transforms don't take operands, so no variables here.
+            }
+        }
+    }
+}
+
+fn process_variable_use(
+    variables: &mut BTreeMap<Arc<str>, Type>,
+    vref: &VariableRef,
+    errors: &mut Vec<FrontendError>,
+) {
+    let existing_type =
+        variables.entry(vref.variable_name.clone()).or_insert_with(|| vref.variable_type.clone());
+
+    match existing_type.intersect(&vref.variable_type) {
+        Some(intersection) => {
+            *existing_type = intersection;
+        }
+        None => {
+            errors.push(FrontendError::IncompatibleVariableTypeRequirements(
+                vref.variable_name.to_string(),
+                existing_type.to_string(),
+                vref.variable_type.to_string(),
+            ));
+        }
     }
 }
 
