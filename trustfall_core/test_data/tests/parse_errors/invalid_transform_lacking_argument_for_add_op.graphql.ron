@@ -1,0 +1,11 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "+" transform operator requires an argument.
+        value @transform(op: "+") @output
+    }
+}"#,
+    arguments: {},
+)

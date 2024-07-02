@@ -527,21 +527,21 @@ TestInterpreterOutputTrace(
                 ),
               },
               outputs: {
-                "mult": ContextField(
+                "mult": ContextField(ContextField(
                   vertex_id: Vid(3),
                   field_name: "value",
                   field_type: "Int",
-                ),
+                )),
               },
             ),
           ),
         },
         outputs: {
-          "succ": ContextField(
+          "succ": ContextField(ContextField(
             vertex_id: Vid(4),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
     ),

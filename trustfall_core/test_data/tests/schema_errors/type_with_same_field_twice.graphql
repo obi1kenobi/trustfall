@@ -37,6 +37,10 @@ directive @transform(
   Name of the transformation operation to perform.
   """
   op: String!
+  """
+  Optional list of operands for the transform operator, if any.
+  """
+  value: [String!]
 ) on FIELD
 
 """

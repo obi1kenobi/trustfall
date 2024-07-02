@@ -1123,10 +1123,10 @@ TestInterpreterOutputTrace(
             vid: Vid(3),
             type_name: "Number",
             filters: [
-              Equals(LocalField(
+              Equals(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Tag(FoldSpecificField(FoldSpecificField(
+              )), Tag(FoldSpecificField(FoldSpecificField(
                 fold_eid: Eid(1),
                 fold_root_vid: Vid(2),
                 kind: Count,
@@ -1158,7 +1158,11 @@ TestInterpreterOutputTrace(
               },
             ),
             post_filters: [
-              GreaterThanOrEqual(Count, Variable(VariableRef(
+              GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "min_primes",
                 variable_type: "Int!",
               ))),
@@ -1166,16 +1170,16 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "composite_value": ContextField(
+          "composite_value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
-          "prime_factors": ContextField(
+          )),
+          "prime_factors": ContextField(ContextField(
             vertex_id: Vid(3),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
       variables: {

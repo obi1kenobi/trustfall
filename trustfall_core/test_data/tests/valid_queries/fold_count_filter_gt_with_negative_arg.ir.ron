@@ -32,15 +32,19 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "factors": ContextField(
+              "factors": ContextField(ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           post_filters: [
-            GreaterThan(Count, Variable(VariableRef(
+            GreaterThan(FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(1),
+              fold_root_vid: Vid(2),
+              kind: Count,
+            )), Variable(VariableRef(
               variable_name: "neg_two",
               variable_type: "Int!",
             ))),
@@ -48,11 +52,11 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
     variables: {

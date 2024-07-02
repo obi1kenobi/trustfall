@@ -545,10 +545,10 @@ TestInterpreterOutputTrace(
                         vid: Vid(3),
                         type_name: "Composite",
                         filters: [
-                          LessThan(LocalField(
+                          LessThan(LocalField(LocalField(
                             field_name: "name",
                             field_type: "String",
-                          ), Tag(ContextField(ContextField(
+                          )), Tag(ContextField(ContextField(
                             vertex_id: Vid(2),
                             field_name: "name",
                             field_type: "String",
@@ -557,11 +557,11 @@ TestInterpreterOutputTrace(
                       ),
                     },
                     outputs: {
-                      "second": ContextField(
+                      "second": ContextField(ContextField(
                         vertex_id: Vid(3),
                         field_name: "value",
                         field_type: "Int",
-                      ),
+                      )),
                     },
                   ),
                   imported_tags: [
@@ -574,11 +574,11 @@ TestInterpreterOutputTrace(
                 ),
               },
               outputs: {
-                "first": ContextField(
+                "first": ContextField(ContextField(
                   vertex_id: Vid(2),
                   field_name: "value",
                   field_type: "Int",
-                ),
+                )),
               },
             ),
           ),

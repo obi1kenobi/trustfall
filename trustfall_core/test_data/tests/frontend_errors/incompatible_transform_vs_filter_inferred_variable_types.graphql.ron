@@ -1,0 +1,17 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        name @filter(op: "=", value: ["$arg"])
+
+        # There are incompatible demands for the type of `$arg` here:
+        # it needs to be a `String` to match the filter,
+        # and an `Int!` to fit the transform. This is a frontend error.
+        value @transform(op: "+", value: ["$arg"]) @output
+    }
+}"#,
+    arguments: {
+        "arg": String(""),
+    },
+)
