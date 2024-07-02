@@ -32,7 +32,7 @@ use self::{
     filters::make_filter_expr,
     outputs::OutputHandler,
     tags::{TagHandler, TagLookupError},
-    util::{get_underlying_named_type, ComponentPath},
+    util::{get_underlying_named_type, QueryPath},
     validation::validate_query_against_schema,
 };
 
@@ -230,7 +230,7 @@ fn make_edge_parameters(
 #[allow(clippy::too_many_arguments)]
 fn make_local_field_filter_expr(
     schema: &Schema,
-    component_path: &ComponentPath,
+    query_path: &QueryPath,
     tags: &mut TagHandler<'_>,
     current_vertex_vid: Vid,
     property_name: &Arc<str>,
@@ -241,7 +241,7 @@ fn make_local_field_filter_expr(
 
     filters::make_filter_expr(
         schema,
-        component_path,
+        query_path,
         tags,
         current_vertex_vid,
         OperationSubject::LocalField(left),
@@ -272,7 +272,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
         &query.root_connection.arguments,
     );
 
-    let mut component_path = ComponentPath::new(starting_vid);
+    let mut query_path = QueryPath::new(starting_vid);
     let mut tags = Default::default();
     let mut output_handler = OutputHandler::new(starting_vid, None);
     let mut root_component = make_query_component(
@@ -280,7 +280,7 @@ pub fn make_ir_for_query(schema: &Schema, query: &Query) -> Result<IRQuery, Fron
         query,
         &mut vid_maker,
         &mut eid_maker,
-        &mut component_path,
+        &mut query_path,
         &mut output_handler,
         &mut tags,
         None,
@@ -514,7 +514,7 @@ fn make_query_component<'schema, 'query, V, E>(
     query: &'query Query,
     vid_maker: &mut V,
     eid_maker: &mut E,
-    component_path: &mut ComponentPath,
+    query_path: &mut QueryPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
@@ -559,7 +559,7 @@ where
         &mut folds,
         &mut property_names_by_vertex,
         &mut properties,
-        component_path,
+        query_path,
         output_handler,
         tags,
         None,
@@ -577,7 +577,7 @@ where
             &property_names_by_vertex,
             &properties,
             tags,
-            component_path,
+            query_path,
             *vid,
             uncoerced_type_name,
             field_node,
@@ -819,7 +819,7 @@ fn make_vertex<'query>(
     property_names_by_vertex: &BTreeMap<Vid, Vec<Arc<str>>>,
     properties: &BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
     tags: &mut TagHandler<'_>,
-    component_path: &ComponentPath,
+    query_path: &QueryPath,
     vid: Vid,
     uncoerced_type_name: &Arc<str>,
     field_node: &'query FieldNode,
@@ -831,7 +831,7 @@ fn make_vertex<'query>(
     //
     // If the current vertex is not the root of a fold, then outputs are not allowed
     // and we should report an error.
-    let is_fold_root = component_path.is_component_root(vid);
+    let is_fold_root = query_path.is_component_root(vid);
     if !is_fold_root && !field_node.output.is_empty() {
         errors.push(FrontendError::UnsupportedEdgeOutput(field_node.name.as_ref().to_owned()));
     }
@@ -881,7 +881,7 @@ fn make_vertex<'query>(
             for filter_directive in property_field.filter.iter() {
                 match make_local_field_filter_expr(
                     schema,
-                    component_path,
+                    query_path,
                     tags,
                     vid,
                     property_name,
@@ -904,7 +904,7 @@ fn make_vertex<'query>(
                 let (next_transform, next_type) =
                     match extract_property_like_transform_from_directive(
                         tags,
-                        component_path,
+                        query_path,
                         vid,
                         &transform_group.transform,
                         property_name,
@@ -942,7 +942,7 @@ fn make_vertex<'query>(
 
                     match filters::make_filter_expr(
                         schema,
-                        component_path,
+                        query_path,
                         tags,
                         vid,
                         OperationSubject::TransformedField(transformed_field),
@@ -981,7 +981,7 @@ fn fill_in_vertex_data<'schema, 'query, V, E>(
     folds: &mut BTreeMap<Eid, Arc<IRFold>>,
     property_names_by_vertex: &mut BTreeMap<Vid, Vec<Arc<str>>>,
     properties: &mut BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
-    component_path: &mut ComponentPath,
+    query_path: &mut QueryPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     parent_vid: Option<Vid>,
@@ -1059,7 +1059,7 @@ where
                             query,
                             vid_maker,
                             eid_maker,
-                            component_path,
+                            query_path,
                             output_handler,
                             tags,
                             fold_group,
@@ -1085,6 +1085,8 @@ where
                     }
                 }
             } else {
+                query_path.push_traversal(next_vid, connection.optional.is_some());
+
                 edges
                     .insert_or_error(next_eid, (current_vid, next_vid, connection))
                     .expect("Unexpectedly encountered duplicate eid");
@@ -1099,7 +1101,7 @@ where
                     folds,
                     property_names_by_vertex,
                     properties,
-                    component_path,
+                    query_path,
                     output_handler,
                     tags,
                     Some(current_vid),
@@ -1110,6 +1112,8 @@ where
                 ) {
                     errors.extend(e);
                 }
+
+                query_path.pop_traversal(next_vid);
             }
 
             output_handler.end_nested_scope(next_vid);
@@ -1121,7 +1125,7 @@ where
             fill_in_property_data(
                 property_names_by_vertex,
                 properties,
-                component_path,
+                query_path,
                 output_handler,
                 tags,
                 current_vid,
@@ -1148,7 +1152,7 @@ where
 fn fill_in_property_data<'query>(
     property_names_by_vertex: &mut BTreeMap<Vid, Vec<Arc<str>>>,
     properties: &mut BTreeMap<(Vid, Arc<str>), (Arc<str>, Type, SmallVec<[&'query FieldNode; 1]>)>,
-    component_path: &mut ComponentPath,
+    query_path: &mut QueryPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     current_vid: Vid,
@@ -1260,7 +1264,7 @@ fn fill_in_property_data<'query>(
                 &current_type,
             );
 
-            if let Err(e) = tags.register_tag(tag_name, tag_field, component_path) {
+            if let Err(e) = tags.register_tag(tag_name, tag_field, query_path) {
                 errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
             }
         }
@@ -1268,7 +1272,7 @@ fn fill_in_property_data<'query>(
         if let Some(transform_group) = next_transform_group {
             let (next_transform, next_type) = match extract_property_like_transform_from_directive(
                 tags,
-                component_path,
+                query_path,
                 current_vid,
                 &transform_group.transform,
                 &property_node.name,
@@ -1351,7 +1355,7 @@ impl From<TransformTypeError> for TransformErrorSource {
 
 fn extract_property_like_transform_from_directive(
     tags: &mut TagHandler<'_>,
-    use_path: &ComponentPath,
+    use_path: &QueryPath,
     use_vid: Vid,
     transform_directive: &TransformDirective,
     property_name: &str,
@@ -1418,7 +1422,7 @@ fn extract_property_like_transform_from_directive(
 
 fn extract_transform_on_fold_count_from_directive(
     tags: &mut TagHandler<'_>,
-    use_path: &ComponentPath,
+    use_path: &QueryPath,
     use_vid: Vid,
     transform_directive: &TransformDirective,
     edge_name: &str,
@@ -1484,7 +1488,7 @@ fn extract_transform_on_fold_count_from_directive(
 
 fn extract_transform_and_next_type_from_directive(
     tags: &mut TagHandler<'_>,
-    use_path: &ComponentPath,
+    use_path: &QueryPath,
     use_vid: Vid,
     transform_directive: &TransformDirective,
     type_so_far: &Type,
@@ -1532,7 +1536,7 @@ fn extract_transform_and_next_type_from_directive(
             }
 
             let required_type = Type::new_named_type("Int", true);
-            let transform = Transform::Add(resolve_transform_argument(
+            let transform_argument = resolve_transform_argument(
                 tags,
                 use_path,
                 use_vid,
@@ -1540,9 +1544,13 @@ fn extract_transform_and_next_type_from_directive(
                 required_type,
                 true,
                 &transform_directive.kind,
-            )?);
+            )?;
+            let next_type_nullable =
+                type_so_far.nullable() || transform_argument.field_type().nullable();
 
-            let next_type = Type::new_named_type("Int", type_so_far.nullable());
+            let transform = Transform::Add(transform_argument);
+
+            let next_type = Type::new_named_type("Int", next_type_nullable);
             Ok((transform, next_type))
         }
         TransformOp::AddF(arg) => {
@@ -1558,7 +1566,7 @@ fn extract_transform_and_next_type_from_directive(
             }
 
             let required_type = Type::new_named_type("Float", true);
-            let transform = Transform::AddF(resolve_transform_argument(
+            let transform_argument = resolve_transform_argument(
                 tags,
                 use_path,
                 use_vid,
@@ -1566,9 +1574,13 @@ fn extract_transform_and_next_type_from_directive(
                 required_type,
                 true,
                 &transform_directive.kind,
-            )?);
+            )?;
+            let next_type_nullable =
+                type_so_far.nullable() || transform_argument.field_type().nullable();
 
-            let next_type = Type::new_named_type("Int", type_so_far.nullable());
+            let transform = Transform::AddF(transform_argument);
+
+            let next_type = Type::new_named_type("Float", next_type_nullable);
             Ok((transform, next_type))
         }
         TransformOp::Count => Err(invalid_count_op().into()),
@@ -1577,7 +1589,7 @@ fn extract_transform_and_next_type_from_directive(
 
 fn resolve_transform_argument(
     tags: &mut TagHandler<'_>,
-    use_path: &ComponentPath,
+    use_path: &QueryPath,
     use_vid: Vid,
     arg: &OperatorArgument,
     required_type: Type,
@@ -1607,7 +1619,7 @@ fn resolve_transform_argument(
                     )
                     .into())
                 } else {
-                    Ok(Argument::Tag(tag_entry.field.to_owned()))
+                    Ok(tag_entry.create_tag_argument(use_path))
                 }
             }
             Err(e) => Err(TransformErrorSource::Tag(e)),
@@ -1621,7 +1633,7 @@ fn make_fold<'schema, 'query, V, E>(
     query: &'query Query,
     vid_maker: &mut V,
     eid_maker: &mut E,
-    component_path: &mut ComponentPath,
+    query_path: &mut QueryPath,
     output_handler: &mut OutputHandler<'query>,
     tags: &mut TagHandler<'query>,
     fold_group: &'query FoldGroup,
@@ -1639,7 +1651,7 @@ where
     V: Iterator<Item = Vid>,
     E: Iterator<Item = Eid>,
 {
-    component_path.push(starting_vid);
+    query_path.push_fold(starting_vid);
     tags.begin_subcomponent(starting_vid);
 
     let mut errors = vec![];
@@ -1648,7 +1660,7 @@ where
         query,
         vid_maker,
         eid_maker,
-        component_path,
+        query_path,
         output_handler,
         tags,
         Some(parent_vid),
@@ -1657,8 +1669,8 @@ where
         starting_post_coercion_type,
         starting_field,
     )?;
-    component_path.pop(starting_vid);
     let imported_tags = tags.end_subcomponent(starting_vid);
+    query_path.pop_fold(starting_vid);
 
     if !starting_field.output.is_empty() {
         // The edge has @fold @output but no @transform.
@@ -1679,7 +1691,7 @@ where
         let (field_ref, subject) = if let Some(base_field) = maybe_base_field.as_ref() {
             let (next_transform, next_type) = match extract_transform_on_fold_count_from_directive(
                 tags,
-                component_path,
+                query_path,
                 parent_vid,
                 &transform_group.transform,
                 edge_name.as_ref(),
@@ -1751,7 +1763,7 @@ where
         for filter_directive in &transform_group.filter {
             match make_filter_expr(
                 schema,
-                component_path,
+                query_path,
                 tags,
                 starting_vid,
                 subject.clone(),
@@ -1807,7 +1819,7 @@ where
         for tag_directive in &transform_group.tag {
             let tag_name = tag_directive.name.as_ref().map(|x| x.as_ref());
             if let Some(tag_name) = tag_name {
-                if let Err(e) = tags.register_tag(tag_name, field_ref.clone(), component_path) {
+                if let Err(e) = tags.register_tag(tag_name, field_ref.clone(), query_path) {
                     errors.push(FrontendError::MultipleTagsWithSameName(tag_name.to_string()));
                 }
             } else {

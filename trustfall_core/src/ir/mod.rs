@@ -386,7 +386,16 @@ impl FieldRef {
 /// produces a value like `Operation::Equals(..., Argument::Variable(...))`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Argument {
-    Tag(FieldRef),
+    /// A tag referencing another value from the query, plus an optional overridden type for it.
+    ///
+    /// The overridden type is set in cases where the tag at the time of use may have a different
+    /// type from the underlying value. For example, if the tag references a value from inside
+    /// an `@optional` block, the nullability of the tagged value may depend on where it is used:
+    /// even if the underlying value has non-nullable type, using it outside its `@optional` block
+    /// would cause it to have nullable type in order to handle the optional edge not being present.
+    Tag(FieldRef, #[serde(default, skip_serializing_if = "Option::is_none")] Option<Type>),
+
+    /// A variable whose value is supplied at runtime.
     Variable(VariableRef),
 }
 
@@ -398,9 +407,9 @@ impl Argument {
         }
     }
 
-    pub(crate) fn as_tag(&self) -> Option<&FieldRef> {
+    pub(crate) fn as_tag(&self) -> Option<(&FieldRef, &Option<Type>)> {
         match self {
-            Argument::Tag(t) => Some(t),
+            Argument::Tag(r, t) => Some((r, t)),
             Argument::Variable(_) => None,
         }
     }
@@ -419,7 +428,8 @@ impl Argument {
 
     pub fn field_type(&self) -> &Type {
         match self {
-            Argument::Tag(tag) => tag.field_type(),
+            Argument::Tag(_, Some(overridden_type)) => overridden_type,
+            Argument::Tag(tag, None) => tag.field_type(),
             Argument::Variable(var) => &var.variable_type,
         }
     }

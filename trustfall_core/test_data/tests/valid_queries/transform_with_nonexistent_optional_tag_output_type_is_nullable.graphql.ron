@@ -1,0 +1,27 @@
+TestGraphQLQuery (
+    schema_name: "nullables",
+    // This query's @optional edge doesn't exist for the vertex in question.
+    //
+    // It checks that @transform using a @tag from a non-existent optional vertex
+    // produces a output column of a nullable type, even though the original property
+    // that is being transformed is non-nullable.
+    //
+    // Running queries over this schema never produces any results.
+    // We are only testing compilation metadata here.
+    query: r#"
+{
+    NonNullMainType {
+        neighbor @optional {
+            # Even though this property is non-null, it's tagged inside `@optional`
+            # which means the tag value may still be `null`.
+            nonNullInteger @tag(name: "tagged")
+        }
+
+        nonNullNeighbor {
+            # This output's type should be `Int`, not `Int!` due to the tag's type.
+            nonNullInteger @transform(op: "+", value: ["%tagged"]) @output
+        }
+    }
+}"#,
+    arguments: {},
+)

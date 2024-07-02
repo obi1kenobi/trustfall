@@ -7,13 +7,13 @@ use crate::{
 use super::{
     error::{FilterTypeError, FrontendError},
     tags::{TagHandler, TagLookupError},
-    util::ComponentPath,
+    util::QueryPath,
 };
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn make_filter_expr(
     schema: &Schema,
-    component_path: &ComponentPath,
+    query_path: &QueryPath,
     tags: &mut TagHandler<'_>,
     current_vertex_vid: Vid,
     left_operand: OperationSubject,
@@ -36,7 +36,7 @@ pub(super) fn make_filter_expr(
                     OperatorArgument::TagRef(tag_name) => {
                         let defined_tag = match tags.reference_tag(
                             tag_name.as_ref(),
-                            component_path,
+                            query_path,
                             current_vertex_vid,
                         ) {
                             Ok(defined_tag) => defined_tag,
@@ -60,7 +60,7 @@ pub(super) fn make_filter_expr(
                             }
                         };
 
-                        Argument::Tag(defined_tag.field.clone())
+                        defined_tag.create_tag_argument(query_path)
                     }
                 })
             },

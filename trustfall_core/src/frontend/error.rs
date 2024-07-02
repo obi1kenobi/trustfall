@@ -293,9 +293,9 @@ impl FilterTypeError {
     /// the tag name separately if needed.
     fn represent_argument(argument: &Argument, tag_name: Option<&str>) -> String {
         match argument {
-            Argument::Tag(tag) => Self::represent_tag_name_and_type(
+            Argument::Tag(tag, ..) => Self::represent_tag_name_and_type(
                 tag_name.expect("tag argument without a name"),
-                tag.field_type(),
+                argument.field_type(),
             ),
             Argument::Variable(var) => {
                 Self::represent_variable_name_and_type(&var.variable_name, &var.variable_type)

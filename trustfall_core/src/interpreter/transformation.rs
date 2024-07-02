@@ -70,7 +70,7 @@ pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Ad
     for transform in transforms.iter().rev() {
         match transform {
             Transform::Add(op) | Transform::AddF(op) => match op {
-                Argument::Tag(tag) => {
+                Argument::Tag(tag, ..) => {
                     iterator = tag_func(carrier, tag, iterator);
                 }
                 Argument::Variable(..) => {}
@@ -112,7 +112,7 @@ fn apply_one_transform(
                 let operand = &variables[&var.variable_name];
                 apply_add_transform(value, operand)
             }
-            Argument::Tag(_) => {
+            Argument::Tag(..) => {
                 let operand = stack.pop().expect(
                     "empty stack while attempting to resolve transform operand: {transform:?}",
                 );
@@ -124,7 +124,7 @@ fn apply_one_transform(
                 let operand = &variables[&var.variable_name];
                 apply_fadd_transform(value, operand)
             }
-            Argument::Tag(_) => {
+            Argument::Tag(..) => {
                 let operand = stack.pop().expect(
                     "empty stack while attempting to resolve transform operand: {transform:?}",
                 );

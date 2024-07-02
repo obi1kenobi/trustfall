@@ -198,7 +198,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             v.filters
                 .iter()
                 .filter_map(|f| match f.right() {
-                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                    Some(Argument::Tag(FieldRef::ContextField(ctx), ..)) => {
                         if current_vertex.vid == ctx.vertex_id {
                             Some(ctx.field_name.clone())
                         } else {
@@ -310,11 +310,11 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                         | Operation::GreaterThanOrEqual(..)
                         | Operation::OneOf(..)
                 ) && match op.right() {
-                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                    Some(Argument::Tag(FieldRef::ContextField(ctx), ..)) => {
                         // Ensure the vertex holding the @tag has already been computed.
                         resolved_range.contains(&ctx.vertex_id)
                     }
-                    Some(Argument::Tag(FieldRef::FoldSpecificField(fsf))) => {
+                    Some(Argument::Tag(FieldRef::FoldSpecificField(fsf), ..)) => {
                         // Ensure the fold holding the @tag has already been computed.
                         resolved_range.contains(&fsf.fold_root_vid)
                     }
@@ -384,7 +384,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             )
         };
 
-        let field = filter_to_use
+        let (field, _) = filter_to_use
             .right()
             .expect("filter did not have an operand")
             .as_tag()

@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interpreter::{
-        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        VertexIterator,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo,
+        ResolveInfo, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -36,7 +36,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, FieldValue> {
-        unimplemented!()
+        Box::new(contexts.map(|ctx| (ctx, FieldValue::Null)))
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
@@ -47,7 +47,9 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
-        unimplemented!()
+        Box::new(contexts.map(|ctx| -> (DataContext<V>, VertexIterator<'a, Self::Vertex>) {
+            (ctx, Box::new(std::iter::empty()))
+        }))
     }
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
@@ -57,6 +59,6 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, bool> {
-        unimplemented!()
+        Box::new(contexts.map(|ctx| (ctx, false)))
     }
 }

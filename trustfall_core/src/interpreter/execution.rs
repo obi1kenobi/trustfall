@@ -635,7 +635,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             //       It currently assumes that use of tags on `@fold @transform(op: "count")`
             //       can only happen within the direct parent component of that fold.
             vertex.filters.iter().any(|filter| {
-                let Some(Argument::Tag(field_ref)) = filter.right() else {
+                let Some(Argument::Tag(field_ref, ..)) = filter.right() else {
                     return false;
                 };
 

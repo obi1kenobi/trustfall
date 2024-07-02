@@ -28,7 +28,7 @@ Ok(TestIRQuery(
               fold_eid: Eid(3),
               fold_root_vid: Vid(4),
               kind: Count,
-            )))),
+            )), Some("Int"))),
           ],
         ),
       },

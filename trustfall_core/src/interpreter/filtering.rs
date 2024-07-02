@@ -278,7 +278,7 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
             let right_value = query_arguments[var.variable_name.as_ref()].to_owned();
             apply_filter_with_static_argument_value(filter, right_value, iterator)
         }
-        Some(Argument::Tag(field_ref)) => {
+        Some(Argument::Tag(field_ref, ..)) => {
             let argument_value_iterator = compute_tag_with_separate_value::<AdapterT, true>(
                 adapter,
                 carrier,
