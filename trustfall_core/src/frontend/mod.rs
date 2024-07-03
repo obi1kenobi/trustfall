@@ -362,22 +362,14 @@ fn fill_in_query_variables(
     }
 
     for output in component.outputs.values() {
-        if let FieldRef::TransformedField(transformed) = output {
-            process_variable_uses_in_transforms(variables, &transformed.value.transforms, errors);
-        }
+        process_variable_use_in_field_ref(variables, output, errors);
     }
 
     for fold in component.folds.values() {
         fill_in_query_variables(variables, fold.component.as_ref(), errors);
 
         for output in fold.fold_specific_outputs.values() {
-            if let FieldRef::TransformedField(transformed) = output {
-                process_variable_uses_in_transforms(
-                    variables,
-                    &transformed.value.transforms,
-                    errors,
-                );
-            }
+            process_variable_use_in_field_ref(variables, output, errors);
         }
 
         for filter in &fold.post_filters {
@@ -415,12 +407,24 @@ fn process_variable_uses_in_transforms(
                 Argument::Variable(vref) => {
                     process_variable_use(variables, vref, errors);
                 }
-                Argument::Tag(..) => {}
+                Argument::Tag(tag, ..) => {
+                    process_variable_use_in_field_ref(variables, tag, errors);
+                }
             },
             Transform::Len | Transform::Abs => {
                 // These transforms don't take operands, so no variables here.
             }
         }
+    }
+}
+
+fn process_variable_use_in_field_ref(
+    variables: &mut BTreeMap<Arc<str>, Type>,
+    field_ref: &FieldRef,
+    errors: &mut Vec<FrontendError>,
+) {
+    if let FieldRef::TransformedField(transformed) = field_ref {
+        process_variable_uses_in_transforms(variables, &transformed.value.transforms, errors);
     }
 }
 
