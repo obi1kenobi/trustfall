@@ -113,9 +113,11 @@ fn apply_one_transform(
                 apply_add_transform(value, operand)
             }
             Argument::Tag(..) => {
-                let operand = stack.pop().expect(
-                    "empty stack while attempting to resolve transform operand: {transform:?}",
-                );
+                let operand = stack.pop().unwrap_or_else(|| {
+                    panic!(
+                        "empty stack while attempting to resolve transform operand: {transform:?}"
+                    )
+                });
                 apply_add_transform(value, &operand)
             }
         },
@@ -125,9 +127,11 @@ fn apply_one_transform(
                 apply_fadd_transform(value, operand)
             }
             Argument::Tag(..) => {
-                let operand = stack.pop().expect(
-                    "empty stack while attempting to resolve transform operand: {transform:?}",
-                );
+                let operand = stack.pop().unwrap_or_else(|| {
+                    panic!(
+                        "empty stack while attempting to resolve transform operand: {transform:?}"
+                    )
+                });
                 apply_fadd_transform(value, &operand)
             }
         },

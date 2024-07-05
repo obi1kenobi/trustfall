@@ -9,7 +9,9 @@ use super::{
         compute_context_field_with_separate_value, compute_fold_specific_field_with_separate_value,
         compute_local_field_with_separate_value, QueryCarrier,
     },
-    transformation::apply_transforms,
+    transformation::{
+        apply_transforms, push_transform_argument_tag_values_onto_stack_during_main_query,
+    },
     Adapter, ContextIterator, DataContext, TaggedValue,
 };
 
@@ -43,6 +45,16 @@ pub(super) fn compute_tag_with_separate_value<
             compute_fold_specific_field_tag_with_separate_value(component, fold_field, iterator)
         }
         FieldRef::TransformedField(transformed_field) => {
+            let transform_arguments_iterator =
+                push_transform_argument_tag_values_onto_stack_during_main_query(
+                    adapter,
+                    carrier,
+                    component,
+                    current_vid,
+                    &transformed_field.value.transforms,
+                    iterator,
+                );
+
             let base_value_iterator = match &transformed_field.value.base {
                 TransformBase::ContextField(context_field) => {
                     compute_context_field_tag_with_separate_value::<AdapterT, RESTORE_CONTEXT>(
@@ -51,12 +63,14 @@ pub(super) fn compute_tag_with_separate_value<
                         carrier,
                         component,
                         context_field,
-                        iterator,
+                        transform_arguments_iterator,
                     )
                 }
                 TransformBase::FoldSpecificField(fold_field) => {
                     compute_fold_specific_field_tag_with_separate_value(
-                        component, fold_field, iterator,
+                        component,
+                        fold_field,
+                        transform_arguments_iterator,
                     )
                 }
             };
