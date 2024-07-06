@@ -84,6 +84,51 @@ pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Ad
     iterator
 }
 
+/// Pop and drop any arguments pushed to the values stack that correspond to the given transforms.
+///
+/// Consider a query like:
+/// ```graphql
+/// {
+///     Example {
+///         value @tag(name: "first")
+///
+///         possibly_nonexistent @optional {
+///             value @transform(op: "+", value: ["%first"]) @tag(name: "opt")
+///         }
+///
+///         # ...
+///     }
+/// }
+/// ```
+/// Evaluating the `opt` tag here requires that we push the `first` tag's value to the stack.
+/// Then, we compute the value of the `value` property, and apply the `+` transform while popping
+/// the `first` value off the stack.
+///
+/// But what if the optional `possibly_nonexistent` edge doesn't exist?
+/// Then we've pushed a value onto the stack, but we aren't going to use it since there's nothing
+/// to transform. We must explicitly remove that value from the stack, to avoid corrupting
+/// the stack's state and impacting downstream operations.
+///
+/// That's what this function does: it pops all stack arguments that were pushed to satisfy
+/// a given slice of transforms.
+pub(super) fn drop_unused_transform_arguments(
+    transformed_value: &TransformedValue,
+    stack: &mut Vec<FieldValue>,
+) {
+    for transform in &transformed_value.transforms {
+        match transform {
+            Transform::Add(arg) | Transform::AddF(arg) => match arg {
+                Argument::Tag(..) => {
+                    // One argument on the stack here.
+                    stack.pop().expect("nothing to pop, this is a bug");
+                }
+                Argument::Variable(..) => {}
+            },
+            Transform::Len | Transform::Abs => {}
+        }
+    }
+}
+
 pub(super) fn apply_transforms(
     transformed_value: &TransformedValue,
     variables: &BTreeMap<Arc<str>, FieldValue>,

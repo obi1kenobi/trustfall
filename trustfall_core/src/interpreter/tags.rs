@@ -10,7 +10,8 @@ use super::{
         compute_local_field_with_separate_value, QueryCarrier,
     },
     transformation::{
-        apply_transforms, push_transform_argument_tag_values_onto_stack_during_main_query,
+        apply_transforms, drop_unused_transform_arguments,
+        push_transform_argument_tag_values_onto_stack_during_main_query,
     },
     Adapter, ContextIterator, DataContext, TaggedValue,
 };
@@ -85,7 +86,14 @@ pub(super) fn compute_tag_with_separate_value<
 
             Box::new(base_value_iterator.map(move |(mut ctx, base_value)| {
                 let value = match base_value {
-                    TaggedValue::NonexistentOptional => TaggedValue::NonexistentOptional,
+                    TaggedValue::NonexistentOptional => {
+                        // We may have pushed arguments onto the `ctx.values` stack for use by
+                        // the transforms here, but it turns out we aren't going to need them.
+                        // Remove them from the stack to avoid corrupting its state.
+                        drop_unused_transform_arguments(&transformed_value, &mut ctx.values);
+
+                        TaggedValue::NonexistentOptional
+                    }
                     TaggedValue::Some(value) => TaggedValue::Some(apply_transforms(
                         &transformed_value,
                         &variables,
