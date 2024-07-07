@@ -1,0 +1,13 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 9, max: 9) {
+        value
+            @transform(op: "sqrt")
+            @transform(op: "sqrt")
+            @output
+    }
+}"#,
+    arguments: {},
+)

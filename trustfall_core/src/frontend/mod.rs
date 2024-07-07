@@ -411,7 +411,7 @@ fn process_variable_uses_in_transforms(
                     process_variable_use_in_field_ref(variables, tag, errors);
                 }
             },
-            Transform::Len | Transform::Abs => {
+            Transform::Sqrt | Transform::Len | Transform::Abs => {
                 // These transforms don't take operands, so no variables here.
             }
         }
@@ -1516,6 +1516,23 @@ fn extract_transform_and_next_type_from_directive(
             let base_type = type_so_far.base_type();
             if base_type == "Int" || base_type == "Float" {
                 Ok((Transform::Abs, Type::new_named_type("Int", type_so_far.nullable())))
+            } else {
+                Err(TransformTypeError::operation_requires_different_choice_of_type_subject(
+                    transform_directive.kind.op_name(),
+                    &Type::new_named_type("Int", true),
+                    &Type::new_named_type("Float", true),
+                    represent_subject(),
+                    type_so_far,
+                )
+                .into())
+            }
+        }
+        TransformOp::Sqrt => {
+            let base_type = type_so_far.base_type();
+            if base_type == "Int" || base_type == "Float" {
+                // The resulting type is a nullable float even if the input is non-nullable,
+                // since we define `sqrt()` of a negative number to be `null`.
+                Ok((Transform::Sqrt, Type::new_named_type("Float", true)))
             } else {
                 Err(TransformTypeError::operation_requires_different_choice_of_type_subject(
                     transform_directive.kind.op_name(),

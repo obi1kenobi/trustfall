@@ -443,6 +443,10 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
                 assert_operand_count(&transform_value, 0, operands_span)?;
                 TransformOp::Abs
             }
+            "sqrt" => {
+                assert_operand_count(&transform_value, 0, operands_span)?;
+                TransformOp::Sqrt
+            }
             "+" => {
                 assert_operand_count(&transform_value, 1, operands_span)?;
                 TransformOp::Add(transform_value.pop().unwrap())
@@ -494,6 +498,7 @@ pub(crate) enum TransformOp {
     Count,
     Len,
     Abs,
+    Sqrt,
     Add(OperatorArgument),
     AddF(OperatorArgument),
 }
@@ -508,6 +513,7 @@ impl TransformOp {
             TransformOp::Count => "count",
             TransformOp::Len => "len",
             TransformOp::Abs => "abs",
+            TransformOp::Sqrt => "sqrt",
             TransformOp::Add(_) => "+",
             TransformOp::AddF(_) => "+f",
         }

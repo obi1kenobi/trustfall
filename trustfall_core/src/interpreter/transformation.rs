@@ -75,7 +75,7 @@ pub(super) fn push_transform_argument_tag_values_onto_stack<'query, AdapterT: Ad
                 }
                 Argument::Variable(..) => {}
             },
-            Transform::Len | Transform::Abs => {
+            Transform::Sqrt | Transform::Len | Transform::Abs => {
                 // No tag arguments here!
             }
         }
@@ -124,7 +124,7 @@ pub(super) fn drop_unused_transform_arguments(
                 }
                 Argument::Variable(..) => {}
             },
-            Transform::Len | Transform::Abs => {}
+            Transform::Sqrt | Transform::Len | Transform::Abs => {}
         }
     }
 }
@@ -152,6 +152,7 @@ fn apply_one_transform(
     match transform {
         Transform::Len => apply_len_transform(value),
         Transform::Abs => apply_abs_transform(value),
+        Transform::Sqrt => apply_sqrt_transform(value),
         Transform::Add(argument) => match argument {
             Argument::Variable(var) => {
                 let operand = &variables[&var.variable_name];
@@ -200,6 +201,22 @@ fn apply_abs_transform(value: &FieldValue) -> FieldValue {
         FieldValue::Uint64(x) => FieldValue::Uint64(*x),
         FieldValue::Float64(x) => FieldValue::Float64(x.abs()),
         _ => unreachable!("{value:?}"),
+    }
+}
+
+#[inline]
+fn apply_sqrt_transform(value: &FieldValue) -> FieldValue {
+    let input = match value {
+        FieldValue::Null => return FieldValue::Null,
+        FieldValue::Int64(x) => *x as f64,
+        FieldValue::Uint64(x) => *x as f64,
+        FieldValue::Float64(x) => *x,
+        _ => unreachable!("{value:?}"),
+    };
+    if input.is_sign_negative() {
+        FieldValue::NULL
+    } else {
+        FieldValue::Float64(input.sqrt())
     }
 }
 

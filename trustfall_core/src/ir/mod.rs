@@ -810,6 +810,10 @@ pub enum Transform {
     /// Null on null inputs.
     Abs,
 
+    /// Square root. Allowed on both integer and floating-point types.
+    /// Null on null or negative inputs.
+    Sqrt,
+
     /// Integer addition. For floating-point addition, use [`Transform::AddF`] instead.
     Add(Argument),
 
@@ -828,6 +832,7 @@ impl Transform {
         match self {
             Self::Len => "len",
             Self::Abs => "abs",
+            Self::Sqrt => "sqrt",
             Self::Add(..) => "add",
             Self::AddF(..) => "addf",
         }
