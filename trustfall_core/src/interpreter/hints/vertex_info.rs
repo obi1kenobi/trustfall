@@ -125,6 +125,7 @@ pub(super) trait InternalVertexInfo: super::sealed::__Sealed {
     /// How far query execution has progressed thus far:
     /// - `Bound::Included` means that data from that [`Vid`] is available, and
     /// - `Bound::Excluded` means that data from that [`Vid`] is not yet available.
+    ///
     /// Data from vertices with [`Vid`] values smaller than the given number is always available.
     fn execution_frontier(&self) -> Bound<Vid>;
 
