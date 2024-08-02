@@ -103,7 +103,9 @@ impl RustFile {
         }
 
         let mut item_iter = self.top_level_items.into_iter();
-        let first_item = item_iter.next().expect("no items found");
+        let Some(first_item) = item_iter.next() else {
+            return std::fs::write(target, "").map_err(Into::into);
+        };
         Self::pretty_print_item(&mut buffer, first_item)?;
 
         for item in item_iter {
