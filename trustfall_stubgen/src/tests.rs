@@ -180,6 +180,11 @@ fn use_reserved_rust_names_in_schema() {
 }
 
 #[test]
+fn no_edges_schema() {
+    test_schema("no_edges")
+}
+
+#[test]
 #[should_panic(
     expected = "cannot generate adapter for a schema containing both 'Type' and 'Type_' vertices, consider renaming one of them"
 )]

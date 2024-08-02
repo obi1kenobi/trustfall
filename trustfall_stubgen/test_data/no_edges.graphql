@@ -1,0 +1,111 @@
+schema {
+    query: RootSchemaQuery
+}
+directive @filter(
+    """
+    Name of the filter operation to perform.
+    """
+    op: String!
+    """
+    List of string operands for the operator.
+    """
+    value: [String!]
+) repeatable on FIELD | INLINE_FRAGMENT
+directive @tag(
+    """
+    Name to apply to the given property field.
+    """
+    name: String
+) on FIELD
+directive @output(
+    """
+    What to designate the output field generated from this property field.
+    """
+    name: String
+) on FIELD
+directive @optional on FIELD
+directive @recurse(
+    """
+    Recurse up to this many times on this edge. A depth of 1 produces the current
+    vertex and its immediate neighbors along the given edge.
+    """
+    depth: Int!
+) on FIELD
+directive @fold on FIELD
+directive @transform(
+    """
+    Name of the transformation operation to perform.
+    """
+    op: String!
+) on FIELD
+
+"""
+All the possible data types where querying can begin in this API.
+"""
+type RootSchemaQuery {
+    """
+    Items on the front page of HackerNews. Equivalent to Top(max: 30).
+    """
+    FrontPage: [Item!]!
+
+    """
+    The top items on HackerNews. Items on the front page are the top 30.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of topmost items. Otherwise, queries will continue fetching top items
+    as deep as the HackerNews API allows.
+    """
+    Top(max: Int): [Item!]!
+
+    """
+    Look up an item by its ID number.
+    """
+    Item(id: Int!): Item
+
+    """
+    Most-recently updated items, such as stories or job postings.
+
+    The `max` parameter can be used to limit queries to the selected number
+    of latest items. Otherwise, queries will continue fetching items
+    as deep as the HackerNews API allows.
+    """
+    UpdatedItem(max: Int): [Item!]!
+
+    """
+    Use HackerNews search to find items (stories, comments, etc.) based on the given query string.
+
+    Items are returned sorted by relevance, then points, then number of comments.
+
+    Search API docs: https://hn.algolia.com/api
+    """
+    SearchByRelevance(query: String!): [Item!]
+
+    """
+    Use HackerNews search to find items (stories, comments, etc.) based on the given query string.
+
+    Items are returned sorted by date, more recent first.
+
+    Search API docs: https://hn.algolia.com/api
+    """
+    SearchByDate(query: String!): [Item!]
+}
+
+"""
+One of the kinds of items on HackerNews: a story, job, comment, etc.
+"""
+interface Item {
+    """
+    The item's unique identifier.
+    """
+    id: Int!
+
+    """
+    The item's timestamp, as a number in Unix time.
+    """
+    unixTime: Int!
+
+    """
+    The item's URL on HackerNews.
+    """
+    url: String!
+}
