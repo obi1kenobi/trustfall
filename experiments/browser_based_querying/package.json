@@ -70,7 +70,7 @@
     "prettier": "^2.8.8",
     "style-loader": "^3.3.3",
     "typescript": "^4.9.5",
-    "wasm-pack": "^0.12.1",
+    "wasm-pack": "^0.13.0",
     "webpack": "^5.89.0",
     "webpack-cli": "^4.10.0",
     "webpack-dev-server": "^4.15.1"

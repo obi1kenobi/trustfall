@@ -20,7 +20,7 @@ ron = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 trustfall_core = { path = "../trustfall_core" }
-wasm-bindgen = { version = "0.2.81" }
+wasm-bindgen = { version = "0.2.92" }
 maplit = { workspace = true }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
@@ -28,9 +28,9 @@ maplit = { workspace = true }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
-js-sys = "0.3.57"
-web-sys = { version = "0.3", features = ["console"] }
-gloo-utils = { version = "0.1.6", features = ["serde"] }
+js-sys = "0.3.69"
+web-sys = { version = "0.3.69", features = ["console"] }
+gloo-utils = { version = "0.2.0", features = ["serde"] }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.31"
+wasm-bindgen-test = "0.3.42"
