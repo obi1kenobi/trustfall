@@ -62,7 +62,8 @@ jobs:
           print-hash: true
 
   macos:
-    runs-on: macos-latest
+    # actions/setup-python with Python <3.11 does not work with macos-latest
+    runs-on: macos-13
     needs:
       - should-publish
     if: needs.should-publish.outputs.is_new_version == 'yes'
@@ -87,6 +88,8 @@ jobs:
       - name: Build wheels - x86_64
         uses: messense/maturin-action@v1
         with:
+          # version pinned until https://github.com/PyO3/maturin/issues/2154 is fixed
+          maturin-version: v1.6.0
           target: x86_64
           args: --release --interpreter python --out dist --sdist -m pytrustfall/Cargo.toml
       - name: Install built wheel - x86_64
@@ -96,7 +99,8 @@ jobs:
       - name: Build wheels - universal2
         uses: messense/maturin-action@v1
         with:
-          args: --release --interpreter python --universal2 --out dist -m pytrustfall/Cargo.toml
+          target: universal2
+          args: --release --interpreter python --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel - universal2
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
