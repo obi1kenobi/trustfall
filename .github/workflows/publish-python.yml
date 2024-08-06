@@ -110,6 +110,7 @@ jobs:
         with:
           name: wheels-macos-${{ matrix.python-version }}
           path: dist/*.whl
+          if-no-files-found: error
 
   windows:
     runs-on: windows-latest
@@ -148,6 +149,7 @@ jobs:
         with:
           name: wheels-windows-${{ matrix.python-version }}
           path: dist/*.whl
+          if-no-files-found: error
 
   linux:
     runs-on: ubuntu-latest
@@ -187,48 +189,48 @@ jobs:
         with:
           name: wheels-linux-${{ matrix.python-version }}
           path: dist/*.whl
+          if-no-files-found: error
 
-  # musllinux:
-  #   runs-on: ubuntu-latest
-    # needs:
-    #   - should-publish
-    # if: needs.should-publish.outputs.is_new_version == 'yes'
-  #   strategy:
-  #     matrix:
-  #       python-version: ["3.9", "3.10", "3.11", "3.12"]
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         persist-credentials: false
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #         architecture: x64
-  #     - name: Show python version
-  #       run: |
-  #         python3 --version
-  #     - name: Build wheels
-  #       uses: messense/maturin-action@v1
-  #       with:
-  #         target: x86_64-unknown-linux-musl
-  #         manylinux: musllinux_1_2
-  #         args: --release --interpreter python${{ matrix.python-version}} --out /io/dist -m pytrustfall/Cargo.toml
-  #     - name: Install built wheel
-  #       uses: addnab/docker-run-action@v3
-  #       with:
-  #         image: alpine:latest
-  #         options: -v ${{ github.workspace }}:/io -w /io
-  #         run: |
-  #           apk add py3-pip
-  #           pip3 install -U pip
-  #           ls -alh /io/dist/
-  #           pip3 install trustfall --no-index --find-links /io/dist/ --force-reinstall
-  #           python3 -c "import trustfall"
-  #     - name: Upload wheels
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: wheels-musllinux-${{ matrix.python-version }}
-  #         path: /io/dist/*.whl
+  musllinux:
+    runs-on: ubuntu-latest
+    needs:
+      - should-publish
+    if: needs.should-publish.outputs.is_new_version == 'yes'
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Show python version
+        run: |
+          python3 --version
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64-unknown-linux-musl
+          manylinux: musllinux_1_2
+          args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
+      - name: Install built wheel
+        uses: addnab/docker-run-action@v3
+        with:
+          image: python:${{ matrix.python-version }}-alpine
+          options: -v ${{ github.workspace }}:/io -w /io
+          run: |
+            ls -alh /io/dist/
+            pip install trustfall --no-index --find-links /io/dist/ --force-reinstall
+            python3 -c "import trustfall"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-musllinux-${{ matrix.python-version }}
+          path: dist/*.whl
+          if-no-files-found: error
 
   should-publish:
     name: Did version change
