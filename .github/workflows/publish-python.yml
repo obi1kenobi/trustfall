@@ -52,7 +52,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -102,8 +104,8 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist
+          name: wheels-macos-${{ matrix.python-version }}
+          path: dist/*.whl
 
   windows:
     runs-on: windows-latest
@@ -140,8 +142,8 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist
+          name: wheels-windows-${{ matrix.python-version }}
+          path: dist/*.whl
 
   linux:
     runs-on: ubuntu-latest
@@ -179,8 +181,8 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist
+          name: wheels-linux-${{ matrix.python-version }}
+          path: dist/*.whl
 
   # musllinux:
   #   runs-on: ubuntu-latest
@@ -221,8 +223,8 @@ jobs:
   #     - name: Upload wheels
   #       uses: actions/upload-artifact@v4
   #       with:
-  #         name: wheels
-  #         path: /io/dist
+  #         name: wheels-musllinux-${{ matrix.python-version }}
+  #         path: /io/dist/*.whl
 
   should-publish:
     name: Did version change
