@@ -1,0 +1,34 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # We always require that tags are defined before use in order to statically prevent cycles,
+        # so this query produces an error: the tag `len` is used before being defined.
+        #
+        # In the future, this query may become valid, at the cost of substantially increased
+        # frontend complexity.
+        #
+        # In the meantime, we require users to rewrite queries like this in a fashion that
+        # orders tag uses after their definition. There are several ways to do that for this query:
+        # - Replace the `@transform(op: "+", value: ["%len"])` with a tag, and perform the addition
+        #   of that tag to the `len` value instead.
+        # - Duplicate the portion of the `value` property that uses the `len` tag, moving it to
+        #   after `len` has already been defined so that it is allowed to use the `len` value.
+        value
+            @tag(name: "self")
+            @transform(op: "+", value: ["%self"])
+            @tag(name: "transformed")
+            @output
+            @transform(op: "+", value: ["%len"])
+            @output
+
+        vowelsInName
+            @transform(op: "len")
+            @transform(op: "+", value: ["%transformed"])
+            @output
+            @tag(name: "len")
+    }
+}"#,
+    arguments: {},
+)

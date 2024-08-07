@@ -1,0 +1,83 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(3),
+        "min": Int64(-1),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          tag: [
+            TagDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "vowelsInName",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "vowelsInName",
+          output: [
+            OutputDirective(),
+          ],
+          transform_group: Some(TransformGroup(
+            tid: Tid(1),
+            transform: TransformDirective(
+              kind: Len,
+            ),
+            output: [
+              OutputDirective(),
+            ],
+            retransform: Some(TransformGroup(
+              tid: Tid(2),
+              transform: TransformDirective(
+                kind: Add(TagRef("value")),
+              ),
+              output: [
+                OutputDirective(),
+              ],
+              filter: [
+                FilterDirective(
+                  operation: LessThanOrEqual((), VariableRef("four")),
+                ),
+              ],
+            )),
+          )),
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "four": Int64(4),
+  },
+))

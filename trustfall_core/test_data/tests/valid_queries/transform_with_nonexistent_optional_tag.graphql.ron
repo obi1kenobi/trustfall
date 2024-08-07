@@ -1,0 +1,23 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    // This query's @optional edge doesn't exist for the vertex in question.
+    //
+    // It checks that @transform using a @tag from a non-existent optional vertex
+    // produces the correct result: `null`.
+    query: r#"
+{
+    One {
+        predecessor {
+            predecessor @optional {
+                value @tag(name: "optional_nonexistent")
+            }
+        }
+
+        successor {
+            value @output  # this is `2`
+            value @transform(op: "+", value: ["%optional_nonexistent"]) @output  # this is `null`
+        }
+    }
+}"#,
+    arguments: {},
+)

@@ -1,1 +1,1 @@
-Err(FilterTypeError(IncompatibleVariableTypeRequirements("arg", "[Int]!", "[String!]!")))
+Err(IncompatibleVariableTypeRequirements("arg", "[Int]!", "[String!]!"))

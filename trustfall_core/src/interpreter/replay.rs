@@ -578,6 +578,7 @@ mod tests {
     use crate::{
         filesystem_interpreter::FilesystemVertex,
         interpreter::replay::assert_interpreted_results,
+        nullables_interpreter::NullablesVertex,
         numbers_interpreter::NumbersVertex,
         test_types::{
             TestIRQuery, TestIRQueryResult, TestInterpreterOutputData, TestInterpreterOutputTrace,
@@ -632,6 +633,23 @@ mod tests {
         }
     }
 
+    fn check_nullables_trace(
+        expected_ir: TestIRQuery,
+        input_data: &str,
+        test_outputs: TestInterpreterOutputData,
+    ) {
+        match ron::from_str::<TestInterpreterOutputTrace<NullablesVertex>>(input_data) {
+            Ok(test_data) => {
+                assert_eq!(expected_ir.schema_name, "nullables");
+                assert_eq!(test_data.schema_name, "nullables");
+                check_trace(expected_ir, test_data, test_outputs);
+            }
+            Err(e) => {
+                unreachable!("failed to parse trace file: {e}");
+            }
+        }
+    }
+
     #[parameterize("trustfall_core/test_data/tests/valid_queries")]
     fn parameterized_tester(base: &Path, stem: &str) {
         let mut input_path = PathBuf::from(base);
@@ -655,6 +673,7 @@ mod tests {
         match expected_ir.schema_name.as_str() {
             "filesystem" => check_filesystem_trace(expected_ir, input_data.as_str(), test_outputs),
             "numbers" => check_numbers_trace(expected_ir, input_data.as_str(), test_outputs),
+            "nullables" => check_nullables_trace(expected_ir, input_data.as_str(), test_outputs),
             _ => unreachable!("{}", expected_ir.schema_name),
         }
     }

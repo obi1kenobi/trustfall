@@ -1,0 +1,11 @@
+TestInterpreterOutputData(
+  schema_name: "nullables",
+  outputs: {
+    "nonNullIntegeradd": Output(
+      name: "nonNullIntegeradd",
+      value_type: "Int",
+      vid: Vid(3),
+    ),
+  },
+  results: [],
+)

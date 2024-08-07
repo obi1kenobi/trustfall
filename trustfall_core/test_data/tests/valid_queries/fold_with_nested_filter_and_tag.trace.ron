@@ -441,10 +441,10 @@ TestInterpreterOutputTrace(
                   vid: Vid(3),
                   type_name: "Number",
                   filters: [
-                    Equals(LocalField(
+                    Equals(LocalField(LocalField(
                       field_name: "value",
                       field_type: "Int",
-                    ), Tag(ContextField(ContextField(
+                    )), Tag(ContextField(ContextField(
                       vertex_id: Vid(1),
                       field_name: "value",
                       field_type: "Int",
@@ -453,11 +453,11 @@ TestInterpreterOutputTrace(
                 ),
               },
               outputs: {
-                "inner": ContextField(
+                "inner": ContextField(ContextField(
                   vertex_id: Vid(3),
                   field_name: "value",
                   field_type: "Int",
-                ),
+                )),
               },
             ),
             imported_tags: [
@@ -470,11 +470,11 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "value": ContextField(
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
     ),

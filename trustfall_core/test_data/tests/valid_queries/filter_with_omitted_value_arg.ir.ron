@@ -15,24 +15,24 @@ Ok(TestIRQuery(
           vid: Vid(1),
           type_name: "Number",
           filters: [
-            IsNotNull(LocalField(
+            IsNotNull(LocalField(LocalField(
               field_name: "name",
               field_type: "String",
-            )),
+            ))),
           ],
         ),
       },
       outputs: {
-        "name": ContextField(
+        "name": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "name",
           field_type: "String",
-        ),
-        "value": ContextField(
+        )),
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

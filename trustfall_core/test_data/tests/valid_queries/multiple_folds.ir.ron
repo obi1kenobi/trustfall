@@ -30,11 +30,11 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "mult": ContextField(
+              "mult": ContextField(ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
         ),
@@ -52,21 +52,21 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "div": ContextField(
+              "div": ContextField(ContextField(
                 vertex_id: Vid(3),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

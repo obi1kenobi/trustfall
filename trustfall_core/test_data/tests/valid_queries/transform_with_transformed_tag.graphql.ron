@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        value @tag @transform(op: "+", value: ["%value"]) @tag(name: "doubled")
+
+        successor {
+            value @transform(op: "+", value: ["%doubled"]) @output
+        }
+    }
+}"#,
+    arguments: {},
+)

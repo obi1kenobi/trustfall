@@ -1,0 +1,23 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+
+    // The @tag is within a folded component relative to its use, which is not supported right now.
+    query: r#"
+{
+    Four {
+        successor @fold {  # this is five
+            successor {  # this is six, and it has two prime factors
+                ... on Composite {
+                    primeFactor @fold @transform(op: "count") @tag(name: "prime_count") @output
+                }
+            }
+        }
+        predecessor {  # this is three
+            predecessor {  # this is two, so it's equal to the number of prime factors of six
+                value @filter(op: "=", value: ["%prime_count"]) @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

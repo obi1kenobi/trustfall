@@ -45,10 +45,10 @@ impl<'query> OutputHandler<'query> {
         self.component_outputs_stack.pop().expect("stack was unexpectedly empty")
     }
 
-    fn make_output_name(
+    fn make_output_name<'a>(
         &self,
         local_name: &str,
-        transforms: impl Iterator<Item = &'query str> + 'query,
+        transforms: impl Iterator<Item = &'a str> + 'a,
     ) -> Arc<str> {
         let mut name = String::with_capacity(16);
         if let Some(prefix) = &self.root_prefix {
@@ -80,16 +80,13 @@ impl<'query> OutputHandler<'query> {
         self.global_outputs.entry(name).or_default().push(value);
     }
 
-    pub(super) fn register_locally_named_output(
+    pub(super) fn register_locally_named_output<'a>(
         &mut self,
         local_name: &str,
-        transforms: Option<&[&str]>,
+        transforms: Option<Box<dyn Iterator<Item = &'a str> + 'a>>,
         value: FieldRef,
     ) -> Arc<str> {
-        let complete_name = self.make_output_name(
-            local_name,
-            transforms.map(|inner| inner.iter().copied()).into_iter().flatten(),
-        );
+        let complete_name = self.make_output_name(local_name, transforms.into_iter().flatten());
         self.register_output(complete_name.clone(), value);
         complete_name
     }

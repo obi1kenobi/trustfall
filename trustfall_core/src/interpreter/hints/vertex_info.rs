@@ -6,11 +6,12 @@ use std::{
     sync::Arc,
 };
 
+use crate::ir::TransformBase;
 use crate::{
     interpreter::InterpretedQuery,
     ir::{
         Argument, FieldRef, FieldValue, IREdge, IRFold, IRQueryComponent, IRVertex, LocalField,
-        Operation, Vid,
+        Operation, OperationSubject, Vid,
     },
 };
 
@@ -164,24 +165,41 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 
         let current_vertex = self.current_vertex();
 
-        let properties = current_component
-            .outputs
-            .values()
-            .filter(|c| c.vertex_id == current_vertex.vid)
-            .map(|c| RequiredProperty::new(c.field_name.clone()));
+        let properties = current_component.outputs.values().filter_map(|c| {
+            let maybe_name = match c {
+                FieldRef::ContextField(field) => {
+                    (field.vertex_id == current_vertex.vid).then_some(&field.field_name)
+                }
+                FieldRef::FoldSpecificField(..) => None,
+                FieldRef::TransformedField(transformed) => match &transformed.value.base {
+                    TransformBase::ContextField(field) => {
+                        (field.vertex_id == current_vertex.vid).then_some(&field.field_name)
+                    }
+                    TransformBase::FoldSpecificField(..) => None,
+                },
+            };
 
-        let properties = properties.chain(
-            current_vertex
-                .filters
-                .iter()
-                .map(|f| RequiredProperty::new(f.left().field_name.clone())),
-        );
+            maybe_name.map(Arc::clone).map(RequiredProperty::new)
+        });
+
+        let properties = properties.chain(current_vertex.filters.iter().map(move |f| {
+            RequiredProperty::new(match f.left() {
+                OperationSubject::LocalField(field) => field.field_name.clone(),
+                OperationSubject::TransformedField(transformed) => {
+                    match &transformed.value.base {
+                        TransformBase::ContextField(field) => field.field_name.clone(),
+                        TransformBase::FoldSpecificField(_) => unreachable!("illegal transformed vertex in filter of current_vertex: {current_vertex:#?}"),
+                    }
+                }
+                OperationSubject::FoldSpecificField(..) => unreachable!("found fold-specific field in vertex filters: {current_vertex:#?}"),
+            })
+        }));
 
         let properties = properties.chain(current_component.vertices.values().flat_map(|v| {
             v.filters
                 .iter()
                 .filter_map(|f| match f.right() {
-                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                    Some(Argument::Tag(FieldRef::ContextField(ctx), ..)) => {
                         if current_vertex.vid == ctx.vertex_id {
                             Some(ctx.field_name.clone())
                         } else {
@@ -211,11 +229,12 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         }
 
         let query_variables = self.query_variables();
+        let vertex = self.current_vertex();
 
         // We only care about filtering operations that are both:
         // - on the requested property of this vertex, and
         // - statically-resolvable, i.e. do not depend on tagged arguments
-        let mut relevant_filters = filters_on_local_property(self.current_vertex(), property)
+        let mut relevant_filters = filters_on_local_property(vertex, property)
             .filter(|op| {
                 // Either there's no "right-hand side" in the operator (as in "is_not_null"),
                 // or the right-hand side is a variable.
@@ -224,10 +243,27 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             .peekable();
 
         // Early-return in case there are no filters that apply here.
-        let field = relevant_filters.peek()?.left();
+        let first_filter = relevant_filters.peek()?;
+
+        // We currently ignore filters applied to transformed values of local properties.
+        // This is sound because each filter we consider only *narrows* the set of possible values,
+        // meaning that non-evaluated filters are a lost optimization opportunity,
+        // not a correctness problem.
+        //
+        // If tweaking this logic, make sure to tweak the logic in `filters_on_local_property`
+        // as well -- their behaviors have to match!
+        //
+        // TODO: This is an optimization opportunity for the future.
+        let local_field = match first_filter.left() {
+            OperationSubject::LocalField(field) => field,
+            OperationSubject::TransformedField(_) => return None,
+            OperationSubject::FoldSpecificField(..) => {
+                unreachable!("found fold-specific field in vertex filters: {vertex:#?}")
+            }
+        };
 
         let candidate =
-            compute_statically_known_candidate(field, relevant_filters, query_variables)
+            compute_statically_known_candidate(local_field, relevant_filters, query_variables)
                 .map(|x| x.into_owned());
         debug_assert!(
             // Ensure we never return a range variant with a completely unrestricted range.
@@ -254,6 +290,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             return None;
         }
 
+        let current_vertex = self.current_vertex();
+
         // We only care about filtering operations that are all of the following:
         // - on the requested property of this vertex;
         // - dynamically-resolvable, i.e. depend on tagged arguments,
@@ -261,7 +299,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         //   at the time this call was made, and
         // - use a supported filtering operation using those tagged arguments.
         let resolved_range = (Bound::Unbounded, self.execution_frontier());
-        let relevant_filters: Vec<_> = filters_on_local_property(self.current_vertex(), property)
+        let relevant_filters: Vec<_> = filters_on_local_property(current_vertex, property)
             .filter(|op| {
                 matches!(
                     op,
@@ -273,11 +311,11 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                         | Operation::GreaterThanOrEqual(..)
                         | Operation::OneOf(..)
                 ) && match op.right() {
-                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
+                    Some(Argument::Tag(FieldRef::ContextField(ctx), ..)) => {
                         // Ensure the vertex holding the @tag has already been computed.
                         resolved_range.contains(&ctx.vertex_id)
                     }
-                    Some(Argument::Tag(FieldRef::FoldSpecificField(fsf))) => {
+                    Some(Argument::Tag(FieldRef::FoldSpecificField(fsf), ..)) => {
                         // Ensure the fold holding the @tag has already been computed.
                         resolved_range.contains(&fsf.fold_root_vid)
                     }
@@ -289,8 +327,25 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         // Early-return in case there are no filters that apply here.
         let first_filter = relevant_filters.first()?;
 
+        // We currently ignore filters applied to transformed values of local properties.
+        // This is sound because each filter we consider only *narrows* the set of possible values,
+        // meaning that non-evaluated filters are a lost optimization opportunity,
+        // not a correctness problem.
+        //
+        // If tweaking this logic, make sure to tweak the logic in `filters_on_local_property`
+        // as well -- their behaviors have to match!
+        //
+        // TODO: This is an optimization opportunity for the future.
+        let local_field = match first_filter.left() {
+            OperationSubject::LocalField(field) => field,
+            OperationSubject::TransformedField(_) => return None,
+            OperationSubject::FoldSpecificField(..) => {
+                unreachable!("found fold-specific field in vertex filters: {current_vertex:#?}")
+            }
+        };
+
         let initial_candidate = self.statically_required_property(property).unwrap_or_else(|| {
-            if first_filter.left().field_type.nullable() {
+            if local_field.field_type.nullable() {
                 CandidateValue::All
             } else {
                 CandidateValue::Range(Range::full_non_null())
@@ -330,7 +385,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
             )
         };
 
-        let field = filter_to_use
+        let (field, _) = filter_to_use
             .right()
             .expect("filter did not have an operand")
             .as_tag()
@@ -391,13 +446,30 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 fn filters_on_local_property<'a: 'b, 'b>(
     vertex: &'a IRVertex,
     property_name: &'b str,
-) -> impl Iterator<Item = &'a Operation<LocalField, Argument>> + 'b {
-    vertex.filters.iter().filter(move |op| op.left().field_name.as_ref() == property_name)
+) -> impl Iterator<Item = &'a Operation<OperationSubject, Argument>> + 'b {
+    vertex.filters.iter().filter(move |op| {
+        let left = op.left();
+        match left {
+            OperationSubject::LocalField(field) => field.field_name.as_ref() == property_name,
+            OperationSubject::TransformedField(..) => {
+                // We are currently ignoring field transformations for purposes of determining
+                // required property values. This is sound because every new filter we account for
+                // can only *reduce* the set of values that are allowed, so skipping filters
+                // means we lose out on optimization opportunities without harming correctness.
+                //
+                // TODO: This is an opportunity for further optimization.
+                false
+            }
+            OperationSubject::FoldSpecificField(..) => {
+                unreachable!("found fold-specific field in vertex filters: {vertex:#?}")
+            }
+        }
+    })
 }
 
 fn compute_statically_known_candidate<'a, 'b>(
     field: &'a LocalField,
-    relevant_filters: impl Iterator<Item = &'a Operation<LocalField, Argument>>,
+    relevant_filters: impl Iterator<Item = &'a Operation<OperationSubject, Argument>>,
     query_variables: &'b BTreeMap<Arc<str>, FieldValue>,
 ) -> Option<CandidateValue<Cow<'b, FieldValue>>> {
     let is_subject_field_nullable = field.field_type.nullable();
@@ -468,16 +540,16 @@ mod tests {
             // Both `= 1` and `!= 1` are impossible to satisfy simultaneously.
             (
                 vec![
-                    Operation::NotEquals(local_field.clone(), first_var.clone()),
-                    Operation::Equals(local_field.clone(), first_var.clone()),
+                    Operation::NotEquals(local_field.clone().into(), first_var.clone()),
+                    Operation::Equals(local_field.clone().into(), first_var.clone()),
                 ],
                 Some(CandidateValue::Impossible),
             ),
             // `= 2` and `!= 1` means the value must be 2.
             (
                 vec![
-                    Operation::NotEquals(local_field.clone(), first_var.clone()),
-                    Operation::Equals(local_field.clone(), second_var.clone()),
+                    Operation::NotEquals(local_field.clone().into(), first_var.clone()),
+                    Operation::Equals(local_field.clone().into(), second_var.clone()),
                 ],
                 Some(CandidateValue::Single(&variables["second"])),
             ),
@@ -485,8 +557,8 @@ mod tests {
             // `one_of [1, 2]` and `!= 1` allows only `2`.
             (
                 vec![
-                    Operation::OneOf(local_field.clone(), list_var.clone()),
-                    Operation::NotEquals(local_field.clone(), first_var.clone()),
+                    Operation::OneOf(local_field.clone().into(), list_var.clone()),
+                    Operation::NotEquals(local_field.clone().into(), first_var.clone()),
                 ],
                 Some(CandidateValue::Single(&variables["second"])),
             ),
@@ -494,8 +566,8 @@ mod tests {
             // `one_of [1, 2, 3]` and `not_one_of [1, 2]` allows only `3`.
             (
                 vec![
-                    Operation::OneOf(local_field.clone(), longer_list_var.clone()),
-                    Operation::NotOneOf(local_field.clone(), list_var.clone()),
+                    Operation::OneOf(local_field.clone().into(), longer_list_var.clone()),
+                    Operation::NotOneOf(local_field.clone().into(), list_var.clone()),
                 ],
                 Some(CandidateValue::Single(&variables["third"])),
             ),
@@ -503,8 +575,8 @@ mod tests {
             // `>= 2` and `not_one_of [1, 2]` produces the exclusive > 2 range
             (
                 vec![
-                    Operation::GreaterThanOrEqual(local_field.clone(), second_var.clone()),
-                    Operation::NotOneOf(local_field.clone(), list_var.clone()),
+                    Operation::GreaterThanOrEqual(local_field.clone().into(), second_var.clone()),
+                    Operation::NotOneOf(local_field.clone().into(), list_var.clone()),
                 ],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Excluded(&variables["second"]),
@@ -515,9 +587,9 @@ mod tests {
             // `>= 2` and `is_not_null` and `not_one_of [1, 2]` produces the exclusive non-null > 2 range
             (
                 vec![
-                    Operation::GreaterThanOrEqual(local_field.clone(), second_var.clone()),
-                    Operation::NotOneOf(local_field.clone(), list_var.clone()),
-                    Operation::IsNotNull(local_field.clone()),
+                    Operation::GreaterThanOrEqual(local_field.clone().into(), second_var.clone()),
+                    Operation::NotOneOf(local_field.clone().into(), list_var.clone()),
+                    Operation::IsNotNull(local_field.clone().into()),
                 ],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Excluded(&variables["second"]),
@@ -528,8 +600,8 @@ mod tests {
             // `> 2` and `is_not_null` produces the exclusive non-null > 2 range
             (
                 vec![
-                    Operation::GreaterThan(local_field.clone(), second_var.clone()),
-                    Operation::IsNotNull(local_field.clone()),
+                    Operation::GreaterThan(local_field.clone().into(), second_var.clone()),
+                    Operation::IsNotNull(local_field.clone().into()),
                 ],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Excluded(&variables["second"]),
@@ -540,9 +612,9 @@ mod tests {
             // `<= 2` and `!= 2` and `is_not_null` produces the exclusive non-null < 2 range
             (
                 vec![
-                    Operation::LessThanOrEqual(local_field.clone(), second_var.clone()),
-                    Operation::NotEquals(local_field.clone(), second_var.clone()),
-                    Operation::IsNotNull(local_field.clone()),
+                    Operation::LessThanOrEqual(local_field.clone().into(), second_var.clone()),
+                    Operation::NotEquals(local_field.clone().into(), second_var.clone()),
+                    Operation::IsNotNull(local_field.clone().into()),
                 ],
                 Some(CandidateValue::Range(Range::with_end(
                     Bound::Excluded(&variables["second"]),
@@ -553,8 +625,8 @@ mod tests {
             // `< 2` and `is_not_null` produces the exclusive non-null < 2 range
             (
                 vec![
-                    Operation::LessThan(local_field.clone(), second_var.clone()),
-                    Operation::IsNotNull(local_field.clone()),
+                    Operation::LessThan(local_field.clone().into(), second_var.clone()),
+                    Operation::IsNotNull(local_field.clone().into()),
                 ],
                 Some(CandidateValue::Range(Range::with_end(
                     Bound::Excluded(&variables["second"]),
@@ -564,21 +636,21 @@ mod tests {
             //
             // `is_not_null` by itself only eliminates null
             (
-                vec![Operation::IsNotNull(local_field.clone())],
+                vec![Operation::IsNotNull(local_field.clone().into())],
                 Some(CandidateValue::Range(Range::full_non_null())),
             ),
             //
             // `!= null` also elminates null
             (
-                vec![Operation::NotEquals(local_field.clone(), null_var.clone())],
+                vec![Operation::NotEquals(local_field.clone().into(), null_var.clone())],
                 Some(CandidateValue::Range(Range::full_non_null())),
             ),
             //
             // `!= 1` by itself doesn't produce any candidates
-            (vec![Operation::NotEquals(local_field.clone(), first_var.clone())], None),
+            (vec![Operation::NotEquals(local_field.clone().into(), first_var.clone())], None),
             //
             // `not_one_of [1, 2]` by itself doesn't produce any candidates
-            (vec![Operation::NotEquals(local_field.clone(), list_var.clone())], None),
+            (vec![Operation::NotEquals(local_field.clone().into(), list_var.clone())], None),
         ];
 
         for (filters, expected_output) in test_data {
@@ -626,28 +698,28 @@ mod tests {
             // The local field is non-nullable.
             // When we apply a range bound on the field, the range must be non-nullable too.
             (
-                vec![Operation::GreaterThanOrEqual(local_field.clone(), first_var.clone())],
+                vec![Operation::GreaterThanOrEqual(local_field.clone().into(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Included(&variables["first"]),
                     false,
                 ))),
             ),
             (
-                vec![Operation::GreaterThan(local_field.clone(), first_var.clone())],
+                vec![Operation::GreaterThan(local_field.clone().into(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_start(
                     Bound::Excluded(&variables["first"]),
                     false,
                 ))),
             ),
             (
-                vec![Operation::LessThan(local_field.clone(), first_var.clone())],
+                vec![Operation::LessThan(local_field.clone().into(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_end(
                     Bound::Excluded(&variables["first"]),
                     false,
                 ))),
             ),
             (
-                vec![Operation::LessThanOrEqual(local_field.clone(), first_var.clone())],
+                vec![Operation::LessThanOrEqual(local_field.clone().into(), first_var.clone())],
                 Some(CandidateValue::Range(Range::with_end(
                     Bound::Included(&variables["first"]),
                     false,

@@ -38,29 +38,33 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "successors": ContextField(
+              "successors": ContextField(ContextField(
                 vertex_id: Vid(3),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           fold_specific_outputs: {
-            "successor_counts": Count,
+            "successor_counts": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(2),
+              fold_root_vid: Vid(3),
+              kind: Count,
+            )),
           },
         ),
       },
       outputs: {
-        "predecessor": ContextField(
+        "predecessor": ContextField(ContextField(
           vertex_id: Vid(2),
           field_name: "value",
           field_type: "Int",
-        ),
-        "zero": ContextField(
+        )),
+        "zero": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

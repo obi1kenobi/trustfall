@@ -13,7 +13,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
-pub use self::types::{NamedTypedValue, Type};
+pub use self::types::Type;
 pub use self::value::{FieldValue, TransparentValue};
 
 mod indexed;
@@ -47,6 +47,18 @@ pub struct Eid(pub(crate) NonZeroUsize);
 impl Eid {
     pub fn new(id: NonZeroUsize) -> Eid {
         Eid(id)
+    }
+}
+
+/// Unique ID of a value term in a Trustfall query, such as a vertex property
+/// or a computed value like the number of elements in a `@fold`.
+#[doc(alias("term"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct Tid(pub(crate) NonZeroUsize);
+
+impl Tid {
+    pub fn new(id: NonZeroUsize) -> Tid {
+        Tid(id)
     }
 }
 
@@ -117,7 +129,7 @@ pub struct IRQueryComponent {
     pub folds: BTreeMap<Eid, Arc<IRFold>>,
 
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub outputs: BTreeMap<Arc<str>, ContextField>,
+    pub outputs: BTreeMap<Arc<str>, FieldRef>,
 }
 
 /// Intermediate representation of a query
@@ -189,7 +201,7 @@ pub struct IRVertex {
     pub coerced_from_type: Option<Arc<str>>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub filters: Vec<Operation<LocalField, Argument>>,
+    pub filters: Vec<Operation<OperationSubject, Argument>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -209,11 +221,21 @@ pub struct IRFold {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub imported_tags: Vec<FieldRef>,
 
+    /// Outputs from this fold that are derived from fold-specific fields.
+    ///
+    /// All [`FieldRef`] values in the map are guaranteed to have
+    /// `FieldRef.refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub fold_specific_outputs: BTreeMap<Arc<str>, FoldSpecificFieldKind>,
+    pub fold_specific_outputs: BTreeMap<Arc<str>, FieldRef>,
 
+    /// Filters that are applied on the fold as a whole.
+    ///
+    /// For example, as in `@fold @transform(op: "count") @filter(op: "=", value: ["$zero"])`.
+    ///
+    /// All [`FieldRef`] values inside each [`Operation`] within the `Vec` are guaranteed to have
+    /// `FieldRef.refers_to_fold_specific_field().is_some() == true`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub post_filters: Vec<Operation<FoldSpecificFieldKind, Argument>>,
+    pub post_filters: Vec<Operation<OperationSubject, Argument>>,
 }
 
 #[non_exhaustive]
@@ -267,6 +289,7 @@ pub enum TransformationKind {
 pub enum FieldRef {
     ContextField(ContextField),
     FoldSpecificField(FoldSpecificField),
+    TransformedField(TransformedField),
 }
 
 impl Ord for FieldRef {
@@ -276,11 +299,20 @@ impl Ord for FieldRef {
                 .vertex_id
                 .cmp(&f2.vertex_id)
                 .then(f1.field_name.as_ref().cmp(f2.field_name.as_ref())),
-            (FieldRef::ContextField(_), FieldRef::FoldSpecificField(_)) => Ordering::Less,
+            (
+                FieldRef::ContextField(_),
+                FieldRef::FoldSpecificField(_) | FieldRef::TransformedField(..),
+            ) => Ordering::Less,
             (FieldRef::FoldSpecificField(_), FieldRef::ContextField(_)) => Ordering::Greater,
+            (FieldRef::FoldSpecificField(..), FieldRef::TransformedField(..)) => Ordering::Less,
             (FieldRef::FoldSpecificField(f1), FieldRef::FoldSpecificField(f2)) => {
                 f1.fold_eid.cmp(&f2.fold_eid).then(f1.kind.cmp(&f2.kind))
             }
+            (
+                FieldRef::TransformedField(..),
+                FieldRef::ContextField(..) | FieldRef::FoldSpecificField(..),
+            ) => Ordering::Greater,
+            (FieldRef::TransformedField(f1), FieldRef::TransformedField(f2)) => f1.tid.cmp(&f2.tid),
         }
     }
 }
@@ -303,18 +335,18 @@ impl From<FoldSpecificField> for FieldRef {
     }
 }
 
+impl From<TransformedField> for FieldRef {
+    fn from(f: TransformedField) -> Self {
+        Self::TransformedField(f)
+    }
+}
+
 impl FieldRef {
     pub fn field_type(&self) -> &Type {
         match self {
             FieldRef::ContextField(c) => &c.field_type,
             FieldRef::FoldSpecificField(f) => f.kind.field_type(),
-        }
-    }
-
-    pub fn field_name(&self) -> &str {
-        match self {
-            FieldRef::ContextField(c) => c.field_name.as_ref(),
-            FieldRef::FoldSpecificField(f) => f.kind.field_name(),
+            FieldRef::TransformedField(f) => &f.field_type,
         }
     }
 
@@ -323,20 +355,61 @@ impl FieldRef {
         match self {
             FieldRef::ContextField(c) => c.vertex_id,
             FieldRef::FoldSpecificField(f) => f.fold_root_vid,
+            FieldRef::TransformedField(f) => match &f.value.base {
+                TransformBase::ContextField(c) => c.vertex_id,
+                TransformBase::FoldSpecificField(f) => f.fold_root_vid,
+            },
+        }
+    }
+
+    pub fn refers_to_fold_specific_field(&self) -> Option<&FoldSpecificField> {
+        match self {
+            FieldRef::ContextField(_) => None,
+            FieldRef::FoldSpecificField(fold_specific) => Some(fold_specific),
+            FieldRef::TransformedField(t) => match &t.value.base {
+                TransformBase::ContextField(_) => None,
+                TransformBase::FoldSpecificField(fold_specific) => Some(fold_specific),
+            },
         }
     }
 }
 
+/// The right-hand side of a Trustfall operation.
+///
+/// In a Trustfall query, the `@filter` directive produces [`Operation`] values.
+/// The right-hand side of [`Operation`] is usually [`Argument`].
+///
+/// For example:
+/// ```graphql
+/// name @filter(op: "=", value: ["$input"])
+/// ```
+/// produces a value like `Operation::Equals(..., Argument::Variable(...))`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Argument {
-    Tag(FieldRef),
+    /// A tag referencing another value from the query, plus an optional overridden type for it.
+    ///
+    /// The overridden type is set in cases where the tag at the time of use may have a different
+    /// type from the underlying value. For example, if the tag references a value from inside
+    /// an `@optional` block, the nullability of the tagged value may depend on where it is used:
+    /// even if the underlying value has non-nullable type, using it outside its `@optional` block
+    /// would cause it to have nullable type in order to handle the optional edge not being present.
+    Tag(FieldRef, #[serde(default, skip_serializing_if = "Option::is_none")] Option<Type>),
+
+    /// A variable whose value is supplied at runtime.
     Variable(VariableRef),
 }
 
 impl Argument {
-    pub(crate) fn as_tag(&self) -> Option<&FieldRef> {
+    pub(crate) fn as_variable(&self) -> Option<&VariableRef> {
         match self {
-            Argument::Tag(t) => Some(t),
+            Argument::Variable(var) => Some(var),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_tag(&self) -> Option<(&FieldRef, &Option<Type>)> {
+        match self {
+            Argument::Tag(r, t) => Some((r, t)),
             Argument::Variable(_) => None,
         }
     }
@@ -352,15 +425,70 @@ impl Argument {
             }
         }
     }
+
+    pub fn field_type(&self) -> &Type {
+        match self {
+            Argument::Tag(_, Some(overridden_type)) => overridden_type,
+            Argument::Tag(tag, None) => tag.field_type(),
+            Argument::Variable(var) => &var.variable_type,
+        }
+    }
+}
+
+/// The left-hand side of a Trustfall operation.
+///
+/// In a Trustfall query, the `@filter` directive produces [`Operation`] values.
+/// The left-hand side of [`Operation`] is usually [`OperationSubject`].
+///
+/// For example:
+/// ```graphql
+/// name @filter(op: "=", value: ["$input"])
+/// ```
+/// produces a value like `Operation::Equals(OperationSubject::LocalField(...), ...)`.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OperationSubject {
+    LocalField(LocalField),
+    FoldSpecificField(FoldSpecificField),
+    TransformedField(TransformedField),
+}
+
+impl From<LocalField> for OperationSubject {
+    fn from(value: LocalField) -> Self {
+        Self::LocalField(value)
+    }
+}
+
+impl From<TransformedField> for OperationSubject {
+    fn from(value: TransformedField) -> Self {
+        Self::TransformedField(value)
+    }
+}
+
+impl OperationSubject {
+    pub fn refers_to_fold_specific_field(&self) -> Option<&FoldSpecificField> {
+        match self {
+            OperationSubject::FoldSpecificField(fold_specific) => Some(fold_specific),
+            _ => None,
+        }
+    }
+
+    pub fn field_type(&self) -> &Type {
+        match self {
+            OperationSubject::LocalField(inner) => &inner.field_type,
+            OperationSubject::TransformedField(inner) => &inner.field_type,
+            OperationSubject::FoldSpecificField(inner) => inner.kind.field_type(),
+        }
+    }
 }
 
 /// Operations that can be made in the graph.
 ///
-/// In a Trustfall query, the `@filter` directive produces `Operation` values:
+/// In a Trustfall query, the `@filter` directive produces [`Operation`] values:
 /// ```graphql
 /// name @filter(op: "=", value: ["$input"])
 /// ```
-/// would produce the `Operation::Equals` variant, for example.
+/// would produce the [`Operation::Equals`] variant, for example.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation<LeftT, RightT>
@@ -468,6 +596,29 @@ where
             Operation::RegexMatches(..) => "regex",
             Operation::NotRegexMatches(..) => "not_regex",
         }
+    }
+
+    pub(crate) fn map_left<'a, LeftF, LeftOutT>(
+        &'a self,
+        map_left: LeftF,
+    ) -> Operation<LeftOutT, &RightT>
+    where
+        LeftOutT: Debug + Clone + PartialEq + Eq,
+        LeftF: FnOnce(&'a LeftT) -> LeftOutT,
+    {
+        self.map(map_left, |x| x)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn map_right<'a, RightF, RightOutT>(
+        &'a self,
+        map_right: RightF,
+    ) -> Operation<&LeftT, RightOutT>
+    where
+        RightOutT: Debug + Clone + PartialEq + Eq,
+        RightF: FnOnce(&'a RightT) -> RightOutT,
+    {
+        self.map(|x| x, map_right)
     }
 
     pub(crate) fn map<'a, LeftF, LeftOutT, RightF, RightOutT>(
@@ -619,6 +770,73 @@ pub struct LocalField {
     pub field_name: Arc<str>,
 
     pub field_type: Type,
+}
+
+#[non_exhaustive]
+/// The outcome of a `@transform` operation applied to a vertex property or property-like value
+/// such as the element count of a fold.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransformedField {
+    pub value: Arc<TransformedValue>,
+
+    /// The unique identifier of the transformed value this struct represents.
+    pub tid: Tid,
+
+    /// The resulting type of the value produced by this transformation.
+    pub field_type: Type,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransformedValue {
+    pub base: TransformBase,
+    pub transforms: Vec<Transform>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TransformBase {
+    ContextField(ContextField),
+    FoldSpecificField(FoldSpecificField),
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Transform {
+    /// List length. Null on null inputs.
+    Len,
+
+    /// Absolute value. Allowed on both integer and floating-point types.
+    /// Null on null inputs.
+    Abs,
+
+    /// Square root. Allowed on both integer and floating-point types.
+    /// Null on null or negative inputs.
+    Sqrt,
+
+    /// Integer addition. For floating-point addition, use [`Transform::AddF`] instead.
+    Add(Argument),
+
+    /// The floating-point equivalent of [`Transform::Add`].
+    /// Separate because we want clean and explicit type-inference for variables:
+    /// what's the type of `"$arg"` in `@transform(op: "add", value: ["$arg"])`?
+    /// It's `Int!` because the operator is `add` -- and would have been `Float!` for `fadd`.
+    AddF(Argument),
+}
+
+impl Transform {
+    /// The human-readable, symbol-free name of the transform operation.
+    ///
+    /// Symbol-free means the name is alphanumeric, so the `+` operation is `"add"` etc.
+    pub(crate) fn operation_output_name(&self) -> &str {
+        match self {
+            Self::Len => "len",
+            Self::Abs => "abs",
+            Self::Sqrt => "sqrt",
+            Self::Add(..) => "add",
+            Self::AddF(..) => "addf",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,0 +1,23 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # There are incompatible demands for the type of `$arg` here:
+        # it needs to be an `Int!` to fit the first transform,
+        # and a `Float!` to fit the second transform.
+        # This is a frontend error.
+        vowelsInName @transform(op: "len") @transform(op: "+", value: ["$arg"]) @output
+
+        predecessor
+            @fold
+            @transform(op: "count")
+            @transform(op: "sqrt")
+            @transform(op: "+f", value: ["$arg"])
+            @output
+    }
+}"#,
+    arguments: {
+        "arg": Int64(0),
+    },
+)

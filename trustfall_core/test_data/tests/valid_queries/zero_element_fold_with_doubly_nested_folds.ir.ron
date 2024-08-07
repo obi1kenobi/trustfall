@@ -53,47 +53,55 @@ Ok(TestIRQuery(
                           ),
                         },
                         outputs: {
-                          "next_successors": ContextField(
+                          "next_successors": ContextField(ContextField(
                             vertex_id: Vid(4),
                             field_name: "value",
                             field_type: "Int",
-                          ),
+                          )),
                         },
                       ),
                       fold_specific_outputs: {
-                        "next_successor_counts": Count,
+                        "next_successor_counts": FoldSpecificField(FoldSpecificField(
+                          fold_eid: Eid(3),
+                          fold_root_vid: Vid(4),
+                          kind: Count,
+                        )),
                       },
                     ),
                   },
                   outputs: {
-                    "successors": ContextField(
+                    "successors": ContextField(ContextField(
                       vertex_id: Vid(3),
                       field_name: "value",
                       field_type: "Int",
-                    ),
+                    )),
                   },
                 ),
                 fold_specific_outputs: {
-                  "successor_counts": Count,
+                  "successor_counts": FoldSpecificField(FoldSpecificField(
+                    fold_eid: Eid(2),
+                    fold_root_vid: Vid(3),
+                    kind: Count,
+                  )),
                 },
               ),
             },
             outputs: {
-              "predecessor": ContextField(
+              "predecessor": ContextField(ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
         ),
       },
       outputs: {
-        "zero": ContextField(
+        "zero": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

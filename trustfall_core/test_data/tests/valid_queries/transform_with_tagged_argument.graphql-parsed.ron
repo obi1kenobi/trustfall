@@ -1,0 +1,71 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          transform_group: Some(TransformGroup(
+            tid: Tid(1),
+            transform: TransformDirective(
+              kind: Add(VariableRef("ten")),
+            ),
+            tag: [
+              TagDirective(),
+            ],
+          )),
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(),
+          ],
+          transform_group: Some(TransformGroup(
+            tid: Tid(2),
+            transform: TransformDirective(
+              kind: Add(TagRef("value")),
+            ),
+            output: [
+              OutputDirective(),
+            ],
+          )),
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "ten": Int64(10),
+  },
+))

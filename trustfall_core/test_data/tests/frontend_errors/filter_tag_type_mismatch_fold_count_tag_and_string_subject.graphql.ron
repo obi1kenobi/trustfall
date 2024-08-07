@@ -1,0 +1,18 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        primeFactor @fold @transform(op: "count") @tag(name: "factors")
+
+        successor {
+            # This filter has nonsensical types: we're attempting to use
+            # a tag of type `Int!` as an argument to a string filter operator.
+            name @filter(op: "regex", value: ["%factors"])
+
+            value @output
+        }
+    }
+}"#,
+    arguments: {},
+)

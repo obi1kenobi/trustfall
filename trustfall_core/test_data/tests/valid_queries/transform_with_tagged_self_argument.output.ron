@@ -1,0 +1,21 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "valueadd": Output(
+      name: "valueadd",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "valueaddadd": Output(
+      name: "valueaddadd",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "valueadd": Int64(2),
+      "valueaddadd": Int64(4),
+    },
+  ],
+)
