@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Iterable, Iterator, Tuple
+from typing import Any, Mapping, Iterable, Iterator, Tuple, Union
 
 from .. import Adapter, Context
 
@@ -46,7 +46,7 @@ class NumbersAdapter(Adapter[Vertex]):
     ) -> Iterable[Tuple[Context[Vertex], Any]]:
         for context in contexts:
             active_vertex = context.active_vertex
-            value: int | str | None = None
+            value: Union[int, str, None] = None
             if active_vertex is not None:
                 if property_name == "value":
                     value = active_vertex
