@@ -46,7 +46,7 @@ class NumbersAdapter(Adapter[Vertex]):
     ) -> Iterable[Tuple[Context[Vertex], Any]]:
         for context in contexts:
             active_vertex = context.active_vertex
-            value = None
+            value: int | str | None = None
             if active_vertex is not None:
                 if property_name == "value":
                     value = active_vertex
@@ -69,7 +69,7 @@ class NumbersAdapter(Adapter[Vertex]):
     ) -> Iterable[Tuple[Context[Vertex], Iterable[Vertex]]]:
         for context in contexts:
             active_vertex = context.active_vertex
-            neighbors = []
+            neighbors: Iterable[Vertex] = []
             if active_vertex is not None:
                 if edge_name == "multiple":
                     if active_vertex > 0:

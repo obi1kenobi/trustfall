@@ -16,7 +16,7 @@ class Context(Generic[Vertex]):
     @property
     def active_vertex(self) -> Optional[Vertex]:
         """The vertex whose information (properties, edges, etc.) needs to be resolved."""
-        return self._active_vertex
+        return self._active_vertex  # type: ignore[attr-defined]
 
 
 class Adapter(Generic[Vertex], metaclass=ABCMeta):
