@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, Mapping, Type
+from typing import Any, Dict, Iterator, Mapping
 
 from .adapter import Adapter
 from .trustfall import AdapterShim, Schema, interpret_query
