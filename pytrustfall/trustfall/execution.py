@@ -1,11 +1,11 @@
-from typing import Any, Dict, Iterator, Mapping, Type
+from typing import Any, Dict, Iterator, Mapping
 
-from .adapter import Adapter
+from .adapter import Adapter, Vertex
 from .trustfall import AdapterShim, Schema, interpret_query
 
 
 def execute_query(
-    adapter: Adapter,
+    adapter: Adapter[Vertex],
     schema: Schema,
     query: str,
     arguments: Mapping[str, Any],

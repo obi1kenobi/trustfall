@@ -111,6 +111,12 @@ jobs:
           pytest
           maturin build --interpreter python -o target/wheels/
 
+      - name: mypy
+        run: |
+          cd pytrustfall
+          source .venv/bin/activate
+          mypy
+
       - name: Set environment variables
         id: branch-info
         run: |
