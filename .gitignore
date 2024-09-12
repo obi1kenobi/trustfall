@@ -2,8 +2,12 @@
 **/.vscode/
 **/.idea/
 **/.cargo/
+**/.idea/
 **/localdata/
 **/.ipynb_checkpoints/
+**/package-lock.json
+**/dist/
+**/node_modules/
 
 **/*.pyc
 **/*.pyo
