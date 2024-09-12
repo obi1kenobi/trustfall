@@ -1,0 +1,85 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(31),
+        "min": Int64(28),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      coerced_to: Some("Composite"),
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "primeFactor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+            transform: Some(TransformGroup(
+              tid: Tid(1),
+              transform: TransformDirective(
+                kind: Count,
+              ),
+              retransform: Some(TransformGroup(
+                tid: Tid(2),
+                transform: TransformDirective(
+                  kind: Abs,
+                ),
+                output: [
+                  OutputDirective(),
+                ],
+                filter: [
+                  FilterDirective(
+                    operation: GreaterThan((), VariableRef("two")),
+                  ),
+                ],
+              )),
+            )),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 13,
+          ),
+          name: "primeFactor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 12,
+                column: 17,
+              ),
+              name: "value",
+              alias: Some("factors"),
+            ), FieldNode(
+              position: Pos(
+                line: 12,
+                column: 17,
+              ),
+              name: "value",
+              alias: Some("factors"),
+              output: [
+                OutputDirective(),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "two": Uint64(2),
+  },
+))

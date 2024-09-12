@@ -1,0 +1,12 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "abs" transform operator does not operate on `String` values.
+        # This is an error.
+        name @transform(op: "abs") @output
+    }
+}"#,
+    arguments: {},
+)

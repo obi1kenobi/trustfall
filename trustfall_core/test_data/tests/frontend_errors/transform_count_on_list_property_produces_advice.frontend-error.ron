@@ -1,0 +1,1 @@
+Err(TransformTypeError(FoldSpecificTransformUsedOnProperty("count", "property \"vowelsInName\"", " To get the number of elements in the list value here (type \"[String]\"), use the \"len\" transform operation instead.")))

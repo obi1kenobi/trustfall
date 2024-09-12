@@ -1,1 +1,1 @@
-Err(UndefinedTagInFilter("name", "undefined_tag_name"))
+Err(UndefinedTagInFilter("property \"name\"", "undefined_tag_name"))

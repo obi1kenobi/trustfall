@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 4, max: 6) {
+        ... on Composite {
+            value @output
+
+            # The duplicated `@transform(op: "count") is the source of the error here.
+            primeFactor
+                @fold
+                @transform(op: "count")
+                @transform(op: "count")
+                @output
+            {
+                factors: value @output
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

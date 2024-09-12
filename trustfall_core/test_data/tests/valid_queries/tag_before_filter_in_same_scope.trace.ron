@@ -144,10 +144,10 @@ TestInterpreterOutputTrace(
             vid: Vid(1),
             type_name: "Number",
             filters: [
-              Contains(LocalField(
+              Contains(LocalField(LocalField(
                 field_name: "vowelsInName",
                 field_type: "[String]",
-              ), Tag(ContextField(ContextField(
+              )), Tag(ContextField(ContextField(
                 vertex_id: Vid(1),
                 field_name: "name",
                 field_type: "String",
@@ -156,11 +156,11 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "name": ContextField(
+          "name": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "name",
             field_type: "String",
-          ),
+          )),
         },
       ),
     ),

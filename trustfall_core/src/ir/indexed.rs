@@ -154,7 +154,7 @@ fn add_data_from_component(
     }
 
     for (output_name, field) in component.outputs.iter() {
-        let output_vid = field.vertex_id;
+        let output_vid = field.defined_at();
 
         // the output must be from a vertex in this component
         let output_component =
@@ -166,7 +166,7 @@ fn add_data_from_component(
         let output_name = output_name.clone();
         let output_type = get_output_type(
             output_vid,
-            &field.field_type,
+            field.field_type(),
             &component_optional_vertices,
             are_folds_optional,
         );

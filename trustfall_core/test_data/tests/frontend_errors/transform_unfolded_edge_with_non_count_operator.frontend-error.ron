@@ -1,0 +1,4 @@
+Err(MultipleErrors(DisplayVec([
+  TransformTypeError(CannotTransformEdgeWithoutFold("primeFactor", "")),
+  TransformTypeError(UnsupportedTransformUsedOnEdge("abs", "primeFactor", " Did you mean to apply the @transform directive to some property instead?")),
+])))

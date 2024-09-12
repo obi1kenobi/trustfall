@@ -1,0 +1,10 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        value @transform(op: "abs") @transform(op: "count") @output
+    }
+}"#,
+    arguments: {},
+)

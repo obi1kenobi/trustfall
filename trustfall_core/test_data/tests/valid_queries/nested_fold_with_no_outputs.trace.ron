@@ -550,7 +550,11 @@ TestInterpreterOutputTrace(
                     },
                   ),
                   post_filters: [
-                    GreaterThanOrEqual(Count, Variable(VariableRef(
+                    GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                      fold_eid: Eid(2),
+                      fold_root_vid: Vid(3),
+                      kind: Count,
+                    )), Variable(VariableRef(
                       variable_name: "two",
                       variable_type: "Int!",
                     ))),
@@ -559,7 +563,11 @@ TestInterpreterOutputTrace(
               },
             ),
             post_filters: [
-              GreaterThanOrEqual(Count, Variable(VariableRef(
+              GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "two",
                 variable_type: "Int!",
               ))),
@@ -567,11 +575,11 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "value": ContextField(
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
       variables: {

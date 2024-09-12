@@ -1,0 +1,150 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "One",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          tag: [
+            TagDirective(),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "predecessor",
+              optional: Some(OptionalDirective()),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "predecessor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "value",
+                ), FieldNode(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "value",
+                  transform_group: Some(TransformGroup(
+                    tid: Tid(1),
+                    transform: TransformDirective(
+                      kind: Add(TagRef("value")),
+                    ),
+                    tag: [
+                      TagDirective(
+                        name: Some("optional_nonexistent"),
+                      ),
+                    ],
+                  )),
+                )),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 12,
+            column: 9,
+          ),
+          name: "successor",
+        ), FieldNode(
+          position: Pos(
+            line: 12,
+            column: 9,
+          ),
+          name: "successor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 13,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 13,
+                column: 13,
+              ),
+              name: "value",
+              filter: [
+                FilterDirective(
+                  operation: Equals((), TagRef("optional_nonexistent")),
+                ),
+              ],
+              output: [
+                OutputDirective(),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 17,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 17,
+                column: 13,
+              ),
+              name: "value",
+              transform_group: Some(TransformGroup(
+                tid: Tid(2),
+                transform: TransformDirective(
+                  kind: Add(TagRef("optional_nonexistent")),
+                ),
+                output: [
+                  OutputDirective(),
+                ],
+              )),
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

@@ -25,15 +25,19 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "factor_numbers": ContextField(
+              "factor_numbers": ContextField(ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           fold_specific_outputs: {
-            "factor_count": Count,
+            "factor_count": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(1),
+              fold_root_vid: Vid(2),
+              kind: Count,
+            )),
           },
         ),
       },

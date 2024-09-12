@@ -1,0 +1,91 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: EdgeParameters(
+      contents: {
+        "max": Int64(3),
+        "min": Int64(-1),
+      },
+    ),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+          filters: [
+            LessThanOrEqual(TransformedField(TransformedField(
+              value: TransformedValue(
+                base: ContextField(ContextField(
+                  vertex_id: Vid(1),
+                  field_name: "vowelsInName",
+                  field_type: "[String]",
+                )),
+                transforms: [
+                  Len,
+                  Add(Tag(ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "value",
+                    field_type: "Int",
+                  )))),
+                ],
+              ),
+              tid: Tid(2),
+              field_type: "Int",
+            )), Variable(VariableRef(
+              variable_name: "four",
+              variable_type: "Int!",
+            ))),
+          ],
+        ),
+      },
+      outputs: {
+        "vowelsInName": ContextField(ContextField(
+          vertex_id: Vid(1),
+          field_name: "vowelsInName",
+          field_type: "[String]",
+        )),
+        "vowelsInNamelen": TransformedField(TransformedField(
+          value: TransformedValue(
+            base: ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "vowelsInName",
+              field_type: "[String]",
+            )),
+            transforms: [
+              Len,
+            ],
+          ),
+          tid: Tid(1),
+          field_type: "Int",
+        )),
+        "vowelsInNamelenadd": TransformedField(TransformedField(
+          value: TransformedValue(
+            base: ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "vowelsInName",
+              field_type: "[String]",
+            )),
+            transforms: [
+              Len,
+              Add(Tag(ContextField(ContextField(
+                vertex_id: Vid(1),
+                field_name: "value",
+                field_type: "Int",
+              )))),
+            ],
+          ),
+          tid: Tid(2),
+          field_type: "Int",
+        )),
+      },
+    ),
+    variables: {
+      "four": "Int!",
+    },
+  ),
+  arguments: {
+    "four": Int64(4),
+  },
+))

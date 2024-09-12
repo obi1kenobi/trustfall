@@ -1,4 +1,4 @@
-Err(UnsupportedDirectivePosition("@tag", "this directive cannot appear after a @fold directive", Pos(
+Err(UnsupportedDirectivePosition("@tag", "this directive can only be used together with @fold if it\'s placed after `@fold @transform(op: \"count\")`", Pos(
   line: 6,
   column: 27,
 )))

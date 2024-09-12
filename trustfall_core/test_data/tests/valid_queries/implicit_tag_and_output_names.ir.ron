@@ -13,10 +13,10 @@ Ok(TestIRQuery(
           vid: Vid(2),
           type_name: "Number",
           filters: [
-            GreaterThan(LocalField(
+            GreaterThan(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Tag(ContextField(ContextField(
+            )), Tag(ContextField(ContextField(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
@@ -33,16 +33,16 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "successor_value": ContextField(
+        "successor_value": ContextField(ContextField(
           vertex_id: Vid(2),
           field_name: "value",
           field_type: "Int",
-        ),
-        "value": ContextField(
+        )),
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

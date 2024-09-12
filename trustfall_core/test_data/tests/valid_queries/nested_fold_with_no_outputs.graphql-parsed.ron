@@ -45,6 +45,7 @@ Ok(TestParsedGraphQLQuery(
           fold: Some(FoldGroup(
             fold: FoldDirective(),
             transform: Some(TransformGroup(
+              tid: Tid(1),
               transform: TransformDirective(
                 kind: Count,
               ),
@@ -72,6 +73,7 @@ Ok(TestParsedGraphQLQuery(
               fold: Some(FoldGroup(
                 fold: FoldDirective(),
                 transform: Some(TransformGroup(
+                  tid: Tid(2),
                   transform: TransformDirective(
                     kind: Count,
                   ),
@@ -88,28 +90,8 @@ Ok(TestParsedGraphQLQuery(
                 column: 21,
               ),
               name: "divisor",
-              transform_group: Some(TransformGroup(
-                transform: TransformDirective(
-                  kind: Count,
-                ),
-                filter: [
-                  FilterDirective(
-                    operation: GreaterThanOrEqual((), VariableRef("two")),
-                  ),
-                ],
-              )),
             )),
           ],
-          transform_group: Some(TransformGroup(
-            transform: TransformDirective(
-              kind: Count,
-            ),
-            filter: [
-              FilterDirective(
-                operation: GreaterThanOrEqual((), VariableRef("two")),
-              ),
-            ],
-          )),
         )),
       ],
     ),

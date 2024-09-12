@@ -226,6 +226,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                     self.resolve_fold_specific_field(fold_field, contexts)
                 }
             }
+            FieldRef::TransformedField(_) => todo!(),
         }
     }
 
@@ -264,7 +265,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         contexts: ContextIterator<'vertex, V>,
     ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
         let mut carrier = QueryCarrier { query: Some(self.query) };
-        let iterator = compute_context_field_with_separate_value(
+        let iterator = compute_context_field_with_separate_value::<AdapterT, V, true>(
             adapter,
             &mut carrier,
             self.resolve_on_component,
@@ -302,6 +303,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
             FieldRef::FoldSpecificField(f) => {
                 (f.kind.field_name().into(), f.kind.field_type().clone())
             }
+            FieldRef::TransformedField(_) => todo!(),
         };
         compute_candidate_from_operation(
             &self.operation,

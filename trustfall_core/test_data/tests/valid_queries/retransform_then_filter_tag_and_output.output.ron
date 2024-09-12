@@ -1,0 +1,45 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "vowelsInName": Output(
+      name: "vowelsInName",
+      value_type: "[String]",
+      vid: Vid(1),
+    ),
+    "vowelsInNamelen": Output(
+      name: "vowelsInNamelen",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "vowelsInNamelenadd": Output(
+      name: "vowelsInNamelenadd",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "vowelsInName": List([
+        String("e"),
+        String("o"),
+      ]),
+      "vowelsInNamelen": Int64(2),
+      "vowelsInNamelenadd": Int64(2),
+    },
+    {
+      "vowelsInName": List([
+        String("o"),
+        String("e"),
+      ]),
+      "vowelsInNamelen": Int64(2),
+      "vowelsInNamelenadd": Int64(3),
+    },
+    {
+      "vowelsInName": List([
+        String("o"),
+      ]),
+      "vowelsInNamelen": Int64(1),
+      "vowelsInNamelenadd": Int64(3),
+    },
+  ],
+)

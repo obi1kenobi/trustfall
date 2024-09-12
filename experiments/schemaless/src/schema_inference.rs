@@ -646,7 +646,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!, value: [String!]) on FIELD
 
 type GitHubActionsImportedStep implements _AnonType5 {
   _AnonField: String
@@ -718,7 +718,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!, value: [String!]) on FIELD
 
 type GitHubActionsImportedStep implements _AnonType5 {
   _AnonField: String
@@ -787,7 +787,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!, value: [String!]) on FIELD
 
 type GitHubActionsImportedStep implements _AnonType5 {
   _AnonField: String
@@ -859,7 +859,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!, value: [String!]) on FIELD
 
 type GitHubActionsRunStep implements _AnonType5 {
   _AnonField: String
@@ -938,7 +938,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!, value: [String!]) on FIELD
 
 type HackerNewsComment implements _AnonType2 {
   _AnonField: String
@@ -994,7 +994,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!, value: [String!]) on FIELD
 
 type GitHubRepository implements _AnonType2 {
   _AnonField: String

@@ -51,37 +51,45 @@ Ok(TestIRQuery(
                     ),
                   },
                   outputs: {
-                    "multiples": ContextField(
+                    "multiples": ContextField(ContextField(
                       vertex_id: Vid(3),
                       field_name: "value",
                       field_type: "Int",
-                    ),
+                    )),
                   },
                 ),
                 fold_specific_outputs: {
-                  "multiplecount": Count,
+                  "multiplecount": FoldSpecificField(FoldSpecificField(
+                    fold_eid: Eid(2),
+                    fold_root_vid: Vid(3),
+                    kind: Count,
+                  )),
                 },
               ),
             },
             outputs: {
-              "factors": ContextField(
+              "factors": ContextField(ContextField(
                 vertex_id: Vid(2),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           fold_specific_outputs: {
-            "primeFactorcount": Count,
+            "primeFactorcount": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(1),
+              fold_root_vid: Vid(2),
+              kind: Count,
+            )),
           },
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

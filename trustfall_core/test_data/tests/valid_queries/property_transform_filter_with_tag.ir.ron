@@ -1,0 +1,48 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: EdgeParameters(
+      contents: {
+        "max": Int64(1),
+        "min": Int64(-1),
+      },
+    ),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+          filters: [
+            GreaterThan(TransformedField(TransformedField(
+              value: TransformedValue(
+                base: ContextField(ContextField(
+                  vertex_id: Vid(1),
+                  field_name: "value",
+                  field_type: "Int",
+                )),
+                transforms: [
+                  Abs,
+                ],
+              ),
+              tid: Tid(1),
+              field_type: "Int",
+            )), Tag(ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "value",
+              field_type: "Int",
+            )))),
+          ],
+        ),
+      },
+      outputs: {
+        "value": ContextField(ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        )),
+      },
+    ),
+  ),
+))

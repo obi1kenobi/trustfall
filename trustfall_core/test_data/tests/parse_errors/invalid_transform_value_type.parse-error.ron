@@ -1,0 +1,4 @@
+Err(InappropriateTypeForDirectiveArgument("@transform", "value", Pos(
+  line: 4,
+  column: 42,
+)))

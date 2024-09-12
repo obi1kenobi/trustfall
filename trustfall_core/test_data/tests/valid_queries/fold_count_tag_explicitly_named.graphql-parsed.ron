@@ -24,6 +24,7 @@ Ok(TestParsedGraphQLQuery(
           fold: Some(FoldGroup(
             fold: FoldDirective(),
             transform: Some(TransformGroup(
+              tid: Tid(1),
               transform: TransformDirective(
                 kind: Count,
               ),
@@ -40,16 +41,6 @@ Ok(TestParsedGraphQLQuery(
             column: 9,
           ),
           name: "successor",
-          transform_group: Some(TransformGroup(
-            transform: TransformDirective(
-              kind: Count,
-            ),
-            tag: [
-              TagDirective(
-                name: Some("successor_count"),
-              ),
-            ],
-          )),
         )),
         (FieldConnection(
           position: Pos(

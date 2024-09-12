@@ -15,10 +15,10 @@ Ok(TestIRQuery(
           vid: Vid(1),
           type_name: "Number",
           filters: [
-            RegexMatches(LocalField(
+            RegexMatches(LocalField(LocalField(
               field_name: "name",
               field_type: "String",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "pattern",
               variable_type: "String!",
             ))),
@@ -26,11 +26,11 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "name": ContextField(
+        "name": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "name",
           field_type: "String",
-        ),
+        )),
       },
     ),
     variables: {

@@ -1,0 +1,4 @@
+Err(InvalidTransformOperandName("$10", "Transform argument names must start with an ASCII letter or underscore character: 10", Pos(
+  line: 5,
+  column: 44,
+)))

@@ -27,10 +27,10 @@ Ok(TestIRQuery(
           vid: Vid(4),
           type_name: "Number",
           filters: [
-            Equals(LocalField(
+            Equals(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Tag(ContextField(ContextField(
+            )), Tag(ContextField(ContextField(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
@@ -64,16 +64,16 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "start": ContextField(
+        "start": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
-        "target": ContextField(
+        )),
+        "target": ContextField(ContextField(
           vertex_id: Vid(4),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

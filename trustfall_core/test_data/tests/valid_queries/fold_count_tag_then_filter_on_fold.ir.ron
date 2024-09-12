@@ -41,10 +41,18 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "predecessorcount": Count,
+            "predecessorcount": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(2),
+              fold_root_vid: Vid(3),
+              kind: Count,
+            )),
           },
           post_filters: [
-            Equals(Count, Tag(FoldSpecificField(FoldSpecificField(
+            Equals(FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(2),
+              fold_root_vid: Vid(3),
+              kind: Count,
+            )), Tag(FoldSpecificField(FoldSpecificField(
               fold_eid: Eid(1),
               fold_root_vid: Vid(2),
               kind: Count,

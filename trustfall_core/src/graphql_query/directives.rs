@@ -2,12 +2,12 @@
 //! This module contains the logic for parsing Trustfall query directives.
 use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
-use async_graphql_parser::{types::Directive, Positioned};
+use async_graphql_parser::{types::Directive, Pos, Positioned};
 use async_graphql_value::Value;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::ir::{Operation, TransformationKind};
+use crate::ir::{Operation, Tid};
 
 use super::error::ParseError;
 
@@ -96,49 +96,31 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
             value_list
                     .iter()
                     .map(|v| match v {
-                        Value::String(s) => {
-                            let (prefix, name) = if s.starts_with('$') || s.starts_with('%') {
-                                s.split_at(1)
-                            } else {
-                                return Err(ParseError::InvalidFilterOperandName(
-                                    s.to_owned(),
-                                    format!("Filter argument was expected to start with '$' or '%' but did not: {s}"),
-                                    value_argument.pos,
-                                ));
-                            };
-
-                            if name.is_empty() {
-                                return Err(ParseError::InvalidFilterOperandName(
-                                    s.to_owned(),
-                                    format!("Filter argument is empty after '{}' prefix.", prefix),
-                                    value_argument.pos,
-                                ));
-                            }
-
-                            let first_char = name.chars().next().unwrap();
-                            if  !first_char.is_ascii_alphabetic() && first_char != '_' {
-                                return Err(ParseError::InvalidFilterOperandName(
-                                    s.to_owned(),
-                                    format!("Filter argument names must start with an ASCII letter or underscore character: {name}"),
-                                    value_argument.pos))
-                            }
-
-                            if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_')
-                            {
-                                return Err(ParseError::InvalidFilterOperandName(
-                                    s.to_owned(),
-                                    format!("Filter argument names must only contain ASCII alphanumerics or underscore characters: {name}"),
-                                    value_argument.pos,
-                                ));
-                            }
-
-                            if s.starts_with('$') {
-                                Ok(OperatorArgument::VariableRef(name.into()))
-                            } else if s.starts_with('%') {
-                                Ok(OperatorArgument::TagRef(name.into()))
-                            } else {
-                                unreachable!()
-                            }
+                        Value::String(operand) => {
+                            parse_operand(operand).map_err(|e| {
+                                match e {
+                                    InvalidOperandError::InvalidPrefix => ParseError::InvalidFilterOperandName(
+                                        operand.to_owned(),
+                                        format!("Filter argument was expected to start with '$' or '%' but did not: {operand}"),
+                                        value_argument.pos,
+                                    ),
+                                    InvalidOperandError::EmptyName => ParseError::InvalidFilterOperandName(
+                                        operand.to_owned(),
+                                        format!("Filter argument is empty after '{}' prefix.", operand),
+                                        value_argument.pos,
+                                    ),
+                                    InvalidOperandError::InvalidNameStartChar(name) => ParseError::InvalidFilterOperandName(
+                                        operand.to_owned(),
+                                        format!("Filter argument names must start with an ASCII letter or underscore character: {name}"),
+                                        value_argument.pos
+                                    ),
+                                    InvalidOperandError::InvalidCharsInName(name) => ParseError::InvalidFilterOperandName(
+                                        operand.to_owned(),
+                                        format!("Filter argument names must only contain ASCII alphanumerics or underscore characters: {name}"),
+                                        value_argument.pos,
+                                    ),
+                                }
+                            })
                         }
                         _ => Err(ParseError::InappropriateTypeForDirectiveArgument(
                             "@filter".to_owned(),
@@ -193,6 +175,42 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
             )),
         }?;
         Ok(FilterDirective { operation })
+    }
+}
+
+enum InvalidOperandError<'a> {
+    InvalidPrefix,
+    EmptyName,
+    InvalidNameStartChar(&'a str),
+    InvalidCharsInName(&'a str),
+}
+
+fn parse_operand(operand: &str) -> Result<OperatorArgument, InvalidOperandError<'_>> {
+    let (_, name) = if operand.starts_with('$') || operand.starts_with('%') {
+        operand.split_at(1)
+    } else {
+        return Err(InvalidOperandError::InvalidPrefix);
+    };
+
+    if name.is_empty() {
+        return Err(InvalidOperandError::EmptyName);
+    }
+
+    let first_char = name.chars().next().unwrap();
+    if !first_char.is_ascii_alphabetic() && first_char != '_' {
+        return Err(InvalidOperandError::InvalidNameStartChar(name));
+    }
+
+    if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_') {
+        return Err(InvalidOperandError::InvalidCharsInName(name));
+    }
+
+    if operand.starts_with('$') {
+        Ok(OperatorArgument::VariableRef(name.into()))
+    } else if operand.starts_with('%') {
+        Ok(OperatorArgument::TagRef(name.into()))
+    } else {
+        unreachable!()
     }
 }
 
@@ -279,69 +297,226 @@ impl TryFrom<&Positioned<Directive>> for OutputDirective {
 /// and
 ///
 /// ```ignore
-/// TransformDirective { kind: TransformationKind::Count }
+/// TransformDirective { kind: TransformOp::Count }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformDirective {
-    /// The `op` in a GraphQL `@transform`
-    pub kind: TransformationKind,
+    /// The `op` in a GraphQL `@transform`, including any `value` operands that may be required.
+    pub kind: TransformOp,
 }
 
 impl TryFrom<&Positioned<Directive>> for TransformDirective {
     type Error = ParseError;
 
     fn try_from(value: &Positioned<Directive>) -> Result<Self, Self::Error> {
-        let mut seen_op: bool = false;
+        let mut seen_op = false;
+        let mut seen_value = false;
         for (arg_name, _) in &value.node.arguments {
-            if arg_name.node.as_ref() == "op" {
-                if !seen_op {
-                    seen_op = true;
-                } else {
-                    return Err(ParseError::DuplicatedDirectiveArgument(
+            let node_name = arg_name.node.as_ref();
+            match node_name {
+                "op" => {
+                    if !seen_op {
+                        seen_op = true;
+                    } else {
+                        return Err(ParseError::DuplicatedDirectiveArgument(
+                            "@transform".to_owned(),
+                            arg_name.node.to_string(),
+                            arg_name.pos,
+                        ));
+                    }
+                }
+                "value" => {
+                    if !seen_value {
+                        seen_value = true;
+                    } else {
+                        return Err(ParseError::DuplicatedDirectiveArgument(
+                            "@transform".to_owned(),
+                            arg_name.node.to_string(),
+                            arg_name.pos,
+                        ));
+                    }
+                }
+                _ => {
+                    return Err(ParseError::UnrecognizedDirectiveArgument(
                         "@transform".to_owned(),
                         arg_name.node.to_string(),
                         arg_name.pos,
                     ));
                 }
-            } else {
-                return Err(ParseError::UnrecognizedDirectiveArgument(
-                    "@transform".to_owned(),
-                    arg_name.node.to_string(),
-                    arg_name.pos,
-                ));
             }
         }
 
-        let transform_argument_node = value.node.get_argument("op").ok_or_else(|| {
+        let transform_op_node = value.node.get_argument("op").ok_or_else(|| {
             ParseError::MissingRequiredDirectiveArgument(
                 "@transform".to_owned(),
                 "op".to_owned(),
                 value.pos,
             )
         })?;
-
-        let transform_argument: Arc<str> = match &transform_argument_node.node {
+        let transform_op: Arc<str> = match &transform_op_node.node {
             Value::String(s) => s.to_owned().into(),
             _ => {
                 return Err(ParseError::InappropriateTypeForDirectiveArgument(
                     "@transform".to_owned(),
                     "op".to_owned(),
-                    transform_argument_node.pos,
+                    transform_op_node.pos,
                 ))
             }
         };
 
-        let kind = match transform_argument.as_ref() {
-            "count" => TransformationKind::Count,
+        let mut transform_value: SmallVec<[OperatorArgument; 2]> = match value
+            .node
+            .get_argument("value")
+        {
+            None => SmallVec::new(),
+            Some(content) => match &content.node {
+                Value::List(value_contents) => {
+                    let mut values = SmallVec::new();
+                    for v in value_contents {
+                        match v {
+                            Value::String(operand) => {
+                                let operator_argument = parse_operand(operand).map_err(|e| {
+                                        match e {
+                                            InvalidOperandError::InvalidPrefix => ParseError::InvalidTransformOperandName(
+                                                operand.to_owned(),
+                                                format!("Transform argument was expected to start with '$' or '%' but did not: {operand}"),
+                                                content.pos,
+                                            ),
+                                            InvalidOperandError::EmptyName => ParseError::InvalidTransformOperandName(
+                                                operand.to_owned(),
+                                                format!("Transform argument is empty after '{}' prefix.", operand),
+                                                content.pos,
+                                            ),
+                                            InvalidOperandError::InvalidNameStartChar(name) => ParseError::InvalidTransformOperandName(
+                                                operand.to_owned(),
+                                                format!("Transform argument names must start with an ASCII letter or underscore character: {name}"),
+                                                content.pos
+                                            ),
+                                            InvalidOperandError::InvalidCharsInName(name) => ParseError::InvalidTransformOperandName(
+                                                operand.to_owned(),
+                                                format!("Transform argument names must only contain ASCII alphanumerics or underscore characters: {name}"),
+                                                content.pos,
+                                            ),
+                                        }
+                                    })?;
+                                values.push(operator_argument);
+                            }
+                            _ => {
+                                return Err(ParseError::InappropriateTypeForDirectiveArgument(
+                                    "@transform".to_owned(),
+                                    "value".to_owned(),
+                                    content.pos,
+                                ))
+                            }
+                        }
+                    }
+                    values
+                }
+                Value::String(argument_value) => {
+                    return Err(ParseError::TransformExpectsListNotString(
+                        transform_op.to_string(),
+                        argument_value.to_owned(),
+                        content.pos,
+                    ))
+                }
+                _ => {
+                    return Err(ParseError::InappropriateTypeForDirectiveArgument(
+                        "@transform".to_owned(),
+                        "value".to_owned(),
+                        content.pos,
+                    ))
+                }
+            },
+        };
+
+        let operands_span = value.node.get_argument("value").map(|p| &p.pos).unwrap_or(&value.pos);
+        let kind = match transform_op.as_ref() {
+            "count" => {
+                assert_operand_count(&transform_value, 0, operands_span)?;
+                TransformOp::Count
+            }
+            "len" => {
+                assert_operand_count(&transform_value, 0, operands_span)?;
+                TransformOp::Len
+            }
+            "abs" => {
+                assert_operand_count(&transform_value, 0, operands_span)?;
+                TransformOp::Abs
+            }
+            "sqrt" => {
+                assert_operand_count(&transform_value, 0, operands_span)?;
+                TransformOp::Sqrt
+            }
+            "+" => {
+                assert_operand_count(&transform_value, 1, operands_span)?;
+                TransformOp::Add(transform_value.pop().unwrap())
+            }
+            "+f" => {
+                assert_operand_count(&transform_value, 1, operands_span)?;
+                TransformOp::AddF(transform_value.pop().unwrap())
+            }
             _ => {
                 return Err(ParseError::UnsupportedTransformOperator(
-                    transform_argument.to_string(),
-                    transform_argument_node.pos,
+                    transform_op.to_string(),
+                    transform_op_node.pos,
                 ))
             }
         };
 
         Ok(Self { kind })
+    }
+}
+
+fn assert_operand_count(
+    operands: &[OperatorArgument],
+    expected_count: usize,
+    pos: &Pos,
+) -> Result<(), ParseError> {
+    let provided = operands.len();
+    if provided != expected_count {
+        Err(unexpected_arguments_provided(expected_count, provided, pos))
+    } else {
+        Ok(())
+    }
+}
+
+fn unexpected_arguments_provided(
+    expected_count: usize,
+    actual_count: usize,
+    pos: &Pos,
+) -> ParseError {
+    ParseError::OtherError(
+        format!(
+            "Transform argument count mismatch: expected {expected_count} but found {actual_count}"
+        ),
+        pos.to_owned(),
+    )
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub(crate) enum TransformOp {
+    Count,
+    Len,
+    Abs,
+    Sqrt,
+    Add(OperatorArgument),
+    AddF(OperatorArgument),
+}
+
+impl TransformOp {
+    /// The exact operation name we parse from `@transform` directives.
+    ///
+    /// For example: `@transform(op: "+", value: ["$value"])` corresponds to [`TransformOp::Add`],
+    /// so `TransformOp::Add.op_name() == "+"`.
+    pub(crate) fn op_name(&self) -> &'static str {
+        match self {
+            TransformOp::Count => "count",
+            TransformOp::Len => "len",
+            TransformOp::Abs => "abs",
+            TransformOp::Sqrt => "sqrt",
+            TransformOp::Add(_) => "+",
+            TransformOp::AddF(_) => "+f",
+        }
     }
 }
 
@@ -531,6 +706,8 @@ impl TryFrom<&Positioned<Directive>> for RecurseDirective {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub(crate) struct TransformGroup {
+    pub tid: Tid,
+
     pub transform: TransformDirective,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
