@@ -194,13 +194,11 @@ where
     AdapterT: Adapter<'vertex> + 'vertex,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
-    result_iter.map(move |result| {
+    result_iter.inspect(move |result| {
         adapter_tap
             .tracer
             .borrow_mut()
             .record(TraceOpContent::ProduceQueryResult(result.clone()), None);
-
-        result
     })
 }
 
@@ -233,13 +231,11 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |vertex| {
+            .inspect(move |vertex| {
                 tracer_ref_2.borrow_mut().record(
                     TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex.clone())),
                     Some(call_opid),
                 );
-
-                vertex
             }),
         )
     }
@@ -278,12 +274,11 @@ where
                         .record(TraceOpContent::InputIteratorExhausted, Some(call_opid));
                 },
             )
-            .map(move |context| {
+            .inspect(move |context| {
                 tracer_ref_3.borrow_mut().record(
                     TraceOpContent::YieldInto(context.clone().flat_map(&mut |v| v.into_vertex())),
                     Some(call_opid),
                 );
-                context
             }),
         );
         let inner_iter =
@@ -346,12 +341,11 @@ where
                         .record(TraceOpContent::InputIteratorExhausted, Some(call_opid));
                 },
             )
-            .map(move |context| {
+            .inspect(move |context| {
                 tracer_ref_3.borrow_mut().record(
                     TraceOpContent::YieldInto(context.clone().flat_map(&mut |v| v.into_vertex())),
                     Some(call_opid),
                 );
-                context
             }),
         );
         let inner_iter = self.inner.resolve_neighbors(
@@ -441,12 +435,11 @@ where
                         .record(TraceOpContent::InputIteratorExhausted, Some(call_opid));
                 },
             )
-            .map(move |context| {
+            .inspect(move |context| {
                 tracer_ref_3.borrow_mut().record(
                     TraceOpContent::YieldInto(context.clone().flat_map(&mut |v| v.into_vertex())),
                     Some(call_opid),
                 );
-                context
             }),
         );
         let inner_iter =
