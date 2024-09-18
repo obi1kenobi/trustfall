@@ -243,7 +243,7 @@ impl Adapter<'static> for AdapterShim {
                 .adapter
                 .call_method_bound(
                     py,
-                    "resolve_property",
+                    pyo3::intern!(py, "resolve_property"),
                     (contexts, type_name.as_ref(), property_name.as_ref()),
                     None,
                 )
@@ -284,7 +284,7 @@ impl Adapter<'static> for AdapterShim {
                 .adapter
                 .call_method_bound(
                     py,
-                    "resolve_neighbors",
+                    pyo3::intern!(py, "resolve_neighbors"),
                     (contexts, type_name.as_ref(), edge_name.as_ref(), parameter_data),
                     None,
                 )
@@ -318,7 +318,7 @@ impl Adapter<'static> for AdapterShim {
                 .adapter
                 .call_method_bound(
                     py,
-                    "resolve_coercion",
+                    pyo3::intern!(py, "resolve_coercion"),
                     (contexts, type_name.as_ref(), coerce_to_type.as_ref()),
                     None,
                 )
