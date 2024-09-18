@@ -23,7 +23,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     Ok(())
 }
 
-#[pyclass]
+#[pyclass(frozen)]
 pub struct Schema {
     inner: trustfall_core::schema::Schema,
 }
@@ -126,7 +126,7 @@ fn make_iterator<'py>(value: &Bound<'py, PyAny>, origin: &'static str) -> Bound<
     value.iter().unwrap_or_else(|e| panic!("{origin} is not an iterable: {e}"))
 }
 
-#[pyclass(unsendable)]
+#[pyclass(unsendable, frozen)]
 #[derive(Debug, Clone)]
 pub(crate) struct Opaque {
     data: *mut (),
