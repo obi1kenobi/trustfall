@@ -69,7 +69,7 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13.0-rc - 3.13"]
     steps:
       - uses: actions/checkout@v4
         with:
