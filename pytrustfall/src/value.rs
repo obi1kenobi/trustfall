@@ -18,6 +18,23 @@ pub(crate) enum FieldValue {
     List(Vec<FieldValue>),
 }
 
+impl IntoPy<Py<PyAny>> for FieldValue {
+    fn into_py(self, py: Python<'_>) -> Py<PyAny> {
+        match self {
+            FieldValue::Null => Option::<i64>::None.into_py(py),
+            FieldValue::Uint64(x) => x.into_py(py),
+            FieldValue::Int64(x) => x.into_py(py),
+            FieldValue::Float64(x) => x.into_py(py),
+            FieldValue::String(x) => x.into_py(py),
+            FieldValue::Boolean(x) => x.into_py(py),
+            FieldValue::Enum(_) => todo!(),
+            FieldValue::List(x) => {
+                x.into_iter().map(|v| v.into_py(py)).collect::<Vec<_>>().into_py(py)
+            }
+        }
+    }
+}
+
 impl<'py> pyo3::FromPyObject<'py> for FieldValue {
     fn extract_bound(value: &pyo3::Bound<'py, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         if value.is_none() {

@@ -82,10 +82,7 @@ pub fn interpret_query(
             res.iter()
                 .map(|(k, v)| {
                     let py_value: FieldValue = v.clone().into();
-                    Python::with_gil(|py| {
-                        let python_value = make_python_value(py, py_value);
-                        (k.to_string(), python_value)
-                    })
+                    Python::with_gil(|py| (k.to_string(), py_value.into_py(py)))
                 })
                 .collect()
         }));
@@ -120,22 +117,6 @@ impl AdapterShim {
     #[new]
     pub fn new(adapter: Py<PyAny>) -> Self {
         Self { adapter: Arc::new(adapter) }
-    }
-}
-
-// TODO: this is just `IntoPy`: https://pyo3.rs/v0.22.3/conversions/traits#intopyt
-fn make_python_value(py: Python<'_>, value: FieldValue) -> Py<PyAny> {
-    match value {
-        FieldValue::Null => Option::<i64>::None.into_py(py),
-        FieldValue::Uint64(x) => x.into_py(py),
-        FieldValue::Int64(x) => x.into_py(py),
-        FieldValue::Float64(x) => x.into_py(py),
-        FieldValue::String(x) => x.into_py(py),
-        FieldValue::Boolean(x) => x.into_py(py),
-        FieldValue::Enum(_) => todo!(),
-        FieldValue::List(x) => {
-            x.into_iter().map(|v| make_python_value(py, v)).collect::<Vec<_>>().into_py(py)
-        }
     }
 }
 
@@ -212,7 +193,7 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
-                .map(|(k, v)| (k.to_string(), make_python_value(py, v.clone().into())))
+                .map(|(k, v)| (k.to_string(), FieldValue::from(v.clone()).into_py(py)))
                 .collect();
 
             // TODO: use `intern!()` macro to intern the fixed method names for efficiency
@@ -277,7 +258,7 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
-                .map(|(k, v)| (k.to_string(), make_python_value(py, v.clone().into())))
+                .map(|(k, v)| (k.to_string(), FieldValue::from(v.clone()).into_py(py)))
                 .collect();
 
             let py_iterable = self
