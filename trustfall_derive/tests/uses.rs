@@ -173,7 +173,7 @@ fn generic_enum_with_where_clause() {
     enum Either<'a, 'b, A, B>
     where
         A: ?Sized,
-        B: ?Sized + Debug + Clone,
+        B: ?Sized + Debug + Eq,
     {
         First(&'a A),
         Second(&'b B),
@@ -199,7 +199,7 @@ fn generic_enum_with_defaults() {
     enum Either<'a, 'b, A, B = i32, const N: usize = 3>
     where
         A: ?Sized,
-        B: ?Sized + Debug + Clone,
+        B: Debug + Clone,
     {
         First(&'a A),
         Second(&'b [B; N]),
