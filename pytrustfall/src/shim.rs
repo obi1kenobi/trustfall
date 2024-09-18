@@ -361,7 +361,7 @@ impl Iterator for PythonResolvePropertyIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
-            match self.underlying.call_method0(py, "__next__") {
+            match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, property_value) tuple here, or else we panic.
                     let tuple = output.downcast_bound(py).expect(
@@ -412,7 +412,7 @@ impl Iterator for PythonResolveNeighborsIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
-            match self.underlying.call_method0(py, "__next__") {
+            match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, neighbor_iterator) tuple here, or else we panic.
                     let tuple: &Bound<'_, PyTuple> = output.downcast_bound(py).expect(
@@ -469,7 +469,7 @@ impl Iterator for PythonResolveCoercionIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
-            match self.underlying.call_method0(py, "__next__") {
+            match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, can_coerce) tuple here, or else we panic.
                     let tuple = output
