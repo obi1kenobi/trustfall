@@ -1,14 +1,16 @@
 from os import path
 from textwrap import dedent
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional, Tuple
 import unittest
 
 from .. import (
+    Context,
     FrontendError,
     ParseError,
     QueryArgumentsError,
     Schema,
     ValidationError,
+    FieldValue,
 )
 from ..execution import execute_query
 from .numbers_adapter import NumbersAdapter
@@ -76,6 +78,26 @@ class ExecutionTests(unittest.TestCase):
         ]
         actual_result = list(execute_query(NumbersAdapter(), SCHEMA, query, args))
         self.assertEqual(expected_result, actual_result)
+
+    def test_query_with_heterogeneous_list_argument(self) -> None:
+        query = dedent(
+            """\
+            {
+                Number(max: 10) {
+                    value @output @filter(op: "one_of", value: ["$numbers"])
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {
+            "numbers": [1, 2.0, 3],
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Found elements of different \\(non\\-null\\) types in the same list",
+        ):
+            _ = list(execute_query(NumbersAdapter(), SCHEMA, query, args))
 
     def test_nested_query(self) -> None:
         query = dedent(
@@ -252,3 +274,207 @@ class ExecutionTests(unittest.TestCase):
         args: Dict[str, Any] = {}
 
         self.assertRaises(TypeError, execute_query, 123, SCHEMA, query, args)
+
+
+class OverridableAdapter(NumbersAdapter):
+    starting_fn: Dict[str, Callable[[Mapping[str, Any]], Iterable[Any]]]
+    property_fn: Dict[
+        Tuple[str, str],
+        Callable[[Iterable[Context[Any]]], Iterable[Tuple[Context[Any], FieldValue]]],
+    ]
+    neighbor_fn: Dict[
+        Tuple[str, str],
+        Callable[
+            [Iterable[Context[Any]], Mapping[str, Any]],
+            Iterable[Tuple[Context[Any], Iterable[Any]]],
+        ],
+    ]
+    coercion_fn: Dict[
+        str,
+        Callable[[Iterable[Context[Any]], str], Iterable[Tuple[Context[Any], bool]]],
+    ]
+
+    def __init__(
+        self,
+        *,
+        starting_fn: Optional[
+            Dict[str, Callable[[Mapping[str, Any]], Iterable[Any]]]
+        ] = None,
+        property_fn: Optional[
+            Dict[
+                Tuple[str, str],
+                Callable[
+                    [Iterable[Context[Any]]],
+                    Iterable[Tuple[Context[Any], FieldValue]],
+                ],
+            ]
+        ] = None,
+        neighbor_fn: Optional[
+            Dict[
+                Tuple[str, str],
+                Callable[
+                    [Iterable[Context[Any]], Mapping[str, Any]],
+                    Iterable[Tuple[Context[Any], Iterable[Any]]],
+                ],
+            ]
+        ] = None,
+        coercion_fn: Optional[
+            Dict[
+                str,
+                Callable[
+                    [Iterable[Context[Any]], str], Iterable[Tuple[Context[Any], bool]]
+                ],
+            ]
+        ] = None,
+    ) -> None:
+        self.starting_fn = starting_fn or dict()
+        self.property_fn = property_fn or dict()
+        self.neighbor_fn = neighbor_fn or dict()
+        self.coercion_fn = coercion_fn or dict()
+
+    def resolve_starting_vertices(
+        self,
+        edge_name: str,
+        parameters: Mapping[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Iterable[Any]:
+        if resolver := self.starting_fn.get(edge_name) is not None:
+            yield from resolver(edge_name, parameters)
+        else:
+            yield from super().resolve_starting_vertices(
+                edge_name, parameters, *args, **kwargs
+            )
+
+    def resolve_property(
+        self,
+        contexts: Iterator[Context[Any]],
+        type_name: str,
+        property_name: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Iterable[Tuple[Context[Any], FieldValue]]:
+        if resolver := self.property_fn.get((type_name, property_name)) is not None:
+            yield from resolver(contexts)
+        else:
+            yield from super().resolve_property(
+                contexts, type_name, property_name, *args, **kwargs
+            )
+
+    def resolve_neighbors(
+        self,
+        contexts: Iterator[Context[Any]],
+        type_name: str,
+        edge_name: str,
+        parameters: Mapping[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Iterable[Tuple[Context[Any], Iterable[Any]]]:
+        if resolver := self.neighbor_fn.get((type_name, edge_name)) is not None:
+            yield from resolver(contexts, parameters)
+        else:
+            yield from super().resolve_neighbors(
+                contexts, type_name, edge_name, parameters, *args, **kwargs
+            )
+
+    def resolve_coercion(
+        self,
+        contexts: Iterator[Context[Any]],
+        type_name: str,
+        coerce_to_type: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Iterable[Tuple[Context[Any], bool]]:
+        if resolver := self.neighbor_fn.get(type_name) is not None:
+            yield from resolver(contexts, coerce_to_type)
+        else:
+            yield from super().resolve_coercion(
+                contexts, type_name, coerce_to_type, *args, **kwargs
+            )
+
+
+class BadAdapterTests(unittest.TestCase):
+    def test_ensure_overridable_adapter_works(self) -> None:
+        query = dedent(
+            """\
+            {
+                Number(max: 10) {
+                    value @output
+                    name @output
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {}
+
+        expected_result = [
+            {"name": "zero", "value": 0},
+            {"name": "one", "value": 1},
+            {"name": "two", "value": 2},
+            {"name": "three", "value": 3},
+            {"name": "four", "value": 4},
+            {"name": "five", "value": 5},
+            {"name": "six", "value": 6},
+            {"name": "seven", "value": 7},
+            {"name": "eight", "value": 8},
+            {"name": "nine", "value": 9},
+        ]
+        actual_result = list(execute_query(OverridableAdapter(), SCHEMA, query, args))
+        self.assertEqual(expected_result, actual_result)
+
+    def test_invalid_property_value_resolved(self) -> None:
+        def value_fn(
+            contexts: Iterator[Context[Any]],
+        ) -> Iterator[Tuple[Context[Any], Any]]:
+            for ctx in contexts:
+                yield ctx, object()
+
+        property_fn = {
+            ("Number", "value"): value_fn,
+        }
+        adapter = OverridableAdapter(property_fn=property_fn)
+
+        query = dedent(
+            """\
+            {
+                Number(max: 10) {
+                    value @output
+                    name @output
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {}
+
+        # TODO: in an ideal world, this wouldn't be a panic and instead would be a normal exception
+        with self.assertRaisesRegex(BaseException, "explicit panic"):
+            _ = list(execute_query(adapter, SCHEMA, query, args))
+
+    def test_invalid_neighbor_resolved(self) -> None:
+        def successor_fn(
+            contexts: Iterator[Context[Any]],
+        ) -> Iterator[Tuple[Context[Any], Iterator[Any]]]:
+            for ctx in contexts:
+                yield ctx, object()
+
+        neighbor_fn = {
+            ("Number", "successor"): successor_fn,
+        }
+        adapter = OverridableAdapter(neighbor_fn=neighbor_fn)
+
+        query = dedent(
+            """\
+            {
+                Number(max: 2) {
+                    successor {
+                        value @output
+                    }
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {}
+
+        # TODO: in an ideal world, this wouldn't be a panic and instead would be a normal exception
+        with self.assertRaisesRegex(BaseException, "explicit panic"):
+            _ = list(execute_query(adapter, SCHEMA, query, args))

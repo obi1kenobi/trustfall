@@ -9,6 +9,7 @@ def execute_query(
     schema: Schema,
     query: str,
     arguments: Mapping[str, Any],
+    /,
 ) -> Iterator[Dict[str, Any]]:
     """Execute the given query using the adapter, returning an iterator of result dicts."""
     if not isinstance(adapter, Adapter):
