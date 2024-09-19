@@ -201,7 +201,9 @@ class ExecutionTests(unittest.TestCase):
             "required": object(),
         }
 
-        self.assertRaises(QueryArgumentsError, execute_query, NumbersAdapter(), SCHEMA, query, args)
+        self.assertRaises(
+            ValueError, execute_query, NumbersAdapter(), SCHEMA, query, args
+        )
 
     def test_bad_query_input_type(self) -> None:
         query = 123

@@ -1,7 +1,10 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use pyo3::{
-    exceptions::PyStopIteration, prelude::*, types::PyIterator, types::PyTuple, wrap_pyfunction,
+    exceptions::PyStopIteration,
+    prelude::*,
+    types::{PyIterator, PyTuple},
+    wrap_pyfunction,
 };
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
