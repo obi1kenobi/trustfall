@@ -4,12 +4,12 @@ use pyo3::{
     Bound, PyResult, Python,
 };
 
-create_exception!(pytrustfall, InvalidSchemaError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, ParseError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, ValidationError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, FrontendError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, InvalidIRQueryError, pyo3::exceptions::PyException);
-create_exception!(pytrustfall, QueryArgumentsError, pyo3::exceptions::PyException);
+create_exception!(_trustfall_internal, InvalidSchemaError, pyo3::exceptions::PyException);
+create_exception!(_trustfall_internal, ParseError, pyo3::exceptions::PyException);
+create_exception!(_trustfall_internal, ValidationError, pyo3::exceptions::PyException);
+create_exception!(_trustfall_internal, FrontendError, pyo3::exceptions::PyException);
+create_exception!(_trustfall_internal, InvalidIRQueryError, pyo3::exceptions::PyException);
+create_exception!(_trustfall_internal, QueryArgumentsError, pyo3::exceptions::PyException);
 
 pub(crate) fn register(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("InvalidSchemaError", py.get_type_bound::<InvalidSchemaError>())?;

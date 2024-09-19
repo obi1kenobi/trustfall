@@ -3,9 +3,8 @@ from textwrap import dedent
 from typing import Any, Dict
 import unittest
 
-from ..trustfall import (
+from .. import (
     FrontendError,
-    InvalidIRQueryError,
     ParseError,
     QueryArgumentsError,
     Schema,
