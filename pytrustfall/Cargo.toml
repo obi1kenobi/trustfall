@@ -9,8 +9,8 @@ authors.workspace = true
 
 [lib]
 # The name of the native library. This is the name which will be used in Python to import the
-# library (i.e. `import trustfall`). If you change this, you must also change the name of the
-# `#[pymodule]` in `src/lib.rs`.
+# library (i.e. `from trustfall import trustfall`). If you change this, you must also change
+# the name of the top `#[pymodule]` in `src/lib.rs`.
 name = "trustfall"
 
 # Avoid the name conflict with the Rust lib with the same name.
