@@ -336,10 +336,11 @@ class OverridableAdapter(NumbersAdapter):
         self,
         edge_name: str,
         parameters: Mapping[str, Any],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Any]:
-        if resolver := self.starting_fn.get(edge_name) is not None:
+        if (resolver := self.starting_fn.get(edge_name)) is not None:
             yield from resolver(edge_name, parameters)
         else:
             yield from super().resolve_starting_vertices(
@@ -351,10 +352,11 @@ class OverridableAdapter(NumbersAdapter):
         contexts: Iterator[Context[Any]],
         type_name: str,
         property_name: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Any], FieldValue]]:
-        if resolver := self.property_fn.get((type_name, property_name)) is not None:
+        if (resolver := self.property_fn.get((type_name, property_name))) is not None:
             yield from resolver(contexts)
         else:
             yield from super().resolve_property(
@@ -367,10 +369,11 @@ class OverridableAdapter(NumbersAdapter):
         type_name: str,
         edge_name: str,
         parameters: Mapping[str, Any],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Any], Iterable[Any]]]:
-        if resolver := self.neighbor_fn.get((type_name, edge_name)) is not None:
+        if (resolver := self.neighbor_fn.get((type_name, edge_name))) is not None:
             yield from resolver(contexts, parameters)
         else:
             yield from super().resolve_neighbors(
@@ -382,10 +385,11 @@ class OverridableAdapter(NumbersAdapter):
         contexts: Iterator[Context[Any]],
         type_name: str,
         coerce_to_type: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Any], bool]]:
-        if resolver := self.neighbor_fn.get(type_name) is not None:
+        if (resolver := self.coercion_fn.get(type_name)) is not None:
             yield from resolver(contexts, coerce_to_type)
         else:
             yield from super().resolve_coercion(
@@ -425,7 +429,7 @@ class BadAdapterTests(unittest.TestCase):
     def test_invalid_property_value_resolved(self) -> None:
         def value_fn(
             contexts: Iterator[Context[Any]],
-        ) -> Iterator[Tuple[Context[Any], Any]]:
+        ) -> Iterator[Tuple[Context[Any], FieldValue]]:
             for ctx in contexts:
                 yield ctx, object()
 

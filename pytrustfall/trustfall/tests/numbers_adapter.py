@@ -1,6 +1,6 @@
 from typing import Any, Mapping, Iterable, Iterator, Tuple, Union
 
-from .. import Adapter, Context
+from .. import Adapter, Context, FieldValue
 
 
 _NUMBER_NAMES = [
@@ -24,7 +24,8 @@ class NumbersAdapter(Adapter[Vertex]):
     def resolve_starting_vertices(
         self,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Vertex]:
@@ -41,6 +42,7 @@ class NumbersAdapter(Adapter[Vertex]):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         property_name: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], Any]]:
@@ -63,7 +65,8 @@ class NumbersAdapter(Adapter[Vertex]):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], Iterable[Vertex]]]:
@@ -94,6 +97,7 @@ class NumbersAdapter(Adapter[Vertex]):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         coerce_to_type: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], bool]]:
