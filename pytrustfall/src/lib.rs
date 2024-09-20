@@ -1,5 +1,6 @@
 #![forbid(unused_lifetimes)]
 #![forbid(elided_lifetimes_in_paths)]
+#![forbid(clippy::undocumented_unsafe_blocks)]
 
 use pyo3::{
     pymodule,

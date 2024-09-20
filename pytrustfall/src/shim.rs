@@ -153,6 +153,8 @@ impl Opaque {
     /// it was constructed with. The caller of this function must ensure that the `V` parameter here
     /// is the same type as the one used in the `Opaque::new()` call that constructed `self` here.
     unsafe fn into_inner<V: AsVertex<Arc<Py<PyAny>>> + 'static>(self) -> DataContext<V> {
+        // SAFETY: The caller of this `unsafe` method has made sure that the `V` parameter here
+        //         matches the one in the `Opaque::new<V>()` call that constructed the `self` here.
         let boxed_ctx = unsafe { Box::from_raw(self.data as *mut DataContext<V>) };
         *boxed_ctx
     }
