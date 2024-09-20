@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::{borrow::Cow, fmt::Display, sync::Arc};
 
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyList};
 
@@ -19,6 +19,27 @@ impl FieldValue {
     #[inline]
     pub(crate) fn is_null(&self) -> bool {
         matches!(self, FieldValue::Null)
+    }
+
+    #[inline]
+    pub(crate) fn python_type_name(&self) -> Cow<'static, str> {
+        match self {
+            FieldValue::Null => Cow::Borrowed("None"),
+            FieldValue::Int64(_) | FieldValue::Uint64(_) => Cow::Borrowed("int"),
+            FieldValue::Float64(_) => Cow::Borrowed("float"),
+            FieldValue::String(_) => Cow::Borrowed("str"),
+            FieldValue::Boolean(_) => Cow::Borrowed("bool"),
+            FieldValue::Enum(_) => Cow::Borrowed("enum"),
+            FieldValue::List(list) => {
+                let inner_type_name = list
+                    .iter()
+                    .filter(|&v| !v.is_null())
+                    .map(FieldValue::python_type_name)
+                    .next()
+                    .unwrap_or("None".into());
+                Cow::Owned(format!("list[{}]", inner_type_name))
+            }
+        }
     }
 }
 
@@ -106,9 +127,12 @@ impl<'py> pyo3::FromPyObject<'py> for FieldValue {
                     if !other.is_null() {
                         let next_discriminant = std::mem::discriminant(other);
                         if expected != next_discriminant {
+                            let first_type = first.python_type_name();
+                            let other_type = other.python_type_name();
                             return Err(PyValueError::new_err(format!(
                                 "Found elements of different (non-null) types in the same list, \
-                                which is not allowed: {first} {other}"
+                                which is not allowed: {first} of type {first_type} vs \
+                                {other} of type {other_type}"
                             )));
                         }
                     }

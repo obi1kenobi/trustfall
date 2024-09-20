@@ -1,4 +1,4 @@
-from .adapter import Adapter, Context
+from .adapter import Adapter, Context, FieldValue
 from .execution import execute_query
 
 from ._internals import Schema
@@ -27,6 +27,7 @@ __all__ = [
     # from .adapter
     "Adapter",
     "Context",
+    "FieldValue",
     #
     # from .execution
     "execute_query",

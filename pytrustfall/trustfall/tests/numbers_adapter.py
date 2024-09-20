@@ -1,6 +1,6 @@
-from typing import Any, Mapping, Iterable, Iterator, Tuple, Union
+from typing import Any, Mapping, Iterable, Iterator, Tuple, Union, cast
 
-from .. import Adapter, Context
+from .. import Adapter, Context, FieldValue
 
 
 _NUMBER_NAMES = [
@@ -24,11 +24,14 @@ class NumbersAdapter(Adapter[Vertex]):
     def resolve_starting_vertices(
         self,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Vertex]:
-        max_value = parameters["max"]
+        max_value = cast(
+            int, parameters["max"]
+        )  # type known from schema and enforced by Trustfall
 
         # We could just `yield from range(0, max_value)` here.
         # But that returns an `Iterator` which is an easier type to deal with than `Iterable`,
@@ -41,6 +44,7 @@ class NumbersAdapter(Adapter[Vertex]):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         property_name: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], Any]]:
@@ -63,7 +67,8 @@ class NumbersAdapter(Adapter[Vertex]):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], Iterable[Vertex]]]:
@@ -73,7 +78,9 @@ class NumbersAdapter(Adapter[Vertex]):
             if active_vertex is not None:
                 if edge_name == "multiple":
                     if active_vertex > 0:
-                        max_value = parameters["max"]
+                        max_value = cast(
+                            int, parameters["max"]
+                        )  # type known from schema and enforced by Trustfall
                         neighbors = range(
                             2 * active_vertex,
                             max_value * active_vertex + 1,
@@ -94,6 +101,7 @@ class NumbersAdapter(Adapter[Vertex]):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         coerce_to_type: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], bool]]:

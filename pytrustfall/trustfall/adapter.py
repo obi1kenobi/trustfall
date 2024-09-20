@@ -1,11 +1,27 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Generic, Iterable, Iterator, Mapping, Optional, Tuple, TypeVar
+from typing import (
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 
+FieldValue = Union[None, str, int, float, bool, list["FieldValue"]]
+"""
+The type of property values, query arguments, and columns in the result.
+"""
+
+
+Vertex = TypeVar("Vertex")
 """
 The type of vertices in the dataset implemented by an adapter.
 """
-Vertex = TypeVar("Vertex")
 
 
 class Context(Generic[Vertex]):
@@ -26,7 +42,8 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
     def resolve_starting_vertices(
         self,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Vertex]:
@@ -54,9 +71,10 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         property_name: str,
+        /,
         *args: Any,
         **kwargs: Any,
-    ) -> Iterable[Tuple[Context[Vertex], Any]]:
+    ) -> Iterable[Tuple[Context[Vertex], FieldValue]]:
         """Resolve the value of a vertex property, over an iterator of query contexts.
 
         Each context in the `contexts` argument has an active vertex of type Optional[Vertex],
@@ -85,7 +103,8 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], Iterable[Vertex]]]:
@@ -120,6 +139,7 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         coerce_to_type: str,
+        /,
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Tuple[Context[Vertex], bool]]:

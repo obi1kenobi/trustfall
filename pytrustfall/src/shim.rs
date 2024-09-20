@@ -126,7 +126,7 @@ impl AdapterShim {
 }
 
 fn make_iterator<'py>(value: &Bound<'py, PyAny>, origin: &'static str) -> Bound<'py, PyIterator> {
-    value.iter().unwrap_or_else(|e| panic!("{origin} is not an iterable: {e}"))
+    value.iter().unwrap_or_else(|e| panic!("{origin} is not an iterable (caused by {e})"))
 }
 
 #[pyclass(unsendable, frozen)]
@@ -359,6 +359,37 @@ impl PythonResolvePropertyIterator {
     }
 }
 
+/// Nicer error messages on `.expect()`-like calls in Python.
+///
+/// Without this trait, Rust errors triggered by `.expect()` on Python error look like this:
+/// ```text
+/// resolve_property() tuple element at index 1 is not a property value: PyErr { type: \
+/// <class 'ValueError'>, value: ValueError("Value <object object at 0x7fed6dbd0eb0> \
+/// of type <class 'object'> is not supported by Trustfall"), traceback: None }
+/// ```
+///
+/// We'd like the error to appear like this:
+/// ```text
+/// resolve_property() tuple element at index 1 is not a property value (caused by ValueError: \
+/// Value <object object at 0x7fed6dbd0eb0> of type <class 'object'> is not supported by Trustfall)
+/// ```
+trait ExpectPython {
+    type Outcome;
+
+    fn py_friendly_expect(self, msg: &str) -> Self::Outcome;
+}
+
+impl<T, E: std::fmt::Display> ExpectPython for Result<T, E> {
+    type Outcome = T;
+
+    fn py_friendly_expect(self, msg: &str) -> Self::Outcome {
+        match self {
+            Ok(v) => v,
+            Err(e) => panic!("{msg} (caused by {e})"),
+        }
+    }
+}
+
 impl Iterator for PythonResolvePropertyIterator {
     type Item = (Opaque, FieldValue);
 
@@ -367,22 +398,25 @@ impl Iterator for PythonResolvePropertyIterator {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, property_value) tuple here, or else we panic.
-                    let tuple = output.downcast_bound(py).expect(
+                    let tuple = output.downcast_bound(py).py_friendly_expect(
                         "resolve_property() did not yield a `(context, property_value)` tuple",
                     );
 
                     let tuple_size_error: &'static str =
                         "resolve_property() yielded a tuple that did not have exactly 2 elements";
 
-                    let property_value: FieldValue =
-                        tuple.get_borrowed_item(1).expect(tuple_size_error).extract().expect(
+                    let property_value: FieldValue = tuple
+                        .get_borrowed_item(1)
+                        .py_friendly_expect(tuple_size_error)
+                        .extract()
+                        .py_friendly_expect(
                             "resolve_property() tuple element at index 1 is not a property value",
                         );
 
                     let context: Opaque = tuple.get_borrowed_item(0)
-                        .expect(tuple_size_error)
+                        .py_friendly_expect(tuple_size_error)
                         .extract()
-                        .expect("resolve_property() tuple element at index 0 is not a context (Opaque) value");
+                        .py_friendly_expect("resolve_property() tuple element at index 0 is not a context (Opaque) value");
 
                     Some((context, property_value))
                 }
@@ -418,19 +452,20 @@ impl Iterator for PythonResolveNeighborsIterator {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, neighbor_iterator) tuple here, or else we panic.
-                    let tuple: &Bound<'_, PyTuple> = output.downcast_bound(py).expect(
+                    let tuple: &Bound<'_, PyTuple> = output.downcast_bound(py).py_friendly_expect(
                         "resolve_neighbors() did not yield a `(context, neighbor_iterator)` tuple",
                     );
 
                     let tuple_size_error: &'static str =
                         "resolve_neighbors() yielded a tuple that did not have exactly 2 elements";
 
-                    let neighbors_iterable = tuple.get_borrowed_item(1).expect(tuple_size_error);
+                    let neighbors_iterable =
+                        tuple.get_borrowed_item(1).py_friendly_expect(tuple_size_error);
 
                     let context: Opaque = tuple.get_borrowed_item(0)
-                        .expect(tuple_size_error)
+                        .py_friendly_expect(tuple_size_error)
                         .extract()
-                        .expect("resolve_neighbors() tuple element at index 0 is not a context (Opaque) value");
+                        .py_friendly_expect("resolve_neighbors() tuple element at index 0 is not a context (Opaque) value");
 
                     // Support returning iterables (e.g. []), not just iterators.
                     // Iterators return self when `__iter__()` is called.
@@ -475,23 +510,25 @@ impl Iterator for PythonResolveCoercionIterator {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, can_coerce) tuple here, or else we panic.
-                    let tuple = output
-                        .downcast_bound(py)
-                        .expect("resolve_coercion() did not yield a `(context, can_coerce)` tuple");
+                    let tuple = output.downcast_bound(py).py_friendly_expect(
+                        "resolve_coercion() did not yield a `(context, can_coerce)` tuple",
+                    );
 
                     let tuple_size_error: &'static str =
                         "resolve_coercion() yielded a tuple that did not have exactly 2 elements";
 
                     let can_coerce: bool = tuple
                         .get_borrowed_item(1)
-                        .expect(tuple_size_error)
+                        .py_friendly_expect(tuple_size_error)
                         .extract()
-                        .expect("resolve_coercion() tuple element at index 1 is not a bool");
+                        .py_friendly_expect(
+                            "resolve_coercion() tuple element at index 1 is not a bool",
+                        );
 
                     let context: Opaque = tuple.get_borrowed_item(0)
-                        .expect(tuple_size_error)
+                        .py_friendly_expect(tuple_size_error)
                         .extract()
-                        .expect("resolve_coercion() tuple element at index 0 is not a context (Opaque) value");
+                        .py_friendly_expect("resolve_coercion() tuple element at index 0 is not a context (Opaque) value");
 
                     Some((context, can_coerce))
                 }
