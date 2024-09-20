@@ -1,6 +1,16 @@
 from os import path
 from textwrap import dedent
-from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Tuple,
+    cast,
+)
 import unittest
 
 from .. import (
@@ -277,19 +287,19 @@ class ExecutionTests(unittest.TestCase):
 
 
 class OverridableAdapter(NumbersAdapter):
-    starting_fn: Dict[str, Callable[[Mapping[str, FieldValue]], Iterable[Any]]]
-    property_fn: Dict[
+    starting_fn: Mapping[str, Callable[[Mapping[str, FieldValue]], Iterable[Any]]]
+    property_fn: Mapping[
         Tuple[str, str],
         Callable[[Iterable[Context[Any]]], Iterable[Tuple[Context[Any], FieldValue]]],
     ]
-    neighbor_fn: Dict[
+    neighbor_fn: Mapping[
         Tuple[str, str],
         Callable[
             [Iterable[Context[Any]], Mapping[str, FieldValue]],
             Iterable[Tuple[Context[Any], Iterable[Any]]],
         ],
     ]
-    coercion_fn: Dict[
+    coercion_fn: Mapping[
         str,
         Callable[[Iterable[Context[Any]], str], Iterable[Tuple[Context[Any], bool]]],
     ]
@@ -298,10 +308,10 @@ class OverridableAdapter(NumbersAdapter):
         self,
         *,
         starting_fn: Optional[
-            Dict[str, Callable[[Mapping[str, FieldValue]], Iterable[Any]]]
+            Mapping[str, Callable[[Mapping[str, FieldValue]], Iterable[Any]]]
         ] = None,
         property_fn: Optional[
-            Dict[
+            Mapping[
                 Tuple[str, str],
                 Callable[
                     [Iterable[Context[Any]]],
@@ -310,7 +320,7 @@ class OverridableAdapter(NumbersAdapter):
             ]
         ] = None,
         neighbor_fn: Optional[
-            Dict[
+            Mapping[
                 Tuple[str, str],
                 Callable[
                     [Iterable[Context[Any]], Mapping[str, FieldValue]],
@@ -319,7 +329,7 @@ class OverridableAdapter(NumbersAdapter):
             ]
         ] = None,
         coercion_fn: Optional[
-            Dict[
+            Mapping[
                 str,
                 Callable[
                     [Iterable[Context[Any]], str], Iterable[Tuple[Context[Any], bool]]
@@ -341,7 +351,7 @@ class OverridableAdapter(NumbersAdapter):
         **kwargs: Any,
     ) -> Iterable[Any]:
         if (resolver := self.starting_fn.get(edge_name)) is not None:
-            yield from resolver(edge_name, parameters)
+            yield from resolver(parameters)
         else:
             yield from super().resolve_starting_vertices(
                 edge_name, parameters, *args, **kwargs
@@ -428,10 +438,13 @@ class BadAdapterTests(unittest.TestCase):
 
     def test_invalid_property_value_resolved(self) -> None:
         def value_fn(
-            contexts: Iterator[Context[Any]],
-        ) -> Iterator[Tuple[Context[Any], FieldValue]]:
+            contexts: Iterable[Context[Any]],
+        ) -> Iterable[Tuple[Context[Any], FieldValue]]:
+            # Don't mind this invalid cast.
+            # We're explicitly testing that this error is caught at runtime.
+            value = cast(FieldValue, object())
             for ctx in contexts:
-                yield ctx, object()
+                yield ctx, value
 
         property_fn = {
             ("Number", "value"): value_fn,
@@ -460,11 +473,14 @@ class BadAdapterTests(unittest.TestCase):
 
     def test_invalid_neighbor_resolved(self) -> None:
         def successor_fn(
-            contexts: Iterator[Context[Any]],
+            contexts: Iterable[Context[Any]],
             parameters: Mapping[str, FieldValue],
-        ) -> Iterator[Tuple[Context[Any], Iterator[Any]]]:
+        ) -> Iterable[Tuple[Context[Any], Iterator[Any]]]:
             for ctx in contexts:
-                yield ctx, object()
+                # Don't mind this invalid cast.
+                # We're explicitly testing that this error is caught at runtime.
+                neighbors = cast(Iterator[Any], object())
+                yield ctx, neighbors
 
         neighbor_fn = {
             ("Number", "successor"): successor_fn,

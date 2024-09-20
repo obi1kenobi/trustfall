@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Iterable, Iterator, Tuple, Union
+from typing import Any, Mapping, Iterable, Iterator, Tuple, Union, cast
 
 from .. import Adapter, Context, FieldValue
 
@@ -29,7 +29,9 @@ class NumbersAdapter(Adapter[Vertex]):
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Vertex]:
-        max_value = parameters["max"]
+        max_value = cast(
+            int, parameters["max"]
+        )  # type known from schema and enforced by Trustfall
 
         # We could just `yield from range(0, max_value)` here.
         # But that returns an `Iterator` which is an easier type to deal with than `Iterable`,
@@ -76,7 +78,9 @@ class NumbersAdapter(Adapter[Vertex]):
             if active_vertex is not None:
                 if edge_name == "multiple":
                     if active_vertex > 0:
-                        max_value = parameters["max"]
+                        max_value = cast(
+                            int, parameters["max"]
+                        )  # type known from schema and enforced by Trustfall
                         neighbors = range(
                             2 * active_vertex,
                             max_value * active_vertex + 1,
