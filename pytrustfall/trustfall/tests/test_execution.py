@@ -450,8 +450,12 @@ class BadAdapterTests(unittest.TestCase):
         )
         args: Dict[str, Any] = {}
 
-        # TODO: in an ideal world, this wouldn't be a panic and instead would be a normal exception
-        with self.assertRaisesRegex(BaseException, "explicit panic"):
+        # TODO: in an ideal world, this wouldn't be a `PanicException`
+        #       and instead would be a more common exception type
+        with self.assertRaisesRegex(
+            BaseException,
+            "resolve_property\\(\\) tuple element at index 1 is not a property value",
+        ):
             _ = list(execute_query(adapter, SCHEMA, query, args))
 
     def test_invalid_neighbor_resolved(self) -> None:
@@ -480,6 +484,10 @@ class BadAdapterTests(unittest.TestCase):
         )
         args: Dict[str, Any] = {}
 
-        # TODO: in an ideal world, this wouldn't be a panic and instead would be a normal exception
-        with self.assertRaisesRegex(BaseException, "explicit panic"):
+        # TODO: in an ideal world, this wouldn't be a `PanicException`
+        #       and instead would be a more common exception type
+        with self.assertRaisesRegex(
+            BaseException,
+            "resolve_neighbors\\(\\) yielded tuple's second element is not an iterable",
+        ):
             _ = list(execute_query(adapter, SCHEMA, query, args))
