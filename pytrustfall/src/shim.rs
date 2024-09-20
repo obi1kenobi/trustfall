@@ -362,14 +362,14 @@ impl PythonResolvePropertyIterator {
 /// Nicer error messages on `.expect()`-like calls in Python.
 ///
 /// Without this trait, Rust errors triggered by `.expect()` on Python error look like this:
-/// ```no_run
+/// ```text
 /// resolve_property() tuple element at index 1 is not a property value: PyErr { type: \
 /// <class 'ValueError'>, value: ValueError("Value <object object at 0x7fed6dbd0eb0> \
 /// of type <class 'object'> is not supported by Trustfall"), traceback: None }
 /// ```
 ///
 /// We'd like the error to appear like this:
-/// ```no_run
+/// ```text
 /// resolve_property() tuple element at index 1 is not a property value (caused by ValueError: \
 /// Value <object object at 0x7fed6dbd0eb0> of type <class 'object'> is not supported by Trustfall)
 /// ```
