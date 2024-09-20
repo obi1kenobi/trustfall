@@ -42,7 +42,7 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
     def resolve_starting_vertices(
         self,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
         /,
         *args: Any,
         **kwargs: Any,
@@ -103,7 +103,7 @@ class Adapter(Generic[Vertex], metaclass=ABCMeta):
         contexts: Iterator[Context[Vertex]],
         type_name: str,
         edge_name: str,
-        parameters: Mapping[str, Any],
+        parameters: Mapping[str, FieldValue],
         /,
         *args: Any,
         **kwargs: Any,

@@ -277,7 +277,7 @@ class ExecutionTests(unittest.TestCase):
 
 
 class OverridableAdapter(NumbersAdapter):
-    starting_fn: Dict[str, Callable[[Mapping[str, Any]], Iterable[Any]]]
+    starting_fn: Dict[str, Callable[[Mapping[str, FieldValue]], Iterable[Any]]]
     property_fn: Dict[
         Tuple[str, str],
         Callable[[Iterable[Context[Any]]], Iterable[Tuple[Context[Any], FieldValue]]],
@@ -285,7 +285,7 @@ class OverridableAdapter(NumbersAdapter):
     neighbor_fn: Dict[
         Tuple[str, str],
         Callable[
-            [Iterable[Context[Any]], Mapping[str, Any]],
+            [Iterable[Context[Any]], Mapping[str, FieldValue]],
             Iterable[Tuple[Context[Any], Iterable[Any]]],
         ],
     ]
@@ -298,7 +298,7 @@ class OverridableAdapter(NumbersAdapter):
         self,
         *,
         starting_fn: Optional[
-            Dict[str, Callable[[Mapping[str, Any]], Iterable[Any]]]
+            Dict[str, Callable[[Mapping[str, FieldValue]], Iterable[Any]]]
         ] = None,
         property_fn: Optional[
             Dict[
@@ -313,7 +313,7 @@ class OverridableAdapter(NumbersAdapter):
             Dict[
                 Tuple[str, str],
                 Callable[
-                    [Iterable[Context[Any]], Mapping[str, Any]],
+                    [Iterable[Context[Any]], Mapping[str, FieldValue]],
                     Iterable[Tuple[Context[Any], Iterable[Any]]],
                 ],
             ]
@@ -453,6 +453,7 @@ class BadAdapterTests(unittest.TestCase):
     def test_invalid_neighbor_resolved(self) -> None:
         def successor_fn(
             contexts: Iterator[Context[Any]],
+            parameters: Mapping[str, FieldValue],
         ) -> Iterator[Tuple[Context[Any], Iterator[Any]]]:
             for ctx in contexts:
                 yield ctx, object()
