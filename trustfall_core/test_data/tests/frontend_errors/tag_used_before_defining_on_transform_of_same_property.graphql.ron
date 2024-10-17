@@ -1,0 +1,15 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "transformed" tag is defined *after* the use, so this is not valid or else
+        # it would cause infinite recursion.
+        value
+            @transform(op: "+", value: ["%transformed"])
+            @tag(name: "transformed")
+            @output
+    }
+}"#,
+    arguments: {},
+)

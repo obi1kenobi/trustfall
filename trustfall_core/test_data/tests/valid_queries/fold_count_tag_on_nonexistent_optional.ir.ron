@@ -21,14 +21,14 @@ Ok(TestIRQuery(
           vid: Vid(5),
           type_name: "Number",
           filters: [
-            LessThan(LocalField(
+            LessThan(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Tag(FoldSpecificField(FoldSpecificField(
+            )), Tag(FoldSpecificField(FoldSpecificField(
               fold_eid: Eid(3),
               fold_root_vid: Vid(4),
               kind: Count,
-            )))),
+            )), Some("Int"))),
           ],
         ),
       },
@@ -74,21 +74,25 @@ Ok(TestIRQuery(
             },
           ),
           fold_specific_outputs: {
-            "count": Count,
+            "count": FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(3),
+              fold_root_vid: Vid(4),
+              kind: Count,
+            )),
           },
         ),
       },
       outputs: {
-        "start": ContextField(
+        "start": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
-        "succ": ContextField(
+        )),
+        "succ": ContextField(ContextField(
           vertex_id: Vid(5),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

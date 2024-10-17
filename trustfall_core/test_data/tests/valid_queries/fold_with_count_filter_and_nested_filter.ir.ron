@@ -35,10 +35,10 @@ Ok(TestIRQuery(
                 vid: Vid(3),
                 type_name: "Number",
                 filters: [
-                  Equals(LocalField(
+                  Equals(LocalField(LocalField(
                     field_name: "value",
                     field_type: "Int",
-                  ), Variable(VariableRef(
+                  )), Variable(VariableRef(
                     variable_name: "one",
                     variable_type: "Int",
                   ))),
@@ -46,15 +46,19 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "inner": ContextField(
+              "inner": ContextField(ContextField(
                 vertex_id: Vid(3),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           post_filters: [
-            GreaterThanOrEqual(Count, Variable(VariableRef(
+            GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(2),
+              fold_root_vid: Vid(3),
+              kind: Count,
+            )), Variable(VariableRef(
               variable_name: "one",
               variable_type: "Int!",
             ))),
@@ -62,11 +66,11 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
     variables: {

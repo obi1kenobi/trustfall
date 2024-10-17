@@ -319,10 +319,10 @@ TestInterpreterOutputTrace(
             vid: Vid(1),
             type_name: "Number",
             filters: [
-              OneOf(LocalField(
+              OneOf(LocalField(LocalField(
                 field_name: "name",
                 field_type: "String",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "options",
                 variable_type: "[String]!",
               ))),
@@ -330,11 +330,11 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "name": ContextField(
+          "name": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "name",
             field_type: "String",
-          ),
+          )),
         },
       ),
       variables: {

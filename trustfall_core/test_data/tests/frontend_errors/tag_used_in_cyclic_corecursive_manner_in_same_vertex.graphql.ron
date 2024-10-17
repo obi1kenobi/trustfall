@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The "transformed" and the "cyclic" tags form a dependency cycle:
+        # to evaluate either of them, we need the value of the other.
+        # No value can be computed here, so this is an error.
+        value
+            @transform(op: "+", value: ["%cyclic"])
+            @tag(name: "transformed")
+            @output
+
+        vowelsInName
+            @transform(op: "len")
+            @transform(op: "+", value: ["%transformed"])
+            @output
+            @tag(name: "cyclic")
+    }
+}"#,
+    arguments: {},
+)

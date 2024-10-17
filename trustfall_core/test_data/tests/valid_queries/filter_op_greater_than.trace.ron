@@ -1260,10 +1260,10 @@ TestInterpreterOutputTrace(
             vid: Vid(2),
             type_name: "Composite",
             filters: [
-              GreaterThan(LocalField(
+              GreaterThan(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "num",
                 variable_type: "Int!",
               ))),
@@ -1284,16 +1284,16 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "mult": ContextField(
+          "mult": ContextField(ContextField(
             vertex_id: Vid(2),
             field_name: "value",
             field_type: "Int",
-          ),
-          "value": ContextField(
+          )),
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
       variables: {

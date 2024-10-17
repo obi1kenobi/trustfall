@@ -1,0 +1,17 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    One {
+        value @transform(op: "+", value: ["$ten"]) @tag
+
+        value
+            @output
+            @transform(op: "+", value: ["%value"])
+            @output
+    }
+}"#,
+    arguments: {
+        "ten": Int64(10),
+    },
+)

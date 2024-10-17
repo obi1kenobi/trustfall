@@ -304,10 +304,18 @@ TestInterpreterOutputTrace(
               },
             ),
             fold_specific_outputs: {
-              "primeFactorcount": Count,
+              "primeFactorcount": FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )),
             },
             post_filters: [
-              GreaterThanOrEqual(Count, Variable(VariableRef(
+              GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+                fold_eid: Eid(1),
+                fold_root_vid: Vid(2),
+                kind: Count,
+              )), Variable(VariableRef(
                 variable_name: "min_primes",
                 variable_type: "Int!",
               ))),
@@ -315,11 +323,11 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "value": ContextField(
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
+          )),
         },
       ),
       variables: {

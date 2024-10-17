@@ -1,0 +1,11 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # "10" is not a valid variable identifier
+        value @transform(op: "add", value: ["$10"]) @output
+    }
+}"#,
+    arguments: {},
+)

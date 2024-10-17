@@ -1,0 +1,4 @@
+Err(UnsupportedTransformOperator("nonexistent", Pos(
+  line: 4,
+  column: 30,
+)))

@@ -1,0 +1,8 @@
+Err(MultipleOutputsWithSameName(DuplicatedNamesConflict(
+  duplicates: {
+    "primeFactorcountabs": [
+      ("Prime", "value"),
+      ("primeFactor", "@fold.count.abs"),
+    ],
+  },
+)))

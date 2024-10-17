@@ -1,0 +1,33 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "valuesqrtaddf": Output(
+      name: "valuesqrtaddf",
+      value_type: "Float",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "value": Int64(-1),
+      "valuesqrtaddf": Null,
+    },
+    {
+      "value": Int64(0),
+      "valuesqrtaddf": Float64(3.14),
+    },
+    {
+      "value": Int64(1),
+      "valuesqrtaddf": Float64(4.140000000000001),
+    },
+    {
+      "value": Int64(2),
+      "valuesqrtaddf": Float64(4.5542135623730955),
+    },
+  ],
+)

@@ -1,0 +1,11 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        # The tag referenced here doesn't exist. This is an error.
+        value @transform(op: "+", value: ["%name"]) @output
+    }
+}"#,
+    arguments: {},
+)

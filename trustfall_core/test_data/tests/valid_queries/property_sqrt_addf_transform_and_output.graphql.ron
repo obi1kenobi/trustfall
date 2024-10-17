@@ -1,0 +1,16 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: -1, max: 2) {
+        value
+            @output
+            @transform(op: "sqrt")
+            @transform(op: "+f", value: ["$add"])
+            @output
+    }
+}"#,
+    arguments: {
+        "add": Float64(3.14),
+    },
+)

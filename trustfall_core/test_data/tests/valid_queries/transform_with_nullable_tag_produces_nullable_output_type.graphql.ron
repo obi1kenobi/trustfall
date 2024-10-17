@@ -1,0 +1,25 @@
+TestGraphQLQuery (
+    schema_name: "nullables",
+    // This query's @optional edge doesn't exist for the vertex in question.
+    //
+    // It checks that @transform of a non-nullable value using a nullable transform argument
+    // produces a nullable output type.
+    //
+    // Running queries over this schema never produces any results.
+    // We are only testing compilation metadata here.
+    query: r#"
+{
+    NonNullMainType {
+        neighbor {
+            # This property is nullable.
+            integer @tag(name: "tagged")
+        }
+
+        nonNullNeighbor {
+            # This output's type should be `Int`, not `Int!` due to the tag's type.
+            nonNullInteger @transform(op: "+", value: ["%tagged"]) @output
+        }
+    }
+}"#,
+    arguments: {},
+)

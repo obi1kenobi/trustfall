@@ -35,10 +35,10 @@ Ok(TestIRQuery(
                 vid: Vid(3),
                 type_name: "Number",
                 filters: [
-                  Equals(LocalField(
+                  Equals(LocalField(LocalField(
                     field_name: "value",
                     field_type: "Int",
-                  ), Tag(ContextField(ContextField(
+                  )), Tag(ContextField(ContextField(
                     vertex_id: Vid(1),
                     field_name: "value",
                     field_type: "Int",
@@ -47,11 +47,11 @@ Ok(TestIRQuery(
               ),
             },
             outputs: {
-              "inner": ContextField(
+              "inner": ContextField(ContextField(
                 vertex_id: Vid(3),
                 field_name: "value",
                 field_type: "Int",
-              ),
+              )),
             },
           ),
           imported_tags: [
@@ -62,7 +62,11 @@ Ok(TestIRQuery(
             )),
           ],
           post_filters: [
-            GreaterThanOrEqual(Count, Tag(ContextField(ContextField(
+            GreaterThanOrEqual(FoldSpecificField(FoldSpecificField(
+              fold_eid: Eid(2),
+              fold_root_vid: Vid(3),
+              kind: Count,
+            )), Tag(ContextField(ContextField(
               vertex_id: Vid(1),
               field_name: "value",
               field_type: "Int",
@@ -71,11 +75,11 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(1),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
   ),

@@ -17,10 +17,10 @@ Ok(TestIRQuery(
           vid: Vid(3),
           type_name: "Number",
           filters: [
-            GreaterThan(LocalField(
+            GreaterThan(LocalField(LocalField(
               field_name: "value",
               field_type: "Int",
-            ), Variable(VariableRef(
+            )), Variable(VariableRef(
               variable_name: "one",
               variable_type: "Int!",
             ))),
@@ -43,11 +43,11 @@ Ok(TestIRQuery(
         ),
       },
       outputs: {
-        "value": ContextField(
+        "value": ContextField(ContextField(
           vertex_id: Vid(3),
           field_name: "value",
           field_type: "Int",
-        ),
+        )),
       },
     ),
     variables: {

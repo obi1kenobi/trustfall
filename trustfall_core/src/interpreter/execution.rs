@@ -6,17 +6,23 @@ use std::{
 
 use crate::{
     ir::{
-        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificFieldKind,
-        IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery, LocalField, Operation, Recursive,
-        Vid,
+        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
+        FoldSpecificFieldKind, IREdge, IRFold, IRQueryComponent, IRVertex, IndexedQuery,
+        LocalField, Operation, OperationSubject, Recursive, TransformBase, TransformedField, Vid,
     },
     util::BTreeMapTryInsertExt,
 };
 
 use super::{
-    error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextIterator,
-    ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
-    TaggedValue, ValueOrVec, VertexIterator,
+    error::QueryArgumentsError,
+    filtering::apply_filter,
+    tags::compute_tag_with_separate_value,
+    transformation::{
+        apply_transforms, push_transform_argument_tag_values_onto_stack,
+        push_transform_argument_tag_values_onto_stack_during_main_query,
+    },
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+    ResolveEdgeInfo, ResolveInfo, TaggedValue, ValueOrVec, VertexIterator,
 };
 
 #[derive(Debug, Clone)]
@@ -105,7 +111,7 @@ fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
     iterator = coerce_if_needed(adapter.as_ref(), carrier, root_vertex, iterator);
 
     for filter_expr in &root_vertex.filters {
-        iterator = apply_local_field_filter(
+        iterator = apply_filter_with_non_folded_field_subject(
             adapter.as_ref(),
             carrier,
             component,
@@ -178,6 +184,106 @@ fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(
     iterator
 }
 
+fn compute_context_field_with_separate_value_for_outputs<'query, AdapterT: Adapter<'query>>(
+    adapter: &AdapterT,
+    mut query: InterpretedQuery,
+    root_component: &IRQueryComponent,
+    field: &ContextField,
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> (InterpretedQuery, ContextOutcomeIterator<'query, AdapterT::Vertex, FieldValue>) {
+    let vertex_id = field.vertex_id;
+
+    let moved_iterator = Box::new(iterator.map(move |context| {
+        let new_vertex = context.vertices[&vertex_id].clone();
+        context.move_to_vertex(new_vertex)
+    }));
+
+    let resolve_info = ResolveInfo::new(query, vertex_id, true);
+
+    let type_name = &root_component.vertices[&vertex_id].type_name;
+    let field_data_iterator =
+        adapter.resolve_property(moved_iterator, type_name, &field.field_name, &resolve_info);
+    query = resolve_info.into_inner();
+
+    (query, field_data_iterator)
+}
+
+fn compute_transformed_field_with_separate_value_for_outputs<'query, AdapterT: Adapter<'query>>(
+    adapter: &AdapterT,
+    carrier: &mut QueryCarrier,
+    root_component: &IRQueryComponent,
+    transformed: &TransformedField,
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> ContextOutcomeIterator<'query, AdapterT::Vertex, FieldValue> {
+    let prepped_iterator = push_transform_argument_tag_values_onto_stack::<AdapterT>(
+        carrier,
+        &transformed.value.transforms,
+        |inner_carrier, tag, inner_iterator| {
+            let field_data_iterator = match tag {
+                FieldRef::ContextField(field) => {
+                    let query = inner_carrier.query.take().expect("query was not returned");
+                    let (query, iter) = compute_context_field_with_separate_value_for_outputs(
+                        adapter,
+                        query,
+                        root_component,
+                        field,
+                        inner_iterator,
+                    );
+                    inner_carrier.query = Some(query);
+                    iter
+                }
+                FieldRef::TransformedField(inner) => {
+                    compute_transformed_field_with_separate_value_for_outputs(
+                        adapter,
+                        inner_carrier,
+                        root_component,
+                        inner,
+                        inner_iterator,
+                    )
+                }
+                FieldRef::FoldSpecificField(_) => todo!(),
+            };
+
+            Box::new(field_data_iterator.map(|(mut context, value)| {
+                context.values.push(value);
+                context
+            }))
+        },
+        iterator,
+    );
+
+    let mut query = carrier.query.take().expect("query was not returned");
+    let query_variables = Arc::clone(&query.arguments);
+    let transform_data = Arc::clone(&transformed.value);
+
+    let output_iterator: ContextOutcomeIterator<'query, AdapterT::Vertex, FieldValue> =
+        match &transformed.value.base {
+            TransformBase::ContextField(field) => {
+                let (new_query, field_data_iterator) =
+                    compute_context_field_with_separate_value_for_outputs(
+                        adapter,
+                        query,
+                        root_component,
+                        field,
+                        prepped_iterator,
+                    );
+                query = new_query;
+
+                Box::new(field_data_iterator.map(move |(mut ctx, mut value)| {
+                    value =
+                        apply_transforms(&transform_data, &query_variables, &mut ctx.values, value);
+                    (ctx, value)
+                }))
+            }
+            TransformBase::FoldSpecificField(..) => unreachable!(
+                "found transformed fold-specific field in component outputs: {root_component:#?}"
+            ),
+        };
+    carrier.query = Some(query);
+
+    output_iterator
+}
+
 fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -193,29 +299,45 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
     let mut output_iterator = iterator;
 
     for output_name in output_names.iter() {
-        let context_field = &root_component.outputs[output_name];
-        let vertex_id = context_field.vertex_id;
+        let field_ref = &root_component.outputs[output_name];
 
-        let moved_iterator = Box::new(output_iterator.map(move |context| {
-            let new_vertex = context.vertices[&vertex_id].clone();
-            context.move_to_vertex(new_vertex)
-        }));
+        match field_ref {
+            FieldRef::ContextField(field) => {
+                let (new_query, field_data_iterator) =
+                    compute_context_field_with_separate_value_for_outputs(
+                        adapter,
+                        query,
+                        &root_component,
+                        field,
+                        output_iterator,
+                    );
+                query = new_query;
 
-        let resolve_info = ResolveInfo::new(query, vertex_id, true);
+                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
+                    context.values.push(value);
+                    context
+                }));
+            }
+            FieldRef::TransformedField(transformed) => {
+                carrier.query = Some(query);
+                let field_data_iterator = compute_transformed_field_with_separate_value_for_outputs(
+                    adapter,
+                    carrier,
+                    &root_component,
+                    transformed,
+                    output_iterator,
+                );
+                query = carrier.query.take().expect("query was not returned");
 
-        let type_name = &root_component.vertices[&vertex_id].type_name;
-        let field_data_iterator = adapter.resolve_property(
-            moved_iterator,
-            type_name,
-            &context_field.field_name,
-            &resolve_info,
-        );
-        query = resolve_info.into_inner();
-
-        output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
-            context.values.push(value);
-            context
-        }));
+                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
+                    context.values.push(value);
+                    context
+                }));
+            }
+            FieldRef::FoldSpecificField(_) => {
+                unreachable!("found fold-specific field in component outputs: {root_component:#?}")
+            }
+        }
     }
     let expected_output_names: BTreeSet<_> = query.indexed_query.outputs.keys().cloned().collect();
     carrier.query = Some(query);
@@ -262,26 +384,42 @@ fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
     }
 }
 
-/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// If this [`IRFold`] has a filter on the folded element count, and that filter imposes
 /// a max size that can be statically determined, return that max size so it can
-/// be used for further optimizations. Otherwise, return None.
+/// be used for further optimizations. Otherwise, return `None`.
 fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
+        let left = post_fold_filter.left();
+        if !left
+            .refers_to_fold_specific_field()
+            .is_some_and(|f| f.kind == FoldSpecificFieldKind::Count)
+        {
+            // This filter is not using the count of the fold.
+            continue;
+        }
+
+        if !matches!(left, OperationSubject::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+        {
+            // The filter expression is doing something more complex than we can currently analyze.
+            // Conservatively return `None` to disable optimizations here.
+            //
+            // TODO: Once `@transform` may be applied to property-like values, update the analysis
+            //       here to be able to optimize in such cases as well.
+            return None;
+        }
+
         let next_limit = match post_fold_filter {
-            Operation::Equals(FoldSpecificFieldKind::Count, Argument::Variable(var_ref))
-            | Operation::LessThanOrEqual(
-                FoldSpecificFieldKind::Count,
-                Argument::Variable(var_ref),
-            ) => {
+            Operation::Equals(_, Argument::Variable(var_ref))
+            | Operation::LessThanOrEqual(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
-            Operation::LessThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+            Operation::LessThan(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
@@ -292,7 +430,7 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
                 // The later full application of filters ensures correctness.
                 Some(variable_value.saturating_sub(1))
             }
-            Operation::OneOf(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+            Operation::OneOf(_, Argument::Variable(var_ref)) => {
                 match &query_arguments[&var_ref.variable_name] {
                     FieldValue::List(v) => v
                         .iter()
@@ -317,25 +455,41 @@ fn get_max_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option
     result
 }
 
-/// If this IRFold has a filter on the folded element count, and that filter imposes
+/// If this [`IRFold`] has a filter on the folded element count, and that filter imposes
 /// a min size that can be statically determined, return that min size so it can
-/// be used for further optimizations. Otherwise, return None.
+/// be used for further optimizations. Otherwise, return `None`.
 fn get_min_fold_count_limit(carrier: &mut QueryCarrier, fold: &IRFold) -> Option<usize> {
     let mut result: Option<usize> = None;
 
     let query_arguments = &carrier.query.as_ref().expect("query was not returned").arguments;
     for post_fold_filter in fold.post_filters.iter() {
+        let left = post_fold_filter.left();
+        if !left
+            .refers_to_fold_specific_field()
+            .is_some_and(|f| f.kind == FoldSpecificFieldKind::Count)
+        {
+            // This filter is not using the count of the fold.
+            continue;
+        }
+
+        if !matches!(left, OperationSubject::FoldSpecificField(f) if f.kind == FoldSpecificFieldKind::Count)
+        {
+            // The filter expression is doing something more complex than we can currently analyze.
+            // Conservatively return `None` to disable optimizations here.
+            //
+            // TODO: Once `@transform` may be applied to property-like values, update the analysis
+            //       here to be able to optimize in such cases as well.
+            return None;
+        }
+
         let next_limit = match post_fold_filter {
-            Operation::GreaterThanOrEqual(
-                FoldSpecificFieldKind::Count,
-                Argument::Variable(var_ref),
-            ) => {
+            Operation::GreaterThanOrEqual(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
                 Some(variable_value)
             }
-            Operation::GreaterThan(FoldSpecificFieldKind::Count, Argument::Variable(var_ref)) => {
+            Operation::GreaterThan(_, Argument::Variable(var_ref)) => {
                 let variable_value =
                     usize_from_field_value(&query_arguments[&var_ref.variable_name])
                         .expect("for field value to be coercible to usize");
@@ -417,55 +571,21 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     // Get any imported tag values needed inside the fold component or one of its subcomponents.
     for imported_field in fold.imported_tags.iter() {
-        match &imported_field {
-            FieldRef::ContextField(field) => {
-                let vertex_id = field.vertex_id;
-                let activated_vertex_iterator: ContextIterator<'query, AdapterT::Vertex> =
-                    Box::new(iterator.map(move |x| x.activate_vertex(&vertex_id)));
-
-                let field_vertex = &parent_component.vertices[&field.vertex_id];
-                let type_name = &field_vertex.type_name;
-
-                let query = carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-
-                let context_and_value_iterator = adapter.resolve_property(
-                    activated_vertex_iterator,
-                    type_name,
-                    &field.field_name,
-                    &resolve_info,
-                );
-                carrier.query = Some(resolve_info.into_inner());
-
-                let cloned_field = imported_field.clone();
-                iterator = Box::new(context_and_value_iterator.map(move |(mut context, value)| {
-                    // Check whether the tagged value is coming from an `@optional` scope
-                    // that did not exist, in order to satisfy its filtering semantics.
-                    let tag_value = if context.vertices[&vertex_id].is_some() {
-                        TaggedValue::Some(value)
-                    } else {
-                        TaggedValue::NonexistentOptional
-                    };
-                    context.imported_tags.insert(cloned_field.clone(), tag_value);
-                    context
-                }));
-            }
-            FieldRef::FoldSpecificField(fold_specific_field) => {
-                let cloned_field = imported_field.clone();
-                let fold_eid = fold_specific_field.fold_eid;
-                iterator = Box::new(
-                    compute_fold_specific_field_with_separate_value(
-                        fold_specific_field.fold_eid,
-                        &fold_specific_field.kind,
-                        iterator,
-                    )
-                    .map(move |(mut ctx, tagged_value)| {
-                        ctx.imported_tags.insert(cloned_field.clone(), tagged_value);
-                        ctx
-                    }),
-                );
-            }
-        }
+        let cloned_field = imported_field.clone();
+        iterator = Box::new(
+            compute_tag_with_separate_value::<AdapterT, false>(
+                adapter.as_ref(),
+                carrier,
+                parent_component,
+                expanding_from.vid,
+                imported_field,
+                iterator,
+            )
+            .map(move |(mut ctx, tagged_value)| {
+                ctx.imported_tags.insert(cloned_field.clone(), tagged_value);
+                ctx
+            }),
+        );
     }
 
     // Get the initial vertices inside the folded scope.
@@ -475,6 +595,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     let type_name = &expanding_from.type_name;
 
     let query = carrier.query.take().expect("query was not returned");
+    let variables = Arc::clone(&query.arguments);
     let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.to_vid, fold.eid);
 
     let edge_iterator = adapter.resolve_neighbors(
@@ -500,33 +621,42 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     //
     // For example, if `@filter(op: ">", value: ["$ten"])` is our only filter on the count
     // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
-    let min_fold_size =
-        if let Some(min_fold_size) = get_min_fold_count_limit(carrier, fold.as_ref()) {
-            let no_outputs_in_fold = fold.component.outputs.is_empty();
-            let has_output_on_fold_count =
-                fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
-            let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
-                vertex.filters.iter().any(|filter| {
-                    let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) =
-                        filter.right()
-                    else {
-                        return false;
-                    };
+    let min_fold_size = if let Some(min_fold_size) =
+        get_min_fold_count_limit(carrier, fold.as_ref())
+    {
+        let no_outputs_in_fold = fold.component.outputs.is_empty();
+        let has_output_on_fold_count = fold.fold_specific_outputs.values().any(|x| {
+            x.refers_to_fold_specific_field()
+                .is_some_and(|f| f.kind == FoldSpecificFieldKind::Count)
+        });
+        let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
+            // TODO: If we allow referencing the tagged values located inside a fold in filters
+            //       outside that fold, then this logic will be buggy (not conservative enough).
+            //       It currently assumes that use of tags on `@fold @transform(op: "count")`
+            //       can only happen within the direct parent component of that fold.
+            vertex.filters.iter().any(|filter| {
+                let Some(Argument::Tag(field_ref, ..)) = filter.right() else {
+                    return false;
+                };
 
-                    tagged_fold_count.fold_root_vid == fold.to_vid
-                        && tagged_fold_count.fold_eid == fold.eid
-                        && tagged_fold_count.kind == FoldSpecificFieldKind::Count
-                })
-            });
+                let Some(fold_specific_field) = field_ref.refers_to_fold_specific_field() else {
+                    return false;
+                };
 
-            if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
-                Some(min_fold_size)
-            } else {
-                None
-            }
+                fold_specific_field.fold_root_vid == fold.to_vid
+                    && fold_specific_field.fold_eid == fold.eid
+                    && fold_specific_field.kind == FoldSpecificFieldKind::Count
+            })
+        });
+
+        if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
+            Some(min_fold_size)
         } else {
             None
-        };
+        }
+    } else {
+        None
+    };
 
     let moved_fold = fold.clone();
     let folded_iterator = edge_iterator.filter_map(move |(mut context, neighbors)| {
@@ -599,14 +729,30 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
         );
 
         // Add any fold-specific field outputs to the context's folded values.
-        for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
+        for (output_name, field_ref) in &fold.fold_specific_outputs {
             // If the @fold is inside an @optional that doesn't exist,
             // its outputs should be `null` rather than empty lists (the usual for empty folds).
             // Transformed outputs should also be `null` rather than their usual transformed defaults.
-            let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
-                FoldSpecificFieldKind::Count => {
-                    ValueOrVec::Value(FieldValue::Uint64(elements.len() as u64))
+            let value = fold_elements.as_ref().map(|elements| match field_ref {
+                FieldRef::FoldSpecificField(field) => ValueOrVec::Value(compute_fold_specific_value::<AdapterT>(field, elements)),
+                FieldRef::TransformedField(field) => {
+                    let base_value = match &field.value.base {
+                        TransformBase::FoldSpecificField(fold_field) => compute_fold_specific_value::<AdapterT>(fold_field, elements),
+                        TransformBase::ContextField(_) => unreachable!("found transformed ContextField inside a fold's fold-specific outputs: {fold:#?} {field_ref:#?}"),
+                    };
+
+                    // TODO: Call push_transform_argument_tag_values_onto_stack_during_main_query()
+                    //       for all transforms across all outputs, in the same order as here.
+                    //       Probably reorganize the code so that we don't push too many args
+                    //       onto the stack, and instead go output-at-a-time per iterator layer.
+
+                    let final_value = apply_transforms(&field.value, &variables, &mut ctx.values, base_value);
+
+                    ValueOrVec::Value(final_value)
                 }
+                FieldRef::ContextField(_) => unreachable!(
+                    "found ContextField inside a fold's fold-specific outputs: {fold:#?} {field_ref:?}"
+                ),
             });
             ctx.folded_values
                 .insert_or_error((fold_eid, output_name.clone()), value)
@@ -645,30 +791,33 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
                 fold_elements.as_ref().expect("fold did not contain elements").clone().into_iter(),
             );
             for output_name in output_names.iter() {
-                // This is a slimmed-down version of computing a context field:
-                // - it does not restore the prior active vertex after getting each value
-                // - it already knows that the context field is guaranteed to exist
-                let context_field = &fold.component.outputs[output_name.as_ref()];
-                let vertex_id = context_field.vertex_id;
-                let moved_iterator = Box::new(output_iterator.map(move |context| {
-                    let new_vertex = context.vertices[&vertex_id].clone();
-                    context.move_to_vertex(new_vertex)
-                }));
+                let field_ref = &fold.component.outputs[output_name.as_ref()];
 
-                let query = cloned_carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-                let field_data_iterator = cloned_adapter.resolve_property(
-                    moved_iterator,
-                    &fold.component.vertices[&vertex_id].type_name,
-                    &context_field.field_name,
-                    &resolve_info,
+                if cfg!(debug_assertions) {
+                    // Only `ContextField` and transformations thereof are expected here.
+                    // Fold-specific fields (and their transformations) are handled elsewhere.
+                    match field_ref {
+                        FieldRef::ContextField(_) => {}
+                        FieldRef::TransformedField(field) => {
+                            match &field.value.base {
+                                TransformBase::ContextField(_) => {}
+                                TransformBase::FoldSpecificField(_) => unreachable!("fold component outputs contained transformed fold-specific field: {fold:#?} {field_ref:?}"),
+                            }
+                        }
+                        FieldRef::FoldSpecificField(_) => unreachable!("fold component outputs contained fold-specific field: {fold:#?} {field_ref:?}"),
+                    }
+                }
+
+                output_iterator = Box::new(
+                    compute_tag_with_separate_value::<AdapterT, false>(cloned_adapter.as_ref(), &mut cloned_carrier, &fold.component, fold.from_vid, field_ref, output_iterator).map(|(mut ctx, tag_value)| {
+                        let value = match tag_value {
+                            TaggedValue::NonexistentOptional => FieldValue::Null,
+                            TaggedValue::Some(v) => v,
+                        };
+                        ctx.values.push(value);
+                        ctx
+                    })
                 );
-                cloned_carrier.query = Some(resolve_info.into_inner());
-
-                output_iterator = Box::new(field_data_iterator.map(|(mut context, value)| {
-                    context.values.push(value);
-                    context
-                }));
             }
 
             for mut folded_context in output_iterator {
@@ -713,12 +862,103 @@ mismatch on whether the fold below {expanding_from_vid:?} was inside an `@option
     Box::new(final_iterator)
 }
 
+fn compute_fold_specific_value<'query, AdapterT: Adapter<'query>>(
+    fold_field: &FoldSpecificField,
+    fold_elements: &[DataContext<AdapterT::Vertex>],
+) -> FieldValue {
+    match fold_field.kind {
+        FoldSpecificFieldKind::Count => FieldValue::Uint64(fold_elements.len() as u64),
+    }
+}
+
+fn apply_filter_with_non_folded_field_subject<'query, AdapterT: Adapter<'query>>(
+    adapter: &AdapterT,
+    carrier: &mut QueryCarrier,
+    component: &IRQueryComponent,
+    current_vid: Vid,
+    filter: &Operation<OperationSubject, Argument>,
+    iterator: ContextIterator<'query, AdapterT::Vertex>,
+) -> ContextIterator<'query, AdapterT::Vertex> {
+    let subject = filter.left();
+
+    match subject {
+        OperationSubject::LocalField(field) => apply_local_field_filter(
+            adapter,
+            carrier,
+            component,
+            current_vid,
+            filter.map_left(|_| field),
+            iterator,
+        ),
+        OperationSubject::TransformedField(transformed) => {
+            let prepped_iterator = push_transform_argument_tag_values_onto_stack_during_main_query(
+                adapter,
+                carrier,
+                component,
+                current_vid,
+                &transformed.value.transforms,
+                iterator,
+            );
+
+            let query_variables =
+                Arc::clone(&carrier.query.as_ref().expect("query was not returned").arguments);
+            let transform_data = Arc::clone(&transformed.value);
+
+            match &transformed.value.base {
+                TransformBase::ContextField(field) => {
+                    assert_eq!(current_vid, field.vertex_id, "filter left-hand side was a transformed field from a different vertex: {current_vid:?} {filter:?}");
+                    let local_field = LocalField {
+                        field_name: field.field_name.clone(),
+                        field_type: field.field_type.clone(),
+                    };
+
+                    let filter_input_iterator = Box::new(
+                        compute_local_field_with_separate_value(
+                            adapter,
+                            carrier,
+                            component,
+                            current_vid,
+                            &local_field,
+                            prepped_iterator,
+                        )
+                        .map(move |(mut ctx, mut value)| {
+                            value = apply_transforms(
+                                &transform_data,
+                                &query_variables,
+                                &mut ctx.values,
+                                value,
+                            );
+                            ctx.values.push(value);
+                            ctx
+                        }),
+                    );
+
+                    apply_filter(
+                        adapter,
+                        carrier,
+                        component,
+                        current_vid,
+                        &filter.map(|_| (), |r| r),
+                        filter_input_iterator,
+                    )
+                }
+                TransformBase::FoldSpecificField(..) => unreachable!(
+                    "illegal filter over fold-specific field passed to this function: {filter:?}"
+                ),
+            }
+        }
+        OperationSubject::FoldSpecificField(..) => unreachable!(
+            "illegal filter over fold-specific field passed to this function: {filter:?}"
+        ),
+    }
+}
+
 fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
-    filter: &Operation<LocalField, Argument>,
+    filter: Operation<&LocalField, &Argument>,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let local_field = filter.left();
@@ -730,7 +970,7 @@ fn apply_local_field_filter<'query, AdapterT: Adapter<'query>>(
         carrier,
         component,
         current_vid,
-        &filter.map(|_| (), |r| r),
+        &filter.map(|_| (), |r| *r),
         field_iterator,
     )
 }
@@ -741,20 +981,63 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     component: &IRQueryComponent,
     fold: &IRFold,
     current_vid: Vid,
-    filter: &Operation<FoldSpecificFieldKind, Argument>,
+    filter: &Operation<OperationSubject, Argument>,
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
-    let fold_specific_field = filter.left();
-    let field_iterator = Box::new(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
-        let value = match tagged_value {
-            TaggedValue::Some(value) => value,
-            TaggedValue::NonexistentOptional => {
-                unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+    let left = filter.left();
+    let (fold_specific_field, transform_data) = match left {
+        OperationSubject::FoldSpecificField(field) => (field, None),
+        OperationSubject::TransformedField(transformed) => match &transformed.value.base {
+            TransformBase::FoldSpecificField(field) => (field, Some(&transformed.value)),
+            TransformBase::ContextField(_) => {
+                unreachable!("post-fold filter does not refer to a fold-specific field: {left:?}")
             }
-        };
-        ctx.values.push(value);
-        ctx
-    }));
+        },
+        OperationSubject::LocalField(_) => {
+            unreachable!("post-fold filter does not refer to a fold-specific field: {left:?}")
+        }
+    };
+
+    let field_iterator: ContextIterator<'query, AdapterT::Vertex> = if let Some(transform_data) =
+        transform_data
+    {
+        let prepped_iterator = push_transform_argument_tag_values_onto_stack_during_main_query(
+            adapter,
+            carrier,
+            component,
+            current_vid,
+            &transform_data.transforms,
+            iterator,
+        );
+
+        let query_variables =
+            Arc::clone(&carrier.query.as_ref().expect("query was not returned").arguments);
+        let transform_data = Arc::clone(transform_data);
+        Box::new(compute_fold_specific_field_with_separate_value(fold.eid, &fold_specific_field.kind, prepped_iterator).map(move |(mut ctx, tagged_value)| {
+            let mut value = match tagged_value {
+                TaggedValue::Some(value) => value,
+                TaggedValue::NonexistentOptional => {
+                    unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+                }
+            };
+
+            value = apply_transforms(&transform_data, &query_variables, &mut ctx.values, value);
+
+            ctx.values.push(value);
+            ctx
+        }))
+    } else {
+        Box::new(compute_fold_specific_field_with_separate_value(fold.eid, &fold_specific_field.kind, iterator).map(|(mut ctx, tagged_value)| {
+            let value = match tagged_value {
+                TaggedValue::Some(value) => value,
+                TaggedValue::NonexistentOptional => {
+                    unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
+                }
+            };
+            ctx.values.push(value);
+            ctx
+        }))
+    };
 
     apply_filter(
         adapter,
@@ -770,6 +1053,10 @@ pub(super) fn compute_context_field_with_separate_value<
     'query,
     AdapterT: Adapter<'query>,
     V: AsVertex<AdapterT::Vertex> + 'query,
+    // For the contexts inside the input iterator, we sometimes may need to change what their
+    // `ctx.active_vertex` value holds. This const generic controls whether we restore
+    // the contents of `ctx.active_vertex` to its prior value after we're done, or not.
+    const RESTORE_CONTEXT: bool,
 >(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -780,12 +1067,17 @@ pub(super) fn compute_context_field_with_separate_value<
     let vertex_id = context_field.vertex_id;
 
     if let Some(vertex) = component.vertices.get(&vertex_id) {
-        let moved_iterator = iterator.map(move |mut context| {
-            let active_vertex = context.active_vertex.clone();
-            let new_vertex = context.vertices[&vertex_id].clone();
-            context.suspended_vertices.push(active_vertex);
-            context.move_to_vertex(new_vertex)
-        });
+        let resolve_property_input_iterator: Box<dyn Iterator<Item = DataContext<V>> + 'query> =
+            if RESTORE_CONTEXT {
+                Box::new(iterator.map(move |mut context| {
+                    let active_vertex = context.active_vertex.clone();
+                    let new_vertex = context.vertices[&vertex_id].clone();
+                    context.suspended_vertices.push(active_vertex);
+                    context.move_to_vertex(new_vertex)
+                }))
+            } else {
+                Box::new(iterator.map(move |ctx| ctx.activate_vertex(&vertex_id)))
+            };
 
         let type_name = &vertex.type_name;
         let query = carrier.query.take().expect("query was not returned");
@@ -793,23 +1085,27 @@ pub(super) fn compute_context_field_with_separate_value<
 
         let context_and_value_iterator = adapter
             .resolve_property(
-                Box::new(moved_iterator),
+                resolve_property_input_iterator,
                 type_name,
                 &context_field.field_name,
                 &resolve_info,
             )
-            .map(move |(mut context, value)| {
-                let tagged_value = if context.vertices[&vertex_id].is_some() {
+            .map(move |(mut ctx, value)| {
+                let tagged_value = if ctx.vertices[&vertex_id].is_some() {
                     TaggedValue::Some(value)
                 } else {
                     // The value is coming from an @optional scope that didn't exist.
                     TaggedValue::NonexistentOptional
                 };
 
-                // Make sure that the context has the same "current" token
-                // as before evaluating the context field.
-                let old_current_token = context.suspended_vertices.pop().unwrap();
-                (context.move_to_vertex(old_current_token), tagged_value)
+                if RESTORE_CONTEXT {
+                    // Make sure that the context has the same "current" token
+                    // as before evaluating the context field.
+                    let old_current_token = ctx.suspended_vertices.pop().unwrap();
+                    (ctx.move_to_vertex(old_current_token), tagged_value)
+                } else {
+                    (ctx, tagged_value)
+                }
             });
         carrier.query = Some(resolve_info.into_inner());
 
@@ -1051,8 +1347,14 @@ fn perform_entry_into_new_vertex<'query, AdapterT: Adapter<'query>>(
     let vertex_id = vertex.vid;
     let mut iterator = coerce_if_needed(adapter, carrier, vertex, iterator);
     for filter_expr in vertex.filters.iter() {
-        iterator =
-            apply_local_field_filter(adapter, carrier, component, vertex_id, filter_expr, iterator);
+        iterator = apply_filter_with_non_folded_field_subject(
+            adapter,
+            carrier,
+            component,
+            vertex_id,
+            filter_expr,
+            iterator,
+        );
     }
     Box::new(iterator.map(move |mut x| {
         x.record_vertex(vertex_id);

@@ -181,17 +181,17 @@ TestInterpreterOutputTrace(
             vid: Vid(1),
             type_name: "Number",
             filters: [
-              Equals(LocalField(
+              Equals(LocalField(LocalField(
                 field_name: "__typename",
                 field_type: "String!",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "type",
                 variable_type: "String!",
               ))),
-              Equals(LocalField(
+              Equals(LocalField(LocalField(
                 field_name: "value",
                 field_type: "Int",
-              ), Variable(VariableRef(
+              )), Variable(VariableRef(
                 variable_name: "val",
                 variable_type: "Int",
               ))),
@@ -199,16 +199,16 @@ TestInterpreterOutputTrace(
           ),
         },
         outputs: {
-          "value": ContextField(
+          "value": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "value",
             field_type: "Int",
-          ),
-          "vowelsInName": ContextField(
+          )),
+          "vowelsInName": ContextField(ContextField(
             vertex_id: Vid(1),
             field_name: "vowelsInName",
             field_type: "[String]",
-          ),
+          )),
         },
       ),
       variables: {

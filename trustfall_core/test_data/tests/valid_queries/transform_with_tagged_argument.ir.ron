@@ -1,0 +1,58 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "One",
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+        ),
+      },
+      outputs: {
+        "value": ContextField(ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        )),
+        "valueadd": TransformedField(TransformedField(
+          value: TransformedValue(
+            base: ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "value",
+              field_type: "Int",
+            )),
+            transforms: [
+              Add(Tag(TransformedField(TransformedField(
+                value: TransformedValue(
+                  base: ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "value",
+                    field_type: "Int",
+                  )),
+                  transforms: [
+                    Add(Variable(VariableRef(
+                      variable_name: "ten",
+                      variable_type: "Int!",
+                    ))),
+                  ],
+                ),
+                tid: Tid(1),
+                field_type: "Int",
+              )))),
+            ],
+          ),
+          tid: Tid(2),
+          field_type: "Int",
+        )),
+      },
+    ),
+    variables: {
+      "ten": "Int!",
+    },
+  ),
+  arguments: {
+    "ten": Int64(10),
+  },
+))
