@@ -20,7 +20,7 @@ ron = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 trustfall_core = { path = "../trustfall_core" }
-wasm-bindgen = { version = "0.2.92" }
+wasm-bindgen = { version = "0.2.95" }
 maplit = { workspace = true }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
