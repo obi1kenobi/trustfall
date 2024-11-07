@@ -37,6 +37,29 @@ macro_rules! make_wasm_bindgen_struct_with_debug_clone {
     };
 }
 
+macro_rules! make_boxed_wasm_bindgen_struct_with_debug_clone {
+    ($id:ident, $t:path) => {
+        #[wasm_bindgen::prelude::wasm_bindgen(inspectable)]
+        #[derive(Debug, Clone)]
+        pub struct $id(Box<$t>);
+
+        impl $id {
+            #[allow(dead_code)]
+            fn new(inner: $t) -> Self {
+                Self(Box::new(inner))
+            }
+        }
+
+        impl std::ops::Deref for $id {
+            type Target = $t;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    };
+}
+
 // A macro to provide `println!(..)`-style syntax for `console.log` logging.
 #[allow(unused_macros)]
 macro_rules! log {
