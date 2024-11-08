@@ -60,6 +60,9 @@ jobs:
         with:
           verbose: true
           print-hash: true
+          # Attestations don't currently support reusable workflows
+          # so publishing fails if this is enabled: https://github.com/pypi/warehouse/issues/11096
+          attestations: false
 
   macos:
     # actions/setup-python with Python <3.11 does not work with macos-latest
