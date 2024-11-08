@@ -41,7 +41,7 @@ jobs:
       - macos
       - windows
       - linux
-      # - musllinux
+      - musllinux
     if: needs.should-publish.outputs.is_new_version == 'yes' && github.ref == 'refs/heads/main'
     permissions:
       # This permission is used for trusted publishing:
