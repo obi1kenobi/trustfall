@@ -14,6 +14,10 @@ TestInterpreterOutputData(
   },
   results: [
     {
+      "prime": Null,
+      "value": Int64(0),
+    },
+    {
       "prime": Int64(2),
       "value": Int64(3),
     },
