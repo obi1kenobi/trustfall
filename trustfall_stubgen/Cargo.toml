@@ -1,6 +1,6 @@
 [package]
 name = "trustfall_stubgen"
-version = "0.4.1"
+version = "0.5.0"
 license = "Apache-2.0"
 description = "Generate a Trustfall adapter stub for a given schema."
 repository = "https://github.com/obi1kenobi/trustfall"
@@ -23,7 +23,7 @@ cli = ["dep:clap"]
 quote = { workspace = true }
 syn = { workspace = true }
 proc-macro2 = { workspace = true }
-trustfall = { path = "../trustfall", version = "0.7.0" }
+trustfall = { path = "../trustfall", version = "0.8.0" }
 maplit = { workspace = true }
 async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
