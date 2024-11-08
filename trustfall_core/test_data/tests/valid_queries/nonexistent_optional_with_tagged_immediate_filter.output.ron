@@ -12,5 +12,10 @@ TestInterpreterOutputData(
       vid: Vid(1),
     ),
   },
-  results: [],
+  results: [
+    {
+      "value": Null,
+      "zero": Int64(0),
+    },
+  ],
 )

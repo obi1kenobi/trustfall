@@ -233,7 +233,7 @@ fn apply_unary_filter<
 ) -> ContextIterator<'query, Vertex> {
     Box::new(iterator.filter_map(move |mut context| {
         let last_value = context.values.pop().expect("no value present");
-        filter_op(&last_value).then_some(context)
+        (context.within_nonexistent_optional() || filter_op(&last_value)).then_some(context)
     }))
 }
 
@@ -391,7 +391,7 @@ fn apply_filter_op<
     left: &FieldValue,
     right: &RightValue,
 ) -> Option<DataContext<Vertex>> {
-    filter_op(left, right).then_some(ctx)
+    (ctx.within_nonexistent_optional() || filter_op(left, right)).then_some(ctx)
 }
 
 fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'query>(
