@@ -5,7 +5,7 @@
     "main": "index.js",
     "scripts": {
         "build": "webpack --config webpack.config.js",
-        "build:wasm": "wasm-pack build ../",
+        "build:wasm": "wasm-pack build ../ --dev",
         "start": "webpack-dev-server",
         "lint": "tsc && eslint --ext=tsx,ts,js . && prettier --check .",
         "fix": "eslint --fix --ext=js,jsx,ts,tsx . && prettier --write ."

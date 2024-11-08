@@ -82,15 +82,20 @@ fn perform_coercion<'query, AdapterT: Adapter<'query>>(
     let coercion_iter = adapter.resolve_coercion(iterator, coerced_from, coerce_to, &resolve_info);
     carrier.query = Some(resolve_info.into_inner());
 
-    Box::new(coercion_iter.filter_map(
-        |(ctx, can_coerce)| {
-            if can_coerce {
-                Some(ctx)
-            } else {
-                None
-            }
-        },
-    ))
+    Box::new(coercion_iter.filter_map(|(ctx, can_coerce)| {
+        // We preserve (do not discard) the vertex if one of three things is true:
+        // - the coercion is valid, i.e. the vertex is of the requested type, or
+        // - we don't have a vertex to coerce, because the coercion is happening
+        //   inside an `@optional` block where the optional edge did not exist.
+        //
+        // In the latter case, all outputs inside the `@optional` block will be `null`
+        // since the data is not present. The coercion result is irrelevant.
+        if can_coerce || ctx.active_vertex.is_none() {
+            Some(ctx)
+        } else {
+            None
+        }
+    }))
 }
 
 fn compute_component<'query, AdapterT: Adapter<'query> + 'query>(

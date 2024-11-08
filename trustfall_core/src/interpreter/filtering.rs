@@ -9,7 +9,7 @@ use super::{
         compute_context_field_with_separate_value, compute_fold_specific_field_with_separate_value,
         compute_local_field_with_separate_value, QueryCarrier,
     },
-    Adapter, ContextIterator, ContextOutcomeIterator, TaggedValue,
+    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, TaggedValue,
 };
 
 #[inline(always)]
@@ -339,94 +339,127 @@ pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
     }
 }
 
+macro_rules! not {
+    ($fn_name:ident) => {
+        |l, r| !$fn_name(l, r)
+    };
+}
+
+fn apply_filter_op_with_static_argument<
+    'query,
+    RightValue: 'query,
+    Vertex: Debug + Clone + 'query,
+    FilterFn: Fn(&FieldValue, &RightValue) -> bool + 'query,
+>(
+    right_value: RightValue,
+    filter_op: FilterFn,
+    iterator: ContextIterator<'query, Vertex>,
+) -> ContextIterator<'query, Vertex> {
+    Box::new(iterator.filter_map(move |mut ctx| {
+        let left_value = ctx.values.pop().expect("no value present");
+        apply_filter_op(ctx, &filter_op, &left_value, &right_value)
+    }))
+}
+
+fn apply_filter_op_with_tagged_argument<
+    'query,
+    Vertex: Debug + Clone + 'query,
+    FilterFn: Fn(&FieldValue, &FieldValue) -> bool + 'query,
+>(
+    filter_op: FilterFn,
+    iterator: ContextOutcomeIterator<'query, Vertex, TaggedValue>,
+) -> ContextIterator<'query, Vertex> {
+    Box::new(iterator.filter_map(move |(mut ctx, tagged_value)| {
+        let left_value = ctx.values.pop().expect("no value present");
+        let TaggedValue::Some(right_value) = tagged_value else {
+            return Some(ctx);
+        };
+        apply_filter_op(ctx, &filter_op, &left_value, &right_value)
+    }))
+}
+
+#[inline(always)]
+fn apply_filter_op<
+    'query,
+    RightValue: 'query,
+    Vertex: Debug + Clone + 'query,
+    FilterFn: Fn(&FieldValue, &RightValue) -> bool + 'query,
+>(
+    ctx: DataContext<Vertex>,
+    filter_op: &FilterFn,
+    left: &FieldValue,
+    right: &RightValue,
+) -> Option<DataContext<Vertex>> {
+    filter_op(left, right).then_some(ctx)
+}
+
 fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'query>(
     filter: &Operation<(), &Argument>,
     right_value: FieldValue,
     iterator: ContextIterator<'query, Vertex>,
 ) -> ContextIterator<'query, Vertex> {
     match filter {
-        Operation::Equals(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            equals(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::NotEquals(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            (!equals(&left_value, &right_value)).then_some(ctx)
-        })),
-        Operation::LessThan(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            less_than(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::LessThanOrEqual(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            less_than_or_equal(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::GreaterThan(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            greater_than(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::GreaterThanOrEqual(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            greater_than_or_equal(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::Contains(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            contains(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::NotContains(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            (!contains(&left_value, &right_value)).then_some(ctx)
-        })),
-        Operation::OneOf(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            one_of(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::NotOneOf(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            (!one_of(&left_value, &right_value)).then_some(ctx)
-        })),
-        Operation::HasPrefix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            has_prefix(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::NotHasPrefix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            (!has_prefix(&left_value, &right_value)).then_some(ctx)
-        })),
-        Operation::HasSuffix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            has_suffix(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::NotHasSuffix(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            (!has_suffix(&left_value, &right_value)).then_some(ctx)
-        })),
-        Operation::HasSubstring(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            has_substring(&left_value, &right_value).then_some(ctx)
-        })),
-        Operation::NotHasSubstring(_, _) => Box::new(iterator.filter_map(move |mut ctx| {
-            let left_value = ctx.values.pop().expect("no value present");
-            (!has_substring(&left_value, &right_value)).then_some(ctx)
-        })),
+        Operation::Equals(_, _) => {
+            apply_filter_op_with_static_argument(right_value, equals, iterator)
+        }
+        Operation::NotEquals(_, _) => {
+            apply_filter_op_with_static_argument(right_value, not!(equals), iterator)
+        }
+        Operation::LessThan(_, _) => {
+            apply_filter_op_with_static_argument(right_value, less_than, iterator)
+        }
+        Operation::LessThanOrEqual(_, _) => {
+            apply_filter_op_with_static_argument(right_value, less_than_or_equal, iterator)
+        }
+        Operation::GreaterThan(_, _) => {
+            apply_filter_op_with_static_argument(right_value, greater_than, iterator)
+        }
+        Operation::GreaterThanOrEqual(_, _) => {
+            apply_filter_op_with_static_argument(right_value, greater_than_or_equal, iterator)
+        }
+        Operation::Contains(_, _) => {
+            apply_filter_op_with_static_argument(right_value, contains, iterator)
+        }
+        Operation::NotContains(_, _) => {
+            apply_filter_op_with_static_argument(right_value, not!(contains), iterator)
+        }
+        Operation::OneOf(_, _) => {
+            apply_filter_op_with_static_argument(right_value, one_of, iterator)
+        }
+        Operation::NotOneOf(_, _) => {
+            apply_filter_op_with_static_argument(right_value, not!(one_of), iterator)
+        }
+        Operation::HasPrefix(_, _) => {
+            apply_filter_op_with_static_argument(right_value, has_prefix, iterator)
+        }
+        Operation::NotHasPrefix(_, _) => {
+            apply_filter_op_with_static_argument(right_value, not!(has_prefix), iterator)
+        }
+        Operation::HasSuffix(_, _) => {
+            apply_filter_op_with_static_argument(right_value, has_suffix, iterator)
+        }
+        Operation::NotHasSuffix(_, _) => {
+            apply_filter_op_with_static_argument(right_value, not!(has_suffix), iterator)
+        }
+        Operation::HasSubstring(_, _) => {
+            apply_filter_op_with_static_argument(right_value, has_substring, iterator)
+        }
+        Operation::NotHasSubstring(_, _) => {
+            apply_filter_op_with_static_argument(right_value, not!(has_substring), iterator)
+        }
         Operation::RegexMatches(_, _) => {
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            Box::new(iterator.filter_map(move |mut ctx| {
-                let left_value = ctx.values.pop().expect("no value present");
-                regex_matches_optimized(&left_value, &pattern).then_some(ctx)
-            }))
+            apply_filter_op_with_static_argument(pattern, regex_matches_optimized, iterator)
         }
         Operation::NotRegexMatches(_, _) => {
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            Box::new(iterator.filter_map(move |mut ctx| {
-                let left_value = ctx.values.pop().expect("no value present");
-                (!regex_matches_optimized(&left_value, &pattern)).then_some(ctx)
-            }))
+            apply_filter_op_with_static_argument(pattern, not!(regex_matches_optimized), iterator)
         }
+
         Operation::IsNull(_) | Operation::IsNotNull(_) => unreachable!("{filter:?}"),
     }
 }
@@ -437,167 +470,60 @@ fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'quer
 ) -> ContextIterator<'query, Vertex> {
     match filter {
         Operation::Equals(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                equals(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(equals, argument_value_iterator)
         }
         Operation::NotEquals(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!equals(&left_value, &right_value)).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(not!(equals), argument_value_iterator)
         }
         Operation::LessThan(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                less_than(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(less_than, argument_value_iterator)
         }
         Operation::LessThanOrEqual(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                less_than_or_equal(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(less_than_or_equal, argument_value_iterator)
         }
         Operation::GreaterThan(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                greater_than(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(greater_than, argument_value_iterator)
         }
         Operation::GreaterThanOrEqual(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                greater_than_or_equal(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(greater_than_or_equal, argument_value_iterator)
         }
         Operation::Contains(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                contains(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(contains, argument_value_iterator)
         }
         Operation::NotContains(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!contains(&left_value, &right_value)).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(not!(contains), argument_value_iterator)
         }
         Operation::OneOf(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                one_of(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(one_of, argument_value_iterator)
         }
         Operation::NotOneOf(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!one_of(&left_value, &right_value)).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(not!(one_of), argument_value_iterator)
         }
         Operation::HasPrefix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                has_prefix(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(has_prefix, argument_value_iterator)
         }
         Operation::NotHasPrefix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!has_prefix(&left_value, &right_value)).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(not!(has_prefix), argument_value_iterator)
         }
         Operation::HasSuffix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                has_suffix(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(has_suffix, argument_value_iterator)
         }
         Operation::NotHasSuffix(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!has_suffix(&left_value, &right_value)).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(not!(has_suffix), argument_value_iterator)
         }
         Operation::HasSubstring(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                has_substring(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(has_substring, argument_value_iterator)
         }
         Operation::NotHasSubstring(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!has_substring(&left_value, &right_value)).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(not!(has_substring), argument_value_iterator)
         }
         Operation::RegexMatches(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                regex_matches_slow_path(&left_value, &right_value).then_some(ctx)
-            }))
+            apply_filter_op_with_tagged_argument(regex_matches_slow_path, argument_value_iterator)
         }
-        Operation::NotRegexMatches(_, _) => {
-            Box::new(argument_value_iterator.filter_map(move |(mut ctx, tagged_value)| {
-                let left_value = ctx.values.pop().expect("no value present");
-                let TaggedValue::Some(right_value) = tagged_value else {
-                    return Some(ctx);
-                };
-                (!regex_matches_slow_path(&left_value, &right_value)).then_some(ctx)
-            }))
-        }
+        Operation::NotRegexMatches(_, _) => apply_filter_op_with_tagged_argument(
+            not!(regex_matches_slow_path),
+            argument_value_iterator,
+        ),
         Operation::IsNull(_) | Operation::IsNotNull(_) => unreachable!("{filter:?}"),
     }
 }

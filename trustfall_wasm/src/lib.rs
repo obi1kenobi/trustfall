@@ -22,27 +22,27 @@ pub mod shim;
 make_wasm_bindgen_struct_with_debug_clone!(Schema, trustfall_core::schema::Schema);
 
 // Errors
-make_wasm_bindgen_struct_with_debug_clone!(
+make_boxed_wasm_bindgen_struct_with_debug_clone!(
     InvalidSchemaError,
     trustfall_core::schema::error::InvalidSchemaError
 );
-make_wasm_bindgen_struct_with_debug_clone!(
+make_boxed_wasm_bindgen_struct_with_debug_clone!(
     ParseError,
     trustfall_core::graphql_query::error::ParseError
 );
-make_wasm_bindgen_struct_with_debug_clone!(
+make_boxed_wasm_bindgen_struct_with_debug_clone!(
     ValidationError,
     trustfall_core::frontend::error::ValidationError
 );
-make_wasm_bindgen_struct_with_debug_clone!(
+make_boxed_wasm_bindgen_struct_with_debug_clone!(
     FrontendError,
     trustfall_core::frontend::error::FrontendError
 );
-make_wasm_bindgen_struct_with_debug_clone!(
+make_boxed_wasm_bindgen_struct_with_debug_clone!(
     InvalidIRQueryError,
     trustfall_core::ir::InvalidIRQueryError
 );
-make_wasm_bindgen_struct_with_debug_clone!(
+make_boxed_wasm_bindgen_struct_with_debug_clone!(
     QueryArgumentsError,
     trustfall_core::interpreter::error::QueryArgumentsError
 );
