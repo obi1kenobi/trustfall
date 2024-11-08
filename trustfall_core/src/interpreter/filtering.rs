@@ -223,31 +223,32 @@ pub(super) fn regex_matches_optimized(left: &FieldValue, regex: &Regex) -> bool 
     }
 }
 
+fn apply_unary_filter<
+    'query,
+    Vertex: Debug + Clone + 'query,
+    FilterFn: Fn(&FieldValue) -> bool + 'query,
+>(
+    filter_op: FilterFn,
+    iterator: ContextIterator<'query, Vertex>,
+) -> ContextIterator<'query, Vertex> {
+    Box::new(iterator.filter_map(move |mut context| {
+        let last_value = context.values.pop().expect("no value present");
+        filter_op(&last_value).then_some(context)
+    }))
+}
+
+#[inline(always)]
+fn is_null(value: &FieldValue) -> bool {
+    matches!(value, FieldValue::Null)
+}
+
 fn attempt_apply_unary_filter<'query, Vertex: Debug + Clone + 'query>(
     filter: &Operation<(), &Argument>,
     iterator: ContextIterator<'query, Vertex>,
 ) -> Result<ContextIterator<'query, Vertex>, ContextIterator<'query, Vertex>> {
     match filter {
-        Operation::IsNull(_) => {
-            let output_iter = iterator.filter_map(move |mut context| {
-                let last_value = context.values.pop().expect("no value present");
-                match last_value {
-                    FieldValue::Null => Some(context),
-                    _ => None,
-                }
-            });
-            Ok(Box::new(output_iter))
-        }
-        Operation::IsNotNull(_) => {
-            let output_iter = iterator.filter_map(move |mut context| {
-                let last_value = context.values.pop().expect("no value present");
-                match last_value {
-                    FieldValue::Null => None,
-                    _ => Some(context),
-                }
-            });
-            Ok(Box::new(output_iter))
-        }
+        Operation::IsNull(_) => Ok(apply_unary_filter(is_null, iterator)),
+        Operation::IsNotNull(_) => Ok(apply_unary_filter(|v| !is_null(v), iterator)),
         _ => Err(iterator),
     }
 }
