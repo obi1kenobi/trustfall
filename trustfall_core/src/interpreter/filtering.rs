@@ -391,6 +391,12 @@ fn apply_filter_op<
     left: &FieldValue,
     right: &RightValue,
 ) -> Option<DataContext<Vertex>> {
+    // TODO: This is a missed optimization opportunity:
+    //       It's possible that computing the arguments for the filter function was expensive,
+    //       and we might have been able to skip it if `ctx.within_nonexistent_optional()` is true.
+    //       With the current impl, we fail to do so.
+    //       For example: we may have created a Regex value from a tag, or used a `@transform` on
+    //       a property to perform some computation on either the left or right value (#617).
     (ctx.within_nonexistent_optional() || filter_op(left, right)).then_some(ctx)
 }
 
