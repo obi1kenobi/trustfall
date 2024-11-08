@@ -1,0 +1,21 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "zero": Output(
+      name: "zero",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "value": Null,
+      "zero": Int64(0),
+    },
+  ],
+)

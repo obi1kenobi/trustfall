@@ -99,6 +99,20 @@ impl<Vertex> DataContext<Vertex> {
         self.active_vertex.as_ref().and_then(AsVertex::as_vertex)
     }
 
+    /// Whether this context is currently inside an `@optional` block with no values.
+    ///
+    /// Let's unpack that:
+    /// - At this point in the query execution, we're within an `@optional` block of the query.
+    /// - An `@optional` edge in the evaluation of this context did not exist. It might not be
+    ///   the innermost `@optional` one — it might be a prior one if we're several `@optional` deep.
+    ///
+    /// This is relevant, for example, for situations where we have filters or type coercions
+    /// to apply within the `@optional` block and need to know if there's anything to filter/coerce.
+    #[inline]
+    pub(crate) fn within_nonexistent_optional(&self) -> bool {
+        self.active_vertex.is_none()
+    }
+
     /// Converts `DataContext<Vertex>` to `DataContext<Other>` by mapping each `Vertex` to `Other`.
     ///
     /// If you are implementing an [`Adapter`] for a data source,

@@ -1,0 +1,14 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Zero {
+        zero: value @output
+
+        predecessor @optional {
+            value @output @filter(op: "is_not_null")
+        }
+    }
+}"#,
+    arguments: {},
+)
