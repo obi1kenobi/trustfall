@@ -1,0 +1,16 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Zero {
+        zero: value @output @tag
+
+        predecessor @optional {
+            successor {
+                value @output @filter(op: "=", value: ["%zero"])
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)
