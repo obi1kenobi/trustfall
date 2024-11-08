@@ -2002,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "pytrustfall"
-version = "0.1.7"
+version = "0.2.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
@@ -3442,7 +3442,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "csv",
@@ -3461,7 +3461,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_core"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
@@ -3503,7 +3503,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_stubgen"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-graphql-parser",
