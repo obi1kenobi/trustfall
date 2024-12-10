@@ -94,7 +94,7 @@ pub struct FieldValueDeserializer {
     value: FieldValue,
 }
 
-impl<'de> de::IntoDeserializer<'de, Error> for FieldValue {
+impl de::IntoDeserializer<'_, Error> for FieldValue {
     type Deserializer = FieldValueDeserializer;
 
     fn into_deserializer(self) -> Self::Deserializer {
