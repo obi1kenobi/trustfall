@@ -477,7 +477,7 @@ impl<'de> Deserialize<'de> for Type {
     {
         struct TypeDeserializer;
 
-        impl<'de> Visitor<'de> for TypeDeserializer {
+        impl Visitor<'_> for TypeDeserializer {
             type Value = Type;
 
             fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {

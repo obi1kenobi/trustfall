@@ -18,7 +18,7 @@ impl<'a> CratesPager<'a> {
     }
 }
 
-impl<'a> Pager for CratesPager<'a> {
+impl Pager for CratesPager<'_> {
     type Item = Crate;
 
     fn get_page(&mut self, page: usize) -> PagerOutput<Self::Item> {
@@ -58,7 +58,7 @@ impl<'a> WorkflowsPager<'a> {
     }
 }
 
-impl<'a> Pager for WorkflowsPager<'a> {
+impl Pager for WorkflowsPager<'_> {
     type Item = RepoWorkflow;
 
     fn get_page(&mut self, page: usize) -> PagerOutput<Self::Item> {
