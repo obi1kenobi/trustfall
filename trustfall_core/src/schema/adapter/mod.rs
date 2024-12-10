@@ -161,7 +161,7 @@ impl<'a> SchemaVertex<'a> {
     }
 }
 
-impl<'a> Typename for SchemaVertex<'a> {
+impl Typename for SchemaVertex<'_> {
     #[inline(always)]
     fn typename(&self) -> &'static str {
         match self {
