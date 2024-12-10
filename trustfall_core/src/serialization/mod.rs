@@ -137,7 +137,7 @@ impl TryIntoStruct for BTreeMap<Arc<str>, FieldValue> {
     }
 }
 
-impl<'a> TryIntoStruct for &'a crate::ir::EdgeParameters {
+impl TryIntoStruct for &crate::ir::EdgeParameters {
     type Error = deserializers::Error;
 
     fn try_into_struct<S: DeserializeOwned>(self) -> Result<S, deserializers::Error> {

@@ -90,7 +90,7 @@ where
 {
     struct TypeDeserializer;
 
-    impl<'de> Visitor<'de> for TypeDeserializer {
+    impl Visitor<'_> for TypeDeserializer {
         type Value = Option<bool>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

@@ -61,7 +61,7 @@ impl<T: Clone> CandidateValue<T> {
     }
 }
 
-impl<'a, T: Clone> CandidateValue<Cow<'a, T>> {
+impl<T: Clone> CandidateValue<Cow<'_, T>> {
     pub(super) fn into_owned(self) -> CandidateValue<T> {
         match self {
             CandidateValue::Impossible => CandidateValue::Impossible,
@@ -87,7 +87,7 @@ impl<'a, T: Clone> CandidateValue<Cow<'a, T>> {
     }
 }
 
-impl<'a, T: Clone + PartialEq> PartialEq<CandidateValue<&T>> for CandidateValue<Cow<'a, T>> {
+impl<T: Clone + PartialEq> PartialEq<CandidateValue<&T>> for CandidateValue<Cow<'_, T>> {
     fn eq(&self, other: &CandidateValue<&T>) -> bool {
         match (self, other) {
             (CandidateValue::Impossible, CandidateValue::Impossible) => true,
@@ -102,7 +102,7 @@ impl<'a, T: Clone + PartialEq> PartialEq<CandidateValue<&T>> for CandidateValue<
     }
 }
 
-impl<'a, T: Clone + PartialEq> PartialEq<CandidateValue<T>> for CandidateValue<Cow<'a, T>> {
+impl<T: Clone + PartialEq> PartialEq<CandidateValue<T>> for CandidateValue<Cow<'_, T>> {
     fn eq(&self, other: &CandidateValue<T>) -> bool {
         match (self, other) {
             (CandidateValue::Impossible, CandidateValue::Impossible) => true,
@@ -298,7 +298,7 @@ impl NullableValue for &FieldValue {
     }
 }
 
-impl<'a> NullableValue for Cow<'a, FieldValue> {
+impl NullableValue for Cow<'_, FieldValue> {
     fn is_null(&self) -> bool {
         match self {
             Cow::Borrowed(v) => v.is_null(),
@@ -333,7 +333,7 @@ impl<T: Clone> Range<&T> {
     }
 }
 
-impl<'a, T: Clone> Range<Cow<'a, T>> {
+impl<T: Clone> Range<Cow<'_, T>> {
     fn into_owned(self) -> Range<T> {
         let start = self.start.map(|b| b.into_owned());
         let end = self.end.map(|b| b.into_owned());
