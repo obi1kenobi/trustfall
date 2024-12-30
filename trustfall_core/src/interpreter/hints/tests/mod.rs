@@ -1204,6 +1204,18 @@ mod static_property_values {
                         Some(CandidateValue::Single(FieldValue::Int64(1))),
                         next_neighbor.statically_required_property("value"),
                     );
+
+                    let next_edge_info = destination.first_mandatory_edge("predecessor").expect("no mandatory 'predecessor' edge info");
+                    let next_neighbor = next_edge_info.destination();
+                    assert_eq!(vid(3), next_neighbor.vid());
+
+                    // This value *is* statically known here: the "fold-count-filter" around it
+                    // ensures that at least one such value must exist, or else vertices
+                    // from the currently-resolved edge will be discarded.
+                    assert_eq!(
+                        Some(CandidateValue::Single(FieldValue::Int64(1))),
+                        next_neighbor.statically_required_property("value"),
+                    );
                 })),
                 eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                     let destination = info.destination();
