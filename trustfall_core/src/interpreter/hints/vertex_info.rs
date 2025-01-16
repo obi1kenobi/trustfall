@@ -374,7 +374,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         } else {
             Box::new(
                 self.edges_with_name(name)
-                    .filter(|edge| !edge.folded && !edge.optional && edge.recursive.is_none()),
+                    .filter(EdgeInfo::is_mandatory),
             )
         }
     }

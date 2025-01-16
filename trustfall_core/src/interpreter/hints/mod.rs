@@ -315,6 +315,12 @@ impl EdgeInfo {
     pub fn destination(&self) -> &NeighborInfo {
         &self.destination
     }
+
+    /// Whether this edge is required to exist, or else the computed row will be discarded.
+    #[inline]
+    pub fn is_mandatory(&self) -> bool {
+        !self.folded && !self.optional && self.recursive.is_none()
+    }
 }
 
 /// Information about a neighboring vertex. Implements [`VertexInfo`].
