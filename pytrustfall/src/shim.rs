@@ -35,11 +35,8 @@ pub struct Schema {
 impl Schema {
     #[new]
     pub fn new(schema_text: &str) -> PyResult<Self> {
-        let inner = trustfall_core::schema::Schema::parse(schema_text).map_err(|e| {
-            Python::with_gil(|py| {
-                crate::errors::InvalidSchemaError::new_err(format!("{e}").into_py(py))
-            })
-        })?;
+        let inner = trustfall_core::schema::Schema::parse(schema_text)
+            .map_err(|e| crate::errors::InvalidSchemaError::new_err(format!("{e}")))?;
 
         Ok(Self { inner })
     }
@@ -66,28 +63,23 @@ pub fn interpret_query(
     let wrapped_adapter = Arc::from(adapter);
 
     let indexed_query = parse(&schema.inner, query).map_err(|err| match err {
-        FrontendError::ParseError(parse_err) => Python::with_gil(|py| {
-            crate::errors::ParseError::new_err(format!("{parse_err}").into_py(py))
-        }),
-        FrontendError::ValidationError(val_err) => Python::with_gil(|py| {
-            crate::errors::ValidationError::new_err(format!("{val_err}").into_py(py))
-        }),
-        _ => Python::with_gil(|py| {
-            crate::errors::FrontendError::new_err(format!("{err}").into_py(py))
-        }),
+        FrontendError::ParseError(parse_err) => {
+            crate::errors::ParseError::new_err(format!("{parse_err}"))
+        }
+        FrontendError::ValidationError(val_err) => {
+            crate::errors::ValidationError::new_err(format!("{val_err}"))
+        }
+        _ => crate::errors::FrontendError::new_err(format!("{err}")),
     })?;
 
-    let execution = interpret_ir(wrapped_adapter, indexed_query, arguments).map_err(|err| {
-        Python::with_gil(|py| {
-            crate::errors::QueryArgumentsError::new_err(format!("{err}").into_py(py))
-        })
-    })?;
+    let execution = interpret_ir(wrapped_adapter, indexed_query, arguments)
+        .map_err(|err| crate::errors::QueryArgumentsError::new_err(format!("{err}")))?;
     let owned_iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>> =
         Box::new(execution.map(|res| {
             res.iter()
                 .map(|(k, v)| {
                     let py_value: FieldValue = v.clone().into();
-                    Python::with_gil(|py| (k.to_string(), py_value.into_py(py)))
+                    Python::with_gil(|py| (k.to_string(), py_value.into_pyobject(py).expect("failed to convert FieldValue to Python object, this shouldn't be possible").unbind()))
                 })
                 .collect()
         }));
@@ -126,7 +118,7 @@ impl AdapterShim {
 }
 
 fn make_iterator<'py>(value: &Bound<'py, PyAny>, origin: &'static str) -> Bound<'py, PyIterator> {
-    value.iter().unwrap_or_else(|e| panic!("{origin} is not an iterable (caused by {e})"))
+    value.try_iter().unwrap_or_else(|e| panic!("{origin} is not an iterable (caused by {e})"))
 }
 
 #[pyclass(unsendable, frozen)]
@@ -200,12 +192,20 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
-                .map(|(k, v)| (k.to_string(), FieldValue::from(v.clone()).into_py(py)))
+                .map(|(k, v)| {
+                    (
+                        k.to_string(),
+                        FieldValue::from(v.clone())
+                            .into_pyobject(py)
+                            .expect("failed to convert FieldValue to Python object")
+                            .unbind(),
+                    )
+                })
                 .collect();
 
             let py_iterable = self
                 .adapter
-                .call_method_bound(
+                .call_method(
                     py,
                     pyo3::intern!(py, "resolve_starting_vertices"),
                     (edge_name.as_ref(), parameter_data),
@@ -229,7 +229,7 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
-                .call_method_bound(
+                .call_method(
                     py,
                     pyo3::intern!(py, "resolve_property"),
                     (contexts, type_name.as_ref(), property_name.as_ref()),
@@ -263,12 +263,20 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
-                .map(|(k, v)| (k.to_string(), FieldValue::from(v.clone()).into_py(py)))
+                .map(|(k, v)| {
+                    (
+                        k.to_string(),
+                        FieldValue::from(v.clone())
+                            .into_pyobject(py)
+                            .expect("failed to convert FieldValue to Python object")
+                            .unbind(),
+                    )
+                })
                 .collect();
 
             let py_iterable = self
                 .adapter
-                .call_method_bound(
+                .call_method(
                     py,
                     pyo3::intern!(py, "resolve_neighbors"),
                     (contexts, type_name.as_ref(), edge_name.as_ref(), parameter_data),
@@ -300,7 +308,7 @@ impl Adapter<'static> for AdapterShim {
         Python::with_gil(|py| {
             let py_iterable = self
                 .adapter
-                .call_method_bound(
+                .call_method(
                     py,
                     pyo3::intern!(py, "resolve_coercion"),
                     (contexts, type_name.as_ref(), coerce_to_type.as_ref()),
@@ -336,7 +344,7 @@ impl Iterator for PythonVertexIterator {
     type Item = Arc<Py<PyAny>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| match self.underlying.call_method_bound(py, "__next__", (), None) {
+        Python::with_gil(|py| match self.underlying.call_method(py, "__next__", (), None) {
             Ok(value) => Some(Arc::new(value)),
             Err(e) => {
                 if e.is_instance_of::<PyStopIteration>(py) {
