@@ -382,6 +382,18 @@ macro_rules! impl_field_value_from_uint {
 impl_field_value_from_int!(i8 i16 i32 i64);
 impl_field_value_from_uint!(u8 u16 u32 u64);
 
+impl From<usize> for FieldValue {
+    fn from(value: usize) -> Self {
+        Self::Uint64(value.try_into().expect("failed to convert usize to u64"))
+    }
+}
+
+impl From<isize> for FieldValue {
+    fn from(value: isize) -> Self {
+        Self::Int64(value.try_into().expect("failed to convert isize to i64"))
+    }
+}
+
 impl TryFrom<Option<f32>> for FieldValue {
     type Error = (f32, &'static str);
 
@@ -406,6 +418,44 @@ impl TryFrom<Option<f64>> for FieldValue {
         }
     }
 }
+
+macro_rules! impl_field_value_from_unsigned_nonzero {
+    ( $( $NonZero:path )+ ) => {
+        $(
+            impl From<$NonZero> for FieldValue {
+                fn from(v: $NonZero) -> Self {
+                    Self::Uint64(v.get().into())
+                }
+            }
+        )+
+    }
+}
+
+impl_field_value_from_unsigned_nonzero!(
+    std::num::NonZeroU8
+    std::num::NonZeroU16
+    std::num::NonZeroU32
+    std::num::NonZeroU64
+);
+
+macro_rules! impl_field_value_from_signed_nonzero {
+    ( $( $NonZero:path )+ ) => {
+        $(
+            impl From<$NonZero> for FieldValue {
+                fn from(v: $NonZero) -> Self {
+                    Self::Int64(v.get().into())
+                }
+            }
+        )+
+    }
+}
+
+impl_field_value_from_signed_nonzero!(
+    std::num::NonZeroI8
+    std::num::NonZeroI16
+    std::num::NonZeroI32
+    std::num::NonZeroI64
+);
 
 impl<T: Into<FieldValue>> From<Option<T>> for FieldValue {
     fn from(opt: Option<T>) -> FieldValue {
