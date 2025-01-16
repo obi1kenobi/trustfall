@@ -20,7 +20,7 @@ fn _trustfall_internal(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> 
 
 #[pymodule]
 fn trustfall(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let submodule = PyModule::new_bound(py, "_trustfall_internal")?;
+    let submodule: Bound<'_, PyModule> = PyModule::new(py, "_trustfall_internal")?;
     _trustfall_internal(py, &submodule)?;
     m.add_submodule(&submodule)
 }
