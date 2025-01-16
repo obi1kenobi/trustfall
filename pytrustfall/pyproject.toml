@@ -20,6 +20,7 @@ classifiers = [
     "Topic :: Software Development :: Interpreters",
     "Typing :: Typed",
 ]
+dynamic = ["version"]
 
 [project.license]
 text = "Apache 2.0"
