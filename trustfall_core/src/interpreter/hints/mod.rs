@@ -142,7 +142,7 @@ impl InternalVertexInfo for ResolveInfo {
             parameters: edge.parameters.clone(),
             optional: edge.optional,
             recursive: edge.recursive.clone(),
-            folded: false,
+            folded: FoldState::None,
             destination: neighboring_info,
         }
     }
@@ -165,7 +165,11 @@ impl InternalVertexInfo for ResolveInfo {
             parameters: fold.parameters.clone(),
             optional: false,
             recursive: None,
-            folded: true,
+            folded: if at_least_one_element_required {
+                FoldState::FoldedMandatory
+            } else {
+                FoldState::FoldedOptional
+            },
             destination: neighboring_info,
         }
     }
@@ -235,7 +239,7 @@ impl ResolveEdgeInfo {
                     parameters: regular.parameters.clone(),
                     optional: regular.optional,
                     recursive: regular.recursive.clone(),
-                    folded: false,
+                    folded: FoldState::None,
                     destination: NeighborInfo {
                         query: self.query.clone(),
                         execution_frontier: Bound::Excluded(self.target_vid),
@@ -260,13 +264,14 @@ impl ResolveEdgeInfo {
                 // Its own filters always apply, and we don't need to check whether
                 // the fold is required to have at least one element.
                 let within_optional_scope = false;
+                let folded = FoldState::FoldedMandatory;
 
                 EdgeInfo {
                     eid,
                     parameters: fold.parameters.clone(),
                     optional: false,
                     recursive: None,
-                    folded: true,
+                    folded,
                     destination: NeighborInfo {
                         query: self.query.clone(),
                         execution_frontier: Bound::Excluded(self.target_vid),
@@ -290,7 +295,7 @@ pub struct EdgeInfo {
     parameters: EdgeParameters,
     optional: bool,
     recursive: Option<Recursive>,
-    folded: bool,
+    folded: FoldState,
     destination: NeighborInfo,
 }
 
@@ -319,7 +324,7 @@ impl EdgeInfo {
     /// Whether this edge is required to exist, or else the computed row will be discarded.
     #[inline]
     pub fn is_mandatory(&self) -> bool {
-        !self.folded && !self.optional && self.recursive.is_none()
+        self.folded != FoldState::FoldedOptional && !self.optional && self.recursive.is_none()
     }
 }
 
@@ -407,7 +412,7 @@ impl InternalVertexInfo for NeighborInfo {
             parameters: edge.parameters.clone(),
             optional: edge.optional,
             recursive: edge.recursive.clone(),
-            folded: false,
+            folded: FoldState::None,
             destination: neighboring_info,
         }
     }
@@ -432,7 +437,11 @@ impl InternalVertexInfo for NeighborInfo {
             parameters: fold.parameters.clone(),
             optional: false,
             recursive: None,
-            folded: true,
+            folded: if at_least_one_element_required {
+                FoldState::FoldedMandatory
+            } else {
+                FoldState::FoldedOptional
+            },
             destination: neighboring_info,
         }
     }
@@ -447,6 +456,21 @@ impl InternalVertexInfo for NeighborInfo {
 /// the filters (and will be filtered out) but can still have more edge expansions in the recursion.
 fn check_locally_non_binding_filters_for_edge(edge: &IREdge) -> bool {
     edge.recursive.as_ref().map(|r| r.depth.get() >= 2).unwrap_or(false)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum FoldState {
+    /// The edge is not folded.
+    None,
+
+    /// The edge has `@fold`, but no other clauses that require at least one instance of the edge.
+    FoldedOptional,
+
+    /// The edge has `@fold` plus a clause that requires at least one instance of the edge
+    /// for the result set to not be discarded.
+    ///
+    /// For example: `some_edge @fold @transform(op: "count") @filter(op: ">", value: ["$zero"])`
+    FoldedMandatory,
 }
 
 #[cfg(test)]

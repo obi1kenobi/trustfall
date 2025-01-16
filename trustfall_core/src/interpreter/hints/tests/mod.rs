@@ -1,10 +1,9 @@
 use std::{cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, sync::Arc};
 
-use super::{ResolveEdgeInfo, ResolveInfo};
+use super::{FoldState, ResolveEdgeInfo, ResolveInfo};
 use crate::{
     interpreter::{
-        execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
-        VertexInfo, VertexIterator,
+        execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, VertexInfo, VertexIterator
     },
     ir::{Eid, FieldValue, Recursive, Vid},
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
@@ -260,7 +259,7 @@ fn optional_directive() {
                 assert_eq!(edge.eid(), eid(1));
                 assert_eq!(edge.parameters().get("max"), Some(&(3i64.into())));
                 assert!(edge.optional);
-                assert!(!edge.folded);
+                assert_eq!(edge.folded, FoldState::None);
                 assert!(edge.recursive.is_none());
                 assert_eq!(edge.destination().vid(), vid(2));
 
@@ -307,7 +306,7 @@ fn recurse_directive() {
                 assert_eq!(edge.eid(), eid(1));
                 assert!(edge.parameters().is_empty());
                 assert!(!edge.optional);
-                assert!(!edge.folded);
+                assert_eq!(edge.folded, FoldState::None);
                 assert_eq!(edge.recursive, Some(Recursive::new(NonZeroUsize::new(3).unwrap(), None)));
                 assert_eq!(edge.destination().vid(), vid(2));
 
@@ -352,7 +351,7 @@ fn fold_directive() {
                 assert_eq!(edge.eid(), eid(1));
                 assert_eq!(edge.parameters().get("max"), Some(&(3i64.into())));
                 assert!(!edge.optional);
-                assert!(edge.folded);
+                assert_eq!(edge.folded, FoldState::FoldedOptional);
                 assert!(edge.recursive.is_none());
                 assert_eq!(edge.destination().vid(), vid(2));
 
