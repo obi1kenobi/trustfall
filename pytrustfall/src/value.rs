@@ -68,19 +68,25 @@ impl Display for FieldValue {
     }
 }
 
-impl IntoPy<Py<PyAny>> for FieldValue {
-    fn into_py(self, py: Python<'_>) -> Py<PyAny> {
+impl<'py> IntoPyObject<'py> for FieldValue {
+    type Target = PyAny;
+    type Output = Bound<'py, Self::Target>;
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
         match self {
-            FieldValue::Null => Option::<i64>::None.into_py(py),
-            FieldValue::Uint64(x) => x.into_py(py),
-            FieldValue::Int64(x) => x.into_py(py),
-            FieldValue::Float64(x) => x.into_py(py),
-            FieldValue::String(x) => x.into_py(py),
-            FieldValue::Boolean(x) => x.into_py(py),
+            FieldValue::Null => Ok(Option::<i64>::None.into_pyobject(py)?),
+            FieldValue::Uint64(x) => Ok(x.into_pyobject(py).map(|x| x.into_any())?),
+            FieldValue::Int64(x) => Ok(x.into_pyobject(py).map(|x| x.into_any())?),
+            FieldValue::Float64(x) => Ok(x.into_pyobject(py).map(|x| x.into_any())?),
+            FieldValue::String(x) => Ok(x.into_pyobject(py).map(|x| x.into_any())?),
+            FieldValue::Boolean(x) => Ok(x.into_pyobject(py).map(|x| x.to_owned().into_any())?),
             FieldValue::Enum(_) => todo!(),
-            FieldValue::List(x) => {
-                x.into_iter().map(|v| v.into_py(py)).collect::<Vec<_>>().into_py(py)
-            }
+            FieldValue::List(x) => x
+                .into_iter()
+                .map(|v| v.into_pyobject(py))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_pyobject(py),
         }
     }
 }
