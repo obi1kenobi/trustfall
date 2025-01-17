@@ -372,10 +372,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
         if self.non_binding_filters() {
             Box::new(std::iter::empty())
         } else {
-            Box::new(
-                self.edges_with_name(name)
-                    .filter(EdgeInfo::is_mandatory),
-            )
+            Box::new(self.edges_with_name(name).filter(EdgeInfo::is_mandatory))
         }
     }
 

@@ -3,7 +3,8 @@ use std::{cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf
 use super::{FoldState, ResolveEdgeInfo, ResolveInfo};
 use crate::{
     interpreter::{
-        execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, VertexInfo, VertexIterator
+        execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
+        VertexInfo, VertexIterator,
     },
     ir::{Eid, FieldValue, Recursive, Vid},
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
