@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf, sync::Arc};
 
-use super::{ResolveEdgeInfo, ResolveInfo};
+use super::{FoldState, ResolveEdgeInfo, ResolveInfo};
 use crate::{
     interpreter::{
         execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
@@ -260,7 +260,7 @@ fn optional_directive() {
                 assert_eq!(edge.eid(), eid(1));
                 assert_eq!(edge.parameters().get("max"), Some(&(3i64.into())));
                 assert!(edge.optional);
-                assert!(!edge.folded);
+                assert_eq!(edge.folded, FoldState::None);
                 assert!(edge.recursive.is_none());
                 assert_eq!(edge.destination().vid(), vid(2));
 
@@ -307,7 +307,7 @@ fn recurse_directive() {
                 assert_eq!(edge.eid(), eid(1));
                 assert!(edge.parameters().is_empty());
                 assert!(!edge.optional);
-                assert!(!edge.folded);
+                assert_eq!(edge.folded, FoldState::None);
                 assert_eq!(edge.recursive, Some(Recursive::new(NonZeroUsize::new(3).unwrap(), None)));
                 assert_eq!(edge.destination().vid(), vid(2));
 
@@ -352,7 +352,7 @@ fn fold_directive() {
                 assert_eq!(edge.eid(), eid(1));
                 assert_eq!(edge.parameters().get("max"), Some(&(3i64.into())));
                 assert!(!edge.optional);
-                assert!(edge.folded);
+                assert_eq!(edge.folded, FoldState::FoldedOptional);
                 assert!(edge.recursive.is_none());
                 assert_eq!(edge.destination().vid(), vid(2));
 
@@ -1194,6 +1194,18 @@ mod static_property_values {
                     assert!(destination.coerced_to_type().is_none());
 
                     let next_edge_info = destination.first_edge("predecessor").expect("no 'predecessor' edge info");
+                    let next_neighbor = next_edge_info.destination();
+                    assert_eq!(vid(3), next_neighbor.vid());
+
+                    // This value *is* statically known here: the "fold-count-filter" around it
+                    // ensures that at least one such value must exist, or else vertices
+                    // from the currently-resolved edge will be discarded.
+                    assert_eq!(
+                        Some(CandidateValue::Single(FieldValue::Int64(1))),
+                        next_neighbor.statically_required_property("value"),
+                    );
+
+                    let next_edge_info = destination.first_mandatory_edge("predecessor").expect("no mandatory 'predecessor' edge info");
                     let next_neighbor = next_edge_info.destination();
                     assert_eq!(vid(3), next_neighbor.vid());
 
