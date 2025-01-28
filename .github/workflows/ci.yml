@@ -15,6 +15,10 @@ concurrency:
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
+  # The below settings are based on advice from:
+  # https://corrode.dev/blog/tips-for-faster-ci-builds/
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
 
 jobs:
   ci-everything:
