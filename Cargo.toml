@@ -42,3 +42,7 @@ quote = "1.0"
 proc-macro2 = "1.0.51"
 globset = "0.4.6"
 walkdir = "2.3.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
