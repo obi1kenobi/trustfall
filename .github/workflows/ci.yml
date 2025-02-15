@@ -125,10 +125,12 @@ jobs:
         id: branch-info
         run: |
           set -ex
-          echo "COMMIT=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-          echo "TAG_NAME=$(.github/workflows/get_py_prerelease_name.sh)" >> $GITHUB_OUTPUT
-          echo "PYTHON_BINDINGS_CHANGED=$(.github/workflows/python_bindings_changed.sh)" >> $GITHUB_OUTPUT
+          {
+            echo "COMMIT=$(git rev-parse HEAD)"
+            echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}"
+            echo "TAG_NAME=$(.github/workflows/get_py_prerelease_name.sh)"
+            echo "PYTHON_BINDINGS_CHANGED=$(.github/workflows/python_bindings_changed.sh)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -333,10 +335,12 @@ jobs:
         id: branch-info
         run: |
           set -ex
-          echo "COMMIT=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-          echo "TAG_NAME=$(.github/workflows/get_wasm_prerelease_name.sh)" >> $GITHUB_OUTPUT
-          echo "WASM_CHANGED=$(.github/workflows/wasm_pkg_changed.sh)" >> $GITHUB_OUTPUT
+          {
+            echo "COMMIT=$(git rev-parse HEAD)"
+            echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}"
+            echo "TAG_NAME=$(.github/workflows/get_wasm_prerelease_name.sh)"
+            echo "WASM_CHANGED=$(.github/workflows/wasm_pkg_changed.sh)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build WASM module
         if: steps.branch-info.outputs.WASM_CHANGED != 0
@@ -436,9 +440,9 @@ jobs:
           .github/workflows/is_crate_version_already_uploaded.sh trustfall_derive
           export TRUSTFALL_DERIVE="$?"
           if [[ "$TRUSTFALL" == "7" && "$TRUSTFALL_CORE" == "7" && "$TRUSTFALL_DERIVE" == "7" ]]; then
-            echo 'is_new_version=no' >> $GITHUB_OUTPUT
+            echo 'is_new_version=no' >> "$GITHUB_OUTPUT"
           elif [[ "$TRUSTFALL" == "0" || "$TRUSTFALL_CORE" == "0" || "$TRUSTFALL_DERIVE" == "0" ]]; then
-            echo 'is_new_version=yes' >> $GITHUB_OUTPUT
+            echo 'is_new_version=yes' >> "$GITHUB_OUTPUT"
           else
             # Unexpected outcome, indicates a bug.
             exit 1
