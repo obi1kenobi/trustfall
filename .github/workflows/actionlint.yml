@@ -1,0 +1,23 @@
+name: Lint GitHub Actions workflows
+
+on:
+  push:
+    paths:
+      - ".github/workflows/*.ya?ml"
+  pull_request:
+    paths:
+      - ".github/workflows/*.ya?ml"
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download actionlint
+        id: get_actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/2ab3a12c7848f6c15faca9a92612ef4261d0e370/scripts/download-actionlint.bash)
+        shell: bash
+      - name: Check workflow files
+        # - https://www.shellcheck.net/wiki/SC2016 - "Expressions don't expand in single quotes, use double quotes for that."
+        run: ${{ steps.get_actionlint.outputs.executable }} -color -ignore 'SC2016'
+        shell: bash

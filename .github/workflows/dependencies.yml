@@ -95,13 +95,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "${CARGO_COMMIT_MESSAGE}" > commit.txt
-          cat cargo_update.log >> commit.txt
+          {
+            echo "${CARGO_COMMIT_MESSAGE}"
+            cat cargo_update.log
+          } >> commit.txt
 
-          echo "${MAIN_CARGO_PR_MESSAGE}" > body.md
-          echo '```txt' >> body.md
-          cat cargo_update.log >> body.md
-          echo '```' >> body.md
+          {
+            echo "${MAIN_CARGO_PR_MESSAGE}"
+            echo '```txt'
+            cat cargo_update.log
+            echo '```'
+          } >> body.md
 
       - name: commit
         run: |
@@ -227,13 +231,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "${CARGO_COMMIT_MESSAGE}" > commit.txt
-          cat cargo_update.log >> commit.txt
+          {
+            echo "${CARGO_COMMIT_MESSAGE}"
+            cat cargo_update.log
+          } >> commit.txt
 
-          echo "${FUZZ_CARGO_PR_TITLE}" > body.md
-          echo '```txt' >> body.md
-          cat cargo_update.log >> body.md
-          echo '```' >> body.md
+          {
+            echo "${FUZZ_CARGO_PR_MESSAGE}"
+            echo '```txt'
+            cat cargo_update.log
+            echo '```'
+          } >> body.md
 
       - name: commit
         run: |

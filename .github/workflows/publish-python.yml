@@ -32,7 +32,8 @@ jobs:
       - name: Tag the version
         run: |
           set -euxo pipefail
-          export CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh trustfall)"
+          CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh trustfall)"
+          export CURRENT_VERSION
           git tag "pytrustfall-v$CURRENT_VERSION"
           git push origin "pytrustfall-v$CURRENT_VERSION"
 
@@ -257,9 +258,9 @@ jobs:
           export EXIT_CODE="$?"
           set -e
           if [[ "$EXIT_CODE" == "7" ]]; then
-            echo 'is_new_version=no' >> $GITHUB_OUTPUT
+            echo 'is_new_version=no' >> "$GITHUB_OUTPUT"
           elif [[ "$EXIT_CODE" == "0" ]]; then
-            echo 'is_new_version=yes' >> $GITHUB_OUTPUT
+            echo 'is_new_version=yes' >> "$GITHUB_OUTPUT"
           else
             # Unexpected outcome, indicates a bug.
             exit "$EXIT_CODE"
