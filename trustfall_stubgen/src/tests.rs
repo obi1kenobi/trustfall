@@ -31,6 +31,9 @@ fn assert_generated_code_compiles(path: &Path) {
 
     let trustfall_lib_str = trustfall_lib_path.display();
 
+    // On Windows, paths are written with unescaped backslashes. Using single
+    // quotes forces literal interpretation of the string, preventing errors
+    // due to invalid escape sequences.
     let cargo_toml = format!(
         "
 [package]
@@ -41,7 +44,7 @@ edition = \"2021\"
 rust-version = \"1.70\"
 
 [dependencies]
-trustfall = {{ path = \"{trustfall_lib_str}\" }}
+trustfall = {{ path = '{trustfall_lib_str}' }}
 
 [workspace]
 "
@@ -87,9 +90,10 @@ mod adapter;
 }
 
 fn get_relevant_files_from_dir(path: &Path) -> BTreeMap<PathBuf, PathBuf> {
+    let curdir = format!(".{}", std::path::MAIN_SEPARATOR_STR);
     let mut base = path.to_str().expect("failed to make input path");
-    base = base.strip_prefix("./").unwrap_or(base);
-    let base = format!("{base}/");
+    base = base.strip_prefix(curdir.as_str()).unwrap_or(base);
+    let base = format!("{base}{}", std::path::MAIN_SEPARATOR_STR);
 
     let mut dir_glob = path.to_path_buf();
     dir_glob.push("**");
@@ -106,8 +110,8 @@ fn get_relevant_files_from_dir(path: &Path) -> BTreeMap<PathBuf, PathBuf> {
             let extension = pathbuf.extension().and_then(|x| x.to_str()).unwrap_or_default();
             if matches!(extension, "rs" | "graphql") {
                 let mut matched_filepath = pathbuf.to_str().expect("failed to make str");
-                matched_filepath = matched_filepath.strip_prefix("./").unwrap_or(matched_filepath);
-
+                matched_filepath =
+                    matched_filepath.strip_prefix(curdir.as_str()).unwrap_or(matched_filepath);
                 let key = matched_filepath
                     .strip_prefix(&base)
                     .expect("base path was not present as prefix");
@@ -151,20 +155,18 @@ fn assert_generated_code_is_unchanged(test_dir: &Path, expected_dir: &Path) {
 }
 
 fn test_schema(name: &str) {
-    let mut test_dir = Path::new("/tmp/trustfall_stubgen/tests").to_path_buf();
-    test_dir.push(name);
+    let test_dir = std::env::temp_dir().join("trustfall_stubgen").join("tests").join(name);
     let _ = std::fs::remove_dir_all(&test_dir); // it's fine if the dir didn't exist
 
-    let mut schema_path = Path::new("./test_data").to_path_buf();
-    schema_path.push(format!("{name}.graphql"));
+    let curdir = PathBuf::from(format!(".{}", std::path::MAIN_SEPARATOR_STR));
+
+    let schema_path = curdir.clone().join("test_data").join(format!("{name}.graphql"));
     let schema = std::fs::read_to_string(&schema_path).expect("failed to read schema file");
 
-    let mut test_src_dir = test_dir.clone();
-    test_src_dir.push("src");
+    let test_src_dir = test_dir.clone().join("src");
     generate_rust_stub(&schema, &test_src_dir).expect("failed to generate stub");
 
-    let mut expected_dir = Path::new("./test_data/expected_outputs").to_path_buf();
-    expected_dir.push(name);
+    let expected_dir = curdir.clone().join("test_data").join("expected_outputs").join(name);
     assert_generated_code_compiles(&test_dir);
     assert_generated_code_is_unchanged(&test_src_dir, &expected_dir);
 }
