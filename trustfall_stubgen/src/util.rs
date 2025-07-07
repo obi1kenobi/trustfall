@@ -22,7 +22,7 @@ pub(crate) fn upper_case_variant_name(value: &str) -> String {
     let first_char = chars.next().expect("unexpectedly got an empty string").to_ascii_uppercase();
     let rest_chars: String = chars.collect();
 
-    format!("{}{}", first_char, rest_chars)
+    format!("{first_char}{rest_chars}")
 }
 
 pub(crate) fn property_resolver_fn_name(type_name: &str) -> String {
