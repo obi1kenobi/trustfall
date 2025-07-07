@@ -110,7 +110,7 @@ impl TryFrom<&Positioned<Directive>> for FilterDirective {
                             if name.is_empty() {
                                 return Err(ParseError::InvalidFilterOperandName(
                                     s.to_owned(),
-                                    format!("Filter argument is empty after '{}' prefix.", prefix),
+                                    format!("Filter argument is empty after '{prefix}' prefix."),
                                     value_argument.pos,
                                 ));
                             }
