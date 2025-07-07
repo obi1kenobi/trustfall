@@ -37,7 +37,7 @@ impl FieldValue {
                     .map(FieldValue::python_type_name)
                     .next()
                     .unwrap_or("None".into());
-                Cow::Owned(format!("list[{}]", inner_type_name))
+                Cow::Owned(format!("list[{inner_type_name}]"))
             }
         }
     }
