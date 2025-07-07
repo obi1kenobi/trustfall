@@ -447,8 +447,7 @@ fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
                     .unwrap_or_else(|| {
                         panic!(
                             "\
-field {} of type {} produced an invalid value when resolving @tag: {value:?}",
-                            field_name, field_type,
+field {field_name} of type {field_type} produced an invalid value when resolving @tag: {value:?}",
                         )
                     })
                     .to_vec();
