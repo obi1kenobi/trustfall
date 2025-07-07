@@ -9,7 +9,7 @@ InputQuery (
 
                 parent @recurse(depth: 10) {
                     ... on Story {
-                        url @filter(op: "regex", value: ["$url_pattern"]) @output
+                        submittedUrl @filter(op: "regex", value: ["$url_pattern"]) @output
                         title @output
                         score @output
                         submitted_at: unixTime @output
