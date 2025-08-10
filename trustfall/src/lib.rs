@@ -21,11 +21,11 @@
 //!
 //! ## Examples of querying real-world data with Trustfall
 //!
-//! - [HackerNews APIs](./trustfall/examples/hackernews/), including an overview of the query language
+//! - [HackerNews APIs](https://github.com/obi1kenobi/trustfall/tree/main/trustfall/examples/hackernews/), including an overview of the query language
 //!   and an example of querying REST APIs.
-//! - [RSS/Atom feeds](./trustfall/examples/feeds/), showing how to query structured data
+//! - [RSS/Atom feeds](https://github.com/obi1kenobi/trustfall/tree/main/trustfall/examples/feeds/), showing how to query structured data
 //!   like RSS/Atom feeds.
-//! - [airport weather data (METAR)](./trustfall/examples/weather), showing how to query CSV data from
+//! - [airport weather data (METAR)](https://github.com/obi1kenobi/trustfall/tree/main/trustfall/examples/weather), showing how to query CSV data from
 //!   aviation weather reports.
 //!
 //! Trustfall also powers the [`cargo-semver-checks`](https://crates.io/crates/cargo-semver-checks)
