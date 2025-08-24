@@ -2,17 +2,19 @@
 
 ## Development
 
-To install dependencies:
+To install dependencies first install [uv](https://github.com/astral-sh/uv) if you
+haven't already and then:
+
 ```
-poetry install --no-root
+uv sync
 ```
 
-Then, inside the virtualenv:
+Then, inside the project you can run the commands as::
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+* `uv run mkdocs new [dir-name]` - Create a new project.
+* `uv run mkdocs serve` - Start the live-reloading docs server.
+* `uv run mkdocs build` - Build the documentation site.
+* `uv run mkdocs -h` - Print help message and exit.
 
 ## Project layout
 
