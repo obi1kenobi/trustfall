@@ -129,7 +129,7 @@ For a user we can imagine the following properties as a minimum:
 * `display_name`: the name we display for the user (OPTIONAL)
 
 With these two properties we can define a type for the schema called `User` which
-looks as folows:
+looks as follows:
 
 ```graphql
 """
@@ -264,7 +264,7 @@ type Post {
 Both the User and Post vertex types have a url field, we can therefore have them both implement
 the same interface. Interfaces are similar to GraphQL and programming languages which use them
 in that we can define a set of properties an interface must provide and also set our edge and
-query types to be interfaces instead of concrete types. Let's add a webpage inferface to contain
+query types to be interfaces instead of concrete types. Let's add a webpage interface to contain
 the URL field and have our vertex types implement it:
 
 ```graphql
