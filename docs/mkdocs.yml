@@ -40,6 +40,14 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 nav:
   - "Welcome":
     - "overview/index.md"

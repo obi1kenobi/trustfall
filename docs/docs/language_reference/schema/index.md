@@ -131,7 +131,7 @@ For a user we can imagine the following properties as a minimum:
 With these two properties we can define a type for the schema called `User` which
 looks as folows:
 
-```
+```graphql
 """
 A user account on Flutter.
 """
@@ -164,7 +164,7 @@ We'll now also define our `Post` type, this will be very similar with a url to t
 a message representing the post. For now the user who posted it will be omitted and covered
 in the Edges section.
 
-```
+```graphql
 """
 A message posted by a Flutter user.
 """
@@ -188,7 +188,7 @@ what edges are for - relationships between other vertex types. For our user, the
 be the posts the user has created, and a list of the other users they follow. Adding these
 to the vertex we now get the following schema type:
 
-```
+```graphql
 """
 A user account on Flutter.
 """
@@ -233,7 +233,7 @@ follows is similar a list of non-null users `[User!]`.
 Applying a similar change to Post we now add an edge for the author of the post, a single non-null
 User.
 
-```
+```graphql
 """
 A message posted by a Flutter user.
 """
@@ -267,7 +267,7 @@ in that we can define a set of properties an interface must provide and also set
 query types to be interfaces instead of concrete types. Let's add a webpage inferface to contain
 the URL field and have our vertex types implement it:
 
-```
+```graphql
 """
 A piece of data that has its own webpage.
 """
@@ -360,7 +360,7 @@ For this hypothetic Flutter app, we'll define an entrypoint type with two querie
 
 Adding this into the schema would look like the following:
 
-```
+```graphql
 schema {
     query: Entrypoints
 }
