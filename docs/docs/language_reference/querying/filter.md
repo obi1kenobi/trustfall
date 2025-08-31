@@ -16,7 +16,8 @@ you need to either provide a query variable or a tagged value. Currently, consta
 literals are not valid arguments into a filter directive.
 
 Filters don't have logical operators, instead you can apply multiple directives to
-a property. Below is an example for a 
+a property. Below is a toy example using the null checking filters. The following
+is guaranteed to yield zero entries.
 
 ```graphql
 name @filter(op: "is_not_null") @filter(op: "is_null")

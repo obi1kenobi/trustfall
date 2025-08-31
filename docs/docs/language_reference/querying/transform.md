@@ -19,8 +19,7 @@ author {
 The transform directive is typically used like this, coupled with a fold and filter 
 directive on a list of items.
 
-TODO can we get the value from transform and provide it as an output? i.e. a query to
-return the number of posts for a user like:
+By applying an output directive, we can also output the count from our query.
 
 ```graphql
 query {
