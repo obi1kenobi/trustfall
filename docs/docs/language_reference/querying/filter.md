@@ -9,7 +9,7 @@ of this would be:
 name @filter(op: "is_not_null")
 ```
 
-Here we would only select vertices where the name property isn't `null`. Naturally,
+Here we would only select vertices where the `name` property isn't `null`. Naturally,
 there's a limited number of useful filters where the only input is the property in
 question. For the other operations where the property is compared against some input
 you need to either provide a query variable or a tagged value. Currently, constant
