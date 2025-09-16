@@ -27,7 +27,7 @@ name @filter(op: "is_not_null") @filter(op: "is_null")
 ## Use with query variables
 
 A query variable is a value passed in from outside the query that is prefixed with `$`.
-Below is an example of filtering for equality on a name using a variable name provided
+Below is an example of filtering for equality on a name using a variable `name` provided
 at execution time:
 
 ```graphql
