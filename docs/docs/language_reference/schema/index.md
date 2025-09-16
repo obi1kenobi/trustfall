@@ -331,7 +331,7 @@ type Post implements Webpage {
     """
     message: String!
 
-    # edges
+    # own edges
     """
     The user who authored this post.
 
