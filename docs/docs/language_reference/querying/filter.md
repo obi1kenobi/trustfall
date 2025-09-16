@@ -12,8 +12,9 @@ name @filter(op: "is_not_null")
 Here we would only select vertices where the `name` property isn't `null`. Naturally,
 there's a limited number of useful filters where the only input is the property in
 question. For the other operations where the property is compared against some input
-you need to either provide a query variable or a tagged value. Currently, constant
-literals are not valid arguments into a filter directive.
+you need to either provide a query variable or a tagged value. Currently,
+literal values like `3` or `"hi"` are not valid arguments into a filter directive
+— they have to be passed in via variables instead.
 
 Filters don't have logical operators, instead you can apply multiple directives to
 a property. Below is a toy example using the null checking filters. The following
