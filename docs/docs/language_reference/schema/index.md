@@ -116,9 +116,10 @@ type Post implements Webpage {
 
 ## Vertex types and properties
 
-A [vertex][vertex] is akin to a table in SQL, given our Flutter example where
-we have users and they may post things, or follow other users we can see we have
-two clear vertices. A User vertex and a Post vertex.
+A [vertex][vertex] is akin to a table in SQL. given our Flutter example 
+we have users and their posts, and also other users they follow. If we were
+modelling this in SQL we would have a User table and a Post table, and
+therefore in Trustfall we have a User vertex and a Post vertex.
 
 A vertex can have properties associated with it (similar to columns in SQL), and
 edges. We'll initially just focus on properties as these are the simplest case.
@@ -230,6 +231,18 @@ For readability, here we've split properties and edges using non-doc comments su
 As a user can make multiple posts and follow multiple people, the type
 of both edges is a list. Posts is a list of non-null post objects with the type `[Post!]` and
 follows is similar a list of non-null users `[User!]`.
+
+There are some nullability rules to be aware of with the Trustfall edges, these are all the valid
+forms of a `Post` edge: 
+
+* `Post` is 0 or 1 post
+* `Post!` is exactly 1 post
+* [Post!] is 0 or more posts
+* [Post!]! is 1 or more posts
+
+In our example the last one is the only one we won't be using. By making the list non-null it
+guarantees a single value. We can't place just a `Post` as having a list of multiple neighbours 
+that don't exist doesn't make sense — and would also complicate our queries.
 
 Applying a similar change to `Post` we now add an edge for the author of the post, a single non-null
 `User`.
@@ -350,9 +363,10 @@ point of the query.
 
 In the entrypoint we want to provide the means to query our data source for the initial set of
 vertices we'll consider and filter or transform. For data sources like APIs we'll usually define
-some queries that map to API queries. For data types where all the data is already present such
-as a schema representing something like a json file our entrypoint type may well have no queries
-and just properties and/or edges. 
+some queries that map to API queries. If all of our data is already available, we might have no
+queries and just properties and edges. Although, even in that case we may want to add some
+queries to simplify some operations that would be complicated or impossible to express in a
+Trustfall query.
 
 For this hypothetic Flutter app, we'll define an entrypoint type with two queries:
 

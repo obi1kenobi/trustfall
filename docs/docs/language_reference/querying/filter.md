@@ -80,13 +80,12 @@ The following subsections contain more details about these operations.
 These are fairly standard equals and not-equals operators you'll be familiar with
 from other languages.
 
-TODO can you do equality on more complex user defined types?
-
 ## Comparison operators
 
 - `<`, `<=`, `>`, and `>=`
 
-The comparison operators require that the provided value is non-null.
+The comparison operators should be familiar from other languages, like in SQL comparison
+to `null` is `false`.
 
 ## Null-check operators: `is_null` and `is_not_null`
 
