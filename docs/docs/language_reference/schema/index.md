@@ -344,7 +344,7 @@ type Post implements Webpage {
 ## Entrypoints
 
 An entrypoint gives us an initial set of vertices to work with. Each Trustfall schema needs
-a root element called `schema` with a field `query` that is our entrypoint type - the starting
+a root element called `schema` with a field `query` that is our entrypoint type — the starting
 point of the query.
 
 In the entrypoint we want to provide the means to query our data source for the initial set of
