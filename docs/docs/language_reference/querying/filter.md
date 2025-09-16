@@ -49,7 +49,7 @@ vertices.iter()
 Tagged values allow us to filter using values found within the query itself.
 
 Using the schema in the [Trustfall schema guide](../schema/index.md), if we
-want to filter on users where their username is equal to their display name
+want to find users whose username is equal to their display name,
 we can write:
 
 ```
@@ -75,7 +75,7 @@ The following subsections contain more details about these operations.
 
 ## Equality operators
 
--`=` and `!=`
+- `=` and `!=`
 
 These are fairly standard equals and not-equals operators you'll be familiar with
 from other languages.
@@ -90,7 +90,7 @@ The comparison operators require that the provided value is non-null.
 
 ## Null-check operators: `is_null` and `is_not_null`
 
-These operators have no values and should only be applied to nullable properties.
+These operators take no arguments and should only be applied to nullable properties.
 
 ## Group membership operators
 

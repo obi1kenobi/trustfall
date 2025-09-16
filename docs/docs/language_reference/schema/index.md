@@ -157,12 +157,12 @@ type User {
 
 Here we've defined three string properties with doc comments to describe them. We've 
 also made `url` and `username` required fields by adding the `!` suffix to the type. This
-means that the value can't be null. Alternatively, `display_name` is allowed to be
+means that the value can't be null. Meanwhile, `display_name` is allowed to be
 `null` as it is just a `String`.
 
-We'll now also define our `Post` type, this will be very similar with a url to the post and
-a message representing the post. For now the user who posted it will be omitted and covered
-in the Edges section.
+We'll now also define our `Post` type: it will be very similar, with a url to the post and
+a message representing the post. For now, the user who posted it will be omitted and covered
+in the next section.
 
 ```graphql
 """
@@ -183,10 +183,10 @@ type Post implements Webpage {
 
 ## Edges
 
-For our two vertices, we might want to query data that refers to other vertices. This is
-what edges are for - relationships between other vertex types. For our user, these edges will
-be the posts the user has created, and a list of the other users they follow. Adding these
-to the vertex we now get the following schema type:
+We may also want to query data that refers to other vertices. This is
+what edges are for — relationships between other vertex types. For our user, these edges will
+be the posts the user has created, and a list of the other users they follow.
+We thus get the following schema for the `User` vertex type:
 
 ```graphql
 """
@@ -212,7 +212,7 @@ type User {
     display_name: String
     # end of properties
 
-    # edges
+    # own edges
     """
     The messages posted by this user, if any.
     """
@@ -225,13 +225,14 @@ type User {
 }
 ```
 
-Here we've split properties and edges and used non-doc comments such as `# own properties`
-to signal this. Also, as a user can make multiple posts and follow multiple people the type
+For readability, here we've split properties and edges using non-doc comments such as `# own edges`.
+
+As a user can make multiple posts and follow multiple people, the type
 of both edges is a list. Posts is a list of non-null post objects with the type `[Post!]` and
 follows is similar a list of non-null users `[User!]`.
 
-Applying a similar change to Post we now add an edge for the author of the post, a single non-null
-User.
+Applying a similar change to `Post` we now add an edge for the author of the post, a single non-null
+`User`.
 
 ```graphql
 """

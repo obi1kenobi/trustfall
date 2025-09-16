@@ -10,7 +10,7 @@ as so:
 
 ```graphql
 author {
-    follows @fold @transform(op: "count") filter(op: ">", value: ["$followThreshold]) {
+    follows @fold @transform(op: "count") filter(op: ">", value: ["$threshold"]) {
         # extract information we want or apply other operations
     }
 }
@@ -23,7 +23,8 @@ By applying an output directive, we can also output the count from our query.
 
 ```graphql
 query {
-    FindUser(username: "predrag") 
-    posts @fold @transform(op: "count") @output(name: "post_count") 
+    FindUser(username: "predrag") {
+        posts @fold @transform(op: "count") @output(name: "post_count") 
+    }
 }
 ```
