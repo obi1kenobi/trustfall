@@ -52,14 +52,16 @@ Using the schema in the [Trustfall schema guide](../schema/index.md), if we
 want to find users whose username is equal to their display name,
 we can write:
 
-```
+```graphql
 username @tag
 display_name @filter(op: "=", value: ["%username"])
 ```
 
 ### If the `@tag` comes from an `@optional` scope
 
-TODO what happens here?
+An `@optional` directive can be applied to an edge and then values inside that edge
+be tagged for use in filters. Filters using these tags are only evaluated if the edge
+existed, if the edge wasn't present the filter expression is true.
 
 ## Operations
 
