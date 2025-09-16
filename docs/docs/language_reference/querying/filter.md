@@ -16,9 +16,9 @@ you need to either provide a query variable or a tagged value. Currently,
 literal values like `3` or `"hi"` are not valid arguments into a filter directive
 — they have to be passed in via variables instead.
 
-Filters don't have logical operators, instead you can apply multiple directives to
-a property. Below is a toy example using the null checking filters. The following
-is guaranteed to yield zero entries.
+Filters don't have logical operators. Instead, applying multiple `@filter` directives
+to a property will implicitly apply all their conditions together, as if joined with `AND`.
+Below is a toy example using the null checking filters, which is guaranteed to yield zero entries.
 
 ```graphql
 name @filter(op: "is_not_null") @filter(op: "is_null")
