@@ -37,7 +37,7 @@ name @filter(op: "=", value: ["$name"])
 For a list of vertex types, this filter would mean only vertices with the a name
 equal to the supplied name would be yielded.
 
-We can imagine this as equivalent to the following rust code:
+We can imagine this as equivalent to the following Rust code:
 
 ```rust
 vertices.iter()
