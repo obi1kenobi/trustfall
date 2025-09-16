@@ -303,7 +303,7 @@ type User implements Webpage {
     display_name: String
     # end of properties
 
-    # edges
+    # own edges
     """
     The messages posted by this user, if any.
     """
