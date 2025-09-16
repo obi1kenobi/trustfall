@@ -48,7 +48,7 @@ vertices.iter()
 
 Tagged values allow us to filter using values found within the query itself.
 
-Using the schema in the [Trustfall schema guide](../schema/index.md) if we
+Using the schema in the [Trustfall schema guide](../schema/index.md), if we
 want to filter on users where their username is equal to their display name
 we can write:
 
