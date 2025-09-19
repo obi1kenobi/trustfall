@@ -1,0 +1,55 @@
+site_name: Trustfall
+site_description: "The documentation for Trustfall, a query engine for any combination of data sources."
+repo_url: "https://github.com/obi1kenobi/trustfall"
+repo_name: "obi1kenobi/trustfall"
+site_url: https://trustfall.dev/
+edit_uri: "edit/main/docs/"
+plugins:
+  - search
+  - redirects:
+      redirect_maps:
+        "index.md": "overview/index.md"
+theme:
+  name: material
+  # logo: TODO
+  # favicon: TODO
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+  features:
+    - content.action.edit
+    - content.code.copy
+    - content.code.annotate
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - toc.follow
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: black
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: black
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+nav:
+  - "Welcome":
+    - "overview/index.md"
+  - "Getting Started": "getting_started/"
+  - "Language Reference": "language_reference/"

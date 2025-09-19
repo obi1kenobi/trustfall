@@ -1,0 +1,20 @@
+[project]
+name = "trustfall_docs"
+version = "0.0.0"
+description = "Documentation for the Trustfall project"
+authors = [{ name = "Predrag Gruevski" }]
+requires-python = ">=3.11"
+#readme = "../README.md"
+license = { text = "Apache 2.0" }
+dependencies = [
+    "mkdocs>=1.6.0,<2",
+    "mkdocs-material[imaging]>=9.5.30,<10",
+    "mkdocs-awesome-pages-plugin>=2.9.3,<3",
+    "mkdocs-redirects>=1.2.1,<2",
+    "pygments_ansi_color>=0.3.0,<0.4",
+]
+
+[project.urls]
+homepage = "https://play.predr.ag/"
+repository = "https://github.com/obi1kenobi/trustfall"
+
