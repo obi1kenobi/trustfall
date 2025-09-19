@@ -116,10 +116,10 @@ type Post implements Webpage {
 
 ## Vertex types and properties
 
-A [vertex][vertex] is akin to a table in SQL. given our Flutter example 
-we have users and their posts, and also other users they follow. If we were
-modelling this in SQL we would have a User table and a Post table, and
-therefore in Trustfall we have a User vertex and a Post vertex.
+A [vertex][vertex] is akin to a table in SQL. Consider our Flutter example, 
+where we have users and their posts, and also other users they follow. If we were
+modelling it in SQL, we would have a `User` table and a `Post` table —
+therefore in Trustfall we have a `User` vertex and a `Post` vertex.
 
 A vertex can have properties associated with it (similar to columns in SQL), and
 edges. We'll initially just focus on properties as these are the simplest case.
@@ -237,8 +237,8 @@ forms of a `Post` edge:
 
 * `Post` is 0 or 1 post
 * `Post!` is exactly 1 post
-* [Post!] is 0 or more posts
-* [Post!]! is 1 or more posts
+* `[Post!]` is 0 or more posts
+* `[Post!]!` is 1 or more posts
 
 In our example the last one is the only one we won't be using. By making the list non-null it
 guarantees a single value. We can't place just a `Post` as having a list of multiple neighbours 
@@ -363,12 +363,13 @@ point of the query.
 
 In the entrypoint we want to provide the means to query our data source for the initial set of
 vertices we'll consider and filter or transform. For data sources like APIs we'll usually define
-some queries that map to API queries. If all of our data is already available, we might have no
-queries and just properties and edges. Although, even in that case we may want to add some
-queries to simplify some operations that would be complicated or impossible to express in a
-Trustfall query.
+some entrypoints that map to API endpoints. If all of our data is available without restrictions,
+like in a SQL database, we might just define simple entrypoints named after
+(and returning a list of) each vertex type. Although, even in that case we may want to
+add some more sophisticated entrypoints, to simplify some operations that might
+be complicated or impossible to express in a Trustfall query.
 
-For this hypothetic Flutter app, we'll define an entrypoint type with two queries:
+For this hypothetical Flutter app, we'll define an entrypoint type with two queries:
 
 1. Find a user by their username
 2. Search for posts with a given search query
