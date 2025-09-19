@@ -240,9 +240,10 @@ forms of a `Post` edge:
 * `[Post!]` is 0 or more posts
 * `[Post!]!` is 1 or more posts
 
-In our example the last one is the only one we won't be using. By making the list non-null it
-guarantees a single value. We can't place just a `Post` as having a list of multiple neighbours 
-that don't exist doesn't make sense — and would also complicate our queries.
+In our example the last one is the only one we won't be using. By making the list non-nullable `[Post!]!` 
+it guarantees a single value - whereas in normal graphql this can still be an empty list.
+We also can't specify the type as `[Post]` as having a list of multiple posts that can be null doesn't
+make sense — and would also complicate our queries.
 
 Applying a similar change to `Post` we now add an edge for the author of the post, a single non-null
 `User`.
