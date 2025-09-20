@@ -241,7 +241,7 @@ forms of a `Post` edge:
 * `[Post!]!` is 1 or more posts
 
 In our example the last one is the only one we won't be using. By making the list non-nullable `[Post!]!` 
-it guarantees a single value - whereas in normal graphql this can still be an empty list.
+it guarantees at least one value - whereas in normal GraphQL this can still be an empty list.
 We also can't specify the type as `[Post]` as having a list of multiple posts that can be null doesn't
 make sense — and would also complicate our queries.
 
