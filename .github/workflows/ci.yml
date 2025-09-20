@@ -83,7 +83,7 @@ jobs:
 
       - name: Set up python
         id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -388,9 +388,9 @@ jobs:
       - name: Install rust + caching  # necessary for `npm run build:wasm` later
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
         run: npm ci
@@ -412,7 +412,7 @@ jobs:
       - run: exit 0
 
   check-trustfall-examples-and-expensive-tests:
-    name: pre-publish checks
+    name: check trustfall examples
     if: github.ref == 'refs/heads/main'
     needs:
       - rust-tests
