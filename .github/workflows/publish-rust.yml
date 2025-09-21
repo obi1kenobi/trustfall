@@ -29,6 +29,8 @@ jobs:
       - should-publish
       - pre-publish-checks
     if: needs.should-publish.outputs.is_new_version == 'yes' && github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write     # Required for OIDC token exchange (Trusted Publishing)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -40,6 +42,11 @@ jobs:
         with:
           cache: false
 
+      # For Trusted Publishing:
+      # https://crates.io/docs/trusted-publishing
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
       - name: Tag the version
         run: |
           set -euxo pipefail
@@ -47,11 +54,6 @@ jobs:
           export CURRENT_VERSION
           git tag "${{ inputs.crate-name }}-v$CURRENT_VERSION"
           git push origin "${{ inputs.crate-name }}-v$CURRENT_VERSION"
-
-      # For Trusted Publishing:
-      # https://crates.io/docs/trusted-publishing
-      - uses: rust-lang/crates-io-auth-action@v1
-        id: auth
 
       - name: Publish
         env:
