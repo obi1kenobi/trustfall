@@ -56,7 +56,7 @@ pub fn interpret_query(
     adapter: AdapterShim,
     schema: &Schema,
     query: &str,
-    #[pyo3(from_py_with = "to_query_arguments")] arguments: Arc<
+    #[pyo3(from_py_with = to_query_arguments)] arguments: Arc<
         BTreeMap<Arc<str>, TrustfallFieldValue>,
     >,
 ) -> PyResult<ResultIterator> {
@@ -79,7 +79,7 @@ pub fn interpret_query(
             res.iter()
                 .map(|(k, v)| {
                     let py_value: FieldValue = v.clone().into();
-                    Python::with_gil(|py| (k.to_string(), py_value.into_pyobject(py).expect("failed to convert FieldValue to Python object, this shouldn't be possible").unbind()))
+                    Python::attach(|py| (k.to_string(), py_value.into_pyobject(py).expect("failed to convert FieldValue to Python object, this shouldn't be possible").unbind()))
                 })
                 .collect()
         }));
@@ -189,7 +189,7 @@ impl Adapter<'static> for AdapterShim {
         parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
     ) -> VertexIterator<'static, Self::Vertex> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
                 .map(|(k, v)| {
@@ -226,7 +226,7 @@ impl Adapter<'static> for AdapterShim {
         _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, V, TrustfallFieldValue> {
         let contexts = ContextIterator::new(contexts);
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_iterable = self
                 .adapter
                 .call_method(
@@ -260,7 +260,7 @@ impl Adapter<'static> for AdapterShim {
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
                 .map(|(k, v)| {
@@ -305,7 +305,7 @@ impl Adapter<'static> for AdapterShim {
         _resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'static, V, bool> {
         let contexts = ContextIterator::new(contexts);
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_iterable = self
                 .adapter
                 .call_method(
@@ -344,7 +344,7 @@ impl Iterator for PythonVertexIterator {
     type Item = Arc<Py<PyAny>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| match self.underlying.call_method(py, "__next__", (), None) {
+        Python::attach(|py| match self.underlying.call_method(py, "__next__", (), None) {
             Ok(value) => Some(Arc::new(value)),
             Err(e) => {
                 if e.is_instance_of::<PyStopIteration>(py) {
@@ -404,7 +404,7 @@ impl Iterator for PythonResolvePropertyIterator {
     type Item = (Opaque, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, property_value) tuple here, or else we panic.
@@ -458,7 +458,7 @@ impl Iterator for PythonResolveNeighborsIterator {
     type Item = (Opaque, VertexIterator<'static, Arc<Py<PyAny>>>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, neighbor_iterator) tuple here, or else we panic.
@@ -516,7 +516,7 @@ impl Iterator for PythonResolveCoercionIterator {
     type Item = (Opaque, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, can_coerce) tuple here, or else we panic.
