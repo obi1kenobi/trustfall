@@ -3,9 +3,7 @@ name = "trustfall"
 description = "A query engine for any combination of data sources. Query your files and APIs as if they were databases!"
 readme = "README.md"
 requires-python = ">=3.9"
-authors = [
-  {name = "Predrag Gruevski"}
-]
+authors = [{ name = "Predrag Gruevski", email = "obi1kenobi82@gmail.com" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -29,20 +27,8 @@ text = "Apache 2.0"
 homepage = "https://play.predr.ag/"
 repository = "https://github.com/obi1kenobi/trustfall"
 
-[tool.poetry]
-name = "trustfall"
-version = "0.0.0"  # Cargo.toml is authoritative, not this
-description = "Python bindings for trustfall."
-authors = ["Predrag Gruevski <obi1kenobi82@gmail.com>"]
-
-[tool.poetry.dependencies]
-python = "^3.9"
-
-[tool.poetry.group.dev.dependencies]
-maturin = "^1.3.0"
-pytest = "^7.4.2"
-black = "^23.9.1"
-mypy = "^1.11.1"
+[dependency-groups]
+dev = ["black>=25.9.0", "mypy>=1.18.2", "pytest>=8.4.2"]
 
 [tool.black]
 line-length = 100
@@ -59,5 +45,5 @@ module = "trustfall.tests.*"
 disable_error_code = "attr-defined"
 
 [build-system]
-requires = ["maturin>=1.3.0,<2", "poetry-core>=1.0.0"]
+requires = ["maturin>=1.6,<2"]
 build-backend = "maturin"
