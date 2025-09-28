@@ -62,7 +62,7 @@ for result in results_iterator:
 This package is a wrapper around the Trustfall query engine, which is written in Rust.
 
 Wheels are available for Windows, macOS (both x86 and ARM), and Linux (`manylinux`),
-for each supported version of CPython (3.9+).
+for each supported version of CPython (3.10+).
 
 This package should work on other platforms as well, in which case its Rust components
 may need to be compiled from source as part of the installation process.
