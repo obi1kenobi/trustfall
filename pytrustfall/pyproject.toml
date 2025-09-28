@@ -30,6 +30,16 @@ repository = "https://github.com/obi1kenobi/trustfall"
 [dependency-groups]
 dev = ["black>=25.9.0", "mypy>=1.18.2", "pytest>=8.4.2"]
 
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "src/**/*.rs" },
+    { dir = "trustfall" },
+    { file = "../trustfall_core/Cargo.toml" },
+    { file = "../trustfall_core/src/**/*.rs" },
+]
+
 [tool.black]
 line-length = 100
 
