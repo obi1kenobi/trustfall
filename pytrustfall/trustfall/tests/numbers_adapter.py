@@ -29,9 +29,7 @@ class NumbersAdapter(Adapter[Vertex]):
         *args: Any,
         **kwargs: Any,
     ) -> Iterable[Vertex]:
-        max_value = cast(
-            int, parameters["max"]
-        )  # type known from schema and enforced by Trustfall
+        max_value = cast(int, parameters["max"])  # type known from schema and enforced by Trustfall
 
         # We could just `yield from range(0, max_value)` here.
         # But that returns an `Iterator` which is an easier type to deal with than `Iterable`,
