@@ -233,9 +233,7 @@ class ExecutionTests(unittest.TestCase):
             "required": object(),
         }
 
-        self.assertRaises(
-            ValueError, execute_query, NumbersAdapter(), SCHEMA, query, args
-        )
+        self.assertRaises(ValueError, execute_query, NumbersAdapter(), SCHEMA, query, args)
 
     def test_bad_query_input_type(self) -> None:
         query = 123
@@ -331,9 +329,7 @@ class OverridableAdapter(NumbersAdapter):
         coercion_fn: Optional[
             Mapping[
                 str,
-                Callable[
-                    [Iterable[Context[Any]], str], Iterable[Tuple[Context[Any], bool]]
-                ],
+                Callable[[Iterable[Context[Any]], str], Iterable[Tuple[Context[Any], bool]]],
             ]
         ] = None,
     ) -> None:
@@ -353,9 +349,7 @@ class OverridableAdapter(NumbersAdapter):
         if (resolver := self.starting_fn.get(edge_name)) is not None:
             yield from resolver(parameters)
         else:
-            yield from super().resolve_starting_vertices(
-                edge_name, parameters, *args, **kwargs
-            )
+            yield from super().resolve_starting_vertices(edge_name, parameters, *args, **kwargs)
 
     def resolve_property(
         self,
@@ -369,9 +363,7 @@ class OverridableAdapter(NumbersAdapter):
         if (resolver := self.property_fn.get((type_name, property_name))) is not None:
             yield from resolver(contexts)
         else:
-            yield from super().resolve_property(
-                contexts, type_name, property_name, *args, **kwargs
-            )
+            yield from super().resolve_property(contexts, type_name, property_name, *args, **kwargs)
 
     def resolve_neighbors(
         self,
