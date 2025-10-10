@@ -2,21 +2,24 @@
 name = "trustfall"
 description = "A query engine for any combination of data sources. Query your files and APIs as if they were databases!"
 readme = "README.md"
-requires-python = ">=3.9"
-authors = [{ name = "Predrag Gruevski", email = "obi1kenobi82@gmail.com" }]
+requires-python = ">=3.10"
+authors = [
+  {name = "Predrag Gruevski"}
+]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Database :: Database Engines/Servers",
-    "Topic :: Software Development :: Compilers",
-    "Topic :: Software Development :: Interpreters",
-    "Typing :: Typed",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Database :: Database Engines/Servers",
+  "Topic :: Software Development :: Compilers",
+  "Topic :: Software Development :: Interpreters",
+  "Typing :: Typed",
 ]
 dynamic = ["version"]
 
@@ -45,5 +48,5 @@ module = "trustfall.tests.*"
 disable_error_code = "attr-defined"
 
 [build-system]
-requires = ["maturin>=1.6,<2"]
+requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
