@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import {
     Box,
@@ -48,6 +48,9 @@ console.log('from JS: wrapped=', wrapped.next());
 const arr = Array.from(make_iter(wasm.get_iterator()));
 console.log('from JS: arr=', arr);
 
+const DEFAULT_SCHEMA_MESSAGE =
+    '# Enter a query on the left, or select an example query from the dropdown.';
+
 const queryOptions: Array<keyof typeof EXAMPLE_QUERY_MAP> = [
     'actions_in_repos_with_min_hn_pts',
     'crates_io_github_actions',
@@ -56,39 +59,41 @@ const queryOptions: Array<keyof typeof EXAMPLE_QUERY_MAP> = [
 ];
 
 export default function App(): JSX.Element {
-    const [query, setQuery] = useState<string | undefined>('');
-    const [schema, setSchema] = useState('');
+    const [query, setQuery] = useState('');
     const [exampleQueryId, setExampleQueryId] = useState<
         keyof typeof EXAMPLE_QUERY_MAP | undefined
     >(undefined);
 
-    const handleExampleQueryChange = (evt: SelectChangeEvent) => {
-        const { value } = evt.target;
-        if (value in EXAMPLE_QUERY_MAP) {
-            setExampleQueryId(value as keyof typeof EXAMPLE_QUERY_MAP);
+    const handleQueryChange = (value?: string) => {
+        const nextQuery = value ?? '';
+        setQuery(nextQuery);
+        if (exampleQueryId && EXAMPLE_QUERY_MAP[exampleQueryId].query !== nextQuery) {
+            setExampleQueryId(undefined);
         }
     };
 
-    useEffect(() => {
-        if (!query || query === '') {
-            setSchema('# Enter a query on the left, or select an example query from the dropdown.');
+    const handleExampleQueryChange = (evt: SelectChangeEvent<string>) => {
+        const { value } = evt.target;
+        if (value && value in EXAMPLE_QUERY_MAP) {
+            const key = value as keyof typeof EXAMPLE_QUERY_MAP;
+            setExampleQueryId(key);
+            setQuery(EXAMPLE_QUERY_MAP[key].query);
         } else {
-            try {
-                setSchema(wasm.infer_schema(query));
-            } catch (e) {
-                const message = `# An error was encountered:\n${e}`;
-                setSchema(message);
-            }
-        }
-    }, [query]);
-
-    useEffect(() => {
-        if (exampleQueryId) {
-            setQuery(EXAMPLE_QUERY_MAP[exampleQueryId].query);
-        } else {
+            setExampleQueryId(undefined);
             setQuery('');
         }
-    }, [exampleQueryId]);
+    };
+
+    const schema = useMemo(() => {
+        if (!query) {
+            return DEFAULT_SCHEMA_MESSAGE;
+        }
+        try {
+            return wasm.infer_schema(query);
+        } catch (e) {
+            return `# An error was encountered:\n${e}`;
+        }
+    }, [query]);
 
     return (
         <>
@@ -102,7 +107,7 @@ export default function App(): JSX.Element {
                             <Select
                                 labelId="example-query-select"
                                 label="Example Query"
-                                value={exampleQueryId}
+                                value={exampleQueryId ?? ''}
                                 onChange={handleExampleQueryChange}
                             >
                                 <MenuItem value="">None</MenuItem>
@@ -118,7 +123,7 @@ export default function App(): JSX.Element {
                         <Editor
                             defaultLanguage="graphql"
                             value={query}
-                            onChange={setQuery}
+                            onChange={handleQueryChange}
                             height="500px"
                             options={{
                                 minimap: {

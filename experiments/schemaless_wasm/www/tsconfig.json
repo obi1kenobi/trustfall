@@ -10,7 +10,8 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "strict": true,
-        "target": "es2017",
-        "allowSyntheticDefaultImports": true
+        "target": "esnext",
+        "allowSyntheticDefaultImports": true,
+        "lib": ["DOM", "ESNext", "ESNext.Disposable"]
     }
 }
