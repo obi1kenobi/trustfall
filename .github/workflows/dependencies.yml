@@ -53,14 +53,14 @@ jobs:
         run: CARGO_TERM_COLOR=never cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
       - name: upload Cargo.lock artifact for use in PR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: main-Cargo-lock
           path: Cargo.lock
           retention-days: 1
 
       - name: upload cargo-update log artifact for use in PR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: main-cargo-updates
           path: cargo_update.log
@@ -188,14 +188,14 @@ jobs:
           CARGO_TERM_COLOR=never cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
       - name: upload Cargo.lock artifact for use in PR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: fuzz-Cargo-lock
           path: trustfall_core/fuzz/Cargo.lock
           retention-days: 1
 
       - name: upload cargo-update log artifact for use in PR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: fuzz-cargo-updates
           path: trustfall_core/fuzz/cargo_update.log
