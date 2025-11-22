@@ -11,11 +11,6 @@ mod common;
 
 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
-#[wasm_bindgen(start)]
-pub fn run_at_start() {
-    trustfall_wasm::util::initialize().expect("initialize failed");
-}
-
 #[wasm_bindgen_test]
 pub fn test_schema() {
     make_test_schema();
@@ -29,7 +24,12 @@ pub fn deserialize_returned_value() {
 }
 
 #[wasm_bindgen(inline_js = r#"
-import {Schema, executeQuery} from "../../wasm-bindgen-test";
+import {Schema, executeQuery, initialize} from "../../wasm-bindgen-test";
+
+// Ensure iterator prototypes are patched before any queries run.
+// Normally one would do this inside `#[wasm_bindgen(start)]` but the test harness
+// has its own entrypoint and ours would be ignored. Hence we initialize here.
+initialize();
 
 export function testQuery() {
     const numbersSchema = Schema.parse(`
