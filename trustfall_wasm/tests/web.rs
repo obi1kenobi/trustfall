@@ -26,12 +26,12 @@ pub fn deserialize_returned_value() {
 #[wasm_bindgen(inline_js = r#"
 import {Schema, executeQuery, initialize} from "../../wasm-bindgen-test";
 
-// Ensure iterator prototypes are patched before any queries run.
-// Normally one would do this inside `#[wasm_bindgen(start)]` but the test harness
-// has its own entrypoint and ours would be ignored. Hence we initialize here.
-initialize();
-
 export function testQuery() {
+    // Ensure iterator prototypes are patched after the wasm module is ready.
+    // Normally this would run inside `#[wasm_bindgen(start)]` but we
+    // can't use that in test since the test harness overrides the entrypoint.
+    initialize();
+
     const numbersSchema = Schema.parse(`
 schema {
     query: RootSchemaQuery
