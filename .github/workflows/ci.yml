@@ -32,7 +32,7 @@ jobs:
       - python-tests
       - wasm-tests
       - js-lint
-    if: ${{ success() || failure() }} # Run this job even if a dependency has failed.
+    if: ${{ success() || failure() }}  # Run this job even if a dependency has failed.
     steps:
       - name: Job outcomes
         run: |
@@ -283,7 +283,7 @@ jobs:
     name: WASM tests
     runs-on: ubuntu-latest
     needs:
-      - rust-tests
+     - rust-tests
     permissions:
       contents: write
     env:
@@ -368,7 +368,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install rust + caching # necessary for `npm run build:wasm` later
+      - name: Install rust + caching  # necessary for `npm run build:wasm` later
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - uses: actions/setup-node@v6
