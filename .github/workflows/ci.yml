@@ -91,6 +91,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --no-install-project
 
+      - name: Run pytest
+        run: uv run pytest
+
       - name: maturin build and test
         run: uv build
 
