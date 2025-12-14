@@ -83,11 +83,11 @@ jobs:
           persist-credentials: true
 
       - name: download Cargo.lock from update job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: main-Cargo-lock
       - name: download cargo-update log from update job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: main-cargo-updates
 
@@ -218,12 +218,12 @@ jobs:
           persist-credentials: true
 
       - name: download Cargo.lock from update job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: fuzz-Cargo-lock
           path: trustfall_core/fuzz/
       - name: download cargo-update log from update job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: fuzz-cargo-updates
 
