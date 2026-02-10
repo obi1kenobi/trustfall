@@ -15,7 +15,7 @@ including an adapter implemented in JavaScript and a schema instantiated from Ja
 
 Prerequisites:
 - a recent Rust environment: [installation instructions](https://www.rust-lang.org/tools/install)
-- the `wasm-pack` tool: [installation instructions](https://rustwasm.github.io/wasm-pack/installer/)
+- the `wasm-pack` tool: [installation instructions](https://drager.github.io/wasm-pack/installer/)
 
 All following commands are run from the `trustfall_wasm` directory.
 
