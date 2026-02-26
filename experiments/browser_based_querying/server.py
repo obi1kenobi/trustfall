@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-from http import server # Python 3
+from http import server  # Python 3
+
 
 class MyHTTPRequestHandler(server.SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
@@ -14,5 +15,6 @@ class MyHTTPRequestHandler(server.SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         return super().do_GET()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     server.test(HandlerClass=MyHTTPRequestHandler)

@@ -1,7 +1,6 @@
-from typing import Any, Mapping, Iterable, Iterator, Tuple, Union, cast
+from typing import Any, Iterable, Iterator, Mapping, Tuple, Union, cast
 
 from .. import Adapter, Context, FieldValue
-
 
 _NUMBER_NAMES = [
     "zero",
