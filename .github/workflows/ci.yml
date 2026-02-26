@@ -91,6 +91,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --no-install-project
 
+      - name: Run ruff check
+        run: uv run ruff check
+
+      - name: Run ruff format
+        run: uv run ruff format --check --diff
+
       - name: Run pytest
         run: uv run pytest
 

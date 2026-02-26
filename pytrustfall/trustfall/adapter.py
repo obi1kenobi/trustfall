@@ -11,7 +11,6 @@ from typing import (
     Union,
 )
 
-
 FieldValue = Union[None, str, int, float, bool, list["FieldValue"]]
 """
 The type of property values, query arguments, and columns in the result.
