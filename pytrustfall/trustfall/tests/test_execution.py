@@ -1,3 +1,4 @@
+import unittest
 from os import path
 from textwrap import dedent
 from typing import (
@@ -11,16 +12,15 @@ from typing import (
     Tuple,
     cast,
 )
-import unittest
 
 from .. import (
     Context,
+    FieldValue,
     FrontendError,
     ParseError,
     QueryArgumentsError,
     Schema,
     ValidationError,
-    FieldValue,
 )
 from ..execution import execute_query
 from .numbers_adapter import NumbersAdapter

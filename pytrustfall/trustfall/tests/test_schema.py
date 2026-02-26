@@ -5,7 +5,6 @@ from .. import (
     Schema,
 )
 
-
 INVALID_SCHEMA = """\
 schema {
     query: RootSchemaQuery
