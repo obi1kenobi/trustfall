@@ -114,7 +114,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: steps.branch-info.outputs.PYTHON_BINDINGS_CHANGED != 0
         with:
           name: pytrustfall-wheels
@@ -335,7 +335,7 @@ jobs:
           tar -czvf ../trustfall_wasm.tar.gz --exclude='.gitignore' .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: steps.branch-info.outputs.WASM_CHANGED != 0
         with:
           name: wasm-module
