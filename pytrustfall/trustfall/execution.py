@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, Mapping
 
-from .adapter import Adapter, Vertex
 from ._internals import AdapterShim, Schema, interpret_query
+from .adapter import Adapter, Vertex
 
 
 def execute_query(

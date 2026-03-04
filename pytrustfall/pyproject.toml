@@ -31,7 +31,11 @@ homepage = "https://play.predr.ag/"
 repository = "https://github.com/obi1kenobi/trustfall"
 
 [dependency-groups]
-dev = ["black>=25.9.0", "mypy>=1.18.2", "pytest>=8.4.2"]
+dev = [
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "ruff>=0.15.2",
+]
 
 [tool.uv]
 cache-keys = [
@@ -43,8 +47,11 @@ cache-keys = [
     { file = "../trustfall_core/src/**/*.rs" },
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I"]
 
 [tool.maturin]
 sdist-include = ["trustfall/py.typed"]

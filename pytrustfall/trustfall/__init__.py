@@ -1,8 +1,3 @@
-from .adapter import Adapter, Context, FieldValue
-from .execution import execute_query
-
-from ._internals import Schema
-
 # Error types:
 # - ParseError, when the provided input doesn't even parse as valid syntax
 # - ValidationError, when the input is syntactically valid but doesn't match the schema
@@ -20,8 +15,11 @@ from ._internals import (
     InvalidSchemaError,
     ParseError,
     QueryArgumentsError,
+    Schema,
     ValidationError,
 )
+from .adapter import Adapter, Context, FieldValue
+from .execution import execute_query
 
 __all__ = [
     # from .adapter
