@@ -91,8 +91,10 @@ impl<'py> IntoPyObject<'py> for FieldValue {
     }
 }
 
-impl<'py> pyo3::FromPyObject<'py> for FieldValue {
-    fn extract_bound(value: &pyo3::Bound<'py, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for FieldValue {
+    type Error = PyErr;
+
+    fn extract(value: Borrowed<'a, 'py, pyo3::PyAny>) -> Result<Self, Self::Error> {
         if value.is_none() {
             Ok(FieldValue::Null)
         } else if let Ok(inner) = value.extract::<bool>() {
@@ -112,7 +114,7 @@ impl<'py> pyo3::FromPyObject<'py> for FieldValue {
             }
         } else if let Ok(inner) = value.extract::<String>() {
             Ok(FieldValue::String(inner.into()))
-        } else if let Ok(list) = value.downcast::<PyList>() {
+        } else if let Ok(list) = value.cast::<PyList>() {
             let mut converted = Vec::with_capacity(list.len());
             for element in list.iter() {
                 let value = element.extract::<FieldValue>()?;

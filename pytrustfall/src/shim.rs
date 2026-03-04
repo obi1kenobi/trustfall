@@ -103,7 +103,7 @@ impl ResultIterator {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct AdapterShim {
     adapter: Arc<Py<PyAny>>,
@@ -121,7 +121,7 @@ fn make_iterator<'py>(value: &Bound<'py, PyAny>, origin: &'static str) -> Bound<
     value.try_iter().unwrap_or_else(|e| panic!("{origin} is not an iterable (caused by {e})"))
 }
 
-#[pyclass(unsendable, frozen)]
+#[pyclass(unsendable, frozen, from_py_object)]
 #[derive(Debug, Clone)]
 pub(crate) struct Opaque {
     data: *mut (),
@@ -408,7 +408,7 @@ impl Iterator for PythonResolvePropertyIterator {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, property_value) tuple here, or else we panic.
-                    let tuple = output.downcast_bound(py).py_friendly_expect(
+                    let tuple = output.cast_bound(py).py_friendly_expect(
                         "resolve_property() did not yield a `(context, property_value)` tuple",
                     );
 
@@ -462,7 +462,7 @@ impl Iterator for PythonResolveNeighborsIterator {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, neighbor_iterator) tuple here, or else we panic.
-                    let tuple: &Bound<'_, PyTuple> = output.downcast_bound(py).py_friendly_expect(
+                    let tuple: &Bound<'_, PyTuple> = output.cast_bound(py).py_friendly_expect(
                         "resolve_neighbors() did not yield a `(context, neighbor_iterator)` tuple",
                     );
 
@@ -520,7 +520,7 @@ impl Iterator for PythonResolveCoercionIterator {
             match self.underlying.call_method0(py, pyo3::intern!(py, "__next__")) {
                 Ok(output) => {
                     // `output` must be a (context, can_coerce) tuple here, or else we panic.
-                    let tuple = output.downcast_bound(py).py_friendly_expect(
+                    let tuple = output.cast_bound(py).py_friendly_expect(
                         "resolve_coercion() did not yield a `(context, can_coerce)` tuple",
                     );
 
