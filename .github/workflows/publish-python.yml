@@ -25,6 +25,8 @@ jobs:
       - linux
       - musllinux
     if: needs.should-publish.outputs.is_new_version == 'yes' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -32,10 +34,10 @@ jobs:
       - name: Tag the version
         run: |
           set -euxo pipefail
-          CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh trustfall)"
-          export CURRENT_VERSION
-          git tag "pytrustfall-v$CURRENT_VERSION"
-          git push origin "pytrustfall-v$CURRENT_VERSION"
+          CURRENT_VERSION="$(.github/workflows/get_current_crate_version.sh pytrustfall)"
+          TAG_NAME="pytrustfall-v$CURRENT_VERSION"
+          git tag -f "$TAG_NAME"
+          git push --force origin "refs/tags/$TAG_NAME:refs/tags/$TAG_NAME"
 
   publish:
     name: publish python trustfall
@@ -175,7 +177,7 @@ jobs:
           cache: false
       - name: Show python version
         run: |
-          python3 --version
+          uv run --python ${{ matrix.python-version }} python --version
       - name: Build wheels
         uses: messense/maturin-action@v1
         with:
@@ -184,7 +186,9 @@ jobs:
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         run: |
-          pip install trustfall --no-index --find-links dist --force-reinstall
+          uv venv --seed --python ${{ matrix.python-version }} .venv
+          . .venv/bin/activate
+          python -m pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
       - name: Upload wheels
         uses: actions/upload-artifact@v7
@@ -205,15 +209,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-          enable-cache: false
-      - name: Show python version
-        run: |
-          python3 --version
       - name: Build wheels
+        # Unlike the regular Linux job, musllinux builds run inside maturin-action's Docker
+        # container, so host Python setup (e.g. setup-uv) is not used for wheel building.
+        # The `--interpreter pythonX.Y` argument is resolved inside that container.
         uses: messense/maturin-action@v1
         with:
           target: x86_64-unknown-linux-musl
@@ -221,13 +220,20 @@ jobs:
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         uses: addnab/docker-run-action@v3
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
         with:
-          image: python:${{ matrix.python-version }}-alpine
+          image: ghcr.io/rust-cross/rust-musl-cross:x86_64-musl
           options: -v ${{ github.workspace }}:/io -w /io
           run: |
             ls -alh /io/dist/
-            pip install trustfall --no-index --find-links /io/dist/ --force-reinstall
-            python3 -c "import trustfall"
+            PY_DOTLESS="$PY_VERSION"
+            PY_DOTLESS="${PY_DOTLESS/./}"
+            PYTHON_BIN="/opt/python/cp${PY_DOTLESS}-cp${PY_DOTLESS}/bin/python"
+            "$PYTHON_BIN" --version
+            "$PYTHON_BIN" -m ensurepip --upgrade || true
+            "$PYTHON_BIN" -m pip install trustfall --no-index --find-links /io/dist/ --force-reinstall
+            "$PYTHON_BIN" -c "import trustfall"
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
