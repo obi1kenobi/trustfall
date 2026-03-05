@@ -220,11 +220,9 @@ jobs:
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         uses: addnab/docker-run-action@v3
-        env:
-          PY_VERSION: ${{ matrix.python-version }}
         with:
           image: ghcr.io/rust-cross/rust-musl-cross:x86_64-musl
-          options: -v ${{ github.workspace }}:/io -w /io
+          options: -v ${{ github.workspace }}:/io -w /io -e PY_VERSION=${{ matrix.python-version }}
           run: |
             ls -alh /io/dist/
             PY_DOTLESS="$PY_VERSION"
