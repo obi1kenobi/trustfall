@@ -162,6 +162,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+    env:
+      PY_VERSION: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -177,7 +179,7 @@ jobs:
           cache: false
       - name: Show python version
         run: |
-          uv run --python ${{ matrix.python-version }} python --version
+          uv run --python "$PY_VERSION" python --version
       - name: Build wheels
         uses: messense/maturin-action@v1
         with:
@@ -186,7 +188,7 @@ jobs:
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
         run: |
-          uv venv --seed --python ${{ matrix.python-version }} .venv
+          uv venv --seed --python "$PY_VERSION" .venv
           . .venv/bin/activate
           python -m pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
@@ -205,6 +207,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+    env:
+      PY_VERSION: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -212,28 +216,34 @@ jobs:
       - name: Build wheels
         # Unlike the regular Linux job, musllinux builds run inside maturin-action's Docker
         # container, so host Python setup (e.g. setup-uv) is not used for wheel building.
-        # The `--interpreter pythonX.Y` argument is resolved inside that container.
+        # maturin-action forwards `--interpreter` to `maturin` and does not install Python:
+        # `pythonX.Y` must already exist in that container's PATH.
         uses: messense/maturin-action@v1
         with:
           target: x86_64-unknown-linux-musl
           manylinux: musllinux_1_2
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
       - name: Install built wheel
-        uses: addnab/docker-run-action@v3
-        env:
-          PY_VERSION: ${{ matrix.python-version }}
-        with:
-          image: ghcr.io/rust-cross/rust-musl-cross:x86_64-musl
-          options: -v ${{ github.workspace }}:/io -w /io
-          run: |
-            ls -alh /io/dist/
-            PY_DOTLESS="$PY_VERSION"
-            PY_DOTLESS="$(printf '%s' "$PY_DOTLESS" | tr -d '.')"
-            PYTHON_BIN="/opt/python/cp${PY_DOTLESS}-cp${PY_DOTLESS}/bin/python"
-            "$PYTHON_BIN" --version
-            "$PYTHON_BIN" -m ensurepip --upgrade || true
-            "$PYTHON_BIN" -m pip install trustfall --no-index --find-links /io/dist/ --force-reinstall
-            "$PYTHON_BIN" -c "import trustfall"
+        shell: bash
+        run: |
+          set -euxo pipefail
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/io" \
+            -w /io \
+            -e PY_VERSION \
+            quay.io/pypa/musllinux_1_2_x86_64 \
+            sh -euxc '
+              ls -alh /io/dist/
+              # Install the exact matrix interpreter in the musllinux container and validate
+              # the built wheel with it. This avoids depending on preinstalled /opt/python
+              # layouts, which can differ by image and Python version.
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+              export PATH="$HOME/.local/bin:$PATH"
+              uv venv --seed --python "${PY_VERSION}" /tmp/wheel-check-venv
+              /tmp/wheel-check-venv/bin/python --version
+              /tmp/wheel-check-venv/bin/python -m pip install trustfall --no-index --find-links /io/dist/ --force-reinstall
+              /tmp/wheel-check-venv/bin/python -c "import trustfall"
+            '
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
