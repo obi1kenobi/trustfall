@@ -82,10 +82,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: arm64
       - name: Install rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -123,10 +123,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
       - name: Install rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -162,10 +162,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
       - name: Install rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -202,10 +202,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
       - name: Show python version
         run: |
           python3 --version
