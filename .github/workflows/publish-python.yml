@@ -228,7 +228,7 @@ jobs:
           run: |
             ls -alh /io/dist/
             PY_DOTLESS="$PY_VERSION"
-            PY_DOTLESS="${PY_DOTLESS/./}"
+            PY_DOTLESS="$(printf '%s' "$PY_DOTLESS" | tr -d '.')"
             PYTHON_BIN="/opt/python/cp${PY_DOTLESS}-cp${PY_DOTLESS}/bin/python"
             "$PYTHON_BIN" --version
             "$PYTHON_BIN" -m ensurepip --upgrade || true
