@@ -70,14 +70,14 @@ jobs:
           attestations: false
 
   macos:
-    # actions/setup-python with Python <3.11 does not work with macos-latest
-    runs-on: macos-13
+    # Build native Apple Silicon wheels on the current macOS hosted runner.
+    runs-on: macos-15
     needs:
       - should-publish
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -85,7 +85,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
+          architecture: arm64
       - name: Install rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -93,23 +93,14 @@ jobs:
       - name: Show python version
         run: |
           python --version
-      - name: Build wheels - x86_64
+      - name: Build wheels - arm64
         uses: messense/maturin-action@v1
         with:
           # version pinned until https://github.com/PyO3/maturin/issues/2154 is fixed
           maturin-version: v1.6.0
-          target: x86_64
+          target: aarch64-apple-darwin
           args: --release --interpreter python --out dist --sdist -m pytrustfall/Cargo.toml
-      - name: Install built wheel - x86_64
-        run: |
-          pip install trustfall --no-index --find-links dist --force-reinstall
-          python -c "import trustfall"
-      - name: Build wheels - universal2
-        uses: messense/maturin-action@v1
-        with:
-          target: universal2
-          args: --release --interpreter python --out dist -m pytrustfall/Cargo.toml
-      - name: Install built wheel - universal2
+      - name: Install built wheel - arm64
         run: |
           pip install trustfall --no-index --find-links dist --force-reinstall
           python -c "import trustfall"
@@ -127,7 +118,7 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -166,7 +157,7 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -206,7 +197,7 @@ jobs:
     if: needs.should-publish.outputs.is_new_version == 'yes'
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v6
         with:
