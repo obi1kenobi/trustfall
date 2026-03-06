@@ -63,14 +63,14 @@ fn parse(path: &str) {
     let test_query: TestGraphQLQuery = ron::from_str(&input_data).unwrap();
 
     let arguments = test_query.arguments;
-    let result: TestParsedGraphQLQueryResult = parse_query(test_query.query)
-        .map_err(ParseError::from)
-        .and_then(|doc| parse_document(&doc))
-        .map(move |query| TestParsedGraphQLQuery {
+    let result: TestParsedGraphQLQueryResult = match parse_query(test_query.query) {
+        Ok(doc) => parse_document(&doc).map(move |query| TestParsedGraphQLQuery {
             schema_name: test_query.schema_name,
             query,
             arguments,
-        });
+        }),
+        Err(error) => Err(ParseError::from(error)),
+    };
 
     println!("{}", serialize_to_ron(&result));
 }
