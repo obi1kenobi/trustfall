@@ -60,8 +60,81 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
-          path: dist
-          merge-multiple: true
+          path: artifacts
+      - name: Collect wheel artifacts safely
+        run: |
+          set -euxo pipefail
+          mapfile -t wheel_paths < <(find artifacts -type f -name '*.whl' | sort)
+
+          if [[ "${#wheel_paths[@]}" -eq 0 ]]; then
+            echo "No wheel files were downloaded from artifacts."
+            exit 1
+          fi
+
+          mapfile -t duplicate_basenames < <(printf '%s\n' "${wheel_paths[@]##*/}" | sort | uniq -d)
+          if [[ "${#duplicate_basenames[@]}" -ne 0 ]]; then
+            echo "Duplicate wheel filenames found across artifacts:"
+            printf '%s\n' "${duplicate_basenames[@]}"
+            echo
+            for base in "${duplicate_basenames[@]}"; do
+              echo "Conflicting files for: $base"
+              find artifacts -type f -name "$base" | sort
+            done
+            exit 1
+          fi
+
+          mkdir -p dist
+          cp "${wheel_paths[@]}" dist/
+          ls -alh dist/
+      - name: Basic distribution consistency test
+        run: |
+          set -euxo pipefail
+          shopt -s nullglob
+
+          wheels=(dist/*.whl)
+          if [[ "${#wheels[@]}" -eq 0 ]]; then
+            echo "No wheel files found in dist/."
+            exit 1
+          fi
+
+          tags_file="$(mktemp)"
+          for wheel in "${wheels[@]}"; do
+            wheel_name="$(basename "$wheel")"
+            base_name="${wheel_name%.whl}"
+            IFS='-' read -r -a parts <<< "$base_name"
+
+            if [[ "${#parts[@]}" -lt 5 ]]; then
+              echo "Invalid wheel filename: $wheel_name"
+              exit 1
+            fi
+
+            tag_start=$(( ${#parts[@]} - 3 ))
+            py_tag="${parts[$tag_start]}"
+            abi_tag="${parts[$(( tag_start + 1 ))]}"
+            platform_tag="${parts[$(( tag_start + 2 ))]}"
+
+            if [[ "$py_tag" != cp* ]]; then
+              echo "Unexpected python tag '$py_tag' in $wheel_name"
+              exit 1
+            fi
+
+            echo "$py_tag/$abi_tag/$platform_tag" >> "$tags_file"
+            unzip -t "$wheel" >/dev/null
+          done
+
+          if [[ -n "$(sort "$tags_file" | uniq -d)" ]]; then
+            echo "Duplicate wheel compatibility tags detected:"
+            sort "$tags_file" | uniq -d
+            exit 1
+          fi
+
+          rm -f "$tags_file"
+          ls -alh dist/
+      - name: Twine metadata check
+        run: |
+          set -euxo pipefail
+          python3 -m pip install --disable-pip-version-check twine
+          python3 -m twine check dist/*
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -80,6 +153,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+    env:
+      PY_VERSION: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -93,20 +168,46 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: false
-      - name: Show python version
+      # This job builds on the host runner, so maturin needs a concrete interpreter path.
+      # We create a matrix-version uv venv and pass its python executable explicitly.
+      # (Linux/musllinux jobs run in maturin containers where `pythonX.Y` is resolved there;
+      # host paths from this runner would not exist inside those containers.)
+      - name: Prepare Python interpreter
+        id: prepare-python
         run: |
-          python --version
+          set -euxo pipefail
+          uv python install "$PY_VERSION"
+          uv venv --seed --python "$PY_VERSION" .venv
+          PYTHON_BIN="$PWD/.venv/bin/python"
+          "$PYTHON_BIN" --version
+          echo "PYTHON_BIN=$PYTHON_BIN" >> "$GITHUB_ENV"
+          echo "python_bin=$PYTHON_BIN" >> "$GITHUB_OUTPUT"
       - name: Build wheels - arm64
         uses: messense/maturin-action@v1
         with:
-          # version pinned until https://github.com/PyO3/maturin/issues/2154 is fixed
-          maturin-version: v1.6.0
           target: aarch64-apple-darwin
-          args: --release --interpreter python --out dist --sdist -m pytrustfall/Cargo.toml
+          args: --release --interpreter ${{ steps.prepare-python.outputs.python_bin }} --out dist --sdist -m pytrustfall/Cargo.toml
+      - name: Validate built wheel tag
+        run: |
+          set -euxo pipefail
+          EXPECTED_CP_TAG="cp${PY_VERSION//./}"
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          if [[ "${#wheels[@]}" -ne 1 ]]; then
+            echo "Expected exactly one wheel in dist/, found ${#wheels[@]}."
+            ls -alh dist/
+            exit 1
+          fi
+
+          wheel_name="$(basename "${wheels[0]}")"
+          if [[ "$wheel_name" != *"-${EXPECTED_CP_TAG}-"* ]]; then
+            echo "Wheel tag mismatch: expected '$EXPECTED_CP_TAG' in '$wheel_name'."
+            exit 1
+          fi
       - name: Install built wheel - arm64
         run: |
-          pip install trustfall --no-index --find-links dist --force-reinstall
-          python -c "import trustfall"
+          "$PYTHON_BIN" -m pip install trustfall --no-index --find-links dist --force-reinstall
+          "$PYTHON_BIN" -c "import trustfall"
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
@@ -122,6 +223,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+    env:
+      PY_VERSION: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -135,18 +238,46 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: false
-      - name: Show python version
+      # This job builds on the host runner, so maturin needs a concrete interpreter path.
+      # We create a matrix-version uv venv and pass its python executable explicitly.
+      # (Linux/musllinux jobs run in maturin containers where `pythonX.Y` is resolved there;
+      # host paths from this runner would not exist inside those containers.)
+      - name: Prepare Python interpreter
+        id: prepare-python
+        shell: pwsh
         run: |
-          python --version
+          uv python install "$env:PY_VERSION"
+          uv venv --seed --python "$env:PY_VERSION" .venv
+          $python_bin = (Resolve-Path .\.venv\Scripts\python.exe).Path
+          & $python_bin --version
+          Add-Content -Path $env:GITHUB_ENV -Value "PYTHON_BIN=$python_bin"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "python_bin=$python_bin"
       - name: Build wheels
         uses: messense/maturin-action@v1
         with:
           target: x64
-          args: --release --interpreter python --out dist -m pytrustfall/Cargo.toml
-      - name: Install built wheel
+          args: --release --interpreter ${{ steps.prepare-python.outputs.python_bin }} --out dist -m pytrustfall/Cargo.toml
+      - name: Validate built wheel tag
+        shell: pwsh
         run: |
-          pip install trustfall --no-index --find-links dist --force-reinstall
-          python -c "import trustfall"
+          $expectedCpTag = "cp$($env:PY_VERSION -replace '\.', '')"
+          $wheels = Get-ChildItem -Path dist -Filter *.whl -File
+          if ($wheels.Count -ne 1) {
+            Write-Error "Expected exactly one wheel in dist/, found $($wheels.Count)."
+            Get-ChildItem dist
+            exit 1
+          }
+
+          $wheelName = $wheels[0].Name
+          if ($wheelName -notmatch "-$expectedCpTag-") {
+            Write-Error "Wheel tag mismatch: expected '$expectedCpTag' in '$wheelName'."
+            exit 1
+          }
+      - name: Install built wheel
+        shell: pwsh
+        run: |
+          & $env:PYTHON_BIN -m pip install trustfall --no-index --find-links dist --force-reinstall
+          & $env:PYTHON_BIN -c "import trustfall"
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
@@ -186,6 +317,23 @@ jobs:
           target: x86_64
           manylinux: auto
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
+      - name: Validate built wheel tag
+        run: |
+          set -euxo pipefail
+          EXPECTED_CP_TAG="cp${PY_VERSION//./}"
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          if [[ "${#wheels[@]}" -ne 1 ]]; then
+            echo "Expected exactly one wheel in dist/, found ${#wheels[@]}."
+            ls -alh dist/
+            exit 1
+          fi
+
+          wheel_name="$(basename "${wheels[0]}")"
+          if [[ "$wheel_name" != *"-${EXPECTED_CP_TAG}-"* ]]; then
+            echo "Wheel tag mismatch: expected '$EXPECTED_CP_TAG' in '$wheel_name'."
+            exit 1
+          fi
       - name: Install built wheel
         run: |
           uv venv --seed --python "$PY_VERSION" .venv
@@ -223,6 +371,23 @@ jobs:
           target: x86_64-unknown-linux-musl
           manylinux: musllinux_1_2
           args: --release --interpreter python${{ matrix.python-version}} --out dist -m pytrustfall/Cargo.toml
+      - name: Validate built wheel tag
+        run: |
+          set -euxo pipefail
+          EXPECTED_CP_TAG="cp${PY_VERSION//./}"
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          if [[ "${#wheels[@]}" -ne 1 ]]; then
+            echo "Expected exactly one wheel in dist/, found ${#wheels[@]}."
+            ls -alh dist/
+            exit 1
+          fi
+
+          wheel_name="$(basename "${wheels[0]}")"
+          if [[ "$wheel_name" != *"-${EXPECTED_CP_TAG}-"* ]]; then
+            echo "Wheel tag mismatch: expected '$EXPECTED_CP_TAG' in '$wheel_name'."
+            exit 1
+          fi
       - name: Install built wheel
         shell: bash
         run: |
