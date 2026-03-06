@@ -1,6 +1,6 @@
 [package]
 name = "pytrustfall"
-version = "0.3.0"
+version = "0.3.1"
 rust-version.workspace = true
 edition.workspace = true
 authors.workspace = true

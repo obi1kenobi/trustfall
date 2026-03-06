@@ -2066,7 +2066,7 @@ dependencies = [
 
 [[package]]
 name = "pytrustfall"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
