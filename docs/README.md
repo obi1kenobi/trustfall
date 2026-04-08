@@ -1,24 +1,21 @@
-# Trustfall documentation
+# Trustfall Documentation
 
 ## Development
 
 To install dependencies first install [uv](https://github.com/astral-sh/uv) if you
 haven't already and then:
 
-```
+```shell
 uv sync
 ```
 
 Then, inside the project you can run the commands as::
 
-* `uv run mkdocs new [dir-name]` - Create a new project.
-* `uv run mkdocs serve` - Start the live-reloading docs server.
-* `uv run mkdocs build` - Build the documentation site.
-* `uv run mkdocs -h` - Print help message and exit.
+* `uv run zensical serve` - Start the live-reloading docs server.
+* `uv run zensical build` - Build the documentation site.
 
-## Project layout
+## Links
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+* **[Zensical Documentation]**
+
+[Zensical Documentation]: https://zensical.org/docs

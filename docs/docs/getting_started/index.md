@@ -1,1 +1,1 @@
-# Getting started
+# Getting Started
