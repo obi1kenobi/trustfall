@@ -1,0 +1,82 @@
+[project]
+site_name = "Trustfall"
+site_description = "A query engine for any combination of data sources."
+site_url = "https://obi1kenobi.github.io/trustfall"
+
+repo_name = "obi1kenobi/trustfall"
+repo_url = "https://github.com/obi1kenobi/trustfall"
+edit_uri = "edit/main/docs/docs"
+
+copyright = """
+Copyright &copy; 2022-present Predrag Gruevski
+"""
+
+nav = [
+  { "Welcome" = "overview/index.md" },
+  { "Getting Started" = "getting_started/index.md" },
+  { "Language Reference" = [
+    { "Querying" = [
+      "language_reference/querying/index.md",
+      "language_reference/querying/filter.md",
+      "language_reference/querying/fold.md",
+      "language_reference/querying/optional.md",
+      "language_reference/querying/output.md",
+      "language_reference/querying/recurse.md",
+      "language_reference/querying/tag.md",
+      "language_reference/querying/transform.md",
+      "language_reference/querying/type_coercion.md",
+    ] },
+    { "Schema" = ["language_reference/schema/index.md"] },
+    "language_reference/glossary.md",
+  ] },
+]
+
+# extra_css = ["stylesheets/extra.css"]
+# extra_javascript = ["javascripts/extra.js"]
+
+[project.theme]
+# custom_dir = "overrides"
+language = "en"
+
+features = [
+  "announce.dismiss",
+  "content.action.edit",
+  "content.action.view",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  # "header.autohide",
+  "navigation.expand",
+  "navigation.footer",
+  # "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.instant.progress",
+  "navigation.path",
+  # "navigation.prune",
+  "navigation.sections",
+  # "navigation.tabs",
+  # "navigation.tabs.sticky",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+  # "toc.integrate",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/obi1kenobi/trustfall"
