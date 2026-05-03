@@ -57,8 +57,8 @@ pub(super) fn make_edges_file(
         let mut edges: Vec<(String, Vec<(String, String)>)> = row
             .edge_name
             .into_iter()
-            .zip(row.parameter_name.into_iter().zip(row.parameter_type.into_iter()))
-            .map(|(edge, (param, ty))| (edge, param.into_iter().zip(ty.into_iter()).collect()))
+            .zip(row.parameter_name.into_iter().zip(row.parameter_type))
+            .map(|(edge, (param, ty))| (edge, param.into_iter().zip(ty).collect()))
             .collect();
         edges.sort_unstable();
 
