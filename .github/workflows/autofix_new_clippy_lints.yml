@@ -117,6 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BRANCH_NAME: clippy_autofix
+      BASE_BRANCH: ${{ github.ref_name }}
     permissions:
       contents: write
       pull-requests: write
@@ -191,7 +192,7 @@ jobs:
             exit 1
           fi
 
-          gh pr edit "$BRANCH_NAME" --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY"
+          gh pr edit "$BRANCH_NAME" --title "${PR_TITLE}" --body-file body.md --base "$BASE_BRANCH" --repo "$GITHUB_REPOSITORY"
 
       - name: open new pull request
         # Only run if there wasn't an existing PR
@@ -204,7 +205,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CLIPPY_AUTOFIX_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
+          gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --base "$BASE_BRANCH" --label R-automated
 
       - name: set PR to auto-merge
         env:
