@@ -48,8 +48,7 @@ pub(super) fn make_entrypoints_file(
         .collect();
     rows.sort_unstable();
     for row in rows {
-        let parameters: Vec<_> =
-            row.parameter_name.into_iter().zip(row.parameter_type.into_iter()).collect();
+        let parameters: Vec<_> = row.parameter_name.into_iter().zip(row.parameter_type).collect();
 
         let (match_arm, entrypoint_fn) = make_entrypoint_fn(&row.name, &parameters);
         entrypoints_file.top_level_items.push(entrypoint_fn);

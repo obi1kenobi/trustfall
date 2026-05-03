@@ -1,0 +1,212 @@
+# Automatically apply fixes for new Clippy lints as stable Rust advances.
+#
+# This repo uses stable Rust by default, so when stable Rust advances our normal
+# CI starts using the new stable Clippy version automatically. New Clippy versions
+# can introduce lints for code that was previously accepted.
+#
+# This workflow runs `cargo clippy --fix` and `cargo fmt` to apply
+# machine-applicable Clippy suggestions and fix formatting as needed. Warnings
+# do not fail the fixer pass: non-autofixable lint warnings should not prevent
+# later workspaces from getting their own autofixes. Fixer steps are allowed to
+# continue on error so one workspace does not prevent later workspaces from
+# getting their own autofixes.
+
+---
+name: Autofix new Clippy lints
+on:
+  schedule:
+    # Rust releases are every 6 weeks, but cron doesn't seem to support 6-week intervals.
+    # Run weekly on Thursday afternoons: most runs won't find any new fixes to apply.
+    - cron: '37 18 * * THU'
+  workflow_dispatch:
+    # Needed so we can run it manually
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+env:
+  PR_TITLE: Autofix new Clippy lints
+  PR_MESSAGE: |
+    Automation to catch newly-introduced Clippy lints on stable Rust and apply machine-applicable fixes.
+
+    The following is the output from `git diff`:
+
+jobs:
+  update-rust-lints:
+    if: github.repository_owner == 'obi1kenobi'
+    name: apply cargo clippy and cargo fmt fixes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install rust + caching
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt, clippy
+
+      - name: cargo clippy --fix
+        continue-on-error: true
+        run: cargo clippy --fix --workspace --all-features --all-targets --no-deps
+
+      - name: cargo fmt
+        continue-on-error: true
+        run: cargo fmt
+
+      # `trustfall_core/fuzz` has its own `Cargo.toml` and lockfile for fuzzing,
+      # and is not a member of the root workspace checked above. Since the prior
+      # steps may have already edited files, allow the worktree to be dirty here.
+      - name: cargo clippy --fix for fuzz tests
+        continue-on-error: true
+        run: |
+          cd trustfall_core/fuzz
+          cargo clippy --fix --workspace --all-features --all-targets --no-deps --allow-dirty
+
+      - name: cargo fmt for fuzz tests
+        continue-on-error: true
+        run: |
+          cd trustfall_core/fuzz
+          cargo fmt
+
+      # `experiments/trustfall_rustdoc` is a standalone experimental crate, not a
+      # member of the root workspace checked above. Since the prior steps may
+      # have already edited files, allow the worktree to be dirty here.
+      - name: cargo clippy --fix for rustdoc WASM
+        continue-on-error: true
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo clippy --fix --all-features --all-targets --no-deps --allow-dirty
+
+      - name: cargo fmt for rustdoc WASM
+        continue-on-error: true
+        run: |
+          cd experiments/trustfall_rustdoc
+          cargo fmt
+
+      - name: create patch artifact
+        id: diff
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          git diff --binary > clippy_fixes.patch
+
+      - name: upload Clippy fixes patch for use in PR
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: clippy-fixes
+          path: clippy_fixes.patch
+          retention-days: 1
+          if-no-files-found: error
+
+  pr-rust-lints:
+    if: github.repository_owner == 'obi1kenobi' && needs.update-rust-lints.outputs.changed == 'true'
+    name: open or amend PR
+    needs: update-rust-lints
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: clippy_autofix
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v6
+        with:
+          # Use a Personal Access Token (PAT) so pushes to the automation branch
+          # and PR updates trigger the normal CI workflows.
+          token: ${{ secrets.CLIPPY_AUTOFIX_GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: download Clippy fixes patch from update job
+        uses: actions/download-artifact@v8
+        with:
+          name: clippy-fixes
+
+      - name: apply Clippy fixes patch
+        run: |
+          set -euo pipefail
+          git apply clippy_fixes.patch
+
+      - name: craft PR body and commit message
+        run: |
+          set -euo pipefail
+
+          DIFF="$(git diff)"
+
+          {
+            echo "${PR_MESSAGE}"
+            echo '```diff'
+            echo "$DIFF"
+            echo '```'
+          } > body.md
+
+      - name: commit
+        run: |
+          set -euxo pipefail
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --force-create "$BRANCH_NAME"
+          git add --update
+          DIFF="$(git diff --staged)"
+          if [[ "$DIFF" == "" ]]; then
+            echo >&2 "No clippy or rustfmt changes were produced, bailing out and not making a PR"
+            exit 1
+          fi
+          git commit --no-verify --file=body.md
+
+      - name: push
+        run: |
+          set -euo pipefail
+          git push --no-verify --force --set-upstream origin "$BRANCH_NAME"
+
+      - name: edit existing open pull request
+        id: edit
+        # Don't fail job if we need to open new PR
+        continue-on-error: true
+        env:
+          # We have to use a Personal Access Token (PAT) here.
+          # PRs opened from a workflow using the standard `GITHUB_TOKEN` in GitHub Actions
+          # do not automatically trigger more workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the_github_token-in-a-workflow
+          GITHUB_TOKEN: ${{ secrets.CLIPPY_AUTOFIX_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Exit with error if PR is closed
+          STATE="$(gh pr view "$BRANCH_NAME" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+          if [[ "$STATE" != "OPEN" ]]; then
+            exit 1
+          fi
+
+          gh pr edit "$BRANCH_NAME" --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY"
+
+      - name: open new pull request
+        # Only run if there wasn't an existing PR
+        if: steps.edit.outcome != 'success'
+        env:
+          # We have to use a Personal Access Token (PAT) here.
+          # PRs opened from a workflow using the standard `GITHUB_TOKEN` in GitHub Actions
+          # do not automatically trigger more workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the_github_token-in-a-workflow
+          GITHUB_TOKEN: ${{ secrets.CLIPPY_AUTOFIX_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$GITHUB_REPOSITORY" --label R-automated
+
+      - name: set PR to auto-merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --auto --delete-branch
