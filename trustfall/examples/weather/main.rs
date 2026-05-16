@@ -56,24 +56,15 @@ fn read_metar_data() -> Vec<MetarReport> {
 
     let mut buf = String::new();
 
-    // strip the CSV prefix and the header row
-    let prefix_len = 6;
-    for _ in 0..prefix_len {
-        reader.read_line(&mut buf).unwrap();
-
-        match buf.as_str().trim() {
-            "No errors" | "No warnings" | "data source=metars" | METAR_DOC_HEADER_ROW => {}
-            data => match data.split_once(' ') {
-                Some((left, right)) if right == "ms" || right == "results" => {
-                    assert!(left.chars().all(|x| x.is_ascii_digit()));
-                }
-                _ => unreachable!(),
-            },
-        }
-
-        buf.truncate(0);
+    // Strip header row
+    reader.read_line(&mut buf).unwrap();
+    if buf.as_str().trim() != METAR_DOC_HEADER_ROW {
+        unreachable!("Expected CSV to begin with only the header ROW")
     }
 
+    // We cannot use has_headers(true) because the CSV has duplicate column headers
+    // for sky_cover and cloud_base_ft_agl, which we manually handle.
+    // (See [`crate::metar::CsvMetarReport`])
     let mut csv_reader = csv::ReaderBuilder::new().has_headers(false).from_reader(reader);
 
     let metars: Vec<MetarReport> =
