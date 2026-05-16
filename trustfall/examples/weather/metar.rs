@@ -79,6 +79,7 @@ pub(crate) struct CsvMetarReport {
     pub(crate) vert_vis_ft: Option<i32>,
 
     pub(crate) metar_type: Option<String>,
+
     // As of May 2026, METAR may contain `null` in this field
     #[serde(deserialize_with = "csv::invalid_option")]
     pub(crate) elevation_m: Option<f64>,
