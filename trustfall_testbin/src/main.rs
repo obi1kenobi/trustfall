@@ -4,6 +4,7 @@
 
 use anyhow::Context as _;
 use std::{
+    borrow::Cow,
     cell::RefCell,
     collections::{BTreeMap, BTreeSet},
     env,
@@ -48,14 +49,10 @@ fn get_schema_by_name(schema_name: &str) -> Schema {
 }
 
 fn serialize_to_ron<S: Serialize>(s: &S) -> String {
-    let mut buf = Vec::new();
     let mut config = ron::ser::PrettyConfig::new().struct_names(true);
-    config.new_line = "\n".to_string();
-    config.indentor = "  ".to_string();
-    let mut serializer = ron::ser::Serializer::new(&mut buf, Some(config)).unwrap();
-
-    s.serialize(&mut serializer).unwrap();
-    String::from_utf8(buf).unwrap()
+    config.new_line = Cow::Borrowed("\n");
+    config.indentor = Cow::Borrowed("  ");
+    ron::ser::to_string_pretty(s, config).unwrap()
 }
 
 fn parse(path: &str) {
