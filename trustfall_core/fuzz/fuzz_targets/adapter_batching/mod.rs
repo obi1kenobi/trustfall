@@ -16,7 +16,7 @@ use walkdir::WalkDir;
 extern crate trustfall_core;
 
 use trustfall_core::{
-    interpreter::{execution::interpret_ir, Adapter, AsVertex},
+    interpreter::{Adapter, AsVertex, execution::interpret_ir},
     ir::{FieldValue, IndexedQuery},
 };
 
