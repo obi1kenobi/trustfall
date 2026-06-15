@@ -9,6 +9,6 @@ rust-version.workspace = true
 [dependencies]
 async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
-derive-new = "0.5.9"
+derive-new = "0.7.0"
 maplit = { workspace = true }
 trustfall_core = { path = "../../trustfall_core" }
