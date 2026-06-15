@@ -99,7 +99,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
                 "content_type" => property(
                     contexts,
                     field_property!(as_feed_text, content_type, {
-                        content_type.essence_str().to_owned().into()
+                        content_type.essence().to_string().into()
                     }),
                 ),
                 _ => unreachable!("type {type_name} property {property_name} not found"),
@@ -127,7 +127,7 @@ impl<'a> BasicAdapter<'a> for FeedAdapter<'a> {
                 "content_type" => property(
                     contexts,
                     field_property!(as_feed_content, content_type, {
-                        content_type.essence_str().to_owned().into()
+                        content_type.essence().to_string().into()
                     }),
                 ),
                 _ => unreachable!("type {type_name} property {property_name} not found"),
