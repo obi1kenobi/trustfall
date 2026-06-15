@@ -2,7 +2,7 @@
 name = "pytrustfall"
 version = "0.3.1"
 rust-version.workspace = true
-edition.workspace = true
+edition = "2024"
 authors.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
