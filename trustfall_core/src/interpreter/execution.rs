@@ -1235,10 +1235,10 @@ impl<'query, Vertex: Clone + Debug + 'query> Iterator for RecursiveEdgeExpander<
                 // If there's no current vertex, there couldn't possibly be neighbors.
                 // If this assertion trips, the adapter's resolve_neighbors() implementation
                 // illegally returned neighbors for a non-existent vertex.
-                if let Some(context) = &self.context {
-                    if context.active_vertex.is_none() {
-                        assert!(!self.has_neighbors);
-                    }
+                if let Some(context) = &self.context
+                    && context.active_vertex.is_none()
+                {
+                    assert!(!self.has_neighbors);
                 }
             }
         }

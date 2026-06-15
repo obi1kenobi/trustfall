@@ -29,18 +29,16 @@ fn get_schema() -> &'static Schema {
 }
 
 fuzz_target!(|data: &[u8]| {
-    if let Ok(query_string) = std::str::from_utf8(data) {
-        if query_string.match_indices("...").count() <= 3 {
-            if let Ok(document) = parse_query(query_string) {
-                let result = parse_doc(get_schema(), &document);
-                if let Err(
-                    FrontendError::OtherError(..)
-                    | FrontendError::ParseError(ParseError::OtherError(..)),
-                ) = result
-                {
-                    unreachable!()
-                }
-            }
+    if let Ok(query_string) = std::str::from_utf8(data)
+        && query_string.match_indices("...").count() <= 3
+        && let Ok(document) = parse_query(query_string)
+    {
+        let result = parse_doc(get_schema(), &document);
+        if let Err(
+            FrontendError::OtherError(..) | FrontendError::ParseError(ParseError::OtherError(..)),
+        ) = result
+        {
+            unreachable!()
         }
     }
 });

@@ -405,14 +405,14 @@ fn check_type_and_property_and_edge_invariants(
 
                     // Check that the edge field doesn't have
                     // a list-of-list or more nested list type.
-                    if let Some(inner_list) = field_type.as_list() {
-                        if inner_list.is_list() {
-                            errors.push(InvalidSchemaError::InvalidEdgeType(
-                                type_name.to_string(),
-                                field_defn.name.node.to_string(),
-                                field_type.to_string(),
-                            ));
-                        }
+                    if let Some(inner_list) = field_type.as_list()
+                        && inner_list.is_list()
+                    {
+                        errors.push(InvalidSchemaError::InvalidEdgeType(
+                            type_name.to_string(),
+                            field_defn.name.node.to_string(),
+                            field_type.to_string(),
+                        ));
                     }
                 }
             } else {
@@ -681,19 +681,19 @@ fn check_field_type_narrowing(
                     for (&field_parameter, &field_type) in &field_parameters {
                         if let Some(&parent_field_type) =
                             parent_field_parameters.get(field_parameter)
-                        {
-                            if !Type::from_type(field_type)
+                            && !Type::from_type(field_type)
                                 .is_scalar_only_subtype(&Type::from_type(parent_field_type))
-                            {
-                                errors.push(InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
+                        {
+                            errors.push(
+                                InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
                                     field_name.to_owned(),
                                     type_name.to_string(),
                                     implementation.to_owned(),
                                     field_parameter.to_string(),
                                     field_type.to_string(),
                                     parent_field_type.to_string(),
-                                ));
-                            }
+                                ),
+                            );
                         }
                     }
                 }
