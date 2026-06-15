@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use consecrates::{api::Crate, Query, Sorting};
+use consecrates::{Query, Sorting, api::Crate};
 use tokio::runtime::Runtime;
 
 use crate::{
-    util::{get_owner_and_repo, Pager, PagerOutput},
+    util::{Pager, PagerOutput, get_owner_and_repo},
     vertex::{RepoWorkflow, Vertex},
 };
 
