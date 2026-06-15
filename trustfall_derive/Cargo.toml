@@ -5,7 +5,7 @@ license = "Apache-2.0"
 description = "Derive macros for the trustfall query engine."
 repository = "https://github.com/obi1kenobi/trustfall"
 readme = "../README.md"
-edition.workspace = true
+edition = "2024"
 rust-version.workspace = true
 authors.workspace = true
 

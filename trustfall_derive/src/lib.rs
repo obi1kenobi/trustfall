@@ -182,7 +182,7 @@ fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::Toke
         })
         .unwrap_or_default();
 
-    let gen = quote! {
+    let generated = quote! {
         #[automatically_derived]
         impl #impl_generics ::trustfall::provider::Typename for #name #ty_generics #where_clause {
             fn typename(&self) -> &'static str {
@@ -195,7 +195,7 @@ fn impl_typename_derive(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::Toke
             }
         }
     };
-    Ok(gen)
+    Ok(generated)
 }
 
 fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
@@ -230,11 +230,11 @@ fn impl_trustfall_enum_vertex(ast: &syn::DeriveInput) -> syn::Result<proc_macro2
 
     let typename_impl = impl_typename_derive(ast)?;
 
-    let gen = quote! {
+    let generated = quote! {
         #typename_impl
         #conversions_impl
     };
-    Ok(gen)
+    Ok(generated)
 }
 
 fn generate_typename_arm(variant: &syn::Variant) -> proc_macro2::TokenStream {
