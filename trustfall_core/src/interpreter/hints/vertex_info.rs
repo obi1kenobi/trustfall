@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{dynamic::DynamicallyResolvedValue, CandidateValue, EdgeInfo, Range};
+use super::{CandidateValue, EdgeInfo, Range, dynamic::DynamicallyResolvedValue};
 
 /// Represents a required property of a specific vertex
 #[non_exhaustive]
@@ -152,11 +152,7 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
 
     fn coerced_to_type(&self) -> Option<&Arc<str>> {
         let vertex = self.current_vertex();
-        if vertex.coerced_from_type.is_some() {
-            Some(&vertex.type_name)
-        } else {
-            None
-        }
+        if vertex.coerced_from_type.is_some() { Some(&vertex.type_name) } else { None }
     }
 
     fn required_properties(&self) -> Box<dyn Iterator<Item = RequiredProperty> + '_> {
@@ -231,7 +227,8 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                 .map(|x| x.into_owned());
         debug_assert!(
             // Ensure we never return a range variant with a completely unrestricted range.
-            candidate.clone().unwrap_or(CandidateValue::All) != CandidateValue::Range(Range::full()),
+            candidate.clone().unwrap_or(CandidateValue::All)
+                != CandidateValue::Range(Range::full()),
             "caught returning a range variant with a completely unrestricted range; it should have been CandidateValue::All instead"
         );
 
@@ -411,7 +408,7 @@ mod tests {
 
     use crate::{
         interpreter::hints::{
-            vertex_info::compute_statically_known_candidate, CandidateValue, Range,
+            CandidateValue, Range, vertex_info::compute_statically_known_candidate,
         },
         ir::{Argument, FieldValue, LocalField, Operation, Type, VariableRef},
     };

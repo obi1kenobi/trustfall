@@ -55,7 +55,9 @@ pub enum FrontendError {
     #[error("Incompatible types encountered in @filter: {0}")]
     FilterTypeError(#[from] FilterTypeError),
 
-    #[error("Found {0} applied to \"{1}\" property, which is not supported since that directive can only be applied to edges.")]
+    #[error(
+        "Found {0} applied to \"{1}\" property, which is not supported since that directive can only be applied to edges."
+    )]
     UnsupportedDirectiveOnProperty(String, String),
 
     #[error("Found an edge with an @output directive, this is not supported: {0}")]
@@ -135,9 +137,7 @@ pub enum FilterTypeError {
     )]
     NonNullableTypeFilteredForNullability(String, String, bool),
 
-    #[error(
-        "Filter operation \"{0}\" is comparing values with incompatible type: {1} versus {2}."
-    )]
+    #[error("Filter operation \"{0}\" is comparing values with incompatible type: {1} versus {2}.")]
     TypeMismatchBetweenFilterSubjectAndArgument(String, String, String),
 
     #[error(

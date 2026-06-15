@@ -3,8 +3,8 @@ use std::{cell::RefCell, collections::BTreeMap, num::NonZeroUsize, path::PathBuf
 use super::{FoldState, ResolveEdgeInfo, ResolveInfo};
 use crate::{
     interpreter::{
-        execution::interpret_ir, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
-        VertexInfo, VertexIterator,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, VertexInfo, VertexIterator,
+        execution::interpret_ir,
     },
     ir::{Eid, FieldValue, Recursive, Vid},
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
@@ -546,13 +546,13 @@ mod static_property_values {
     use std::ops::Bound;
 
     use crate::{
-        interpreter::hints::{vertex_info::RequiredProperty, CandidateValue, Range},
+        interpreter::hints::{CandidateValue, Range, vertex_info::RequiredProperty},
         ir::FieldValue,
     };
 
     use super::{
-        super::VertexInfo, eid, run_query, vid, ResolveEdgeInfoFn, ResolveInfoFn, TestAdapter,
-        TrackCalls,
+        super::VertexInfo, ResolveEdgeInfoFn, ResolveInfoFn, TestAdapter, TrackCalls, eid,
+        run_query, vid,
     };
 
     #[test]
@@ -1247,9 +1247,9 @@ mod dynamic_property_values {
 
     use crate::{
         interpreter::{
-            hints::{CandidateValue, Range},
             Adapter, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
             VertexInfo, VertexIterator,
+            hints::{CandidateValue, Range},
         },
         ir::{Eid, FieldValue, Vid},
         numbers_interpreter::NumbersAdapter,
@@ -1806,7 +1806,7 @@ mod dynamic_property_values {
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
-                match self.0 .0.into() {
+                match self.0.0.into() {
                     1 => {
                         assert_eq!(eid(1), info.eid());
                         assert_eq!(vid(1), info.origin_vid());
@@ -2081,7 +2081,7 @@ mod dynamic_property_values {
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
-                match self.0 .0.into() {
+                match self.0.0.into() {
                     1 => {
                         let destination = info.destination();
                         assert_eq!(vid(2), destination.vid());
@@ -2201,7 +2201,7 @@ mod dynamic_property_values {
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
-                match self.0 .0.into() {
+                match self.0.0.into() {
                     1 => {
                         let destination = info.destination();
                         assert_eq!(vid(2), destination.vid());
@@ -2312,7 +2312,7 @@ mod dynamic_property_values {
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
-                match self.0 .0.into() {
+                match self.0.0.into() {
                     1 => {
                         let destination = info.destination();
                         assert_eq!(vid(2), destination.vid());
@@ -2441,7 +2441,7 @@ mod dynamic_property_values {
                 ctxs: ContextIterator<'static, V>,
                 info: &ResolveEdgeInfo,
             ) -> ContextIterator<'static, V> {
-                match self.0 .0.into() {
+                match self.0.0.into() {
                     1 => {
                         let destination = info.destination();
                         assert_eq!(vid(2), destination.vid());

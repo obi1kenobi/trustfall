@@ -3,8 +3,8 @@
 use std::{collections::BTreeMap, iter::successors, num::NonZeroUsize, sync::Arc};
 
 use async_graphql_parser::{
-    types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
     Positioned,
+    types::{ExecutableDocument, FieldDefinition, TypeDefinition, TypeKind},
 };
 use filters::make_filter_expr;
 use smallvec::SmallVec;
@@ -12,15 +12,15 @@ use smallvec::SmallVec;
 use crate::{
     graphql_query::{
         directives::{FilterDirective, FoldGroup, RecurseDirective},
-        query::{parse_document, FieldConnection, FieldNode, Query},
+        query::{FieldConnection, FieldNode, Query, parse_document},
     },
     ir::{
-        get_typename_meta_field, Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue,
-        FoldSpecificField, FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent,
-        IRVertex, IndexedQuery, LocalField, Operation, Recursive, TransformationKind, Type, Vid,
-        TYPENAME_META_FIELD,
+        Argument, ContextField, EdgeParameters, Eid, FieldRef, FieldValue, FoldSpecificField,
+        FoldSpecificFieldKind, IREdge, IRFold, IRQuery, IRQueryComponent, IRVertex, IndexedQuery,
+        LocalField, Operation, Recursive, TYPENAME_META_FIELD, TransformationKind, Type, Vid,
+        get_typename_meta_field,
     },
-    schema::{get_builtin_scalars, FieldOrigin, Schema},
+    schema::{FieldOrigin, Schema, get_builtin_scalars},
     util::{BTreeMapTryInsertExt, TryCollectUniqueKey},
 };
 
@@ -28,7 +28,7 @@ use self::{
     error::{DuplicatedNamesConflict, FilterTypeError, FrontendError, ValidationError},
     outputs::OutputHandler,
     tags::TagHandler,
-    util::{get_underlying_named_type, ComponentPath},
+    util::{ComponentPath, get_underlying_named_type},
     validation::validate_query_against_schema,
 };
 
@@ -168,13 +168,7 @@ fn make_edge_parameters(
 
                         value
                     })
-                    .or({
-                        if arg.node.ty.node.nullable {
-                            Some(FieldValue::Null)
-                        } else {
-                            None
-                        }
-                    })
+                    .or(if arg.node.ty.node.nullable { Some(FieldValue::Null) } else { None })
             }
             Some(value) => {
                 // Type-check the supplied value against the schema.
@@ -216,11 +210,7 @@ fn make_edge_parameters(
         }
     }
 
-    if !errors.is_empty() {
-        Err(errors)
-    } else {
-        Ok(EdgeParameters::new(Arc::new(edge_arguments)))
-    }
+    if !errors.is_empty() { Err(errors) } else { Ok(EdgeParameters::new(Arc::new(edge_arguments))) }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -390,11 +380,7 @@ fn fill_in_query_variables(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn make_duplicated_output_names_error(
@@ -592,7 +578,7 @@ where
     let component_outputs = match check_for_duplicate_output_names(maybe_duplicated_outputs) {
         Ok(outputs) => outputs,
         Err(duplicates) => {
-            return Err(make_duplicated_output_names_error(&ir_vertices, duplicates))
+            return Err(make_duplicated_output_names_error(&ir_vertices, duplicates));
         }
     };
 
@@ -1063,11 +1049,7 @@ where
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 #[allow(clippy::too_many_arguments)]

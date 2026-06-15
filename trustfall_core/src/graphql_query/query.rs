@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use async_graphql_parser::types::{Directive, OperationDefinition};
 use async_graphql_parser::{
-    types::{DocumentOperations, ExecutableDocument, Field, OperationType, Selection},
     Pos, Positioned,
+    types::{DocumentOperations, ExecutableDocument, Field, OperationType, Selection},
 };
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -231,7 +231,7 @@ fn make_directives(
                 return Err(ParseError::UnrecognizedDirective(
                     directive.node.name.node.to_string(),
                     directive.pos,
-                ))
+                ));
             }
         }
     }
@@ -459,7 +459,7 @@ fn make_fold_group(
                     directive.kind().to_string(),
                     "this directive cannot appear after a @fold directive".to_string(),
                     directive.pos(),
-                ))
+                ));
             }
         }
     } else {
@@ -493,7 +493,7 @@ fn make_transform_group(
                         directive.kind().to_string(),
                         "this directive cannot appear after a @transform directive".to_string(),
                         directive.pos(),
-                    ))
+                    ));
                 }
             }
         } else {

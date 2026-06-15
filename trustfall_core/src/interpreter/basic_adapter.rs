@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    helpers::resolve_property_with, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator,
-    ResolveEdgeInfo, ResolveInfo, Typename, VertexIterator,
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+    Typename, VertexIterator, helpers::resolve_property_with,
 };
 
 /// A simplified variant of the [`Adapter`] trait.

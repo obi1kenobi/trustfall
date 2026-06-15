@@ -6,10 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interpreter::{
-        self,
+        self, Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        ResolveInfo, Typename, VertexIterator,
         helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
-        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        Typename, VertexIterator,
     },
     ir::{EdgeParameters, FieldValue},
     schema::Schema,

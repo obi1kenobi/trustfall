@@ -1,13 +1,13 @@
 use std::{collections::BTreeMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 
 use crate::{
+    TryIntoStruct,
     interpreter::{Adapter, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo},
     ir::{
         ContextField, EdgeParameters, Eid, FieldValue, IREdge, IRQuery, IRQueryComponent, IRVertex,
         TransparentValue, Type, Vid,
     },
     schema::{Schema, SchemaAdapter},
-    TryIntoStruct,
 };
 
 /// Run a series of "dry run" checks to ensure an adapter is properly implemented.
@@ -123,7 +123,7 @@ fn run_query<'a, A: Adapter<'a> + 'a, T: serde::de::DeserializeOwned>(
     adapter: Arc<A>,
     query: &str,
     variables: BTreeMap<Arc<str>, FieldValue>,
-) -> impl Iterator<Item = T> + 'a {
+) -> impl Iterator<Item = T> + 'a + use<'a, A, T> {
     let indexed = crate::frontend::parse(schema, query).expect("not a valid query");
     crate::interpreter::execution::interpret_ir(adapter, indexed, Arc::new(variables))
         .expect("execution error")

@@ -1,17 +1,16 @@
 #![allow(dead_code)]
 use std::{
-    collections::{btree_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, btree_map::Entry},
     ops::Add,
     sync::{Arc, OnceLock},
 };
 
 use async_graphql_parser::{
-    parse_schema,
+    Positioned, parse_schema,
     types::{
         BaseType, DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition,
         ServiceDocument, TypeDefinition, TypeKind, TypeSystemDefinition,
     },
-    Positioned,
 };
 
 pub use ::async_graphql_parser::Error;
@@ -323,11 +322,7 @@ fn check_root_query_type_invariants(
         // unknown_type_on_root_and_outside
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn check_type_and_property_and_edge_invariants(
@@ -429,11 +424,7 @@ fn check_type_and_property_and_edge_invariants(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn is_named_type_subtype(
@@ -510,11 +501,7 @@ fn check_ambiguous_field_origins(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 /// Check the `implements` portion of the type definitions.
@@ -573,11 +560,7 @@ fn check_required_transitive_implementations(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn check_fields_required_by_interface_implementations(
@@ -612,11 +595,7 @@ fn check_fields_required_by_interface_implementations(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn check_field_type_narrowing(
@@ -722,11 +701,7 @@ fn check_field_type_narrowing(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn get_vertex_type_fields(vertex: &TypeDefinition) -> &[Positioned<FieldDefinition>] {
@@ -860,7 +835,7 @@ mod tests {
     use itertools::Itertools;
     use trustfall_filetests_macros::parameterize;
 
-    use super::{error::InvalidSchemaError, Schema};
+    use super::{Schema, error::InvalidSchemaError};
 
     #[parameterize("trustfall_core/test_data/tests/schema_errors", "*.graphql")]
     fn schema_errors(base: &Path, stem: &str) {

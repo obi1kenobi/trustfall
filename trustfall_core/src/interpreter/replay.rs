@@ -1,13 +1,13 @@
 use std::{
     cell::RefCell,
-    collections::{btree_map, BTreeMap, VecDeque},
+    collections::{BTreeMap, VecDeque, btree_map},
     fmt::Debug,
     marker::PhantomData,
     rc::Rc,
     sync::Arc,
 };
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     interpreter::VertexInfo,
@@ -15,10 +15,10 @@ use crate::{
 };
 
 use super::{
-    execution::interpret_ir,
-    trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
     Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, DataContext, ResolveEdgeInfo,
     ResolveInfo, VertexIterator,
+    execution::interpret_ir,
+    trace::{FunctionCall, Opid, Trace, TraceOp, TraceOpContent, YieldValue},
 };
 
 #[derive(Clone, Debug)]
@@ -542,7 +542,9 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
                     panic!("Reached the end of the trace without producing result {trace_row:#?}");
                 };
                 let TraceOpContent::ProduceQueryResult(expected_result) = &trace_op.content else {
-                    panic!("Expected the trace to produce a result {trace_row:#?} but got another type of operation instead: {trace_op:#?}");
+                    panic!(
+                        "Expected the trace to produce a result {trace_row:#?} but got another type of operation instead: {trace_op:#?}"
+                    );
                 };
                 drop(next_op_ref);
 
@@ -572,7 +574,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use serde::{de::DeserializeOwned, Serialize};
+    use serde::{Serialize, de::DeserializeOwned};
     use trustfall_filetests_macros::parameterize;
 
     use crate::{

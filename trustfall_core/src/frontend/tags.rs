@@ -95,11 +95,7 @@ impl<'a> TagHandler<'a> {
     pub(super) fn finish(self) -> Result<(), BTreeSet<&'a str>> {
         let unused_tags: BTreeSet<_> =
             self.tags.keys().copied().filter(|x| !self.used_tags.contains(x)).collect();
-        if unused_tags.is_empty() {
-            Ok(())
-        } else {
-            Err(unused_tags)
-        }
+        if unused_tags.is_empty() { Ok(()) } else { Err(unused_tags) }
     }
 }
 

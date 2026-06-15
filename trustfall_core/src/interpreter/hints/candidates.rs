@@ -165,7 +165,9 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                         } else if let Self::Range(others) = &other {
                             multiple.retain(|value| others.contains(value));
                         } else {
-                            unreachable!("expected only Multiple or Range in this branch, but got: {other:?}");
+                            unreachable!(
+                                "expected only Multiple or Range in this branch, but got: {other:?}"
+                            );
                         }
                     }
                     Self::All => {} // self is unchanged.

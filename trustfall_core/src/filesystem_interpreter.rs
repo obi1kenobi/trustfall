@@ -267,7 +267,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                     "name" => Box::new(contexts.map(|context| {
                         match context.active_vertex::<Self::Vertex>() {
                             None => (context, FieldValue::Null),
-                            Some(FilesystemVertex::Directory(ref x)) => {
+                            Some(FilesystemVertex::Directory(x)) => {
                                 let value = FieldValue::String(x.name.clone().into());
                                 (context, value)
                             }
@@ -277,7 +277,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                     "path" => Box::new(contexts.map(|context| {
                         match context.active_vertex::<Self::Vertex>() {
                             None => (context, FieldValue::Null),
-                            Some(FilesystemVertex::Directory(ref x)) => {
+                            Some(FilesystemVertex::Directory(x)) => {
                                 let value = FieldValue::String(x.path.clone().into());
                                 (context, value)
                             }
@@ -298,7 +298,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                     "name" => Box::new(contexts.map(|context| {
                         match context.active_vertex::<Self::Vertex>() {
                             None => (context, FieldValue::Null),
-                            Some(FilesystemVertex::File(ref x)) => {
+                            Some(FilesystemVertex::File(x)) => {
                                 let value = FieldValue::String(x.name.clone().into());
                                 (context, value)
                             }
@@ -308,7 +308,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                     "path" => Box::new(contexts.map(|context| {
                         match context.active_vertex::<Self::Vertex>() {
                             None => (context, FieldValue::Null),
-                            Some(FilesystemVertex::File(ref x)) => {
+                            Some(FilesystemVertex::File(x)) => {
                                 let value = FieldValue::String(x.path.clone().into());
                                 (context, value)
                             }
@@ -318,7 +318,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                     "extension" => Box::new(contexts.map(|context| {
                         match context.active_vertex::<Self::Vertex>() {
                             None => (context, FieldValue::Null),
-                            Some(FilesystemVertex::File(ref x)) => {
+                            Some(FilesystemVertex::File(x)) => {
                                 let value =
                                     x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
                                 (context, value)

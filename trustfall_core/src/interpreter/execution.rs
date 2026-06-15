@@ -14,9 +14,9 @@ use crate::{
 };
 
 use super::{
-    error::QueryArgumentsError, filtering::apply_filter, Adapter, AsVertex, ContextIterator,
-    ContextOutcomeIterator, DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
-    TaggedValue, ValueOrVec, VertexIterator,
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, DataContext, InterpretedQuery,
+    ResolveEdgeInfo, ResolveInfo, TaggedValue, ValueOrVec, VertexIterator,
+    error::QueryArgumentsError, filtering::apply_filter,
 };
 
 #[derive(Debug, Clone)]
@@ -90,11 +90,7 @@ fn perform_coercion<'query, AdapterT: Adapter<'query>>(
         //
         // In the latter case, all outputs inside the `@optional` block will be `null`
         // since the data is not present. The coercion result is irrelevant.
-        if can_coerce || ctx.active_vertex.is_none() {
-            Some(ctx)
-        } else {
-            None
-        }
+        if can_coerce || ctx.active_vertex.is_none() { Some(ctx) } else { None }
     }))
 }
 
@@ -262,7 +258,9 @@ fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {
         | FieldValue::Enum(_)
         | FieldValue::Boolean(_)
         | FieldValue::String(_) => {
-            panic!("got field value {field_value:#?} in usize_from_field_value which should only ever get Int64, Uint64, or Null")
+            panic!(
+                "got field value {field_value:#?} in usize_from_field_value which should only ever get Int64, Uint64, or Null"
+            )
         }
     }
 }
@@ -1126,11 +1124,7 @@ fn expand_recursive_edge<'query, AdapterT: Adapter<'query> + 'query>(
             recursion_iterator =
                 Box::new(coercion_iter.map(
                     |(ctx, can_coerce)| {
-                        if can_coerce {
-                            ctx
-                        } else {
-                            ctx.ensure_suspended()
-                        }
+                        if can_coerce { ctx } else { ctx.ensure_suspended() }
                     },
                 ));
         }
@@ -1297,7 +1291,7 @@ mod tests {
     use trustfall_filetests_macros::parameterize;
 
     use crate::{
-        interpreter::{error::QueryArgumentsError, InterpretedQuery},
+        interpreter::{InterpretedQuery, error::QueryArgumentsError},
         ir::{FieldValue, IndexedQuery},
         test_types::{TestIRQueryResult, TestInterpreterOutputData},
     };
@@ -1353,8 +1347,8 @@ mod tests {
 
         use crate::{
             interpreter::{
-                execution::interpret_ir, Adapter, AsVertex, ContextIterator,
-                ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+                Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+                ResolveInfo, VertexIterator, execution::interpret_ir,
             },
             ir::{EdgeParameters, FieldValue, IndexedQuery},
             numbers_interpreter::NumbersAdapter,

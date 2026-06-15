@@ -2,7 +2,7 @@
 //! This module contains the logic for parsing Trustfall query directives.
 use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 
-use async_graphql_parser::{types::Directive, Positioned};
+use async_graphql_parser::{Positioned, types::Directive};
 use async_graphql_value::Value;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -327,7 +327,7 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
                     "@transform".to_owned(),
                     "op".to_owned(),
                     transform_argument_node.pos,
-                ))
+                ));
             }
         };
 
@@ -337,7 +337,7 @@ impl TryFrom<&Positioned<Directive>> for TransformDirective {
                 return Err(ParseError::UnsupportedTransformOperator(
                     transform_argument.to_string(),
                     transform_argument_node.pos,
-                ))
+                ));
             }
         };
 
