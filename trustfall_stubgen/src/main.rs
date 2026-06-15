@@ -37,7 +37,8 @@ fn main() -> Result<(), anyhow::Error> {
     if !schema_is_file && target_is_file {
         anyhow::bail!(
             "you might have reversed the arguments: schema path {} is not a file and target path {} is a file",
-            cli.schema.display(), cli.target.display(),
+            cli.schema.display(),
+            cli.target.display(),
         );
     }
     if !schema_is_file {

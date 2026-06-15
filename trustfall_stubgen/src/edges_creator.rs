@@ -139,7 +139,9 @@ fn make_edge_resolver_and_call(
     let FnCall { fn_params, fn_args, fn_arg_prep } = prepare_call_parameters(
         parameters,
         |parameter_name| {
-            format!("failed to find parameter '{parameter_name}' for edge '{edge_name}' on type '{type_name}'")
+            format!(
+                "failed to find parameter '{parameter_name}' for edge '{edge_name}' on type '{type_name}'"
+            )
         },
     );
 

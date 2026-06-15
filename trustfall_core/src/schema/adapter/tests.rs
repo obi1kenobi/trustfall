@@ -5,9 +5,9 @@ use std::{
 
 use super::SchemaAdapter;
 use crate::{
+    TryIntoStruct,
     ir::{FieldValue, TransparentValue},
     schema::Schema,
-    TryIntoStruct,
 };
 
 static SCHEMA: OnceLock<Schema> = OnceLock::new();

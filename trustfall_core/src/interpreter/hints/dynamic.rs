@@ -2,13 +2,13 @@ use std::{fmt::Debug, ops::Bound, sync::Arc};
 
 use crate::{
     interpreter::{
-        execution::{
-            compute_context_field_with_separate_value,
-            compute_fold_specific_field_with_separate_value, QueryCarrier,
-        },
-        hints::Range,
         Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
         VertexIterator,
+        execution::{
+            QueryCarrier, compute_context_field_with_separate_value,
+            compute_fold_specific_field_with_separate_value,
+        },
+        hints::Range,
     },
     ir::{
         ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation, Type,
@@ -239,10 +239,10 @@ impl<'a> DynamicallyResolvedValue<'a> {
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
         mut neighbor_resolver: impl FnMut(
-                &AdapterT::Vertex,
-                CandidateValue<FieldValue>,
-            ) -> VertexIterator<'vertex, AdapterT::Vertex>
-            + 'vertex,
+            &AdapterT::Vertex,
+            CandidateValue<FieldValue>,
+        ) -> VertexIterator<'vertex, AdapterT::Vertex>
+        + 'vertex,
     ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, AdapterT::Vertex>> {
         Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
             let neighbors = match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {

@@ -2,10 +2,10 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use syn::{
+    ItemFn, LitStr, Token,
     parse::{Parse, ParseStream},
     parse_macro_input,
     punctuated::Punctuated,
-    ItemFn, LitStr, Token,
 };
 
 use std::path::PathBuf;

@@ -9,8 +9,8 @@ use pyo3::{
 use trustfall_core::{
     frontend::{error::FrontendError, parse},
     interpreter::{
-        execution::interpret_ir, Adapter, AsVertex, ContextIterator as BaseContextIterator,
-        ContextOutcomeIterator, DataContext, ResolveEdgeInfo, ResolveInfo, VertexIterator,
+        Adapter, AsVertex, ContextIterator as BaseContextIterator, ContextOutcomeIterator,
+        DataContext, ResolveEdgeInfo, ResolveInfo, VertexIterator, execution::interpret_ir,
     },
     ir::{EdgeParameters, FieldValue as TrustfallFieldValue},
 };

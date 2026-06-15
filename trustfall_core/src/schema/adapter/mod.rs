@@ -7,9 +7,9 @@ use async_graphql_parser::types::{
 use crate::{
     accessor_property, field_property,
     interpreter::{
-        helpers::{resolve_neighbors_with, resolve_property_with},
         AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         ResolveInfo, Typename, VertexInfo, VertexIterator,
+        helpers::{resolve_neighbors_with, resolve_property_with},
     },
     ir::{EdgeParameters, FieldValue, TransparentValue, Type},
 };

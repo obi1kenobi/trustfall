@@ -5,9 +5,9 @@ use maplit::btreeset;
 
 use trustfall_core::{
     interpreter::{
-        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
         Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexIterator,
+        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
     },
     ir::{EdgeParameters, FieldValue},
 };

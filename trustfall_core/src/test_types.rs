@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::{
     frontend::error::FrontendError,

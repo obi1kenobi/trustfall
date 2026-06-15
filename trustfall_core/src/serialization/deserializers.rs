@@ -209,13 +209,13 @@ impl<'de> de::Deserializer<'de> for FieldValueDeserializer {
     where
         V: de::Visitor<'de>,
     {
-        if let FieldValue::List(v) = &self.value {
-            if len != v.len() {
-                return Err(Self::Error::Custom(format!(
-                    "cannot deserialize {} length list into {len} sized tuple",
-                    v.len()
-                )));
-            }
+        if let FieldValue::List(v) = &self.value
+            && len != v.len()
+        {
+            return Err(Self::Error::Custom(format!(
+                "cannot deserialize {} length list into {len} sized tuple",
+                v.len()
+            )));
         }
         self.deserialize_any(visitor)
     }

@@ -3,7 +3,7 @@ name = "trustfall_core-fuzz"
 version = "0.0.0"
 authors = ["Automatically generated"]
 publish = false
-edition = "2021"
+edition = "2024"
 rust-version = "1.91"
 
 [package.metadata]

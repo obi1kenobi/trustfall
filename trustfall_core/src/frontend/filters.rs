@@ -57,7 +57,7 @@ pub(super) fn make_filter_expr<LeftT: NamedTypedValue>(
                                 return Err(FrontendError::TagUsedBeforeDefinition(
                                     left_operand.named().to_string(),
                                     tag_name,
-                                ))
+                                ));
                             }
                         };
 
@@ -311,11 +311,7 @@ mod validity {
             ));
         }
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 
     pub(super) fn list_containment_types_valid<LeftT: NamedTypedValue>(
@@ -439,10 +435,6 @@ mod validity {
             ));
         }
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 }

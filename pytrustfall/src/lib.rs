@@ -3,9 +3,8 @@
 #![forbid(clippy::undocumented_unsafe_blocks)]
 
 use pyo3::{
-    pymodule,
+    Bound, PyResult, Python, pymodule,
     types::{PyModule, PyModuleMethods},
-    Bound, PyResult, Python,
 };
 
 pub mod errors;

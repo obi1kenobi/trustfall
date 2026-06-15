@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::ir::{Argument, FieldValue, FoldSpecificFieldKind, IRFold, Operation};
 
-use super::{candidates::NullableValue, CandidateValue, Range};
+use super::{CandidateValue, Range, candidates::NullableValue};
 
 pub(super) fn candidate_from_statically_evaluated_filters<'a, 'b, T: Debug + Clone + Eq + 'a>(
     relevant_filters: impl Iterator<Item = &'a Operation<T, Argument>>,

@@ -1,17 +1,16 @@
 #![allow(dead_code)]
 use std::{
-    collections::{btree_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, btree_map::Entry},
     ops::Add,
     sync::{Arc, OnceLock},
 };
 
 use async_graphql_parser::{
-    parse_schema,
+    Positioned, parse_schema,
     types::{
         BaseType, DirectiveDefinition, FieldDefinition, ObjectType, SchemaDefinition,
         ServiceDocument, TypeDefinition, TypeKind, TypeSystemDefinition,
     },
-    Positioned,
 };
 
 pub use ::async_graphql_parser::Error;
@@ -323,11 +322,7 @@ fn check_root_query_type_invariants(
         // unknown_type_on_root_and_outside
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn check_type_and_property_and_edge_invariants(
@@ -410,14 +405,14 @@ fn check_type_and_property_and_edge_invariants(
 
                     // Check that the edge field doesn't have
                     // a list-of-list or more nested list type.
-                    if let Some(inner_list) = field_type.as_list() {
-                        if inner_list.is_list() {
-                            errors.push(InvalidSchemaError::InvalidEdgeType(
-                                type_name.to_string(),
-                                field_defn.name.node.to_string(),
-                                field_type.to_string(),
-                            ));
-                        }
+                    if let Some(inner_list) = field_type.as_list()
+                        && inner_list.is_list()
+                    {
+                        errors.push(InvalidSchemaError::InvalidEdgeType(
+                            type_name.to_string(),
+                            field_defn.name.node.to_string(),
+                            field_type.to_string(),
+                        ));
                     }
                 }
             } else {
@@ -429,11 +424,7 @@ fn check_type_and_property_and_edge_invariants(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn is_named_type_subtype(
@@ -510,11 +501,7 @@ fn check_ambiguous_field_origins(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 /// Check the `implements` portion of the type definitions.
@@ -573,11 +560,7 @@ fn check_required_transitive_implementations(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn check_fields_required_by_interface_implementations(
@@ -612,11 +595,7 @@ fn check_fields_required_by_interface_implementations(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn check_field_type_narrowing(
@@ -702,19 +681,19 @@ fn check_field_type_narrowing(
                     for (&field_parameter, &field_type) in &field_parameters {
                         if let Some(&parent_field_type) =
                             parent_field_parameters.get(field_parameter)
-                        {
-                            if !Type::from_type(field_type)
+                            && !Type::from_type(field_type)
                                 .is_scalar_only_subtype(&Type::from_type(parent_field_type))
-                            {
-                                errors.push(InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
+                        {
+                            errors.push(
+                                InvalidSchemaError::InvalidTypeNarrowingOfInheritedFieldParameter(
                                     field_name.to_owned(),
                                     type_name.to_string(),
                                     implementation.to_owned(),
                                     field_parameter.to_string(),
                                     field_type.to_string(),
                                     parent_field_type.to_string(),
-                                ));
-                            }
+                                ),
+                            );
                         }
                     }
                 }
@@ -722,11 +701,7 @@ fn check_field_type_narrowing(
         }
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 fn get_vertex_type_fields(vertex: &TypeDefinition) -> &[Positioned<FieldDefinition>] {
@@ -860,7 +835,7 @@ mod tests {
     use itertools::Itertools;
     use trustfall_filetests_macros::parameterize;
 
-    use super::{error::InvalidSchemaError, Schema};
+    use super::{Schema, error::InvalidSchemaError};
 
     #[parameterize("trustfall_core/test_data/tests/schema_errors", "*.graphql")]
     fn schema_errors(base: &Path, stem: &str) {

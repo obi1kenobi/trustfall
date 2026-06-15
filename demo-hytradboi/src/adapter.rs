@@ -7,21 +7,21 @@ use std::{
 };
 
 use git_url_parse::GitUrl;
-use hn_api::{types::Item, HnClient};
+use hn_api::{HnClient, types::Item};
 use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
 use trustfall::{
-    provider::{
-        field_property, resolve_property_with, Adapter, AsVertex, ContextIterator,
-        ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator,
-    },
     FieldValue,
+    provider::{
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, EdgeParameters,
+        ResolveEdgeInfo, ResolveInfo, VertexIterator, field_property, resolve_property_with,
+    },
 };
 
 use crate::{
     actions_parser::{get_env_for_run_step, get_jobs_in_workflow_file, get_steps_in_job},
     pagers::{CratesPager, WorkflowsPager},
-    util::{get_owner_and_repo, Pager},
+    util::{Pager, get_owner_and_repo},
     vertex::{Repository, Vertex},
 };
 

@@ -1,4 +1,4 @@
-use std::collections::{btree_map, hash_map, BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, btree_map, hash_map};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 

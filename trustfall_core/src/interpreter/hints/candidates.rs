@@ -165,7 +165,9 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                         } else if let Self::Range(others) = &other {
                             multiple.retain(|value| others.contains(value));
                         } else {
-                            unreachable!("expected only Multiple or Range in this branch, but got: {other:?}");
+                            unreachable!(
+                                "expected only Multiple or Range in this branch, but got: {other:?}"
+                            );
                         }
                     }
                     Self::All => {} // self is unchanged.
@@ -215,15 +217,15 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue + Default> C
                     // TODO: When the values are integers, we can do better here:
                     //       we can move from one included bound to another, tighter included bound.
                     //       This can allow subsequent value exclusions through other heuristics.
-                    if let Bound::Included(incl) = range.start_bound() {
-                        if incl.borrow() == value {
-                            range.start = Bound::Excluded(incl.clone());
-                        }
+                    if let Bound::Included(incl) = range.start_bound()
+                        && incl.borrow() == value
+                    {
+                        range.start = Bound::Excluded(incl.clone());
                     }
-                    if let Bound::Included(incl) = range.end_bound() {
-                        if incl.borrow() == value {
-                            range.end = Bound::Excluded(incl.clone());
-                        }
+                    if let Bound::Included(incl) = range.end_bound()
+                        && incl.borrow() == value
+                    {
+                        range.end = Bound::Excluded(incl.clone());
                     }
                 }
                 self.normalize();

@@ -50,9 +50,11 @@ pub(crate) fn trustfall_type_to_rust_type(trustfall_type: &str) -> proc_macro2::
 
     let ty = {
         if let Some(partial) = processed_type.strip_prefix('[') {
-            let inner = partial
-                .strip_suffix(']')
-                .unwrap_or_else(|| panic!("invalid Trustfall type started with `[` without matching `]`: {trustfall_type}"));
+            let inner = partial.strip_suffix(']').unwrap_or_else(|| {
+                panic!(
+                    "invalid Trustfall type started with `[` without matching `]`: {trustfall_type}"
+                )
+            });
             let inner_ty = trustfall_type_to_rust_type(inner);
 
             quote! {

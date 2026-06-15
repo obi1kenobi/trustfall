@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use trustfall_wasm::{
+    Schema,
     adapter::{AdapterShim, JsAdapter},
     shim::JsFieldValue,
-    Schema,
 };
 use wasm_bindgen::prelude::*;
 

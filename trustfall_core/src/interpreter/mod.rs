@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 
 use itertools::Itertools;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::{
     ir::{EdgeParameters, Eid, FieldRef, FieldValue, IndexedQuery, Type, Vid},
@@ -447,11 +447,7 @@ impl InterpretedQuery {
             ));
         }
 
-        if errors.is_empty() {
-            Ok(Self { indexed_query, arguments })
-        } else {
-            Err(errors.into())
-        }
+        if errors.is_empty() { Ok(Self { indexed_query, arguments }) } else { Err(errors.into()) }
     }
 }
 

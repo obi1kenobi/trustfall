@@ -1,4 +1,4 @@
-use serde::{ser::Error as SerError, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, ser::Error as SerError};
 
 use crate::util::DisplayVec;
 

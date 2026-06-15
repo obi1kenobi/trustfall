@@ -1,7 +1,6 @@
 use pyo3::{
-    create_exception,
+    Bound, PyResult, Python, create_exception,
     types::{PyModule, PyModuleMethods},
-    Bound, PyResult, Python,
 };
 
 create_exception!(_trustfall_internal, InvalidSchemaError, pyo3::exceptions::PyException);

@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use adapter::DemoAdapter;
 use serde::Deserialize;
-use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
+use trustfall::{FieldValue, Schema, TransparentValue, execute_query};
 
 mod actions_parser;
 mod adapter;

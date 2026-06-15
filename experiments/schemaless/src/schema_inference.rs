@@ -1,5 +1,5 @@
 use std::{
-    collections::{btree_map::Entry, BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, btree_map::Entry},
     rc::Rc,
 };
 
@@ -355,7 +355,7 @@ pub fn infer_schema_from_query(query: &str) -> Result<String, String> {
     let operation = match &doc.operations {
         DocumentOperations::Single(s) => &s.node,
         DocumentOperations::Multiple(_) => {
-            return Err("found multiple operations in GraphQL string, this is not supported".into())
+            return Err("found multiple operations in GraphQL string, this is not supported".into());
         }
     };
 

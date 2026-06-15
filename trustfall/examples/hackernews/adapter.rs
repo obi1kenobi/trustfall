@@ -2,14 +2,14 @@
 
 use std::{collections::HashSet, sync::OnceLock};
 
-use hn_api::{types::Item, HnClient};
+use hn_api::{HnClient, types::Item};
 use trustfall::{
-    provider::{
-        field_property, resolve_coercion_using_schema, resolve_neighbors_with,
-        resolve_property_with, BasicAdapter, ContextIterator, ContextOutcomeIterator,
-        EdgeParameters, VertexIterator,
-    },
     FieldValue,
+    provider::{
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, VertexIterator,
+        field_property, resolve_coercion_using_schema, resolve_neighbors_with,
+        resolve_property_with,
+    },
 };
 use trustfall_core::interpreter::AsVertex;
 

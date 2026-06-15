@@ -5,11 +5,11 @@ use regex::Regex;
 use crate::ir::{Argument, FieldRef, FieldValue, IRQueryComponent, LocalField, Operation, Vid};
 
 use super::{
-    execution::{
-        compute_context_field_with_separate_value, compute_fold_specific_field_with_separate_value,
-        compute_local_field_with_separate_value, QueryCarrier,
-    },
     Adapter, ContextIterator, ContextOutcomeIterator, DataContext, TaggedValue,
+    execution::{
+        QueryCarrier, compute_context_field_with_separate_value,
+        compute_fold_specific_field_with_separate_value, compute_local_field_with_separate_value,
+    },
 };
 
 #[inline(always)]

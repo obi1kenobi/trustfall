@@ -18,21 +18,21 @@ use std::{
 
 use async_graphql_parser::{parse_query, parse_schema};
 use itertools::Itertools;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use trustfall_core::{
     filesystem_interpreter::{FilesystemInterpreter, FilesystemVertex},
     graphql_query::{error::ParseError, parse_document},
     interpreter::{
+        Adapter,
         error::QueryArgumentsError,
         execution,
-        trace::{tap_results, AdapterTap, Trace},
-        Adapter,
+        trace::{AdapterTap, Trace, tap_results},
     },
     ir::{FieldValue, IndexedQuery},
     nullables_interpreter::NullablesAdapter,
     numbers_interpreter::{NumbersAdapter, NumbersVertex},
-    schema::{error::InvalidSchemaError, Schema},
+    schema::{Schema, error::InvalidSchemaError},
     test_types::{
         TestGraphQLQuery, TestIRQuery, TestIRQueryResult, TestInterpreterOutputData,
         TestInterpreterOutputTrace, TestParsedGraphQLQuery, TestParsedGraphQLQueryResult,
