@@ -76,12 +76,12 @@ impl Pager for WorkflowsPager<'_> {
             page as i64,
         )) {
             Ok(response) => {
-                if response.workflows.is_empty() {
+                let workflows = response.body.workflows;
+                if workflows.is_empty() {
                     PagerOutput::None
-                } else if response.workflows.len() == per_page as usize {
+                } else if workflows.len() == per_page as usize {
                     PagerOutput::Page(
-                        response
-                            .workflows
+                        workflows
                             .into_iter()
                             .map(|w| RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w)))
                             .collect::<Vec<_>>()
@@ -89,8 +89,7 @@ impl Pager for WorkflowsPager<'_> {
                     )
                 } else {
                     PagerOutput::KnownFinalPage(
-                        response
-                            .workflows
+                        workflows
                             .into_iter()
                             .map(|w| RepoWorkflow::new(repo_clone.repo.clone(), Rc::new(w)))
                             .collect::<Vec<_>>()

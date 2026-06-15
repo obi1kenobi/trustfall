@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use git_url_parse::GitUrl;
+use git_url_parse::{GitUrl, types::provider::GenericProvider};
 use hn_api::{HnClient, types::Item};
 use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
@@ -738,21 +738,21 @@ fn resolve_url(url: &str) -> Option<Vertex> {
     let maybe_git_url = GitUrl::parse(url);
     match maybe_git_url {
         Ok(git_url) => {
-            if git_url.fullname != git_url.path.trim_matches('/') {
+            let provider = match git_url.provider_info::<GenericProvider>() {
+                Ok(provider) => provider,
+                Err(_) => return Some(Vertex::Webpage(Rc::from(url))),
+            };
+            let path = git_url.path().trim_matches('/');
+            let path = path.strip_suffix(".git").unwrap_or(path);
+
+            if provider.fullname() != path {
                 // The link points *within* the repo rather than *at* the repo.
                 // This is just a regular link to a webpage.
                 Some(Vertex::Webpage(Rc::from(url)))
-            } else if matches!(git_url.host, Some(x) if x == "github.com") {
-                let future = get_repos_client().get(
-                    git_url
-                        .owner
-                        .as_ref()
-                        .unwrap_or_else(|| panic!("repo {url} had no owner"))
-                        .as_str(),
-                    git_url.name.as_str(),
-                );
+            } else if matches!(git_url.host(), Some("github.com")) {
+                let future = get_repos_client().get(provider.owner(), provider.repo());
                 match get_runtime().block_on(future) {
-                    Ok(repo) => Some(Repository::new(url.to_string(), Rc::new(repo)).into()),
+                    Ok(repo) => Some(Repository::new(url.to_string(), Rc::new(repo.body)).into()),
                     Err(e) => {
                         eprintln!("Error getting repository information for url {url}: {e}",);
                         None
@@ -776,7 +776,7 @@ fn get_repo_file_content(repo: &FullRepository, path: &str) -> Option<ContentFil
         path,
         main_branch,
     )) {
-        Ok(content) => Some(content),
+        Ok(content) => Some(content.body),
         Err(e) => {
             eprintln!(
                 "Error getting repo {owner}/{repo_name} branch {main_branch} file {path}: {e}",
