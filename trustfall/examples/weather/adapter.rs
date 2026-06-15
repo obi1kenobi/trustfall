@@ -1,10 +1,9 @@
 use trustfall::{
-    provider::{
-        field_property, resolve_neighbors_with, resolve_property_with, BasicAdapter,
-        ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
-        VertexIterator,
-    },
     FieldValue,
+    provider::{
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
+        VertexIterator, field_property, resolve_neighbors_with, resolve_property_with,
+    },
 };
 use trustfall_core::interpreter::AsVertex;
 

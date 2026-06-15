@@ -1,11 +1,11 @@
 use feed_rs::model::{Content, Entry, Feed, FeedType, Image, Link, Text};
 use trustfall::{
-    provider::{
-        field_property, resolve_neighbors_with as neighbors, resolve_property_with as property,
-        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
-        VertexIterator,
-    },
     FieldValue,
+    provider::{
+        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
+        VertexIterator, field_property, resolve_neighbors_with as neighbors,
+        resolve_property_with as property,
+    },
 };
 use trustfall_core::interpreter::AsVertex;
 

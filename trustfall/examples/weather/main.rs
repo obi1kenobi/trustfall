@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 use std::{env, process};
 
 use serde::Deserialize;
-use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
+use trustfall::{FieldValue, Schema, TransparentValue, execute_query};
 
 use crate::{
     adapter::MetarAdapter,

@@ -9,7 +9,7 @@ use std::{
 
 use feed_rs::{model::Feed, parser};
 use serde::Deserialize;
-use trustfall::{execute_query, FieldValue, Schema, TransparentValue};
+use trustfall::{FieldValue, Schema, TransparentValue, execute_query};
 
 use crate::adapter::FeedAdapter;
 
