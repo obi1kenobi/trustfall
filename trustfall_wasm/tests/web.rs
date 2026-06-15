@@ -254,7 +254,7 @@ type Letter implements Named {
     }
 }
 "#)]
-extern "C" {
+unsafe extern "C" {
     // TODO: reuse existing adapter code instead of copy-pasting it here.
     #[wasm_bindgen(js_name = "testQuery")]
     pub fn js_test_query();

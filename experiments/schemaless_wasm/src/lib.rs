@@ -7,7 +7,7 @@ use crate::util::set_panic_hook;
 mod util;
 
 #[wasm_bindgen]
-extern "C" {
+unsafe extern "C" {
     fn alert(s: &str);
 }
 

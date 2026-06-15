@@ -75,7 +75,7 @@ macro_rules! log {
         };
     }
 ")]
-extern "C" {
+unsafe extern "C" {
     pub fn iterify(obj: &Object);
 }
 
