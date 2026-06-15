@@ -4,7 +4,7 @@ version = "0.2.0"
 license = "Apache-2.0"
 description = "Macros powering the trustfall project's filetests implementation."
 repository = "https://github.com/obi1kenobi/trustfall"
-edition = "2024"
+edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 
