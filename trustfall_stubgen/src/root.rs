@@ -156,7 +156,7 @@ impl<'a> NodeOrLeaf<'a> {
                         first.as_str() => Self::from_path(rest),
                     })
                 }
-                Self::Node(ref mut map) => match map.entry(first) {
+                Self::Node(map) => match map.entry(first) {
                     std::collections::btree_map::Entry::Vacant(e) => {
                         e.insert(Self::from_path(rest));
                     }
@@ -168,7 +168,7 @@ impl<'a> NodeOrLeaf<'a> {
         } else {
             match self {
                 Self::Leaf => {} // self is already here
-                Self::Node(ref mut map) => {
+                Self::Node(map) => {
                     map.insert("self", Self::Leaf);
                 }
             }

@@ -6,7 +6,7 @@ description = "Generate a Trustfall adapter stub for a given schema."
 repository = "https://github.com/obi1kenobi/trustfall"
 readme = "../README.md"
 rust-version.workspace = true
-edition.workspace = true
+edition = "2024"
 authors.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

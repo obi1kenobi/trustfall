@@ -5,7 +5,7 @@ use quote::quote;
 use trustfall::{Schema, SchemaAdapter, TryIntoStruct};
 
 use crate::{
-    edges_creator::{prepare_call_parameters, FnCall},
+    edges_creator::{FnCall, prepare_call_parameters},
     util::escaped_rust_name,
 };
 
@@ -68,7 +68,9 @@ fn make_entrypoint_fn(
     let FnCall { fn_params, fn_args, fn_arg_prep } = prepare_call_parameters(
         parameters,
         |parameter_name| {
-            format!("failed to find parameter '{parameter_name}' when resolving '{entrypoint}' starting vertices")
+            format!(
+                "failed to find parameter '{parameter_name}' when resolving '{entrypoint}' starting vertices"
+            )
         },
     );
 
