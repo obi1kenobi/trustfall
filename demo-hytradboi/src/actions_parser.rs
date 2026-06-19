@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use base64::{Engine, engine::general_purpose::STANDARD};
 use itertools::Itertools;
 use octorust::types::ContentFile;
 use trustfall::provider::VertexIterator;
@@ -11,7 +12,7 @@ pub(crate) fn get_jobs_in_workflow_file(
     content: Rc<ContentFile>,
 ) -> VertexIterator<'static, Vertex> {
     let file_content =
-        String::from_utf8(base64::decode(content.content.replace('\n', "")).unwrap()).unwrap();
+        String::from_utf8(STANDARD.decode(content.content.replace('\n', "")).unwrap()).unwrap();
     let docs = match YamlLoader::load_from_str(file_content.as_str()) {
         Ok(d) => d,
         Err(e) => {

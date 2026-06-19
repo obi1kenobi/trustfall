@@ -9,17 +9,17 @@ rust-version.workspace = true
 [dependencies]
 async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
-base64 = "0.13.0"
+base64 = "0.22.1"
 consecrates = "0.1.1"
 csv = "1.1.6"
 futures-executor = "0.3.21"
-git-url-parse = "0.4.0"
+git-url-parse = "0.6.0"
 hn_api = "0.1.0"
 itertools = { workspace = true }
 maplit = { workspace = true }
-octorust = "0.1.35"
+octorust = "0.10.0"
 regex = { workspace = true }
-reqwest = { version = "0.11.6", features = ["blocking"] }
+reqwest = { version = "0.13.4", features = ["blocking", "json"] }
 ron = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

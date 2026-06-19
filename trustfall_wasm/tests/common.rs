@@ -134,7 +134,7 @@ use wasm_bindgen::prelude::*;
         return new JsNumbersAdapter();
     }
 "#)]
-extern "C" {
+unsafe extern "C" {
     #[wasm_bindgen(js_name = "makeAdapter")]
     pub fn make_adapter() -> JsAdapter;
 }

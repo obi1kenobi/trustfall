@@ -89,7 +89,11 @@ fn read_feed_data() -> Vec<Feed> {
                 fs::read(feed_file).expect("failed to read feed file")
             });
 
-            feed_rs::parser::parse_with_uri(data_bytes.as_slice(), Some(feed_uri)).unwrap()
+            parser::Builder::new()
+                .base_uri(Some(feed_uri))
+                .build()
+                .parse(data_bytes.as_slice())
+                .unwrap()
         })
         .collect()
 }

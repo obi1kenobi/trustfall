@@ -30,7 +30,7 @@ maplit = { workspace = true }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 js-sys = "0.3.69"
 web-sys = { version = "0.3.69", features = ["console"] }
-gloo-utils = { version = "0.2.0", features = ["serde"] }
+gloo-utils = { version = "0.3.0", features = ["serde"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.42"

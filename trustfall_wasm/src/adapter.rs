@@ -17,7 +17,7 @@ use crate::shim::{
 };
 
 #[wasm_bindgen]
-extern "C" {
+unsafe extern "C" {
     pub type JsAdapter;
 
     #[wasm_bindgen(structural, method, js_name = "resolveStartingVertices")]
