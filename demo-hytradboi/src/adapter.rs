@@ -6,7 +6,10 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use git_url_parse::{GitUrl, types::provider::GenericProvider};
+use git_url_parse::{
+    GitUrl,
+    types::provider::{GenericProvider, GitLabProvider},
+};
 use hn_api::{HnClient, types::Item};
 use octorust::types::{ContentFile, FullRepository};
 use tokio::runtime::Runtime;
@@ -738,18 +741,36 @@ fn resolve_url(url: &str) -> Option<Vertex> {
     let maybe_git_url = GitUrl::parse(url);
     match maybe_git_url {
         Ok(git_url) => {
-            let provider = match git_url.provider_info::<GenericProvider>() {
-                Ok(provider) => provider,
-                Err(_) => return Some(Vertex::Webpage(Rc::from(url))),
-            };
             let path = git_url.path().trim_matches('/');
             let path = path.strip_suffix(".git").unwrap_or(path);
 
-            if provider.fullname() != path {
-                // The link points *within* the repo rather than *at* the repo.
-                // This is just a regular link to a webpage.
-                Some(Vertex::Webpage(Rc::from(url)))
+            if matches!(git_url.host(), Some("gitlab.com")) {
+                let provider = match git_url.provider_info::<GitLabProvider>() {
+                    Ok(provider) => provider,
+                    Err(_) => return Some(Vertex::Webpage(Rc::from(url))),
+                };
+
+                // GitLab subgroups make the repo path variadic. GitLab uses "/-/" before
+                // in-repo pages like blobs, so those URLs are not repository roots.
+                if path.contains("/-/") || provider.fullname() != path {
+                    // The link points *within* the repo rather than *at* the repo.
+                    // This is just a regular link to a webpage.
+                    Some(Vertex::Webpage(Rc::from(url)))
+                } else {
+                    Some(Vertex::Repository(Rc::from(url)))
+                }
             } else if matches!(git_url.host(), Some("github.com")) {
+                let provider = match git_url.provider_info::<GenericProvider>() {
+                    Ok(provider) => provider,
+                    Err(_) => return Some(Vertex::Webpage(Rc::from(url))),
+                };
+
+                if provider.fullname() != path {
+                    // The link points *within* the repo rather than *at* the repo.
+                    // This is just a regular link to a webpage.
+                    return Some(Vertex::Webpage(Rc::from(url)));
+                }
+
                 let future = get_repos_client().get(provider.owner(), provider.repo());
                 match get_runtime().block_on(future) {
                     Ok(repo) => Some(Repository::new(url.to_string(), Rc::new(repo.body)).into()),
@@ -759,10 +780,35 @@ fn resolve_url(url: &str) -> Option<Vertex> {
                     }
                 }
             } else {
-                Some(Vertex::Repository(Rc::from(url)))
+                Some(Vertex::Webpage(Rc::from(url)))
             }
         }
         Err(..) => Some(Vertex::Webpage(Rc::from(url))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Vertex, resolve_url};
+
+    #[test]
+    fn resolve_url_classifies_gitlab_subgroup_repo_as_repository() {
+        let url = "https://gitlab.com/org/team/repo";
+
+        match resolve_url(url).unwrap() {
+            Vertex::Repository(repo_url) => assert_eq!(repo_url.as_ref(), url),
+            other => panic!("expected Repository, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn resolve_url_keeps_gitlab_subgroup_repo_file_as_webpage() {
+        let url = "https://gitlab.com/org/team/repo/-/blob/main/README.md";
+
+        match resolve_url(url).unwrap() {
+            Vertex::Webpage(page_url) => assert_eq!(page_url.as_ref(), url),
+            other => panic!("expected Webpage, got {other:?}"),
+        }
     }
 }
 
