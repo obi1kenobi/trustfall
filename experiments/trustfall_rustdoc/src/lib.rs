@@ -5,7 +5,7 @@ use ouroboros::self_referencing;
 use trustfall_wasm::{from_js_args, shim::JsFieldValue};
 use wasm_bindgen::prelude::*;
 
-use trustfall_rustdoc_adapter::{Crate, PackageIndex, RustdocAdapter};
+use trustfall_rustdoc_adapter::{Crate, IndexedCrate, RustdocAdapter};
 
 #[self_referencing]
 struct InnerCrateInfo {
@@ -13,7 +13,7 @@ struct InnerCrateInfo {
 
     #[borrows(crate_info)]
     #[covariant]
-    package_index: PackageIndex<'this>,
+    indexed_crate: IndexedCrate<'this>,
 }
 
 #[wasm_bindgen]
@@ -30,7 +30,7 @@ pub fn make_crate_info(json_text: &str) -> Result<CrateInfo, String> {
 
     let inner = InnerCrateInfoBuilder {
         crate_info,
-        package_index_builder: |crate_info: &Crate| PackageIndex::from_crate(crate_info),
+        indexed_crate_builder: |crate_info: &Crate| IndexedCrate::new(crate_info),
     }
     .build();
 
@@ -46,20 +46,19 @@ pub fn run_query(
     trustfall_wasm::util::initialize().expect("init failed");
 
     let schema = RustdocAdapter::schema();
-    let adapter = RustdocAdapter::new(crate_info.inner.borrow_package_index(), None);
+    let adapter = Arc::new(RustdocAdapter::new(crate_info.inner.borrow_indexed_crate(), None));
 
-    let query = trustfall_core::frontend::parse(schema, query).map_err(|e| e.to_string())?;
+    let query = trustfall_core::frontend::parse(&schema, query).map_err(|e| e.to_string())?;
     let args = from_js_args(args)?;
 
-    let results =
-        trustfall_core::interpreter::execution::interpret_ir(Arc::new(&adapter), query, args)
-            .map_err(|e| e.to_string())?
-            .map(|row| {
-                let converted_row: BTreeMap<Arc<str>, JsFieldValue> =
-                    row.into_iter().map(|(k, v)| (k, v.into())).collect();
-                JsValue::from_serde(&converted_row).expect("serde conversion failed")
-            })
-            .collect();
+    let results = trustfall_core::interpreter::execution::interpret_ir(adapter, query, args)
+        .map_err(|e| e.to_string())?
+        .map(|row| {
+            let converted_row: BTreeMap<Arc<str>, JsFieldValue> =
+                row.into_iter().map(|(k, v)| (k, v.into())).collect();
+            JsValue::from_serde(&converted_row).expect("serde conversion failed")
+        })
+        .collect();
 
     Ok(results)
 }
