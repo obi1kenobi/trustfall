@@ -28,7 +28,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: true
       - name: Tag the version
@@ -156,7 +156,7 @@ jobs:
     env:
       PY_VERSION: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install uv
@@ -226,7 +226,7 @@ jobs:
     env:
       PY_VERSION: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install uv
@@ -296,7 +296,7 @@ jobs:
     env:
       PY_VERSION: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install uv
@@ -358,7 +358,7 @@ jobs:
     env:
       PY_VERSION: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Build wheels
@@ -423,7 +423,7 @@ jobs:
       is_new_version: "${{ steps.check.outputs.is_new_version }}"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
