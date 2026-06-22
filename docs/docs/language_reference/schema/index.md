@@ -14,391 +14,471 @@ Since editor auto-complete also relies on schema data, Trustfall [directives][di
 
 ### Example setup
 
-Consider a hypothetical social media app called "Flutter" where users may post public messages, "like" each other's posts, and follow other users' activity.
+This guide uses the HackerNews playground schema as its running example. HackerNews is a useful example because the data is familiar and available through public APIs: users submit stories, stories have comments, and comments may have replies.
 
-In this section, we'll build up a Trustfall schema for the Flutter app step by step.
+The live playground can run queries against this schema in your browser:
+[open the HackerNews playground](https://play.predr.ag/hackernews).
 
 <details>
 <summary>
-If you'd like to peek ahead, click here to reveal the final schema we'll build up to.
+If you'd like to peek ahead, click here to reveal the small schema subset we'll build up to.
 </summary>
 
 ```graphql
 schema {
-    query: Entrypoints
+    query: RootSchemaQuery
 }
 
-type Entrypoints {
+type RootSchemaQuery {
     """
-    Find a specific user by their username, if they exist.
+    The top items on HackerNews.
     """
-    FindUser(username: String!): User
+    Top(max: Int): [Item!]!
 
     """
-    Run a search across all public posts with the given search terms.
+    Latest story submissions on HackerNews.
     """
-    SearchPosts(text: String!): [Post!]
+    Latest(max: Int): [Story!]!
+
+    """
+    Look up a user by their username.
+    """
+    User(name: String!): User
 }
 
 """
-A piece of data that has its own webpage.
+A data item with its own webpage.
 """
 interface Webpage {
-    # properties
     """
-    The human-readable URL at which this webpage may be visited.
+    The URL where this item may be viewed.
     """
     url: String!
 }
 
 """
-A user account on Flutter.
+One of the kinds of items on HackerNews: a story, job, comment, etc.
+"""
+interface Item implements Webpage {
+    """
+    The item's URL on HackerNews.
+    """
+    url: String!
+
+    """
+    The item's unique identifier.
+    """
+    id: Int!
+}
+
+"""
+A HackerNews user account.
 """
 type User implements Webpage {
-    # properties from Webpage
     """
-    The URL of this user's profile page.
+    The user's HackerNews profile URL.
     """
     url: String!
 
-    # own properties
     """
-    The user's unique username. All users are required to have one.
+    The user's HackerNews username.
     """
-    username: String!
+    id: String!
 
     """
-    The name the user would like to be known by, if any was set.
-
-    If the user has not set a display name, this value will be `null`.
+    The user's current karma score.
     """
-    display_name: String
-    # end of properties
-
-    # edges
-    """
-    The messages posted by this user, if any.
-    """
-    posts: [Post!]
+    karma: Int!
 
     """
-    The users this user follows, if any.
+    Items submitted by this user.
     """
-    follows: [User!]
+    submitted: [Item!]
 }
 
 """
-A message posted by a Flutter user.
+A story submitted to HackerNews.
 """
-type Post implements Webpage {
-    # properties from Webpage
+type Story implements Item & Webpage {
     """
-    The URL of this post.
+    The story's URL on HackerNews.
     """
     url: String!
 
-    # own properties
     """
-    The contents of the posted message.
+    The story's title.
     """
-    message: String!
+    title: String!
 
-    # edges
     """
-    The user who authored this post.
+    The current score of this story submission.
+    """
+    score: Int!
 
-    Each post has precisely one author.
     """
-    author: User!
+    The URL submitted by this story, if any.
+    """
+    submittedUrl: String
+
+    """
+    The user who submitted the story.
+    """
+    byUser: User!
+
+    """
+    Top-level comments on this story.
+    """
+    comment: [Comment!]
+}
+
+"""
+A comment on HackerNews.
+"""
+type Comment implements Item & Webpage {
+    """
+    The comment's URL on HackerNews.
+    """
+    url: String!
+
+    """
+    The comment text with HTML removed.
+    """
+    textPlain: String!
+
+    """
+    The user who wrote the comment.
+    """
+    byUser: User!
+
+    """
+    Replies to this comment.
+    """
+    reply: [Comment!]
 }
 ```
 </details>
 
 ## Vertex types and properties
 
-A [vertex][vertex] is akin to a table in SQL. Consider our Flutter example, 
-where we have users and their posts, and also other users they follow. If we were
-modelling it in SQL, we would have a `User` table and a `Post` table —
-therefore in Trustfall we have a `User` vertex and a `Post` vertex.
+A [vertex][vertex] is akin to a table in SQL. In the HackerNews schema, `User`, `Story`, and `Comment` are vertex types. Each vertex type describes one kind of data item that queries can inspect.
 
-A vertex can have properties associated with it (similar to columns in SQL), and
-edges. We'll initially just focus on properties as these are the simplest case.
-For a user we can imagine the following properties as a minimum:
+A vertex can have properties associated with it, similar to columns in SQL, and edges to other vertices. We'll initially just focus on properties as these are the simplest case. For a HackerNews story, useful properties include:
 
-* `url`: the URL to the users profile page (REQUIRED)
-* `username`: the unique username of the account (REQUIRED)
-* `display_name`: the name we display for the user (OPTIONAL)
+* `url`: the story's URL on HackerNews (REQUIRED)
+* `title`: the story's title (REQUIRED)
+* `score`: the story's current score (REQUIRED)
+* `submittedUrl`: the URL submitted by the story, if any (OPTIONAL)
 
-With these two properties we can define a type for the schema called `User` which
-looks as follows:
+With these properties, a `Story` type can be defined as follows:
 
 ```graphql
 """
-A user account on Flutter.
+A story submitted to HackerNews.
 """
-type User {
+type Story {
     """
-    The URL of this user's profile page.
+    The story's URL on HackerNews.
     """
     url: String!
 
     """
-    The user's unique username. All users are required to have one.
+    The story's title.
     """
-    username: String!
+    title: String!
 
     """
-    The name the user would like to be known by, if any was set.
-
-    If the user has not set a display name, this value will be `null`.
+    The current score of this story submission.
     """
-    display_name: String
+    score: Int!
+
+    """
+    The URL submitted by this story, if any.
+    """
+    submittedUrl: String
 }
 ```
 
-Here we've defined three string properties with doc comments to describe them. We've 
-also made `url` and `username` required fields by adding the `!` suffix to the type. This
-means that the value can't be null. Meanwhile, `display_name` is allowed to be
-`null` as it is just a `String`.
+Here we've defined three required properties and one optional property. The `!` suffix means the value can't be null. Since text submissions like "Ask HN" do not always have an external submitted URL, `submittedUrl` is allowed to be `null`.
 
-We'll now also define our `Post` type: it will be very similar, with a url to the post and
-a message representing the post. For now, the user who posted it will be omitted and covered
-in the next section.
+We'll now also define a `User` type. HackerNews users have a profile URL, a username, and a karma score:
 
 ```graphql
 """
-A message posted by a Flutter user.
+A HackerNews user account.
 """
-type Post implements Webpage {
+type User {
     """
-    The URL of this post.
+    The user's HackerNews profile URL.
     """
     url: String!
 
     """
-    The contents of the posted message.
+    The user's HackerNews username.
     """
-    message: String!
+    id: String!
+
+    """
+    The user's current karma score.
+    """
+    karma: Int!
 }
 ```
 
 ## Edges
 
-We may also want to query data that refers to other vertices. This is
-what edges are for — relationships between other vertex types. For our user, these edges will
-be the posts the user has created, and a list of the other users they follow.
-We thus get the following schema for the `User` vertex type:
+We may also want to query data that refers to other vertices. This is what edges are for: relationships between vertex types. For a HackerNews story, useful edges include the user who submitted it and the comments posted on it.
+
+Adding those edges to `Story` looks like this:
 
 ```graphql
 """
-A user account on Flutter.
+A story submitted to HackerNews.
+"""
+type Story {
+    # own properties
+    """
+    The story's URL on HackerNews.
+    """
+    url: String!
+
+    """
+    The story's title.
+    """
+    title: String!
+
+    """
+    The current score of this story submission.
+    """
+    score: Int!
+
+    """
+    The URL submitted by this story, if any.
+    """
+    submittedUrl: String
+    # end of properties
+
+    # edges
+    """
+    The user who submitted the story.
+    """
+    byUser: User!
+
+    """
+    Top-level comments on this story.
+    """
+    comment: [Comment!]
+}
+```
+
+For readability, here we've split properties and edges using non-doc comments such as `# edges`.
+
+The `byUser` edge is non-nullable because each story has a submitter. The `comment` edge is a list because each story may have zero or more comments.
+
+There are some nullability rules to be aware of with Trustfall edges. These are all the valid forms of a `Comment` edge:
+
+* `Comment` is 0 or 1 comment
+* `Comment!` is exactly 1 comment
+* `[Comment!]` is 0 or more comments
+* `[Comment!]!` is 1 or more comments
+
+By making the list non-nullable, `[Comment!]!` guarantees at least one value. That is different from normal GraphQL, where a non-null list may still be empty. We also can't specify the type as `[Comment]`, because having a list of multiple comments that can be null doesn't make sense and would complicate queries.
+
+Applying the same idea to `User`, we can add an edge for all items submitted by that user:
+
+```graphql
+"""
+A HackerNews user account.
 """
 type User {
     # own properties
     """
-    The URL of this user's profile page.
+    The user's HackerNews profile URL.
     """
     url: String!
 
     """
-    The user's unique username. All users are required to have one.
+    The user's HackerNews username.
     """
-    username: String!
+    id: String!
 
     """
-    The name the user would like to be known by, if any was set.
-
-    If the user has not set a display name, this value will be `null`.
+    The user's current karma score.
     """
-    display_name: String
+    karma: Int!
     # end of properties
-
-    # own edges
-    """
-    The messages posted by this user, if any.
-    """
-    posts: [Post!]
-
-    """
-    The users this user follows, if any.
-    """
-    follows: [User!]
-}
-```
-
-For readability, here we've split properties and edges using non-doc comments such as `# own edges`.
-
-As a user can make multiple posts and follow multiple people, the type
-of both edges is a list. Posts is a list of non-null post objects with the type `[Post!]` and
-follows is similar a list of non-null users `[User!]`.
-
-There are some nullability rules to be aware of with the Trustfall edges, these are all the valid
-forms of a `Post` edge: 
-
-* `Post` is 0 or 1 post
-* `Post!` is exactly 1 post
-* `[Post!]` is 0 or more posts
-* `[Post!]!` is 1 or more posts
-
-In our example the last one is the only one we won't be using. By making the list non-nullable `[Post!]!` 
-it guarantees at least one value - whereas in normal GraphQL this can still be an empty list.
-We also can't specify the type as `[Post]` as having a list of multiple posts that can be null doesn't
-make sense — and would also complicate our queries.
-
-Applying a similar change to `Post` we now add an edge for the author of the post, a single non-null
-`User`.
-
-```graphql
-"""
-A message posted by a Flutter user.
-"""
-type Post {
-    # own properties
-    """
-    The URL of this post.
-    """
-    url: String!
-
-    """
-    The contents of the posted message.
-    """
-    message: String!
 
     # edges
     """
-    The user who authored this post.
-
-    Each post has precisely one author.
+    Items submitted by this user.
     """
-    author: User!
+    submitted: [Item!]
 }
 ```
 
 ## Interfaces
 
-Both the User and Post vertex types have a url field, we can therefore have them both implement
-the same interface. Interfaces are similar to GraphQL and programming languages which use them
-in that we can define a set of properties an interface must provide and also set our edge and
-query types to be interfaces instead of concrete types. Let's add a webpage interface to contain
-the URL field and have our vertex types implement it:
+Several HackerNews vertex types have a `url` property, so they can implement a common interface. Interfaces are similar to GraphQL and programming language interfaces: they define a set of properties an implementing type must provide, and they allow edges and entrypoints to return an interface instead of a concrete type.
+
+For example, the HackerNews schema has a `Webpage` interface that both `User` and `Story` can implement:
 
 ```graphql
 """
-A piece of data that has its own webpage.
+A data item with its own webpage.
 """
 interface Webpage {
     # properties
     """
-    The human-readable URL at which this webpage may be visited.
+    The URL where this item may be viewed.
     """
     url: String!
 }
 
 """
-A user account on Flutter.
+A HackerNews user account.
 """
 type User implements Webpage {
     # properties from Webpage
     """
-    The URL of this user's profile page.
+    The user's HackerNews profile URL.
     """
     url: String!
 
     # own properties
     """
-    The user's unique username. All users are required to have one.
+    The user's HackerNews username.
     """
-    username: String!
+    id: String!
 
     """
-    The name the user would like to be known by, if any was set.
-
-    If the user has not set a display name, this value will be `null`.
+    The user's current karma score.
     """
-    display_name: String
-    # end of properties
-
-    # own edges
-    """
-    The messages posted by this user, if any.
-    """
-    posts: [Post!]
-
-    """
-    The users this user follows, if any.
-    """
-    follows: [User!]
+    karma: Int!
 }
 
 """
-A message posted by a Flutter user.
+A story submitted to HackerNews.
 """
-type Post implements Webpage {
+type Story implements Webpage {
     # properties from Webpage
     """
-    The URL of this post.
+    The story's URL on HackerNews.
     """
     url: String!
 
     # own properties
     """
-    The contents of the posted message.
+    The story's title.
     """
-    message: String!
+    title: String!
 
-    # own edges
     """
-    The user who authored this post.
-
-    Each post has precisely one author.
+    The current score of this story submission.
     """
-    author: User!
+    score: Int!
 }
 ```
 
+The full HackerNews playground schema also has an `Item` interface. `Story`, `Comment`, and `Job` all implement it, which lets the `Top(max:)` entrypoint return a mixed list of HackerNews items while queries choose the concrete item kinds they care about.
+
 ## Entrypoints
 
-An entrypoint gives us an initial set of vertices to work with. Each Trustfall schema needs
-a root element called `schema` with a field `query` that is our entrypoint type — the starting
-point of the query.
+An entrypoint gives us an initial set of vertices to work with. Each Trustfall schema needs a root element called `schema` with a field `query` that is our entrypoint type: the starting point of the query.
 
-In the entrypoint we want to provide the means to query our data source for the initial set of
-vertices we'll consider and filter or transform. For data sources like APIs we'll usually define
-some entrypoints that map to API endpoints. If all of our data is available without restrictions,
-like in a SQL database, we might just define simple entrypoints named after
-(and returning a list of) each vertex type. Although, even in that case we may want to
-add some more sophisticated entrypoints, to simplify some operations that might
-be complicated or impossible to express in a Trustfall query.
+In the entrypoint we want to provide the means to query our data source for the initial set of vertices we'll consider and filter or transform. For data sources like APIs, entrypoints usually map to API endpoints or other efficient lookup operations.
 
-For this hypothetical Flutter app, we'll define an entrypoint type with two queries:
+For the HackerNews playground, useful entrypoints include:
 
-1. Find a user by their username
-2. Search for posts with a given search query
+1. List top HackerNews items.
+2. List the latest story submissions.
+3. Find a user by username.
 
 Adding this into the schema would look like the following:
 
 ```graphql
 schema {
-    query: Entrypoints
+    query: RootSchemaQuery
 }
 
-type Entrypoints {
+type RootSchemaQuery {
     """
-    Find a specific user by their username, if they exist.
+    The top items on HackerNews.
     """
-    FindUser(username: String!): User
+    Top(max: Int): [Item!]!
 
     """
-    Run a search across all public posts with the given search terms.
+    Latest story submissions on HackerNews.
     """
-    SearchPosts(text: String!): [Post!]
+    Latest(max: Int): [Story!]!
+
+    """
+    Look up a user by their username.
+    """
+    User(name: String!): User
 }
 ```
 
-Here our `FindUser` query takes a non-null string argument `username` and returns a `User`
-which may or may not be null. The `SearchPosts` query takes a non-null string argument `text`
-and returns a list of non-null `Post` where the list would be empty if there were no matching
-posts.
+Here `Top(max:)` takes an optional integer argument and returns a list of `Item` vertices. Since `Item` is an interface, a query can use a type coercion such as `... on Story` to keep only stories and discard jobs or other item kinds. The `User(name:)` entrypoint takes a non-null string argument and returns a `User` if one exists.
+
+## Runnable example queries
+
+The following query gets the first 20 top HackerNews stories and outputs their title, score, submitted URL, HackerNews URL, submitter username, and submitter karma.
+
+```graphql
+query {
+  Top(max: 20) {
+    ... on Story {
+      title @output
+      score @output
+      storyUrl: url @output
+      submittedUrl @output
+
+      byUser {
+        submitter: id @output
+        karma @output
+      }
+    }
+  }
+}
+```
+
+Variables:
+
+```json
+{
+
+}
+```
+
+[Run this query in the HackerNews playground](https://play.predr.ag/hackernews#?f=2&q=query---0Top*9max*B-20*0---2*E-Story---4title-*o*l--_4score-*o*l--_4storyUrl*B-url-*o*l--_4submittedUrl-*o*l*l--_4byUser---6submitter*B-id-*o*l--_6karma-*o*l--_4--*2--*0*J*l*J&v=*C*l*l*J)
+
+This next query shows how variables are passed into filters. It looks at the latest 100 stories, keeps only those with a minimum score, then follows the `byUser` edge and keeps only stories whose submitter has enough karma.
+
+```graphql
+query {
+  Latest(max: 100) {
+    title @output
+    byUsername @output
+    submittedUrl @output
+    score @output @filter(op: ">=", value: ["$minScore"])
+    storyUrl: url @output
+
+    byUser {
+      karma @output @filter(op: ">=", value: ["$minKarma"])
+    }
+  }
+}
+```
+
+Variables:
+
+```json
+{
+  "minScore": 5,
+  "minKarma": 300
+}
+```
+
+[Run this query in the HackerNews playground](https://play.predr.ag/hackernews#?f=2&q=query---0Latest*9max*B-100*0---2title-*o*l--_2byUsername-*o*l--_2submittedUrl-*o*l--_2score-*o-*f*9*p-***G*e***L-*v-*c***4minScore***j*0*l--_2storyUrl*B-url-*o*l*l--_2byUser---4karma-*o-*f*9*p-***G*e***L-*v-*c***4minKarma***j*0*l--_2--*0*J*l*J&v=--0**minScore***B-5*L*l--_0**minKarma***B-300*l*J)
 
 [vertex]: ../glossary.md#vertex
 [edge]: ../glossary.md#edge
