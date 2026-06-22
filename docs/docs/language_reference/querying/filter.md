@@ -49,12 +49,14 @@ vertices.iter()
 Tagged values allow us to filter using values found within the query itself.
 
 Using the schema in the [Trustfall schema guide](../schema/index.md), if we
-want to find users whose username is equal to their display name,
-we can write:
+want to compare a story's submitter username with the `id` property of the user
+found through its `byUser` edge, we can write:
 
 ```graphql
-username @tag
-display_name @filter(op: "=", value: ["%username"])
+byUsername @tag(name: "submitter")
+byUser {
+    id @filter(op: "=", value: ["%submitter"])
+}
 ```
 
 ### If the `@tag` comes from an `@optional` scope
