@@ -2,7 +2,7 @@
 
 use std::fs::{self, ReadDir};
 use std::iter;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -19,11 +19,11 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct FilesystemInterpreter {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
 }
 
 impl FilesystemInterpreter {
-    pub fn new(origin: String) -> FilesystemInterpreter {
+    pub fn new(origin: PathBuf) -> FilesystemInterpreter {
         FilesystemInterpreter { origin: Rc::new(origin) }
     }
 }
@@ -55,15 +55,17 @@ impl Iterator for OriginIterator {
 
 #[derive(Debug)]
 struct DirectoryContainsFileIterator {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     directory: DirectoryVertex,
     file_iter: ReadDir,
 }
 
 impl DirectoryContainsFileIterator {
-    pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> DirectoryContainsFileIterator {
-        let mut buf = PathBuf::new();
-        buf.extend([&*origin, &directory.path]);
+    pub fn new(
+        origin: Rc<PathBuf>,
+        directory: &DirectoryVertex,
+    ) -> DirectoryContainsFileIterator {
+        let buf = origin.join(&directory.path);
         DirectoryContainsFileIterator {
             origin,
             directory: directory.clone(),
@@ -86,15 +88,15 @@ impl Iterator for DirectoryContainsFileIterator {
                         };
                         if metadata.is_file() {
                             let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            let mut buf = PathBuf::new();
-                            buf.extend([&self.directory.path, &name]);
-                            let extension = Path::new(&name)
+                            let buf = PathBuf::from(&self.directory.path).join(&name);
+                            let extension = buf
                                 .extension()
                                 .map(|x| x.to_str().unwrap().to_owned());
+                            let path = buf.to_str().unwrap().replace('\\', "/");
                             let result = FileVertex {
                                 name,
                                 extension,
-                                path: buf.to_str().unwrap().to_owned(),
+                                path,
                             };
                             return Some(FilesystemVertex::File(result));
                         }
@@ -110,15 +112,14 @@ impl Iterator for DirectoryContainsFileIterator {
 
 #[derive(Debug)]
 struct SubdirectoryIterator {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     directory: DirectoryVertex,
     dir_iter: ReadDir,
 }
 
 impl SubdirectoryIterator {
-    pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> Self {
-        let mut buf = PathBuf::new();
-        buf.extend([&*origin, &directory.path]);
+    pub fn new(origin: Rc<PathBuf>, directory: &DirectoryVertex) -> Self {
+        let buf = origin.join(&directory.path);
         Self { origin, directory: directory.clone(), dir_iter: fs::read_dir(buf).unwrap() }
     }
 }
@@ -141,10 +142,9 @@ impl Iterator for SubdirectoryIterator {
                                 continue;
                             }
 
-                            let mut buf = PathBuf::new();
-                            buf.extend([&self.directory.path, &name]);
-                            let result =
-                                DirectoryVertex { name, path: buf.to_str().unwrap().to_owned() };
+                            let buf = PathBuf::from(&self.directory.path).join(&name);
+                            let path = buf.to_str().unwrap().replace('\\', "/");
+                            let result = DirectoryVertex { name, path };
                             return Some(FilesystemVertex::Directory(result));
                         }
                     }
@@ -160,18 +160,18 @@ impl Iterator for SubdirectoryIterator {
 pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
 type IndividualEdgeResolver<'a> =
-    fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
+    fn(Rc<PathBuf>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
 type ContextAndIterableOfEdges<'a, V> = (DataContext<V>, VertexIterator<'a, FilesystemVertex>);
 
 struct EdgeResolverIterator<'a, V: AsVertex<FilesystemVertex>> {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     contexts: VertexIterator<'a, DataContext<V>>,
     edge_resolver: IndividualEdgeResolver<'a>,
 }
 
 impl<'a, V: AsVertex<FilesystemVertex>> EdgeResolverIterator<'a, V> {
     pub fn new(
-        origin: Rc<String>,
+        origin: Rc<PathBuf>,
         contexts: VertexIterator<'a, DataContext<V>>,
         edge_resolver: IndividualEdgeResolver<'a>,
     ) -> Self {
@@ -217,7 +217,7 @@ pub struct FileVertex {
 }
 
 fn directory_contains_file_handler<'a>(
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     vertex: &FilesystemVertex,
 ) -> VertexIterator<'a, FilesystemVertex> {
     let directory_vertex = match vertex {
@@ -228,7 +228,7 @@ fn directory_contains_file_handler<'a>(
 }
 
 fn directory_subdirectory_handler<'a>(
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     vertex: &FilesystemVertex,
 ) -> VertexIterator<'a, FilesystemVertex> {
     let directory_vertex = match vertex {

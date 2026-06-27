@@ -10,9 +10,8 @@ use std::{
     env,
     fmt::Debug,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     rc::Rc,
-    str::FromStr,
     sync::Arc,
 };
 
@@ -40,9 +39,11 @@ use trustfall_core::{
 };
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
-    let schema_path = format!("../trustfall_core/test_data/schemas/{schema_name}.graphql",);
+    let schema_path: PathBuf =
+        ["..","trustfall_core", "test_data", "schemas"].iter().collect::<PathBuf>()
+        .join(format!("{schema_name}.graphql"));
     let schema_text = fs::read_to_string(&schema_path)
-        .context(format!("failed to read schema from {schema_path}"))
+        .context(format!("failed to read schema from {}", schema_path.display()))
         .unwrap();
     let schema_document = parse_schema(schema_text).unwrap();
     Schema::new(schema_document).unwrap()
@@ -55,7 +56,7 @@ fn serialize_to_ron<S: Serialize>(s: &S) -> String {
     ron::ser::to_string_pretty(s, config).unwrap()
 }
 
-fn parse(path: &str) {
+fn parse(path: &Path) {
     let input_data = fs::read_to_string(path).unwrap();
     let test_query: TestGraphQLQuery = ron::from_str(&input_data).unwrap();
 
@@ -72,7 +73,7 @@ fn parse(path: &str) {
     println!("{}", serialize_to_ron(&result));
 }
 
-fn frontend(path: &str) {
+fn frontend(path: &Path) {
     let input_data = fs::read_to_string(path).unwrap();
     let test_query_result: TestParsedGraphQLQueryResult = ron::from_str(&input_data).unwrap();
     let test_query = test_query_result.unwrap();
@@ -90,7 +91,7 @@ fn frontend(path: &str) {
     println!("{}", serialize_to_ron(&result));
 }
 
-fn check_fuzzed(path: &str, schema_name: &str) {
+fn check_fuzzed(path: &Path, schema_name: &str) {
     let schema = get_schema_by_name(schema_name);
 
     let query_string = fs::read_to_string(path).unwrap();
@@ -143,14 +144,14 @@ where
     }
 }
 
-fn outputs(path: &str) {
+fn outputs(path: &Path) {
     let input_data = fs::read_to_string(path).unwrap();
     let test_query_result: TestIRQueryResult = ron::from_str(&input_data).unwrap();
     let test_query = test_query_result.unwrap();
 
     match test_query.schema_name.as_str() {
         "filesystem" => {
-            let adapter = FilesystemInterpreter::new(".".to_owned());
+            let adapter = FilesystemInterpreter::new(PathBuf::from("."));
             outputs_with_adapter(adapter, test_query);
         }
         "numbers" => {
@@ -203,12 +204,12 @@ fn trace_with_adapter<'a, AdapterT>(
     }
 }
 
-fn trace(path: &str) {
+fn trace(path: &Path) {
     let input_data = fs::read_to_string(path).unwrap();
     let test_query_result: TestIRQueryResult = ron::from_str(&input_data).unwrap();
     let test_query = test_query_result.unwrap();
 
-    let mut outputs_path = PathBuf::from_str(path).unwrap();
+    let mut outputs_path = path.to_path_buf();
     let ir_file_name = outputs_path.file_name().expect("not a file").to_str().unwrap();
     let outputs_file_name = ir_file_name.replace(".ir.ron", ".output.ron");
     outputs_path.pop();
@@ -224,7 +225,7 @@ fn trace(path: &str) {
 
     match test_query.schema_name.as_str() {
         "filesystem" => {
-            let adapter = FilesystemInterpreter::new(".".to_owned());
+            let adapter = FilesystemInterpreter::new(PathBuf::from("."));
             trace_with_adapter(adapter, test_query, expected_results_func);
         }
         "numbers" => {
@@ -239,31 +240,33 @@ fn trace(path: &str) {
     };
 }
 
-fn reserialize(path: &str) {
+fn reserialize(path: &Path) {
     let input_data = fs::read_to_string(path).unwrap();
 
-    let (prefix, last_extension) = path.rsplit_once('.').unwrap();
-    assert_eq!(last_extension, "ron");
+    // Strip the outer ".ron" extension, then inspect the next extension.
+    assert_eq!(path.extension().and_then(|e| e.to_str()), Some("ron"));
+    let stem = path.file_stem().unwrap(); // e.g. "query.graphql"
+    let inner_ext = Path::new(stem).extension().and_then(|e| e.to_str());
 
-    let output_data = match prefix.rsplit_once('.') {
-        Some((_, "graphql")) => {
+    let output_data = match inner_ext {
+        Some("graphql") => {
             let test_query: TestGraphQLQuery = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&test_query)
         }
-        Some((_, "graphql-parsed" | "parse-error")) => {
+        Some("graphql-parsed" | "parse-error") => {
             let test_query_result: TestParsedGraphQLQueryResult =
                 ron::from_str(&input_data).unwrap();
             serialize_to_ron(&test_query_result)
         }
-        Some((_, "ir" | "frontend-error")) => {
+        Some("ir" | "frontend-error") => {
             let test_query_result: TestIRQueryResult = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&test_query_result)
         }
-        Some((_, "output")) => {
+        Some("output") => {
             let test_output_data: TestInterpreterOutputData = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&test_output_data)
         }
-        Some((_, "trace")) => {
+        Some("trace") => {
             if let Ok(test_trace) =
                 ron::from_str::<TestInterpreterOutputTrace<NumbersVertex>>(&input_data)
             {
@@ -276,22 +279,22 @@ fn reserialize(path: &str) {
                 unreachable!()
             }
         }
-        Some((_, "schema-error")) => {
+        Some("schema-error") => {
             let schema_error: InvalidSchemaError = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&schema_error)
         }
-        Some((_, "exec-error")) => {
+        Some("exec-error") => {
             let exec_error: QueryArgumentsError = ron::from_str(&input_data).unwrap();
             serialize_to_ron(&exec_error)
         }
-        Some((_, ext)) => unreachable!("{}", ext),
-        None => unreachable!("{}", path),
+        Some(ext) => unreachable!("{}", ext),
+        None => unreachable!("{}", path.display()),
     };
 
     println!("{output_data}");
 }
 
-fn schema_error(path: &str) {
+fn schema_error(path: &Path) {
     let schema_text = fs::read_to_string(path).unwrap();
 
     let result = Schema::parse(schema_text);
@@ -299,26 +302,27 @@ fn schema_error(path: &str) {
         Err(e) => {
             println!("{}", serialize_to_ron(&e))
         }
-        Ok(_) => unreachable!("expected schema error but got valid schema: {}", path),
+        Ok(_) => unreachable!("expected schema error but got valid schema: {}", path.display()),
     }
 }
 
-fn corpus_graphql(path: &str, schema_name: &str) {
+fn corpus_graphql(path: &Path, schema_name: &str) {
     let input_data = fs::read_to_string(path).unwrap();
 
-    let (prefix, last_extension) = path.rsplit_once('.').unwrap();
-    assert_eq!(last_extension, "ron");
+    assert_eq!(path.extension().and_then(|e| e.to_str()), Some("ron"));
+    let stem = path.file_stem().unwrap();
+    let inner_ext = Path::new(stem).extension().and_then(|e| e.to_str());
 
-    let output_data = match prefix.rsplit_once('.') {
-        Some((_, "graphql")) => {
+    let output_data = match inner_ext {
+        Some("graphql") => {
             let test_query: TestGraphQLQuery = ron::from_str(&input_data).unwrap();
             if test_query.schema_name != schema_name {
                 return;
             }
             test_query.query.replace("    ", " ")
         }
-        Some((_, ext)) => unreachable!("{}", ext),
-        None => unreachable!("{}", path),
+        Some(ext) => unreachable!("{}", ext),
+        None => unreachable!("{}", path.display()),
     };
 
     println!("{output_data}");
@@ -338,42 +342,42 @@ fn main() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                parse(path)
+                parse(Path::new(path))
             }
         },
         Some("frontend") => match reversed_args.pop() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                frontend(path)
+                frontend(Path::new(path))
             }
         },
         Some("outputs") => match reversed_args.pop() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                outputs(path)
+                outputs(Path::new(path))
             }
         },
         Some("trace") => match reversed_args.pop() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                trace(path)
+                trace(Path::new(path))
             }
         },
         Some("schema_error") => match reversed_args.pop() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                schema_error(path)
+                schema_error(Path::new(path))
             }
         },
         Some("reserialize") => match reversed_args.pop() {
             None => panic!("No filename provided"),
             Some(path) => {
                 assert!(reversed_args.is_empty());
-                reserialize(path)
+                reserialize(Path::new(path))
             }
         },
         Some("corpus_graphql") => match reversed_args.pop() {
@@ -382,7 +386,7 @@ fn main() {
                 let schema_name = reversed_args.pop().expect("schema name");
 
                 assert!(reversed_args.is_empty());
-                corpus_graphql(path, schema_name)
+                corpus_graphql(Path::new(path), schema_name)
             }
         },
         Some("check_fuzzed") => match reversed_args.pop() {
@@ -391,7 +395,7 @@ fn main() {
                 let schema_name = reversed_args.pop().expect("schema name");
 
                 assert!(reversed_args.is_empty());
-                check_fuzzed(path, schema_name)
+                check_fuzzed(Path::new(path), schema_name)
             }
         },
         Some(cmd) => panic!("Unrecognized command given: {cmd}"),
