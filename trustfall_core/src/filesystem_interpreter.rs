@@ -61,10 +61,7 @@ struct DirectoryContainsFileIterator {
 }
 
 impl DirectoryContainsFileIterator {
-    pub fn new(
-        origin: Rc<PathBuf>,
-        directory: &DirectoryVertex,
-    ) -> DirectoryContainsFileIterator {
+    pub fn new(origin: Rc<PathBuf>, directory: &DirectoryVertex) -> DirectoryContainsFileIterator {
         let buf = origin.join(&directory.path);
         DirectoryContainsFileIterator {
             origin,
@@ -89,15 +86,9 @@ impl Iterator for DirectoryContainsFileIterator {
                         if metadata.is_file() {
                             let name = dir_entry.file_name().to_str().unwrap().to_owned();
                             let buf = PathBuf::from(&self.directory.path).join(&name);
-                            let extension = buf
-                                .extension()
-                                .map(|x| x.to_str().unwrap().to_owned());
+                            let extension = buf.extension().map(|x| x.to_str().unwrap().to_owned());
                             let path = buf.to_str().unwrap().replace('\\', "/");
-                            let result = FileVertex {
-                                name,
-                                extension,
-                                path,
-                            };
+                            let result = FileVertex { name, extension, path };
                             return Some(FilesystemVertex::File(result));
                         }
                     }

@@ -39,8 +39,9 @@ use trustfall_core::{
 };
 
 fn get_schema_by_name(schema_name: &str) -> Schema {
-    let schema_path: PathBuf =
-        ["..","trustfall_core", "test_data", "schemas"].iter().collect::<PathBuf>()
+    let schema_path: PathBuf = ["..", "trustfall_core", "test_data", "schemas"]
+        .iter()
+        .collect::<PathBuf>()
         .join(format!("{schema_name}.graphql"));
     let schema_text = fs::read_to_string(&schema_path)
         .context(format!("failed to read schema from {}", schema_path.display()))
