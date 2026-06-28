@@ -11,4 +11,4 @@
 **/__pycache__/
 **/trustfall.cpython-*.so
 **/.pytest_cache/
-.DS_Store
+**/.DS_Store
