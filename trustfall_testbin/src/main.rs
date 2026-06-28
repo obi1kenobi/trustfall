@@ -211,7 +211,7 @@ fn trace(path: &Path) {
     let test_query = test_query_result.unwrap();
 
     let mut outputs_path = path.to_path_buf();
-    let ir_file_name = outputs_path.file_name().expect("not a file").to_str().unwrap();
+    let ir_file_name = outputs_path.file_name().expect("not a file").to_string_lossy();
     let outputs_file_name = ir_file_name.replace(".ir.ron", ".output.ron");
     outputs_path.pop();
     outputs_path.push(&outputs_file_name);

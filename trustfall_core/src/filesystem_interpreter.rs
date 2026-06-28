@@ -57,7 +57,7 @@ impl Iterator for OriginIterator {
 struct DirectoryContainsFileIterator {
     origin: Rc<PathBuf>,
     directory: DirectoryVertex,
-    file_iter: ReadDir,
+    file_iter: Option<ReadDir>,
 }
 
 impl DirectoryContainsFileIterator {
@@ -66,7 +66,7 @@ impl DirectoryContainsFileIterator {
         DirectoryContainsFileIterator {
             origin,
             directory: directory.clone(),
-            file_iter: fs::read_dir(buf).unwrap(),
+            file_iter: fs::read_dir(buf).ok(),
         }
     }
 }
@@ -75,27 +75,24 @@ impl Iterator for DirectoryContainsFileIterator {
     type Item = FilesystemVertex;
 
     fn next(&mut self) -> Option<FilesystemVertex> {
+        let file_iter = self.file_iter.as_mut()?;
         loop {
-            if let Some(outcome) = self.file_iter.next() {
-                match outcome {
-                    Ok(dir_entry) => {
-                        let metadata = match dir_entry.metadata() {
-                            Ok(res) => res,
-                            _ => continue,
-                        };
-                        if metadata.is_file() {
-                            let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            let buf = PathBuf::from(&self.directory.path).join(&name);
-                            let extension = buf.extension().map(|x| x.to_str().unwrap().to_owned());
-                            let path = buf.to_str().unwrap().replace('\\', "/");
-                            let result = FileVertex { name, extension, path };
-                            return Some(FilesystemVertex::File(result));
-                        }
+            match file_iter.next()? {
+                Ok(dir_entry) => {
+                    let metadata = match dir_entry.metadata() {
+                        Ok(res) => res,
+                        _ => continue,
+                    };
+                    if metadata.is_file() {
+                        let name = dir_entry.file_name().to_string_lossy().into_owned();
+                        let buf = PathBuf::from(&self.directory.path).join(&name);
+                        let extension = buf.extension().map(|x| x.to_string_lossy().into_owned());
+                        let path = buf.to_string_lossy().replace('\\', "/");
+                        let result = FileVertex { name, extension, path };
+                        return Some(FilesystemVertex::File(result));
                     }
-                    _ => continue,
                 }
-            } else {
-                return None;
+                _ => continue,
             }
         }
     }
@@ -105,13 +102,13 @@ impl Iterator for DirectoryContainsFileIterator {
 struct SubdirectoryIterator {
     origin: Rc<PathBuf>,
     directory: DirectoryVertex,
-    dir_iter: ReadDir,
+    dir_iter: Option<ReadDir>,
 }
 
 impl SubdirectoryIterator {
     pub fn new(origin: Rc<PathBuf>, directory: &DirectoryVertex) -> Self {
         let buf = origin.join(&directory.path);
-        Self { origin, directory: directory.clone(), dir_iter: fs::read_dir(buf).unwrap() }
+        Self { origin, directory: directory.clone(), dir_iter: fs::read_dir(buf).ok() }
     }
 }
 
@@ -119,30 +116,27 @@ impl Iterator for SubdirectoryIterator {
     type Item = FilesystemVertex;
 
     fn next(&mut self) -> Option<FilesystemVertex> {
+        let dir_iter = self.dir_iter.as_mut()?;
         loop {
-            if let Some(outcome) = self.dir_iter.next() {
-                match outcome {
-                    Ok(dir_entry) => {
-                        let metadata = match dir_entry.metadata() {
-                            Ok(res) => res,
-                            _ => continue,
-                        };
-                        if metadata.is_dir() {
-                            let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            if name == ".git" || name == ".vscode" || name == "target" {
-                                continue;
-                            }
-
-                            let buf = PathBuf::from(&self.directory.path).join(&name);
-                            let path = buf.to_str().unwrap().replace('\\', "/");
-                            let result = DirectoryVertex { name, path };
-                            return Some(FilesystemVertex::Directory(result));
+            match dir_iter.next()? {
+                Ok(dir_entry) => {
+                    let metadata = match dir_entry.metadata() {
+                        Ok(res) => res,
+                        _ => continue,
+                    };
+                    if metadata.is_dir() {
+                        let name = dir_entry.file_name().to_string_lossy().into_owned();
+                        if name == ".git" || name == ".vscode" || name == "target" {
+                            continue;
                         }
+
+                        let buf = PathBuf::from(&self.directory.path).join(&name);
+                        let path = buf.to_string_lossy().replace('\\', "/");
+                        let result = DirectoryVertex { name, path };
+                        return Some(FilesystemVertex::Directory(result));
                     }
-                    _ => continue,
                 }
-            } else {
-                return None;
+                _ => continue,
             }
         }
     }
