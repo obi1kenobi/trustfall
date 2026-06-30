@@ -82,7 +82,7 @@ pub fn parameterize(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         let fn_ident = item_fn.sig.ident.clone();
         let base_ident = Ident::new("base", Span::call_site());
-        let base_ident_value = base.to_str().unwrap();
+        let base_ident_value = base.display().to_string();
         let stem_ident = Ident::new("stem", Span::call_site());
         let test_function_body = quote! {
             let #base_ident = ::std::path::PathBuf::from(#base_ident_value);

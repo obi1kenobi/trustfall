@@ -19,11 +19,11 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct FilesystemInterpreter {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
 }
 
 impl FilesystemInterpreter {
-    pub fn new(origin: String) -> FilesystemInterpreter {
+    pub fn new(origin: PathBuf) -> FilesystemInterpreter {
         FilesystemInterpreter { origin: Rc::new(origin) }
     }
 }
@@ -55,19 +55,18 @@ impl Iterator for OriginIterator {
 
 #[derive(Debug)]
 struct DirectoryContainsFileIterator {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     directory: DirectoryVertex,
-    file_iter: ReadDir,
+    file_iter: Option<ReadDir>,
 }
 
 impl DirectoryContainsFileIterator {
-    pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> DirectoryContainsFileIterator {
-        let mut buf = PathBuf::new();
-        buf.extend([&*origin, &directory.path]);
+    pub fn new(origin: Rc<PathBuf>, directory: &DirectoryVertex) -> DirectoryContainsFileIterator {
+        let buf = origin.join(&directory.path);
         DirectoryContainsFileIterator {
             origin,
             directory: directory.clone(),
-            file_iter: fs::read_dir(buf).unwrap(),
+            file_iter: fs::read_dir(buf).ok(),
         }
     }
 }
@@ -76,33 +75,28 @@ impl Iterator for DirectoryContainsFileIterator {
     type Item = FilesystemVertex;
 
     fn next(&mut self) -> Option<FilesystemVertex> {
+        let file_iter = self.file_iter.as_mut()?;
         loop {
-            if let Some(outcome) = self.file_iter.next() {
-                match outcome {
-                    Ok(dir_entry) => {
-                        let metadata = match dir_entry.metadata() {
-                            Ok(res) => res,
-                            _ => continue,
+            match file_iter.next()? {
+                Ok(dir_entry) => {
+                    let metadata = match dir_entry.metadata() {
+                        Ok(res) => res,
+                        _ => continue,
+                    };
+                    if metadata.is_file() {
+                        let os_name = dir_entry.file_name();
+                        let name = match os_name.to_str() {
+                            Some(s) => s.to_owned(),
+                            None => continue, // skip non-UTF-8 names: can't store them in path: String
                         };
-                        if metadata.is_file() {
-                            let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            let mut buf = PathBuf::new();
-                            buf.extend([&self.directory.path, &name]);
-                            let extension = Path::new(&name)
-                                .extension()
-                                .map(|x| x.to_str().unwrap().to_owned());
-                            let result = FileVertex {
-                                name,
-                                extension,
-                                path: buf.to_str().unwrap().to_owned(),
-                            };
-                            return Some(FilesystemVertex::File(result));
-                        }
+                        let extension =
+                            Path::new(&name).extension().map(|x| x.to_string_lossy().into_owned());
+                        let path = join_with_slash(&self.directory.path, &name);
+                        let result = FileVertex { name, extension, path };
+                        return Some(FilesystemVertex::File(result));
                     }
-                    _ => continue,
                 }
-            } else {
-                return None;
+                _ => continue,
             }
         }
     }
@@ -110,16 +104,15 @@ impl Iterator for DirectoryContainsFileIterator {
 
 #[derive(Debug)]
 struct SubdirectoryIterator {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     directory: DirectoryVertex,
-    dir_iter: ReadDir,
+    dir_iter: Option<ReadDir>,
 }
 
 impl SubdirectoryIterator {
-    pub fn new(origin: Rc<String>, directory: &DirectoryVertex) -> Self {
-        let mut buf = PathBuf::new();
-        buf.extend([&*origin, &directory.path]);
-        Self { origin, directory: directory.clone(), dir_iter: fs::read_dir(buf).unwrap() }
+    pub fn new(origin: Rc<PathBuf>, directory: &DirectoryVertex) -> Self {
+        let buf = origin.join(&directory.path);
+        Self { origin, directory: directory.clone(), dir_iter: fs::read_dir(buf).ok() }
     }
 }
 
@@ -127,31 +120,30 @@ impl Iterator for SubdirectoryIterator {
     type Item = FilesystemVertex;
 
     fn next(&mut self) -> Option<FilesystemVertex> {
+        let dir_iter = self.dir_iter.as_mut()?;
         loop {
-            if let Some(outcome) = self.dir_iter.next() {
-                match outcome {
-                    Ok(dir_entry) => {
-                        let metadata = match dir_entry.metadata() {
-                            Ok(res) => res,
-                            _ => continue,
+            match dir_iter.next()? {
+                Ok(dir_entry) => {
+                    let metadata = match dir_entry.metadata() {
+                        Ok(res) => res,
+                        _ => continue,
+                    };
+                    if metadata.is_dir() {
+                        let os_name = dir_entry.file_name();
+                        let name = match os_name.to_str() {
+                            Some(s) => s.to_owned(),
+                            None => continue, // skip non-UTF-8 names: can't store them in path: String
                         };
-                        if metadata.is_dir() {
-                            let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            if name == ".git" || name == ".vscode" || name == "target" {
-                                continue;
-                            }
-
-                            let mut buf = PathBuf::new();
-                            buf.extend([&self.directory.path, &name]);
-                            let result =
-                                DirectoryVertex { name, path: buf.to_str().unwrap().to_owned() };
-                            return Some(FilesystemVertex::Directory(result));
+                        if name == ".git" || name == ".vscode" || name == "target" {
+                            continue;
                         }
+
+                        let path = join_with_slash(&self.directory.path, &name);
+                        let result = DirectoryVertex { name, path };
+                        return Some(FilesystemVertex::Directory(result));
                     }
-                    _ => continue,
                 }
-            } else {
-                return None;
+                _ => continue,
             }
         }
     }
@@ -160,18 +152,18 @@ impl Iterator for SubdirectoryIterator {
 pub type ContextAndValue = (DataContext<FilesystemVertex>, FieldValue);
 
 type IndividualEdgeResolver<'a> =
-    fn(Rc<String>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
+    fn(Rc<PathBuf>, &FilesystemVertex) -> VertexIterator<'a, FilesystemVertex>;
 type ContextAndIterableOfEdges<'a, V> = (DataContext<V>, VertexIterator<'a, FilesystemVertex>);
 
 struct EdgeResolverIterator<'a, V: AsVertex<FilesystemVertex>> {
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     contexts: VertexIterator<'a, DataContext<V>>,
     edge_resolver: IndividualEdgeResolver<'a>,
 }
 
 impl<'a, V: AsVertex<FilesystemVertex>> EdgeResolverIterator<'a, V> {
     pub fn new(
-        origin: Rc<String>,
+        origin: Rc<PathBuf>,
         contexts: VertexIterator<'a, DataContext<V>>,
         edge_resolver: IndividualEdgeResolver<'a>,
     ) -> Self {
@@ -217,7 +209,7 @@ pub struct FileVertex {
 }
 
 fn directory_contains_file_handler<'a>(
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     vertex: &FilesystemVertex,
 ) -> VertexIterator<'a, FilesystemVertex> {
     let directory_vertex = match vertex {
@@ -228,7 +220,7 @@ fn directory_contains_file_handler<'a>(
 }
 
 fn directory_subdirectory_handler<'a>(
-    origin: Rc<String>,
+    origin: Rc<PathBuf>,
     vertex: &FilesystemVertex,
 ) -> VertexIterator<'a, FilesystemVertex> {
     let directory_vertex = match vertex {
@@ -376,5 +368,199 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, bool> {
         todo!()
+    }
+}
+
+fn join_with_slash(base: &str, name: &str) -> String {
+    if base.is_empty() { name.to_owned() } else { format!("{base}/{name}") }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(name: &str) -> Self {
+            let path = std::env::temp_dir().join(name);
+            let _ = fs::remove_dir_all(&path); // clean up any leftover from a previous run
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn collect_files(origin: &Path, dir_path: &str) -> Vec<FileVertex> {
+        let directory = DirectoryVertex { name: "root".to_owned(), path: dir_path.to_owned() };
+        let mut files: Vec<FileVertex> =
+            DirectoryContainsFileIterator::new(Rc::new(origin.to_path_buf()), &directory)
+                .map(|v| match v {
+                    FilesystemVertex::File(f) => f,
+                    _ => panic!("expected file vertex"),
+                })
+                .collect();
+        files.sort_by(|a, b| a.name.cmp(&b.name));
+        files
+    }
+
+    fn collect_dirs(origin: &Path, dir_path: &str) -> Vec<DirectoryVertex> {
+        let directory = DirectoryVertex { name: "root".to_owned(), path: dir_path.to_owned() };
+        let mut dirs: Vec<DirectoryVertex> =
+            SubdirectoryIterator::new(Rc::new(origin.to_path_buf()), &directory)
+                .map(|v| match v {
+                    FilesystemVertex::Directory(d) => d,
+                    _ => panic!("expected directory vertex"),
+                })
+                .collect();
+        dirs.sort_by(|a, b| a.name.cmp(&b.name));
+        dirs
+    }
+
+    #[test]
+    fn file_iterator_yields_files_with_correct_fields() {
+        let dir = TempDir::new("trustfall_test_file_iter");
+        fs::write(dir.path().join("foo.txt"), "").unwrap();
+        fs::write(dir.path().join("bar.rs"), "").unwrap();
+        fs::create_dir(dir.path().join("subdir")).unwrap();
+
+        let files = collect_files(dir.path(), "");
+
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0].name, "bar.rs");
+        assert_eq!(files[0].extension, Some("rs".to_owned()));
+        assert_eq!(files[0].path, "bar.rs");
+        assert_eq!(files[1].name, "foo.txt");
+        assert_eq!(files[1].extension, Some("txt".to_owned()));
+        assert_eq!(files[1].path, "foo.txt");
+    }
+
+    #[test]
+    fn file_iterator_paths_use_forward_slashes() {
+        let dir = TempDir::new("trustfall_test_file_slash");
+        fs::create_dir(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("sub").join("deep.txt"), "").unwrap();
+
+        let files = collect_files(dir.path(), "sub");
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "sub/deep.txt");
+        assert!(!files[0].path.contains('\\'));
+    }
+
+    #[test]
+    fn file_iterator_handles_no_extension() {
+        let dir = TempDir::new("trustfall_test_no_ext");
+        fs::write(dir.path().join("Makefile"), "").unwrap();
+
+        let files = collect_files(dir.path(), "");
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].name, "Makefile");
+        assert_eq!(files[0].extension, None);
+    }
+
+    #[test]
+    fn file_iterator_empty_on_missing_directory() {
+        let origin = std::env::temp_dir().join("trustfall_test_nonexistent_xyz");
+        let files = collect_files(&origin, "");
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn subdir_iterator_yields_directories_with_correct_fields() {
+        let dir = TempDir::new("trustfall_test_subdir_iter");
+        fs::create_dir(dir.path().join("alpha")).unwrap();
+        fs::create_dir(dir.path().join("beta")).unwrap();
+        fs::write(dir.path().join("file.txt"), "").unwrap();
+
+        let dirs = collect_dirs(dir.path(), "");
+
+        assert_eq!(dirs.len(), 2);
+        assert_eq!(dirs[0].name, "alpha");
+        assert_eq!(dirs[0].path, "alpha");
+        assert_eq!(dirs[1].name, "beta");
+        assert_eq!(dirs[1].path, "beta");
+    }
+
+    #[test]
+    fn subdir_iterator_paths_use_forward_slashes() {
+        let dir = TempDir::new("trustfall_test_subdir_slash");
+        fs::create_dir(dir.path().join("parent")).unwrap();
+        fs::create_dir(dir.path().join("parent").join("child")).unwrap();
+
+        let dirs = collect_dirs(dir.path(), "parent");
+
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].path, "parent/child");
+        assert!(!dirs[0].path.contains('\\'));
+    }
+
+    #[test]
+    fn subdir_iterator_skips_hidden_and_build_dirs() {
+        let dir = TempDir::new("trustfall_test_skip_dirs");
+        fs::create_dir(dir.path().join(".git")).unwrap();
+        fs::create_dir(dir.path().join(".vscode")).unwrap();
+        fs::create_dir(dir.path().join("target")).unwrap();
+        fs::create_dir(dir.path().join("src")).unwrap();
+
+        let dirs = collect_dirs(dir.path(), "");
+
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, "src");
+    }
+
+    #[test]
+    fn subdir_iterator_empty_on_missing_directory() {
+        let origin = std::env::temp_dir().join("trustfall_test_nonexistent_xyz");
+        let dirs = collect_dirs(&origin, "");
+        assert!(dirs.is_empty());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn file_iterator_skips_non_utf8_names() {
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = TempDir::new("trustfall_test_non_utf8_file");
+        // Create one valid UTF-8 file and one with a non-UTF-8 name (invalid byte 0xFF).
+        fs::write(dir.path().join("valid.txt"), "").unwrap();
+        let bad_name = std::ffi::OsStr::from_bytes(b"bad\xff.txt");
+        fs::write(dir.path().join(bad_name), "").unwrap();
+
+        let files = collect_files(dir.path(), "");
+
+        // Only the valid file should appear; the non-UTF-8 one must be skipped, not mangled.
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].name, "valid.txt");
+        assert!(!files[0].path.contains('\u{FFFD}'));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn subdir_iterator_skips_non_utf8_names() {
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = TempDir::new("trustfall_test_non_utf8_dir");
+        fs::create_dir(dir.path().join("valid")).unwrap();
+        let bad_name = std::ffi::OsStr::from_bytes(b"bad\xff");
+        fs::create_dir(dir.path().join(bad_name)).unwrap();
+
+        let dirs = collect_dirs(dir.path(), "");
+
+        // Only the valid directory should appear; the non-UTF-8 one must be skipped.
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, "valid");
+        assert!(!dirs[0].path.contains('\u{FFFD}'));
     }
 }
