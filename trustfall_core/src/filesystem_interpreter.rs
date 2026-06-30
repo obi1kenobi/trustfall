@@ -2,7 +2,7 @@
 
 use std::fs::{self, ReadDir};
 use std::iter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -85,9 +85,9 @@ impl Iterator for DirectoryContainsFileIterator {
                     };
                     if metadata.is_file() {
                         let name = dir_entry.file_name().to_string_lossy().into_owned();
-                        let buf = PathBuf::from(&self.directory.path).join(&name);
-                        let extension = buf.extension().map(|x| x.to_string_lossy().into_owned());
-                        let path = buf.to_string_lossy().replace('\\', "/");
+                        let extension =
+                            Path::new(&name).extension().map(|x| x.to_string_lossy().into_owned());
+                        let path = join_with_slash(&self.directory.path, &name);
                         let result = FileVertex { name, extension, path };
                         return Some(FilesystemVertex::File(result));
                     }
@@ -130,8 +130,7 @@ impl Iterator for SubdirectoryIterator {
                             continue;
                         }
 
-                        let buf = PathBuf::from(&self.directory.path).join(&name);
-                        let path = buf.to_string_lossy().replace('\\', "/");
+                        let path = join_with_slash(&self.directory.path, &name);
                         let result = DirectoryVertex { name, path };
                         return Some(FilesystemVertex::Directory(result));
                     }
@@ -361,5 +360,161 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, bool> {
         todo!()
+    }
+}
+
+fn join_with_slash(base: &str, name: &str) -> String {
+    if base.is_empty() { name.to_owned() } else { format!("{base}/{name}") }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(name: &str) -> Self {
+            let path = std::env::temp_dir().join(name);
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn collect_files(origin: &Path, dir_path: &str) -> Vec<FileVertex> {
+        let directory = DirectoryVertex { name: "root".to_owned(), path: dir_path.to_owned() };
+        let mut files: Vec<FileVertex> =
+            DirectoryContainsFileIterator::new(Rc::new(origin.to_path_buf()), &directory)
+                .map(|v| match v {
+                    FilesystemVertex::File(f) => f,
+                    _ => panic!("expected file vertex"),
+                })
+                .collect();
+        files.sort_by(|a, b| a.name.cmp(&b.name));
+        files
+    }
+
+    fn collect_dirs(origin: &Path, dir_path: &str) -> Vec<DirectoryVertex> {
+        let directory = DirectoryVertex { name: "root".to_owned(), path: dir_path.to_owned() };
+        let mut dirs: Vec<DirectoryVertex> =
+            SubdirectoryIterator::new(Rc::new(origin.to_path_buf()), &directory)
+                .map(|v| match v {
+                    FilesystemVertex::Directory(d) => d,
+                    _ => panic!("expected directory vertex"),
+                })
+                .collect();
+        dirs.sort_by(|a, b| a.name.cmp(&b.name));
+        dirs
+    }
+
+    #[test]
+    fn file_iterator_yields_files_with_correct_fields() {
+        let dir = TempDir::new("trustfall_test_file_iter");
+        fs::write(dir.path().join("foo.txt"), "").unwrap();
+        fs::write(dir.path().join("bar.rs"), "").unwrap();
+        fs::create_dir(dir.path().join("subdir")).unwrap();
+
+        let files = collect_files(dir.path(), "");
+
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0].name, "bar.rs");
+        assert_eq!(files[0].extension, Some("rs".to_owned()));
+        assert_eq!(files[0].path, "bar.rs");
+        assert_eq!(files[1].name, "foo.txt");
+        assert_eq!(files[1].extension, Some("txt".to_owned()));
+        assert_eq!(files[1].path, "foo.txt");
+    }
+
+    #[test]
+    fn file_iterator_paths_use_forward_slashes() {
+        let dir = TempDir::new("trustfall_test_file_slash");
+        fs::create_dir(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("sub").join("deep.txt"), "").unwrap();
+
+        let files = collect_files(dir.path(), "sub");
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "sub/deep.txt");
+        assert!(!files[0].path.contains('\\'));
+    }
+
+    #[test]
+    fn file_iterator_handles_no_extension() {
+        let dir = TempDir::new("trustfall_test_no_ext");
+        fs::write(dir.path().join("Makefile"), "").unwrap();
+
+        let files = collect_files(dir.path(), "");
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].name, "Makefile");
+        assert_eq!(files[0].extension, None);
+    }
+
+    #[test]
+    fn file_iterator_empty_on_missing_directory() {
+        let origin = std::env::temp_dir().join("trustfall_test_nonexistent_xyz");
+        let files = collect_files(&origin, "");
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn subdir_iterator_yields_directories_with_correct_fields() {
+        let dir = TempDir::new("trustfall_test_subdir_iter");
+        fs::create_dir(dir.path().join("alpha")).unwrap();
+        fs::create_dir(dir.path().join("beta")).unwrap();
+        fs::write(dir.path().join("file.txt"), "").unwrap();
+
+        let dirs = collect_dirs(dir.path(), "");
+
+        assert_eq!(dirs.len(), 2);
+        assert_eq!(dirs[0].name, "alpha");
+        assert_eq!(dirs[0].path, "alpha");
+        assert_eq!(dirs[1].name, "beta");
+        assert_eq!(dirs[1].path, "beta");
+    }
+
+    #[test]
+    fn subdir_iterator_paths_use_forward_slashes() {
+        let dir = TempDir::new("trustfall_test_subdir_slash");
+        fs::create_dir(dir.path().join("parent")).unwrap();
+        fs::create_dir(dir.path().join("parent").join("child")).unwrap();
+
+        let dirs = collect_dirs(dir.path(), "parent");
+
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].path, "parent/child");
+        assert!(!dirs[0].path.contains('\\'));
+    }
+
+    #[test]
+    fn subdir_iterator_skips_hidden_and_build_dirs() {
+        let dir = TempDir::new("trustfall_test_skip_dirs");
+        fs::create_dir(dir.path().join(".git")).unwrap();
+        fs::create_dir(dir.path().join(".vscode")).unwrap();
+        fs::create_dir(dir.path().join("target")).unwrap();
+        fs::create_dir(dir.path().join("src")).unwrap();
+
+        let dirs = collect_dirs(dir.path(), "");
+
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, "src");
+    }
+
+    #[test]
+    fn subdir_iterator_empty_on_missing_directory() {
+        let origin = std::env::temp_dir().join("trustfall_test_nonexistent_xyz");
+        let dirs = collect_dirs(&origin, "");
+        assert!(dirs.is_empty());
     }
 }
