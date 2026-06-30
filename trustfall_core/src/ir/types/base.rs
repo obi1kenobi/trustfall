@@ -24,8 +24,8 @@ impl std::fmt::Debug for Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Modifiers {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Modifiers {
     mask: u64, // space for ~30 levels of list nesting
 }
 
@@ -44,17 +44,17 @@ impl Modifiers {
     }
 
     #[inline]
-    fn nullable(&self) -> bool {
+    pub(crate) fn nullable(&self) -> bool {
         (self.mask & Self::NON_NULLABLE_MASK) == 0
     }
 
     #[inline]
-    fn is_list(&self) -> bool {
+    pub(crate) fn is_list(&self) -> bool {
         (self.mask & Self::LIST_MASK) != 0
     }
 
     #[inline]
-    fn as_list(&self) -> Option<Modifiers> {
+    pub(crate) fn as_list(&self) -> Option<Modifiers> {
         self.is_list().then_some(Modifiers { mask: self.mask >> 2 })
     }
 
@@ -494,6 +494,23 @@ impl<'de> Deserialize<'de> for Type {
 
         deserializer.deserialize_str(TypeDeserializer)
     }
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum OperandType {
+    /// An explicitly-specified Trustfall type.
+    Explicit(Type),
+
+    /// The same type as the left operand (e.g. in `my_prop @filter(...)`, the type of `my_prop`),
+    /// possibly modified by wrapping it in lists or adding non-nullability.
+    SelfType(Modifiers),
+
+    /// A derivation from the "self" type by the mandatory unwrapping of the specified number
+    /// of lists and non-nullability modifiers. If the self type does not have the requisite number
+    /// of lists, or does not specify non-nullability in the requisite places, then this operand
+    /// type cannot be constructed.
+    UnwrappedSelfType(Modifiers),
 }
 
 #[cfg(test)]

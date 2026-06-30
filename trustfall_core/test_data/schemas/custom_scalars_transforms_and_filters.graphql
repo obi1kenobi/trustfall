@@ -1,0 +1,94 @@
+directive @define_filter(op: String!, on_type: String!, operands: [String!]!) repeatable on SCHEMA | SCALAR
+directive @define_transform(op: String, on_type: String!, produces: String!) repeatable on SCHEMA | SCALAR
+
+directive @define_scalar(storage: String!, builtin_filters: [String!]) on SCALAR
+
+schema
+    @define_filter(op: "is_prime", on_type: "Int!", operands: [])
+    @define_filter(op: "is_prime_or_null", on_type: "Int", operands: [])
+    @define_filter(op: "list_size", on_type: "[_]!", operands: ["Int", "Int"])  # no variadics
+    @define_filter(op: "between", on_type: "String | Int | Float", operands: ["_", "_"])
+{
+    query: RootSchemaQuery
+}
+directive @filter(op: String!, value: [String!]) repeatable on FIELD | INLINE_FRAGMENT
+directive @tag(name: String) on FIELD
+directive @output(name: String) on FIELD
+directive @optional on FIELD
+directive @recurse(depth: Int!) on FIELD
+directive @fold on FIELD
+directive @transform(op: String!) on FIELD
+
+scalar DateTimeTz
+    @define_scalar(storage: "String!", builtin_filters: ["=", "!=", "<", ">", "<=", ">="])
+    # the below filter will unify with the one above defined over `String | Int | Float`
+    @define_filter(op: "between", on_type: "_", operands: ["_", "_"])
+    # the below can be applied to nullable types, and will produce null --
+    # can disallow this default by making `on_type: "_!"`;
+    # they will also automatically allow mapping the transform operator over a list of that type
+    @define_transform(op: "year", on_type: "_", produces: "Int!")
+    @define_transform(op: "month", on_type: "_", produces: "String!")
+    @define_transform(op: "day", on_type: "_", produces: "Int!")
+
+type RootSchemaQuery {
+    Number(min: Int! = 0, max: Int!): [Number!]
+
+    # same as Number(min, max), just testing
+    # the "implicit null default" behavior for nullable edge parameters
+    NumberImplicitNullDefault(min: Int, max: Int!): [Number!]
+
+    Zero: Number!
+    One: Number!
+    Two: Prime!
+    Four: Composite!
+}
+
+interface Named {
+    name: String
+}
+
+interface Number implements Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+}
+
+type Neither implements Number & Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+}
+
+type Prime implements Number & Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+}
+
+type Composite implements Number & Named {
+    name: String
+    value: Int
+    vowelsInName: [String]
+
+    predecessor: Number
+    successor: Number!
+    multiple(max: Int!): [Composite!]
+    divisor: [Number!]!
+    primeFactor: [Prime!]!
+}
+
+type Letter implements Named {
+    name: String
+}
