@@ -84,7 +84,11 @@ impl Iterator for DirectoryContainsFileIterator {
                         _ => continue,
                     };
                     if metadata.is_file() {
-                        let name = dir_entry.file_name().to_string_lossy().into_owned();
+                        let os_name = dir_entry.file_name();
+                        let name = match os_name.to_str() {
+                            Some(s) => s.to_owned(),
+                            None => continue, // skip non-UTF-8 names: can't store them in path: String
+                        };
                         let extension =
                             Path::new(&name).extension().map(|x| x.to_string_lossy().into_owned());
                         let path = join_with_slash(&self.directory.path, &name);
@@ -125,7 +129,11 @@ impl Iterator for SubdirectoryIterator {
                         _ => continue,
                     };
                     if metadata.is_dir() {
-                        let name = dir_entry.file_name().to_string_lossy().into_owned();
+                        let os_name = dir_entry.file_name();
+                        let name = match os_name.to_str() {
+                            Some(s) => s.to_owned(),
+                            None => continue, // skip non-UTF-8 names: can't store them in path: String
+                        };
                         if name == ".git" || name == ".vscode" || name == "target" {
                             continue;
                         }
@@ -377,6 +385,7 @@ mod tests {
     impl TempDir {
         fn new(name: &str) -> Self {
             let path = std::env::temp_dir().join(name);
+            let _ = fs::remove_dir_all(&path); // clean up any leftover from a previous run
             fs::create_dir_all(&path).unwrap();
             Self(path)
         }
@@ -516,5 +525,42 @@ mod tests {
         let origin = std::env::temp_dir().join("trustfall_test_nonexistent_xyz");
         let dirs = collect_dirs(&origin, "");
         assert!(dirs.is_empty());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn file_iterator_skips_non_utf8_names() {
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = TempDir::new("trustfall_test_non_utf8_file");
+        // Create one valid UTF-8 file and one with a non-UTF-8 name (invalid byte 0xFF).
+        fs::write(dir.path().join("valid.txt"), "").unwrap();
+        let bad_name = std::ffi::OsStr::from_bytes(b"bad\xff.txt");
+        fs::write(dir.path().join(bad_name), "").unwrap();
+
+        let files = collect_files(dir.path(), "");
+
+        // Only the valid file should appear; the non-UTF-8 one must be skipped, not mangled.
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].name, "valid.txt");
+        assert!(!files[0].path.contains('\u{FFFD}'));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn subdir_iterator_skips_non_utf8_names() {
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = TempDir::new("trustfall_test_non_utf8_dir");
+        fs::create_dir(dir.path().join("valid")).unwrap();
+        let bad_name = std::ffi::OsStr::from_bytes(b"bad\xff");
+        fs::create_dir(dir.path().join(bad_name)).unwrap();
+
+        let dirs = collect_dirs(dir.path(), "");
+
+        // Only the valid directory should appear; the non-UTF-8 one must be skipped.
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, "valid");
+        assert!(!dirs[0].path.contains('\u{FFFD}'));
     }
 }
