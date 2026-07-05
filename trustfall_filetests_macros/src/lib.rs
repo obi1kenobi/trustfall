@@ -82,7 +82,10 @@ pub fn parameterize(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         let fn_ident = item_fn.sig.ident.clone();
         let base_ident = Ident::new("base", Span::call_site());
-        let base_ident_value = base.display().to_string();
+        let base_ident_value = base.to_str().expect(
+            "base path is built exclusively from UTF-8 sources \
+             (env!(\"CARGO_MANIFEST_DIR\") and string literals), so it must be valid UTF-8",
+        );
         let stem_ident = Ident::new("stem", Span::call_site());
         let test_function_body = quote! {
             let #base_ident = ::std::path::PathBuf::from(#base_ident_value);
