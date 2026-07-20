@@ -85,7 +85,7 @@ directive @output(name: String) on FIELD
 directive @optional on FIELD
 directive @recurse(depth: Int!) on FIELD
 directive @fold on FIELD
-directive @transform(op: String!) on FIELD
+directive @transform(op: String!) repeatable on FIELD
 
 type RootSchemaQuery {
     Person: Vertex!
