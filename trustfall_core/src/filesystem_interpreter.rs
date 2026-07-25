@@ -77,32 +77,25 @@ impl Iterator for DirectoryContainsFileIterator {
 
     fn next(&mut self) -> Option<FilesystemVertex> {
         loop {
-            if let Some(outcome) = self.file_iter.next() {
-                match outcome {
-                    Ok(dir_entry) => {
-                        let metadata = match dir_entry.metadata() {
-                            Ok(res) => res,
-                            _ => continue,
-                        };
-                        if metadata.is_file() {
-                            let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            let mut buf = PathBuf::new();
-                            buf.extend([&self.directory.path, &name]);
-                            let extension = Path::new(&name)
-                                .extension()
-                                .map(|x| x.to_str().unwrap().to_owned());
-                            let result = FileVertex {
-                                name,
-                                extension,
-                                path: buf.to_str().unwrap().to_owned(),
-                            };
-                            return Some(FilesystemVertex::File(result));
-                        }
+            let outcome = self.file_iter.next()?;
+            match outcome {
+                Ok(dir_entry) => {
+                    let metadata = match dir_entry.metadata() {
+                        Ok(res) => res,
+                        _ => continue,
+                    };
+                    if metadata.is_file() {
+                        let name = dir_entry.file_name().to_str().unwrap().to_owned();
+                        let mut buf = PathBuf::new();
+                        buf.extend([&self.directory.path, &name]);
+                        let extension =
+                            Path::new(&name).extension().map(|x| x.to_str().unwrap().to_owned());
+                        let result =
+                            FileVertex { name, extension, path: buf.to_str().unwrap().to_owned() };
+                        return Some(FilesystemVertex::File(result));
                     }
-                    _ => continue,
                 }
-            } else {
-                return None;
+                _ => continue,
             }
         }
     }
@@ -128,30 +121,27 @@ impl Iterator for SubdirectoryIterator {
 
     fn next(&mut self) -> Option<FilesystemVertex> {
         loop {
-            if let Some(outcome) = self.dir_iter.next() {
-                match outcome {
-                    Ok(dir_entry) => {
-                        let metadata = match dir_entry.metadata() {
-                            Ok(res) => res,
-                            _ => continue,
-                        };
-                        if metadata.is_dir() {
-                            let name = dir_entry.file_name().to_str().unwrap().to_owned();
-                            if name == ".git" || name == ".vscode" || name == "target" {
-                                continue;
-                            }
-
-                            let mut buf = PathBuf::new();
-                            buf.extend([&self.directory.path, &name]);
-                            let result =
-                                DirectoryVertex { name, path: buf.to_str().unwrap().to_owned() };
-                            return Some(FilesystemVertex::Directory(result));
+            let outcome = self.dir_iter.next()?;
+            match outcome {
+                Ok(dir_entry) => {
+                    let metadata = match dir_entry.metadata() {
+                        Ok(res) => res,
+                        _ => continue,
+                    };
+                    if metadata.is_dir() {
+                        let name = dir_entry.file_name().to_str().unwrap().to_owned();
+                        if name == ".git" || name == ".vscode" || name == "target" {
+                            continue;
                         }
+
+                        let mut buf = PathBuf::new();
+                        buf.extend([&self.directory.path, &name]);
+                        let result =
+                            DirectoryVertex { name, path: buf.to_str().unwrap().to_owned() };
+                        return Some(FilesystemVertex::Directory(result));
                     }
-                    _ => continue,
                 }
-            } else {
-                return None;
+                _ => continue,
             }
         }
     }
