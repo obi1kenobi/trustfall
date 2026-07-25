@@ -71,7 +71,7 @@ pub struct TypeParseError {
 
 impl Display for TypeParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} is not a valid Type representation", &self.invalid_type)
+        write!(f, "{} is not a valid Type representation", self.invalid_type)
     }
 }
 
