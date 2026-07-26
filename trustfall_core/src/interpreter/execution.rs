@@ -225,7 +225,7 @@ fn construct_outputs<'query, AdapterT: Adapter<'query>>(
         assert!(
             context.values.len() == output_names.len(),
             "expected {output_names:?} but got {:?}",
-            &context.values
+            context.values
         );
 
         let mut output: BTreeMap<Arc<str>, FieldValue> =
