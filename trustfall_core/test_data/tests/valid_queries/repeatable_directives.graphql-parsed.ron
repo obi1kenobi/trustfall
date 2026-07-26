@@ -1,0 +1,94 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(
+              name: Some("first"),
+            ),
+            OutputDirective(
+              name: Some("second"),
+            ),
+          ],
+          tag: [
+            TagDirective(
+              name: Some("first_tag"),
+            ),
+            TagDirective(
+              name: Some("second_tag"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 9,
+            column: 9,
+          ),
+          name: "multiple",
+          arguments: {
+            "max": Int64(1),
+          },
+        ), FieldNode(
+          position: Pos(
+            line: 9,
+            column: 9,
+          ),
+          name: "multiple",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 10,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 10,
+                column: 13,
+              ),
+              name: "value",
+              filter: [
+                FilterDirective(
+                  operation: Equals((), TagRef("first_tag")),
+                ),
+                FilterDirective(
+                  operation: Equals((), TagRef("second_tag")),
+                ),
+              ],
+              output: [
+                OutputDirective(
+                  name: Some("multiple"),
+                ),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))
