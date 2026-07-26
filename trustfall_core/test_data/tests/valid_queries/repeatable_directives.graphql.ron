@@ -1,0 +1,19 @@
+TestGraphQLQuery (
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        value @output(name: "first")
+              @output(name: "second")
+              @tag(name: "first_tag")
+              @tag(name: "second_tag")
+
+        multiple(max: 1) {
+            value @filter(op: "=", value: ["%first_tag"])
+                  @filter(op: "=", value: ["%second_tag"])
+                  @output(name: "multiple")
+        }
+    }
+}"#,
+    arguments: {},
+)

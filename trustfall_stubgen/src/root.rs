@@ -436,7 +436,7 @@ fn ensure_no_vertex_name_conflicts(querying_schema: &Schema, adapter: Arc<Schema
         if let Some(v) = v {
             panic!(
                 "cannot generate adapter for a schema containing both '{}' and '{}' vertices, consider renaming one of them",
-                v, &row.name
+                v, row.name
             );
         }
     }
@@ -481,7 +481,7 @@ fn ensure_no_field_name_conflicts_on_vertex_type(
             if let Some(v) = uniq.insert(converted, field_name.clone()) {
                 panic!(
                     "cannot generate adapter for a schema containing both '{}' and '{}' as field names on vertex '{}', consider renaming one of them",
-                    v, &field_name, &row.name
+                    v, field_name, row.name
                 );
             }
         }

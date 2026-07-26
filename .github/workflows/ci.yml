@@ -88,17 +88,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install ruff
-        uses: astral-sh/ruff-action@v3
-
       - name: Install dependencies
-        run: uv sync --no-install-project
+        run: uv sync --frozen --no-install-project
 
       - name: Run ruff check
-        run: ruff check
+        working-directory: pytrustfall
+        run: uv run --frozen --no-sync ruff check
 
       - name: Run ruff format
-        run: ruff format --check --diff
+        working-directory: pytrustfall
+        run: uv run --frozen --no-sync ruff format --check --diff
 
       - name: Run pytest
         run: uv run pytest
