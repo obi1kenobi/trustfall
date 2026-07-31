@@ -1,0 +1,27 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "first": Output(
+      name: "first",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+    "multiple": Output(
+      name: "multiple",
+      value_type: "Int",
+      vid: Vid(2),
+    ),
+    "second": Output(
+      name: "second",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "first": Int64(4),
+      "multiple": Int64(4),
+      "second": Int64(4),
+    },
+  ],
+)

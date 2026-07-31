@@ -16,13 +16,13 @@ directive @tag(
   Name to apply to the given property field.
   """
   name: String
-) on FIELD
+) repeatable on FIELD
 directive @output(
   """
   What to designate the output field generated from this property field.
   """
   name: String
-) on FIELD
+) repeatable on FIELD
 directive @optional on FIELD
 directive @recurse(
   """
@@ -37,7 +37,7 @@ directive @transform(
   Name of the transformation operation to perform.
   """
   op: String!
-) on FIELD
+) repeatable on FIELD
 
 """
 All the possible data types where querying can begin in this API.
