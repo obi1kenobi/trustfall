@@ -379,7 +379,7 @@ jobs:
       - name: Install rust + caching  # necessary for `npm run build:wasm` later
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
