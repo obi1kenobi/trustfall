@@ -463,6 +463,37 @@ class BadAdapterTests(unittest.TestCase):
         ):
             _ = list(execute_query(adapter, SCHEMA, query, args))
 
+    def test_context_cannot_be_returned_more_than_once(self) -> None:
+        def value_fn(
+            contexts: Iterable[Context[Any]],
+        ) -> Iterable[Tuple[Context[Any], FieldValue]]:
+            for ctx in contexts:
+                yield ctx, 0
+                yield ctx, 0
+
+        property_fn = {
+            ("Number", "value"): value_fn,
+        }
+        adapter = OverridableAdapter(property_fn=property_fn)
+
+        query = dedent(
+            """\
+            {
+                Number(max: 1) {
+                    value @output
+                }
+            }
+            """
+        )
+        args: Dict[str, Any] = {}
+
+        with self.assertRaisesRegex(
+            BaseException,
+            "attempted to return the same context more than once; "
+            "this is almost always caused by a buggy adapter implementation",
+        ):
+            _ = list(execute_query(adapter, SCHEMA, query, args))
+
     def test_invalid_neighbor_resolved(self) -> None:
         def successor_fn(
             contexts: Iterable[Context[Any]],

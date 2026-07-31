@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{any::Any, collections::BTreeMap, sync::Arc};
 
 use pyo3::{
     exceptions::PyStopIteration,
@@ -121,35 +121,47 @@ fn make_iterator<'py>(value: &Bound<'py, PyAny>, origin: &'static str) -> Bound<
     value.try_iter().unwrap_or_else(|e| panic!("{origin} is not an iterable (caused by {e})"))
 }
 
-#[pyclass(unsendable, frozen, from_py_object)]
-#[derive(Debug, Clone)]
+#[pyclass(unsendable, skip_from_py_object)]
 pub(crate) struct Opaque {
-    data: *mut (),
+    data: Option<Box<dyn Any>>,
     pub(crate) vertex: Option<Arc<Py<PyAny>>>,
 }
 
 impl Opaque {
     fn new<V: AsVertex<Arc<Py<PyAny>>> + 'static>(ctx: DataContext<V>) -> Self {
         let vertex = ctx.active_vertex::<Arc<Py<PyAny>>>().cloned();
-        let boxed = Box::new(ctx);
-        let data = Box::into_raw(boxed) as *mut ();
+        let data = Some(Box::new(ctx) as Box<dyn Any>);
 
         Self { data, vertex }
     }
 
-    /// Converts an `Opaque` into the `DataContext<V>` it points to.
-    ///
-    /// # Safety
-    ///
-    /// When an `Opaque` is constructed, it does not store the value of the `V` generic parameter
-    /// it was constructed with. The caller of this function must ensure that the `V` parameter here
-    /// is the same type as the one used in the `Opaque::new()` call that constructed `self` here.
-    unsafe fn into_inner<V: AsVertex<Arc<Py<PyAny>>> + 'static>(self) -> DataContext<V> {
-        // SAFETY: The caller of this `unsafe` method has made sure that the `V` parameter here
-        //         matches the one in the `Opaque::new<V>()` call that constructed the `self` here.
-        let boxed_ctx = unsafe { Box::from_raw(self.data as *mut DataContext<V>) };
-        *boxed_ctx
+    /// Take back the erased context that was sent to Python.
+    fn take_data(&mut self) -> Box<dyn Any> {
+        self.data.take().expect(
+            "attempted to return the same context more than once; \
+            this is almost always caused by a buggy adapter implementation",
+        )
     }
+}
+
+/// Take back the context that was sent to Python, checking its erased Rust type.
+///
+/// An adapter violates its contract if it returns a context more than once or returns one to a
+/// call using a different context type. Those mistakes must panic instead of causing undefined
+/// behavior in the bindings.
+fn take_context<V: AsVertex<Arc<Py<PyAny>>> + 'static>(opaque: Py<Opaque>) -> DataContext<V> {
+    Python::attach(|py| {
+        // Release the mutable borrow before downcasting. If the downcast fails, dropping the
+        // context may drop arbitrary vertex values and run their destructors.
+        let boxed_ctx = {
+            let mut opaque = opaque.borrow_mut(py);
+            opaque.take_data()
+        };
+
+        *boxed_ctx
+            .downcast::<DataContext<V>>()
+            .unwrap_or_else(|_| panic!("adapter returned a context to an incompatible call"))
+    })
 }
 
 #[pymethods]
@@ -242,10 +254,7 @@ impl Adapter<'static> for AdapterShim {
             );
 
             Box::new(iter.map(|(opaque, value)| {
-                // SAFETY: This `Opaque` was constructed just a few lines ago
-                //         in this `resolve_property()` call, so the `V` type must be the same.
-                let ctx = unsafe { opaque.into_inner() };
-
+                let ctx = take_context(opaque);
                 (ctx, value.into())
             }))
         })
@@ -288,10 +297,7 @@ impl Adapter<'static> for AdapterShim {
                 make_iterator(py_iterable.bind(py), "resolve_neighbors()").unbind(),
             );
             Box::new(iter.map(|(opaque, neighbors)| {
-                // SAFETY: This `Opaque` was constructed just a few lines ago
-                //         in this `resolve_neighbors()` call, so the `V` type must be the same.
-                let ctx = unsafe { opaque.into_inner() };
-
+                let ctx = take_context(opaque);
                 (ctx, neighbors)
             }))
         })
@@ -320,10 +326,7 @@ impl Adapter<'static> for AdapterShim {
                 make_iterator(py_iterable.bind(py), "resolve_coercion()").unbind(),
             );
             Box::new(iter.map(|(opaque, value)| {
-                // SAFETY: This `Opaque` was constructed just a few lines ago
-                //         in this `resolve_coercion()` call, so the `V` type must be the same.
-                let ctx = unsafe { opaque.into_inner() };
-
+                let ctx = take_context(opaque);
                 (ctx, value)
             }))
         })
@@ -401,7 +404,7 @@ impl<T, E: std::fmt::Display> ExpectPython for Result<T, E> {
 }
 
 impl Iterator for PythonResolvePropertyIterator {
-    type Item = (Opaque, FieldValue);
+    type Item = (Py<Opaque>, FieldValue);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::attach(|py| {
@@ -423,7 +426,7 @@ impl Iterator for PythonResolvePropertyIterator {
                             "resolve_property() tuple element at index 1 is not a property value",
                         );
 
-                    let context: Opaque = tuple.get_borrowed_item(0)
+                    let context: Py<Opaque> = tuple.get_borrowed_item(0)
                         .py_friendly_expect(tuple_size_error)
                         .extract()
                         .py_friendly_expect("resolve_property() tuple element at index 0 is not a context (Opaque) value");
@@ -455,7 +458,7 @@ impl PythonResolveNeighborsIterator {
 }
 
 impl Iterator for PythonResolveNeighborsIterator {
-    type Item = (Opaque, VertexIterator<'static, Arc<Py<PyAny>>>);
+    type Item = (Py<Opaque>, VertexIterator<'static, Arc<Py<PyAny>>>);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::attach(|py| {
@@ -472,7 +475,7 @@ impl Iterator for PythonResolveNeighborsIterator {
                     let neighbors_iterable =
                         tuple.get_borrowed_item(1).py_friendly_expect(tuple_size_error);
 
-                    let context: Opaque = tuple.get_borrowed_item(0)
+                    let context: Py<Opaque> = tuple.get_borrowed_item(0)
                         .py_friendly_expect(tuple_size_error)
                         .extract()
                         .py_friendly_expect("resolve_neighbors() tuple element at index 0 is not a context (Opaque) value");
@@ -513,7 +516,7 @@ impl PythonResolveCoercionIterator {
 }
 
 impl Iterator for PythonResolveCoercionIterator {
-    type Item = (Opaque, bool);
+    type Item = (Py<Opaque>, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::attach(|py| {
@@ -535,7 +538,7 @@ impl Iterator for PythonResolveCoercionIterator {
                             "resolve_coercion() tuple element at index 1 is not a bool",
                         );
 
-                    let context: Opaque = tuple.get_borrowed_item(0)
+                    let context: Py<Opaque> = tuple.get_borrowed_item(0)
                         .py_friendly_expect(tuple_size_error)
                         .extract()
                         .py_friendly_expect("resolve_coercion() tuple element at index 0 is not a context (Opaque) value");
