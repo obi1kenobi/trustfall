@@ -427,6 +427,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Enforce the build-script policy
+        run: python3 .github/scripts/check_build_scripts.py
+
       - id: check
         run: |
           set +e

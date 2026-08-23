@@ -1,0 +1,7 @@
+# Approved build scripts, in the format: <SHA-256>  <repository-relative path>
+#
+# SECURITY: adding or changing an entry authorizes repository code to execute
+# before Cargo compiles the crate. Review changes to this file accordingly.
+#
+# Keep this list minimal. The digest makes each exception apply to the reviewed
+# script contents, not merely to a path where arbitrary code could be placed.
