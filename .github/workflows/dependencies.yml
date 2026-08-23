@@ -50,7 +50,11 @@ jobs:
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
-        run: CARGO_TERM_COLOR=never cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+        env:
+          # TODO: Remove RUSTC_BOOTSTRAP and -Z once min-publish-age is stable.
+          RUSTC_BOOTSTRAP: "1"
+          CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE: "7 days"
+        run: CARGO_TERM_COLOR=never cargo update -Z min-publish-age 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v7
@@ -183,9 +187,13 @@ jobs:
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
+        env:
+          # TODO: Remove RUSTC_BOOTSTRAP and -Z once min-publish-age is stable.
+          RUSTC_BOOTSTRAP: "1"
+          CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE: "7 days"
         run: |
           cd trustfall_core/fuzz/
-          CARGO_TERM_COLOR=never cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+          CARGO_TERM_COLOR=never cargo update -Z min-publish-age 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v7
