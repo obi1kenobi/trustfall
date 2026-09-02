@@ -28,6 +28,8 @@ pub mod trace;
 pub use async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream};
 #[cfg(feature = "async")]
 pub use engine::interpret_ir as interpret_ir_async;
+#[cfg(feature = "async")]
+pub mod async_helpers;
 
 #[cfg(test)]
 mod error_propagation_tests;
