@@ -13,6 +13,8 @@ authors.workspace = true
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
+# Build the docs with all public features: the async API is part of the public surface.
+all-features = true
 
 [features]
 # Opt-in asynchronous, `Stream`-native query engine and `AsyncAdapter` / `AsyncBasicAdapter` traits.
