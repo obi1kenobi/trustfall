@@ -1,19 +1,17 @@
-//! Differential tests: the async and synchronous routes through the shared kernel must produce
-//! byte-for-byte identical results for numbers-schema queries, including `@filter`, `@fold`, and
-//! `@recurse`.
-//!
-//! The streaming [`SyncToAsyncAdapter`] bridge exposes the sync [`NumbersAdapter`] as an
-//! [`AsyncAdapter`] without batch-collecting context streams. Results — not laziness — are what
-//! must match. **Any panic is a test failure** (not treated as an unimplemented gap).
+//! Differential tests for the synchronous and asynchronous execution routes.
 
-use std::{collections::BTreeMap, panic::AssertUnwindSafe, sync::Arc};
+use std::{collections::BTreeMap, fs, sync::Arc};
 
-use futures_util::StreamExt;
+use futures_util::{StreamExt, stream};
 
 use crate::{
     frontend::parse,
-    interpreter::{async_test_adapter::SyncToAsyncAdapter, execution::interpret_ir},
-    ir::FieldValue,
+    interpreter::{
+        Adapter, AsVertex, NeighborResolutionStream, ResolveEdgeInfo, ResolveInfo,
+        async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
+        execution::interpret_ir,
+    },
+    ir::{EdgeParameters, FieldValue},
     numbers_interpreter::NumbersAdapter,
 };
 
@@ -21,617 +19,176 @@ use super::engine::interpret_ir as interpret_ir_async;
 
 type Row = BTreeMap<Arc<str>, FieldValue>;
 
-fn sync_results(query: &str) -> Vec<Row> {
-    let adapter = Arc::new(NumbersAdapter::new());
-    let schema = adapter.schema().clone();
-    let indexed = parse(&schema, query).expect("query failed to parse");
-    interpret_ir(adapter, indexed, Arc::new(BTreeMap::new()))
-        .expect("unexpected arguments error")
-        .map(|row| row.expect("infallible adapter"))
-        .collect()
+/// Adapts synchronous fixtures for async differential tests.
+pub(super) struct SyncToAsyncAdapter<A>(Arc<A>);
+
+impl<A> SyncToAsyncAdapter<A> {
+    pub(super) fn new(adapter: Arc<A>) -> Self {
+        Self(adapter)
+    }
 }
 
-fn async_results(query: &str) -> Vec<Row> {
-    let numbers = NumbersAdapter::new();
-    let schema = numbers.schema().clone();
-    let adapter = Arc::new(SyncToAsyncAdapter::new(Arc::new(numbers)));
-    let indexed = parse(&schema, query).expect("query failed to parse");
-    let stream = interpret_ir_async(adapter, indexed, Arc::new(BTreeMap::new()))
-        .expect("unexpected arguments error");
-    futures_executor::block_on(async {
-        stream.map(|row| row.expect("infallible adapter")).collect::<Vec<_>>().await
-    })
-}
+impl<'vertex, A> AsyncAdapter<'vertex> for SyncToAsyncAdapter<A>
+where
+    A: Adapter<'vertex> + 'vertex,
+{
+    type Vertex = A::Vertex;
+    type Error = A::Error;
 
-/// Assert the async route matches the sync route on `query`, and that the result is non-empty
-/// (so the test actually exercises the pipeline rather than trivially passing on no rows).
-fn assert_matches_sync(query: &str) {
-    let expected = sync_results(query);
-    let actual = async_results(query);
-    assert_eq!(expected, actual, "async/sync divergence for query:\n{query}");
-    assert!(!expected.is_empty(), "query produced no rows, test is vacuous:\n{query}");
-}
+    fn resolve_starting_vertices(
+        &self,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveInfo,
+    ) -> VertexStream<'vertex, Result<Self::Vertex, Self::Error>> {
+        Box::pin(stream::iter(self.0.resolve_starting_vertices(
+            edge_name,
+            parameters,
+            resolve_info,
+        )))
+    }
 
-#[test]
-fn flat_single_output() {
-    assert_matches_sync(r#"{ Number(min: 0, max: 10) { value @output } }"#);
-}
-
-#[test]
-fn flat_multiple_outputs() {
-    assert_matches_sync(r#"{ Number(min: 0, max: 8) { value @output name @output } }"#);
-}
-
-#[test]
-fn single_starting_vertex() {
-    assert_matches_sync(r#"{ Two { value @output name @output } }"#);
-}
-
-#[test]
-fn nested_edge() {
-    assert_matches_sync(
-        r#"{ Number(min: 0, max: 6) { value @output successor { s: value @output } } }"#,
-    );
-}
-
-#[test]
-fn deeply_nested_edges() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 4) {
-                value @output
-                successor {
-                    v2: value @output
-                    successor {
-                        v3: value @output
-                    }
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextStream<'vertex, V>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>> {
+        let adapter = Arc::clone(&self.0);
+        let type_name = Arc::clone(type_name);
+        let property_name = Arc::clone(property_name);
+        let resolve_info = resolve_info.clone();
+        Box::pin(async_stream::stream! {
+            let mut contexts = contexts;
+            while let Some(context) = contexts.next().await {
+                let outcomes = adapter.resolve_property(
+                    Box::new(std::iter::once(context)),
+                    &type_name,
+                    &property_name,
+                    &resolve_info,
+                );
+                for outcome in outcomes {
+                    yield outcome;
                 }
             }
-        }"#,
-    );
-}
-
-#[test]
-fn optional_edge_present_and_absent() {
-    // `predecessor` is absent for 0 (its predecessor is -1, which is outside the modeled range in
-    // some cases), exercising both the present and nonexistent-optional paths.
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 6) {
-                value @output
-                predecessor @optional {
-                    p: value @output
-                }
-            }
-        }"#,
-    );
-}
-
-#[test]
-fn coercion_on_nested_edge() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 10) {
-                value @output
-                successor {
-                    ... on Prime {
-                        prime: value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-#[test]
-fn coercion_and_optional_combined() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 10) {
-                value @output
-                predecessor @optional {
-                    ... on Composite {
-                        comp: value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// ---------------------------------------------------------------------------
-// CORPUS DIFFERENTIAL TEST
-// ---------------------------------------------------------------------------
-//
-// Sweeps every `test_data/tests/valid_queries/*.graphql.ron` file and
-// categorises each query as:
-//   MATCH   - sync and async produced identical results
-//   DIVERGE - the results differ (real engine bug; test FAILS)
-//   PANIC   - the async engine panicked (real engine bug; test FAILS)
-//
-// Panics are never treated as an "unimplemented" success. Feature coverage
-// (filter/fold/recurse) is detected from IR/query text for reporting only.
-// ---------------------------------------------------------------------------
-
-/// Helper: run the synchronous route for a numbers query with the given arguments.
-fn sync_results_with_args(query: &str, arguments: Arc<BTreeMap<Arc<str>, FieldValue>>) -> Vec<Row> {
-    let adapter = Arc::new(NumbersAdapter::new());
-    let schema = adapter.schema().clone();
-    let indexed = parse(&schema, query).expect("query failed to parse");
-    interpret_ir(adapter, indexed, arguments)
-        .expect("unexpected arguments error")
-        .map(|row| row.expect("infallible adapter"))
-        .collect()
-}
-
-fn format_panic_payload(payload: Box<dyn std::any::Any + Send>) -> String {
-    if let Some(s) = payload.downcast_ref::<&str>() {
-        (*s).to_owned()
-    } else if let Some(s) = payload.downcast_ref::<String>() {
-        s.clone()
-    } else {
-        "non-string panic payload".to_owned()
-    }
-}
-
-/// Run the async route; any panic during construction *or* collection is returned as `Err`.
-fn async_results_with_args(
-    query: &str,
-    arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
-) -> Result<Vec<Row>, String> {
-    let numbers = NumbersAdapter::new();
-    let schema = numbers.schema().clone();
-    let adapter = Arc::new(SyncToAsyncAdapter::new(Arc::new(numbers)));
-    let indexed = parse(&schema, query).expect("query failed to parse");
-
-    let stream_result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        interpret_ir_async(adapter, indexed, arguments).expect("unexpected arguments error")
-    }));
-
-    match stream_result {
-        Err(payload) => Err(format!(
-            "panic during async pipeline construction: {}",
-            format_panic_payload(payload)
-        )),
-        Ok(stream) => {
-            let collect_result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-                futures_executor::block_on(async {
-                    stream.map(|row| row.expect("infallible adapter")).collect::<Vec<_>>().await
-                })
-            }));
-            match collect_result {
-                Ok(rows) => Ok(rows),
-                Err(payload) => Err(format!(
-                    "panic while consuming async result stream: {}",
-                    format_panic_payload(payload)
-                )),
-            }
-        }
-    }
-}
-
-/// Features present in the query text (for reporting only — never used to green-pass panics).
-fn query_features(query: &str) -> Vec<&'static str> {
-    let mut features = vec![];
-    if query.contains("@filter") {
-        features.push("@filter");
-    }
-    if query.contains("@fold") {
-        features.push("@fold");
-    }
-    if query.contains("@recurse") {
-        features.push("@recurse");
-    }
-    if query.contains("@optional") {
-        features.push("@optional");
-    }
-    if query.contains("@tag") {
-        features.push("@tag");
-    }
-    features
-}
-
-#[test]
-fn corpus_differential_sweep() {
-    use std::fs;
-
-    // Locate the test_data directory relative to the crate manifest.
-    let base =
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test_data/tests/valid_queries");
-
-    let mut entries: Vec<_> = fs::read_dir(&base)
-        .expect("could not read valid_queries directory")
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.path().extension().map(|x| x == "ron").unwrap_or(false)
-                && e.path().to_str().map(|s| s.ends_with(".graphql.ron")).unwrap_or(false)
         })
-        .collect();
-    entries.sort_by_key(|e| e.path());
+    }
 
-    let mut match_count = 0usize;
-    let mut divergences: Vec<(String, String, Vec<Row>, Vec<Row>)> = vec![];
-    let mut panics: Vec<(String, String, String, Vec<&'static str>)> = vec![];
-
-    // Suppress panic output during the sweep so the log stays clean; panics still fail the test.
-    let original_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-
-    for entry in &entries {
-        let path = entry.path();
-        let contents = fs::read_to_string(&path).expect("could not read file");
-        let test_query: crate::test_types::TestGraphQLQuery =
-            ron::from_str(&contents).expect("could not parse TestGraphQLQuery");
-
-        // All corpus queries use the "numbers" schema.
-        assert_eq!(test_query.schema_name, "numbers", "unexpected schema in {:?}", path);
-
-        let arguments: Arc<BTreeMap<Arc<str>, FieldValue>> = Arc::new(
-            test_query.arguments.into_iter().map(|(k, v)| (Arc::from(k.as_str()), v)).collect(),
-        );
-
-        let query = test_query.query.clone();
-        let stem =
-            path.file_name().unwrap().to_str().unwrap().trim_end_matches(".graphql.ron").to_owned();
-
-        match async_results_with_args(&query, arguments.clone()) {
-            Err(msg) => {
-                panics.push((stem, query.clone(), msg, query_features(&query)));
-            }
-            Ok(actual) => {
-                let expected = sync_results_with_args(&query, arguments);
-                if expected == actual {
-                    match_count += 1;
-                } else {
-                    divergences.push((stem, query.clone(), expected, actual));
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextStream<'vertex, V>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveEdgeInfo,
+    ) -> ContextOutcomeStream<
+        'vertex,
+        V,
+        NeighborResolutionStream<'vertex, Self::Vertex, Self::Error>,
+    > {
+        let adapter = Arc::clone(&self.0);
+        let type_name = Arc::clone(type_name);
+        let edge_name = Arc::clone(edge_name);
+        let parameters = parameters.clone();
+        let resolve_info = resolve_info.clone();
+        Box::pin(async_stream::stream! {
+            let mut contexts = contexts;
+            while let Some(context) = contexts.next().await {
+                let outcomes = adapter.resolve_neighbors(
+                    Box::new(std::iter::once(context)),
+                    &type_name,
+                    &edge_name,
+                    &parameters,
+                    &resolve_info,
+                );
+                for (context, resolution) in outcomes {
+                    let resolution = resolution.map(|neighbors| {
+                        let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
+                            Box::pin(stream::iter(neighbors));
+                        neighbors
+                    });
+                    yield (context, resolution);
                 }
             }
-        }
+        })
     }
 
-    // Restore original panic hook.
-    std::panic::set_hook(original_hook);
-
-    let total = entries.len();
-    println!(
-        "\n=== Async vs Sync Corpus Differential Sweep ===\n\
-         Total queries : {total}\n\
-         MATCH         : {match_count}\n\
-         DIVERGE       : {}\n\
-         PANIC         : {}\n",
-        divergences.len(),
-        panics.len()
-    );
-
-    let mut msg = String::new();
-    if !divergences.is_empty() {
-        msg.push_str(&format!(
-            "\n\nFAILURE: {} query/queries diverged between async and sync routes!\n\n",
-            divergences.len()
-        ));
-        for (stem, query, expected, actual) in &divergences {
-            msg.push_str(&format!(
-                "--- DIVERGE: {stem} ---\n\
-                 Schema: numbers\n\
-                 Query:\n{query}\n\
-                 Expected ({} rows):\n{expected:#?}\n\
-                 Actual   ({} rows):\n{actual:#?}\n\n",
-                expected.len(),
-                actual.len()
-            ));
-        }
-    }
-    if !panics.is_empty() {
-        msg.push_str(&format!(
-            "\n\nFAILURE: {} query/queries panicked on the async route!\n\n",
-            panics.len()
-        ));
-        for (stem, query, panic_msg, features) in &panics {
-            msg.push_str(&format!(
-                "--- PANIC: {stem} ---\n\
-                 Features (from query text): {features:?}\n\
-                 Panic: {panic_msg}\n\
-                 Query:\n{query}\n\n"
-            ));
-        }
-    }
-    if !msg.is_empty() {
-        panic!("{msg}");
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextStream<'vertex, V>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>> {
+        let adapter = Arc::clone(&self.0);
+        let type_name = Arc::clone(type_name);
+        let coerce_to_type = Arc::clone(coerce_to_type);
+        let resolve_info = resolve_info.clone();
+        Box::pin(async_stream::stream! {
+            let mut contexts = contexts;
+            while let Some(context) = contexts.next().await {
+                let outcomes = adapter.resolve_coercion(
+                    Box::new(std::iter::once(context)),
+                    &type_name,
+                    &coerce_to_type,
+                    &resolve_info,
+                );
+                for outcome in outcomes {
+                    yield outcome;
+                }
+            }
+        })
     }
 }
 
-// ---------------------------------------------------------------------------
-// ADVERSARIAL HAND-WRITTEN EDGE CASES
-// ---------------------------------------------------------------------------
-//
-// Each test targets a specific structural property of the async pipeline.
-// All use `assert_matches_sync` (or the zero-rows variant below where
-// an empty result is the *correct* answer).
-//
-// `assert_matches_sync` asserts both equality AND non-emptiness.
-// For queries that are *supposed* to return zero rows, we use
-// `assert_empty_matches_sync` which asserts equality but allows empty results.
-// ---------------------------------------------------------------------------
-
-/// Assert async and sync produce identical results for `query`.
-/// Unlike `assert_matches_sync` this does NOT assert non-emptiness, so it is
-/// safe to call on queries that intentionally return zero rows.
-fn assert_empty_matches_sync(query: &str) {
+fn sync_results(query: &str, arguments: Arc<BTreeMap<Arc<str>, FieldValue>>) -> Vec<Row> {
     let adapter = Arc::new(NumbersAdapter::new());
-    let schema = adapter.schema().clone();
-    let indexed = parse(&schema, query).expect("query failed to parse");
-    let expected: Vec<Row> = interpret_ir(adapter, indexed, Arc::new(BTreeMap::new()))
-        .expect("unexpected arguments error")
-        .map(|row| row.expect("infallible adapter"))
+    let indexed = parse(adapter.schema(), query).expect("query failed to parse");
+    interpret_ir(adapter, indexed, arguments)
+        .expect("invalid query arguments")
+        .map(|row| row.expect("numbers adapter is infallible"))
+        .collect()
+}
+
+fn async_results(query: &str, arguments: Arc<BTreeMap<Arc<str>, FieldValue>>) -> Vec<Row> {
+    let adapter = Arc::new(SyncToAsyncAdapter::new(Arc::new(NumbersAdapter::new())));
+    let indexed = parse(adapter.0.schema(), query).expect("query failed to parse");
+    let rows = interpret_ir_async(adapter, indexed, arguments).expect("invalid query arguments");
+    futures_executor::block_on(
+        rows.map(|row| row.expect("numbers adapter is infallible")).collect(),
+    )
+}
+
+#[test]
+fn valid_query_corpus_matches_the_sync_engine() {
+    let directory =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/tests/valid_queries");
+    let mut paths: Vec<_> = fs::read_dir(directory)
+        .expect("could not read valid query corpus")
+        .map(|entry| entry.expect("could not read corpus entry").path())
+        .filter(|path| path.to_string_lossy().ends_with(".graphql.ron"))
         .collect();
+    paths.sort();
+    assert!(!paths.is_empty(), "the valid-query corpus is empty");
 
-    let numbers = NumbersAdapter::new();
-    let schema2 = numbers.schema().clone();
-    let adapter2 = Arc::new(SyncToAsyncAdapter::new(Arc::new(numbers)));
-    let indexed2 = parse(&schema2, query).expect("query failed to parse");
-    let stream = interpret_ir_async(adapter2, indexed2, Arc::new(BTreeMap::new()))
-        .expect("unexpected arguments error");
-    let actual: Vec<Row> = futures_executor::block_on(async {
-        stream.map(|r| r.expect("infallible")).collect().await
-    });
-
-    assert_eq!(expected, actual, "async/sync divergence for query:\n{query}");
+    for path in paths {
+        let contents = fs::read_to_string(&path).expect("could not read corpus query");
+        let test: crate::test_types::TestGraphQLQuery =
+            ron::from_str(&contents).expect("could not parse corpus query");
+        assert_eq!(test.schema_name, "numbers", "unexpected schema in {path:?}");
+        let arguments = Arc::new(
+            test.arguments.into_iter().map(|(name, value)| (Arc::from(name), value)).collect(),
+        );
+        let expected = sync_results(&test.query, Arc::clone(&arguments));
+        let actual = async_results(&test.query, arguments);
+        assert_eq!(expected, actual, "async results diverged for {path:?}");
+    }
 }
-
-// --- 1: Zero starting vertex, single output ---
-#[test]
-fn adversarial_zero_vertex_value() {
-    assert_matches_sync(r#"{ Zero { value @output } }"#);
-}
-
-// --- 2: One starting vertex, two outputs ---
-#[test]
-fn adversarial_one_vertex_two_outputs() {
-    assert_matches_sync(r#"{ One { value @output name @output } }"#);
-}
-
-// --- 3: Two starting vertex - already typed as Prime, output value ---
-#[test]
-fn adversarial_two_vertex_value() {
-    assert_matches_sync(r#"{ Two { value @output name @output } }"#);
-}
-
-// --- 4: Four starting vertex - already typed as Composite, output value ---
-#[test]
-fn adversarial_four_vertex_value() {
-    assert_matches_sync(r#"{ Four { value @output name @output } }"#);
-}
-
-// --- 5: Root coercion that ALWAYS FAILS (zero is neither; coerce to Prime -> 0 rows) ---
-#[test]
-fn adversarial_root_coercion_always_fails_zero_rows() {
-    assert_empty_matches_sync(
-        r#"{
-            Zero {
-                ... on Prime {
-                    value @output
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 6: NumberImplicitNullDefault starting vertex ---
-#[test]
-fn adversarial_number_implicit_null_default_starting_vertex() {
-    assert_matches_sync(r#"{ NumberImplicitNullDefault(max: 5) { value @output name @output } }"#);
-}
-
-// --- 7: Empty range produces zero rows ---
-#[test]
-fn adversarial_empty_range_zero_rows() {
-    // min > max => empty iterator from the adapter
-    assert_empty_matches_sync(r#"{ Number(min: 10, max: 5) { value @output } }"#);
-}
-
-// --- 8: Multiple @outputs in alphabetical (deterministic) order ---
-#[test]
-fn adversarial_three_outputs_ordering() {
-    // Outputs are resolved sorted by name; verify the pipeline preserves order correctly.
-    assert_matches_sync(
-        r#"{
-            Number(min: 1, max: 5) {
-                value @output
-                vowelsInName: vowelsInName @output
-                name @output
-            }
-        }"#,
-    );
-}
-
-// --- 9: @optional edge where neighbor EXISTS for all vertices ---
-#[test]
-fn adversarial_optional_always_present() {
-    // All numbers >= 1 have a predecessor in the adapter.
-    assert_matches_sync(
-        r#"{
-            Number(min: 1, max: 8) {
-                value @output
-                predecessor @optional {
-                    p: value @output
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 10: @optional edge where neighbor is ABSENT for exactly one vertex ---
-#[test]
-fn adversarial_optional_absent_for_zero() {
-    // Number 0 has no predecessor; the output row for 0 should have null for p.
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 5) {
-                value @output
-                predecessor @optional {
-                    p: value @output
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 11: Deeply nested @optional (3 levels) ---
-#[test]
-fn adversarial_triple_nested_optional() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 8) {
-                value @output
-                predecessor @optional {
-                    p1: value @output
-                    predecessor @optional {
-                        p2: value @output
-                        predecessor @optional {
-                            p3: value @output
-                        }
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 12: __typename output on a polymorphic query ---
-#[test]
-fn adversarial_typename_output_numbers() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 6) {
-                __typename @output
-                value @output
-            }
-        }"#,
-    );
-}
-
-// --- 13: Coercion on edge neighbor (successor), only primes pass ---
-#[test]
-fn adversarial_coercion_on_successor_only_primes() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 12) {
-                value @output
-                successor {
-                    ... on Prime {
-                        sp: value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 14: Optional coercion where the optional is ABSENT (Zero has no predecessor) ---
-#[test]
-fn adversarial_optional_absent_then_coercion() {
-    assert_matches_sync(
-        r#"{
-            Number(min: 0, max: 10) {
-                value @output
-                predecessor @optional {
-                    ... on Prime {
-                        pp: value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 15: Alias-driven output names ---
-#[test]
-fn adversarial_alias_output_names() {
-    assert_matches_sync(
-        r#"{
-            Zero {
-                zero: value @output
-                successor {
-                    one: value @output
-                    successor {
-                        two: value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 16: Number range coercion that always fails (coerce Number->Composite for primes range) ---
-#[test]
-fn adversarial_coerce_to_composite_for_primes_zero_rows() {
-    // Numbers 11-13 are all prime, not composite => coercion to Composite => zero result rows.
-    assert_empty_matches_sync(
-        r#"{
-            Number(min: 11, max: 13) {
-                ... on Composite {
-                    value @output
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 17: optional_with_nested_required_edge_semantics corpus case (zero rows) ---
-// If @optional edge exists, subsequent required edges apply normally.
-// One's predecessor is Zero (0), and Zero has no predecessor, so the inner
-// predecessor is missing -> the whole result is discarded -> zero rows.
-#[test]
-fn adversarial_optional_nested_required_yields_zero_rows() {
-    assert_empty_matches_sync(
-        r#"{
-            One {
-                predecessor @optional {
-                    predecessor {
-                        value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// --- 18: nonexistent_optional_with_immediate_coercion corpus case ---
-// Zero has no predecessor. The nonexistent optional carries None context into
-// the coercion => coercion must return false => None context passes through
-// unchanged (outputting null for the coerced fields).
-#[test]
-fn adversarial_nonexistent_optional_with_coercion() {
-    assert_matches_sync(
-        r#"{
-            Zero {
-                zero: value @output
-                predecessor @optional {
-                    ... on Composite {
-                        value @output
-                    }
-                }
-            }
-        }"#,
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Fault-injection parity: the sync and async execution routes must produce
-// identical results — including *where* an injected error surfaces.
-// ---------------------------------------------------------------------------
 
 mod fault_parity {
-    use std::{collections::BTreeMap, sync::Arc};
-
-    use super::super::{async_test_adapter::SyncToAsyncAdapter, error_propagation_tests as fault};
-    use crate::ir::FieldValue;
-    use crate::{
-        frontend::parse,
-        interpreter::{error::ExecutionError, interpret_ir_async},
-    };
-
-    type Row = BTreeMap<Arc<str>, FieldValue>;
+    use super::{SyncToAsyncAdapter, *};
+    use crate::interpreter::{error::ExecutionError, error_propagation_tests as fault};
 
     fn run_async(
         fault_kind: fault::Fault,
@@ -639,41 +196,23 @@ mod fault_parity {
         query: &str,
     ) -> Vec<Result<Row, ExecutionError<fault::TestError>>> {
         let adapter = Arc::new(fault::FaultyAdapter::new(fault_kind, fail_after));
-        let schema = FaultySchemaSource::schema();
-        let indexed = parse(&schema, query).expect("query failed to parse");
-        let stream = interpret_ir_async(
+        let indexed = parse(&adapter.schema(), query).expect("query failed to parse");
+        let rows = interpret_ir_async(
             Arc::new(SyncToAsyncAdapter::new(adapter)),
             indexed,
             Arc::new(BTreeMap::new()),
         )
-        .expect("unexpected query arguments error");
-        futures_executor::block_on(futures_util::StreamExt::collect::<Vec<_>>(stream))
-    }
-
-    /// Supplies the numbers schema without double-constructing a `FaultyAdapter`.
-    struct FaultySchemaSource;
-
-    impl FaultySchemaSource {
-        fn schema() -> crate::schema::Schema {
-            fault::FaultyAdapter::new(fault::Fault::Property, usize::MAX).schema()
-        }
-    }
-
-    /// Errors carry identity only through `Debug` (they hold a local `Rc`), so compare that.
-    fn error_id(result: &Result<Row, ExecutionError<fault::TestError>>) -> String {
-        match result {
-            Ok(_) => "Ok".to_string(),
-            Err(e) => format!("{e:?}"),
-        }
+        .expect("invalid query arguments");
+        futures_executor::block_on(rows.collect())
     }
 
     #[test]
-    fn sync_and_async_fail_identically() {
-        let queries: &[&str] = &[
+    fn failures_match_the_sync_engine() {
+        let queries = [
             fault::FLAT,
             fault::SUCCESSOR,
             r#"{ Number(min: 0, max: 50) { successor @optional { ... on Prime { value @output } } } }"#,
-            r#"{ Number(min: 1, max: 30) { value @output, multiple(max: 10) @fold { factor: value @output } } }"#,
+            r#"{ Number(min: 1, max: 30) { value @output multiple(max: 10) @fold { factor: value @output } } }"#,
             r#"{ Number(min: 0, max: 8) { successor @recurse(depth: 3) { succ: value @output } } }"#,
         ];
         let faults = [
@@ -684,30 +223,25 @@ mod fault_parity {
         ];
 
         for query in queries {
-            for fault_kind in faults {
-                for budget in 0..=5usize {
-                    let sync_results = fault::run(fault_kind, budget, query);
-                    let async_results = run_async(fault_kind, budget, query);
-                    assert_eq!(
-                        sync_results.len(),
-                        async_results.len(),
-                        "{fault_kind:?} budget {budget} on {query}: item counts diverged"
-                    );
-                    for (i, (sync_item, async_item)) in
-                        sync_results.iter().zip(async_results.iter()).enumerate()
-                    {
+            for fault in faults {
+                for budget in 0..=6 {
+                    let expected = fault::run(fault, budget, query);
+                    let actual = run_async(fault, budget, query);
+                    assert_eq!(expected.len(), actual.len(), "{fault:?}, budget {budget}, {query}");
+                    for (expected, actual) in expected.iter().zip(actual.iter()) {
                         assert_eq!(
-                            sync_item.is_ok(),
-                            async_item.is_ok(),
-                            "{fault_kind:?} budget {budget} on {query}: Ok/Err pattern diverged at {i}"
+                            expected.is_ok(),
+                            actual.is_ok(),
+                            "{fault:?}, budget {budget}, {query}"
                         );
-                        assert_eq!(
-                            error_id(sync_item),
-                            error_id(async_item),
-                            "{fault_kind:?} budget {budget} on {query}: item {i} diverged",
-                        );
-                        if let (Ok(sync_row), Ok(async_row)) = (sync_item, async_item) {
-                            assert_eq!(sync_row, async_row, "row {i} diverged");
+                        if let (Ok(expected), Ok(actual)) = (expected, actual) {
+                            assert_eq!(expected, actual, "{fault:?}, budget {budget}, {query}");
+                        } else if let (Err(expected), Err(actual)) = (expected, actual) {
+                            assert_eq!(
+                                format!("{expected:?}"),
+                                format!("{actual:?}"),
+                                "{fault:?}, budget {budget}, {query}"
+                            );
                         }
                     }
                 }
