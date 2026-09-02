@@ -38,6 +38,8 @@ mod error_propagation_tests;
 #[cfg(all(test, feature = "async"))]
 mod async_contract_tests;
 #[cfg(all(test, feature = "async"))]
+mod async_differential_tests;
+#[cfg(all(test, feature = "async"))]
 mod async_test_adapter;
 
 pub use hints::{
