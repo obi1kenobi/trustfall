@@ -7,8 +7,10 @@ use futures_util::{StreamExt as _, stream};
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    Adapter, AsVertex, ContextIterator, ResolveEdgeInfo, ResolveInfo,
-    async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
+    Adapter, AsVertex, ContextIterator, NeighborResolution, ResolveEdgeInfo, ResolveInfo,
+    async_adapter::{
+        AsyncAdapter, ContextOutcomeStream, ContextStream, NeighborResolutionStream, VertexStream,
+    },
 };
 
 /// Test-only projection of a synchronous adapter into the async protocol.
@@ -92,8 +94,11 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Self::Vertex, Self::Error>>>
-    {
+    ) -> ContextOutcomeStream<
+        'vertex,
+        V,
+        NeighborResolutionStream<'vertex, Self::Vertex, Self::Error>,
+    > {
         let inner = Arc::clone(&self.inner);
         let type_name = type_name.clone();
         let edge_name = edge_name.clone();
@@ -106,9 +111,12 @@ where
                 let outcomes = inner.resolve_neighbors(
                     sync_iter, &type_name, &edge_name, &parameters, &resolve_info,
                 );
-                for (ctx, neighbors) in outcomes {
-                    let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
-                        Box::pin(stream::iter(neighbors));
+                for (ctx, resolution) in outcomes {
+                    let neighbors = resolution.map(|neighbors| {
+                        let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
+                            Box::pin(stream::iter(neighbors));
+                        neighbors
+                    });
                     yield (ctx, neighbors);
                 }
             }

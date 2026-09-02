@@ -18,8 +18,11 @@ use futures_util::{StreamExt, stream};
 use crate::{
     frontend::parse,
     interpreter::{
-        AsVertex, DataContext, ResolveEdgeInfo, ResolveInfo,
-        async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
+        AsVertex, DataContext, NeighborResolution, ResolveEdgeInfo, ResolveInfo,
+        async_adapter::{
+            AsyncAdapter, ContextOutcomeStream, ContextStream, NeighborResolutionStream,
+            VertexStream,
+        },
         async_helpers::{map_contexts_buffered, try_resolve_property_with_concurrent},
         async_test_adapter::SyncToAsyncAdapter,
         engine::interpret_ir as interpret_ir_async,
@@ -137,13 +140,15 @@ impl<'a> AsyncAdapter<'a> for FaultyAsyncAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'a, V, VertexStream<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeStream<'a, V, NeighborResolutionStream<'a, Self::Vertex, Self::Error>> {
         let faulted = self.fault == Fault::Neighbors;
         let remaining = self.remaining.clone();
         let outcomes =
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info);
-        Box::pin(outcomes.map(move |(ctx, neighbors)| {
-            let neighbors = neighbors.map(unwrap_ok);
+        Box::pin(outcomes.map(move |(ctx, resolution)| {
+            // The underlying sync `NumbersAdapter` never fails a context-level resolution.
+            // Its neighbors still carry the (uninhabited) `Infallible` error: unwrap them too.
+            let neighbors = unwrap_ok(resolution).map(unwrap_ok);
             let out: VertexStream<'a, Result<Self::Vertex, Self::Error>> =
                 if faulted {
                     let remaining = remaining.clone();
@@ -153,7 +158,7 @@ impl<'a> AsyncAdapter<'a> for FaultyAsyncAdapter {
                 } else {
                     Box::pin(neighbors.map(Ok))
                 };
-            (ctx, out)
+            (ctx, Ok(out))
         }))
     }
 
@@ -368,12 +373,15 @@ fn sync_to_async_streams_one_context_at_a_time() {
             _edge_name: &Arc<str>,
             _parameters: &EdgeParameters,
             _resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>>
-        {
+        ) -> ContextOutcomeIterator<
+            'a,
+            V,
+            NeighborResolution<'a, Self::Vertex, Self::Error>,
+        > {
             Box::new(contexts.map(|ctx| {
                 let empty: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
                     Box::new(std::iter::empty());
-                (ctx, empty)
+                (ctx, Ok(empty))
             }))
         }
 
@@ -503,11 +511,11 @@ impl<'a> AsyncAdapter<'a> for TooFewOutcomesAdapter {
         _edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'a, V, VertexStream<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeStream<'a, V, NeighborResolutionStream<'a, Self::Vertex, Self::Error>> {
         Box::pin(contexts.map(|ctx| {
             let empty: VertexStream<'a, Result<Self::Vertex, Self::Error>> =
                 Box::pin(stream::empty());
-            (ctx, empty)
+            (ctx, Ok(empty))
         }))
     }
 
@@ -566,11 +574,11 @@ impl<'a> AsyncAdapter<'a> for TooManyOutcomesAdapter {
         _edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'a, V, VertexStream<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeStream<'a, V, NeighborResolutionStream<'a, Self::Vertex, Self::Error>> {
         Box::pin(contexts.map(|ctx| {
             let empty: VertexStream<'a, Result<Self::Vertex, Self::Error>> =
                 Box::pin(stream::empty());
-            (ctx, empty)
+            (ctx, Ok(empty))
         }))
     }
 
