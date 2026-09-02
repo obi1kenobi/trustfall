@@ -1063,8 +1063,8 @@ mod tests {
 
     use futures_util::StreamExt;
 
-    use super::{begin_stage, finish_stage};
-    use crate::interpreter::{ContextOutcomeStream, DataContext};
+    use super::{ContextOutcomeStream, begin_stage, finish_stage};
+    use crate::interpreter::DataContext;
 
     type Upstream =
         Pin<Box<dyn futures_core::Stream<Item = Result<DataContext<i32>, u8>> + 'static>>;
