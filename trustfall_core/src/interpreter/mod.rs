@@ -11,6 +11,8 @@ use crate::{
 use self::error::QueryArgumentsError;
 
 mod async_adapter;
+#[cfg(feature = "async")]
+pub mod async_basic_adapter;
 pub mod basic_adapter;
 mod engine;
 mod engine_filter;
