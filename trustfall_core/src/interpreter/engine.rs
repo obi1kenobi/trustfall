@@ -45,7 +45,7 @@ use crate::{
 };
 
 use super::{
-    DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo, TaggedValue, ValueOrVec,
+    DataContext, InterpretedQuery, ResolveInfo, TaggedValue, ValueOrVec,
     async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream},
     error::{ExecutionError, QueryArgumentsError},
     execution::{QueryCarrier, get_max_fold_count_limit, get_min_fold_count_limit},
@@ -1040,7 +1040,7 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     carrier: &mut QueryCarrier,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> Pin<Box<dyn Stream<Item = Result<BTreeMap<Arc<str>, FieldValue>, AdapterT::Error>> + 'query>> {
-    let mut query = carrier.query.take().expect("query was not returned");
+    let query = carrier.query.take().expect("query was not returned");
 
     let root_component = query.indexed_query.ir_query.root_component.clone();
     let mut output_names: Vec<Arc<str>> = root_component.outputs.keys().cloned().collect();

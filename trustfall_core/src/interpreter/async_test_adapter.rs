@@ -7,7 +7,7 @@ use futures_util::{StreamExt as _, stream};
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    Adapter, AsVertex, ContextIterator, NeighborResolution, ResolveEdgeInfo, ResolveInfo,
+    Adapter, AsVertex, ContextIterator, ResolveEdgeInfo, ResolveInfo,
     async_adapter::{
         AsyncAdapter, ContextOutcomeStream, ContextStream, NeighborResolutionStream, VertexStream,
     },

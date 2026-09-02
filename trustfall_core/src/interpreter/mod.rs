@@ -578,9 +578,12 @@ pub trait FallibleAdapter<'vertex> {
     /// The error type this adapter may report while resolving parts of a query.
     ///
     /// Adapters that cannot fail should set this to [`std::convert::Infallible`], which makes
-    /// the error channel zero-cost. If you implement [`BasicAdapter`](self::basic_adapter::BasicAdapter)
-    /// instead of this trait directly, its blanket [`Adapter`] implementation already does this
-    /// for you — you never have to write `Result` or `Ok`.
+    /// the error channel zero-cost. The same is true when implementing
+    /// [`BasicAdapter`](self::basic_adapter::BasicAdapter): declare
+    /// `type Error = std::convert::Infallible` there, and its resolvers plus the
+    /// [`resolve_property_with`](crate::interpreter::helpers::resolve_property_with)-family of
+    /// helpers (whose error type is inferred from these signatures) keep you from ever
+    /// writing `Result` or `Ok`.
     ///
     /// Query execution is fail-fast: the first error an adapter reports terminates the results
     /// stream (see [`ExecutionError`](self::error::ExecutionError)). The bound is intentionally
