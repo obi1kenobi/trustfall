@@ -1,18 +1,10 @@
-//! Ergonomic, simplified async adapter trait and its blanket [`AsyncAdapter`] implementation.
+//! A simplified async adapter trait and its [`AsyncAdapter`] implementation.
 //!
 //! This is the async counterpart of [`BasicAdapter`](super::basic_adapter::BasicAdapter). It
-//! trades a little of [`AsyncAdapter`]'s flexibility for a significantly simpler implementation
-//! surface:
+//! uses `&str` names, omits resolver hints, and resolves `__typename` through [`Typename`].
 //!
-//! - `&str` instead of `&Arc<str>` for all names of types, properties, and edges.
-//! - Simplified function signatures, with only the minimum necessary arguments.
-//! - Automatic handling of the `__typename` special property via [`Typename`].
-//!
-//! Implementing `AsyncBasicAdapter` gives a "free" [`AsyncAdapter`] implementation through the
-//! blanket `impl` at the bottom of this module. Just like the sync
-//! [`BasicAdapter`](super::basic_adapter::BasicAdapter), fallibility is declared via
-//! `type Error`: infallible adapters set it to `std::convert::Infallible` and never
-//! write `Result` or `Ok` themselves.
+//! The blanket implementation supplies [`AsyncAdapter`]. Infallible adapters set `Error` to
+//! [`std::convert::Infallible`].
 
 use std::{fmt::Debug, sync::Arc};
 
@@ -27,73 +19,30 @@ use super::{
     },
 };
 
-/// A simplified variant of the [`AsyncAdapter`] trait.
+/// A smaller [`AsyncAdapter`] interface for most async adapters.
 ///
-/// Implementing `AsyncBasicAdapter` provides a "free" [`AsyncAdapter`] implementation.
-/// `AsyncBasicAdapter` gives up a bit of [`AsyncAdapter`]'s flexibility in exchange for being
-/// as simple as possible to implement:
-/// - `&str` instead of `&Arc<str>` for all names of types, properties, and edges.
-/// - Simplified function signatures, with only the minimum necessary arguments.
-/// - Automatic handling of the `__typename` special property.
-///
-/// The easiest way to implement this trait is with the `Vertex` associated type set
-/// to an enum that is `#[derive(Debug, Clone, TrustfallEnumVertex)]`.
+/// It uses `&str` names, omits resolver hints, and resolves `__typename` automatically.
+/// Implementing this trait also implements [`AsyncAdapter`].
 pub trait AsyncBasicAdapter<'vertex> {
-    /// The type of vertices in the dataset this adapter queries.
-    /// It's frequently a good idea to use an `Arc<...>` type for cheaper cloning here,
-    /// especially since async adapters are often used in `Send`-capable contexts.
+    /// The type of vertices this adapter queries.
+    ///
+    /// An `Arc<_>` vertex can make cloning cheap.
     type Vertex: Typename + Clone + Debug + 'vertex;
 
-    /// The error type this adapter may report. See [`AsyncAdapter::Error`].
+    /// The error type this adapter may report.
     type Error: std::error::Error + 'static;
 
-    /// Produce a stream of vertices for the specified starting edge.
-    ///
-    /// Starting edges are ones where queries are allowed to begin.
-    /// They are defined directly on the root query type of the schema.
-    /// For example, `User` is the starting edge of the following query:
-    /// ```graphql
-    /// query {
-    ///     User {
-    ///         name @output
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// The caller guarantees that:
-    /// - The specified edge is a starting edge in the schema being queried.
-    /// - Any parameters the edge requires per the schema have values provided.
+    /// Resolve a schema starting edge.
     fn resolve_starting_vertices(
         &self,
         edge_name: &str,
         parameters: &EdgeParameters,
     ) -> VertexStream<'vertex, Result<Self::Vertex, Self::Error>>;
 
-    /// Resolve the value of a vertex property over a stream of query contexts.
+    /// Resolve a property for every context.
     ///
-    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
-    ///
-    /// This method resolves the property value on that active vertex.
-    ///
-    /// Unlike the [`AsyncAdapter::resolve_property`] method, this method does not
-    /// handle the special `__typename` property. Instead, that property is resolved
-    /// by the [`AsyncBasicAdapter::resolve_typename`] method, which has a default
-    /// implementation using the [`Typename`] trait implemented by `Self::Vertex`.
-    ///
-    /// The caller guarantees that:
-    /// - `type_name` is a type or interface defined in the schema.
-    /// - `property_name` is a property field on `type_name` defined in the schema.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
-    ///
-    /// The returned stream must satisfy these properties:
-    /// - Produce `(context, outcome)` tuples with the property's value (or an error) for that context.
-    /// - Produce contexts in the same order as the input `contexts` stream produced them.
-    /// - Produce property values whose type matches the property's type defined in the schema.
-    /// - When a context's active vertex is `None`, its property outcome is `Ok(FieldValue::Null)`.
+    /// Return one result per context, in input order. A context without an active vertex must
+    /// resolve to `Ok(FieldValue::Null)`. `__typename` is handled by [`Self::resolve_typename`].
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextStream<'vertex, V>,
@@ -101,31 +50,10 @@ pub trait AsyncBasicAdapter<'vertex> {
         property_name: &str,
     ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>>;
 
-    /// Resolve the neighboring vertices across an edge, for each query context in a stream.
+    /// Resolve an edge for every context.
     ///
-    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
-    ///
-    /// This method resolves the neighboring vertices for that active vertex.
-    ///
-    /// If the schema this adapter covers has no edges aside from starting edges,
-    /// then this method will never be called and may be implemented as `unreachable!()`.
-    ///
-    /// The caller guarantees that:
-    /// - `type_name` is a type or interface defined in the schema.
-    /// - `edge_name` is an edge field on `type_name` defined in the schema.
-    /// - Any parameters the edge requires per the schema have values provided.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
-    ///
-    /// The returned stream must satisfy these properties:
-    /// - Produce `(context, neighbors)` tuples with a stream of (individually fallible) neighbor
-    ///   vertices for that edge.
-    /// - Produce contexts in the same order as the input `contexts` stream produced them.
-    /// - Each successfully resolved neighbor is of the type specified for that edge in the schema.
-    /// - When a context's active vertex is `None`, it has an empty neighbors stream.
+    /// Return one result per context, in input order. A context without an active vertex must
+    /// have an empty neighbor stream. Successful neighbors must match the schema's edge type.
     #[allow(clippy::type_complexity)]
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
@@ -135,41 +63,10 @@ pub trait AsyncBasicAdapter<'vertex> {
         parameters: &EdgeParameters,
     ) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Self::Vertex, Self::Error>>>;
 
-    /// Attempt to coerce vertices to a subtype, over a stream of query contexts.
+    /// Test whether each context's active vertex has the requested subtype.
     ///
-    /// In this example query, the starting vertices of type `File` are coerced to `AudioFile`:
-    /// ```graphql
-    /// query {
-    ///     File {
-    ///         ... on AudioFile {
-    ///             duration @output
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    /// The `... on AudioFile` operator causes only `AudioFile` vertices to be retained,
-    /// filtering out all other kinds of `File` vertices.
-    ///
-    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
-    ///
-    /// This method checks whether the active vertex is of the specified subtype.
-    ///
-    /// If this adapter's schema contains no subtyping, then no type coercions are possible:
-    /// this method will never be called and may be implemented as `unreachable!()`.
-    ///
-    /// The caller guarantees that:
-    /// - `type_name` is an interface defined in the schema.
-    /// - `coerce_to_type` is a type or interface that implements `type_name` in the schema.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
-    ///
-    /// The returned stream must satisfy these properties:
-    /// - Produce `(context, outcome)` tuples showing if the coercion succeeded (or an error).
-    /// - Produce contexts in the same order as the input `contexts` stream produced them.
-    /// - When a context's active vertex is `None`, its coercion outcome is `Ok(false)`.
+    /// Return one result per context, in input order. A context without an active vertex must
+    /// resolve to `Ok(false)`.
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextStream<'vertex, V>,
@@ -177,46 +74,10 @@ pub trait AsyncBasicAdapter<'vertex> {
         coerce_to_type: &str,
     ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>>;
 
-    /// Resolve the `__typename` special property over a stream of query contexts.
+    /// Resolve `__typename` for every context.
     ///
-    /// Each [`DataContext`](super::DataContext) in the `contexts` argument has an active vertex,
-    /// which is either `None`, or a `Some(Self::Vertex)` value representing a vertex
-    /// of type `type_name` defined in the schema.
-    ///
-    /// This method resolves the name of the type of that active vertex. That type may not always
-    /// be the same as the value of the `type_name` parameter, due to inheritance in the schema.
-    /// For example, consider a schema with types `interface Message` and
-    /// `type Email implements Message`, and a query like the following:
-    /// ```graphql
-    /// query {
-    ///     Message {
-    ///         __typename @output
-    ///     }
-    /// }
-    /// ```
-    /// The resulting `resolve_typename()` call here would have `type_name = "Message"`.
-    /// However, some of the messages read by this query may be emails!
-    /// For those messages, outputting `__typename` would produce the value `"Email"`.
-    ///
-    /// The default implementation uses the [`Typename`] trait implemented by `Self::Vertex`
-    /// to get each vertex's type name.
-    ///
-    /// The caller guarantees that:
-    /// - `type_name` is a type or interface defined in the schema.
-    /// - When the active vertex is `Some(...)`, it's a vertex of type `type_name`:
-    ///   either its type is exactly `type_name`, or `type_name` is an interface that
-    ///   the vertex's type implements.
-    ///
-    /// The returned stream must satisfy these properties:
-    /// - Produce `(context, outcome)` tuples with the property's value (or an error) for that context.
-    /// - Produce contexts in the same order as the input `contexts` stream produced them.
-    /// - Produce property values whose type matches the property's type defined in the schema.
-    /// - When a context's active vertex is `None`, its property outcome is `Ok(FieldValue::Null)`.
-    ///
-    /// # Overriding the default implementation
-    ///
-    /// Some adapters may be able to implement this method more efficiently than the provided
-    /// default implementation.
+    /// The default implementation uses [`Typename`]. It returns `Null` for a missing optional
+    /// vertex and may be overridden for a more efficient implementation.
     fn resolve_typename<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextStream<'vertex, V>,

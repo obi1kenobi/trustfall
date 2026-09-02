@@ -1,25 +1,8 @@
-//! Trustfall's runtime-agnostic, `Stream`-native execution kernel.
+//! The shared stream execution kernel.
 //!
-//! Both public execution routes enter here. Native async adapters may suspend while resolving
-//! data; the synchronous frontend supplies streams that are always ready and projects the output
-//! back to an iterator. Query semantics therefore have exactly one implementation.
-//!
-//! # Strongly-typed, native error threading
-//!
-//! The engine's internal streams carry `Result<DataContext<V>, E>` ([`FallibleContextStream`]) and
-//! fail fast on the first `Err`. Adapter resolvers, however, take *plain* context streams and
-//! return outcomes carrying `Result`. [`begin_stage`] temporarily projects successful contexts
-//! into that public resolver protocol and returns a linear [`StageContinuation`] token; consuming
-//! that token in [`finish_stage`] reconnects the upstream error path. This preserves both the
-//! adapter's one-outcome-per-context contract and fail-fast semantics without exposing prior-stage
-//! errors to adapter implementations.
-//!
-//! # Construction is synchronous
-//!
-//! Just like the sync engine, building the pipeline (the `carrier`/`ResolveInfo` dance and the
-//! adapter resolver *calls*) happens eagerly and synchronously; only *consuming* the composed
-//! stream is async. Recursion-during-iteration (`@fold`/`@recurse`) uses cloned carriers, exactly
-//! as the sync engine does.
+//! Async adapters suspend while resolving data. The synchronous frontend supplies ready streams
+//! and projects results back to an iterator. Internal streams carry errors; adapter resolvers
+//! receive plain contexts. [`begin_stage`] and [`finish_stage`] bridge those two protocols.
 
 use std::{
     cell::Cell,
@@ -52,13 +35,11 @@ use super::{
     filtering::{ComparisonOp, ValuePredicate},
 };
 
-/// A stream of contexts that may fail: the engine's internal, strongly-typed representation.
-/// Fail-fast is expressed as an `Err` item, after which the stream ends.
+/// An internal context stream that ends after its first error.
 pub type FallibleContextStream<'vertex, VertexT, E> =
     Pin<Box<dyn Stream<Item = Result<DataContext<VertexT>, E>> + 'vertex>>;
 
-/// The endpoints and identity of an edge being expanded, bundled so stage functions don't
-/// take a wall of individually-transposable arguments.
+/// The endpoints and identity of an edge being expanded.
 pub(super) struct EdgeRef<'a> {
     pub(super) from: &'a IRVertex,
     pub(super) to: &'a IRVertex,
@@ -73,11 +54,7 @@ impl<'a> EdgeRef<'a> {
     }
 }
 
-/// Proof that a resolver stage's upstream error path still needs to be reconnected.
-///
-/// The shared cell is an implementation detail of projecting a fallible stream into the
-/// adapter-facing plain-context protocol. The token itself is linear: finishing a stage consumes
-/// it, and no shared error state escapes the execution kernel.
+/// The upstream error path for one resolver stage.
 #[must_use = "a resolver stage continuation must be passed to finish_stage"]
 pub(super) struct StageContinuation<E> {
     pending_error: Rc<Cell<Option<E>>>,
@@ -89,12 +66,7 @@ impl<E> StageContinuation<E> {
     }
 }
 
-/// Adapter-facing half of [`begin_stage`]: yields the successful contexts of a fallible
-/// stream and, upon the first `Err`, records it in the shared cell and ends.
-///
-/// A hand-rolled adapter rather than a generator: it adds no allocation beyond the shared
-/// cell created in [`begin_stage`], so per-stage machinery stays allocation-light on both
-/// the sync and async paths.
+/// Yields successful contexts and records the first upstream error.
 struct TakeOk<'vertex, V, E> {
     input: FallibleContextStream<'vertex, V, E>,
     pending_error: Rc<Cell<Option<E>>>,
@@ -125,12 +97,7 @@ impl<'vertex, V, E> Stream for TakeOk<'vertex, V, E> {
     }
 }
 
-/// Engine-facing half of [`finish_stage`]: threads an adapter resolver's
-/// `(context, Result<outcome, E>)` outcomes into a fallible `(context, outcome)` stream.
-///
-/// The first adapter `Err` terminates the stream (fail-fast). Once the outcomes are
-/// exhausted, the upstream error captured by [`begin_stage`], if any, is re-surfaced —
-/// after every successfully-resolved outcome, and after any adapter error.
+/// Reconnects a resolver's outcomes with the upstream error path.
 struct FailFast<'vertex, V, O, E> {
     outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
     continuation: Option<StageContinuation<E>>,
@@ -164,8 +131,7 @@ impl<'vertex, V, O, E> Stream for FailFast<'vertex, V, O, E> {
     }
 }
 
-/// Peel the successful contexts off a fallible stream for feeding an adapter, capturing the first
-/// upstream error so a later stage can re-surface it. See the module docs.
+/// Split a fallible stream into adapter contexts and its upstream error path.
 pub(super) fn begin_stage<'vertex, V, E>(
     input: FallibleContextStream<'vertex, V, E>,
 ) -> (ContextStream<'vertex, V>, StageContinuation<E>)
@@ -179,13 +145,7 @@ where
     (plain, StageContinuation { pending_error })
 }
 
-/// Thread an adapter resolver's `(context, Result<outcome, E>)` stream into a fallible
-/// `(context, outcome)` stream, failing fast on the adapter's own errors and then re-surfacing the
-/// upstream error captured by [`begin_stage`].
-///
-/// This handles every resolver kind uniformly: the outcome `O` is a resolved value
-/// (`FieldValue`, `bool`) or, for `resolve_neighbors`, the context's neighbor stream — whose
-/// context-level `Result` is itself the outcome.
+/// Merge resolver outcomes into a fail-fast engine stream.
 #[allow(clippy::type_complexity)]
 pub(super) fn finish_stage<'vertex, V, O, E>(
     outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
@@ -199,12 +159,7 @@ where
     Box::pin(FailFast { outcomes, continuation: Some(continuation), finished: false })
 }
 
-/// Execute an indexed query as a stream.
-///
-/// Returns rows (or the first execution error, fail-fast). Query parsing and
-/// argument validation still fail eagerly via the outer `Result<_, QueryArgumentsError>`.
-///
-/// The returned stream is lazy: adapter code runs only as it is polled.
+/// Execute an indexed query lazily as a fail-fast stream.
 #[allow(clippy::type_complexity)]
 pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
@@ -335,11 +290,7 @@ pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>
     stream
 }
 
-/// Resolve a `@filter`'s local field value and drop contexts that fail the filter.
-///
-/// Reuses the sync engine's filter semantics (see [`super::filtering`]) so the two engines apply
-/// identical comparisons. Unary, static-argument, and `@tag`-argument filters are all supported
-/// (tag filters via [`super::engine_filter`]).
+/// Resolve a local `@filter` field and retain matching contexts.
 fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -387,8 +338,7 @@ fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     filter_by_predicate(with_value, predicate)
 }
 
-/// Construct the [`ValuePredicate`] for a filter whose right-hand side needs no adapter call:
-/// a unary operation, or a binary operation against a runtime argument value.
+/// Construct a predicate for a unary or runtime-argument filter.
 fn build_value_predicate(
     carrier: &QueryCarrier,
     filter_without_field: &Operation<(), &Argument>,
@@ -559,9 +509,7 @@ fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     })
 }
 
-/// Drain a fold sub-pipeline into its materialized elements, honoring the same early-termination
-/// limits as the sync [`collect_fold_elements`](super::execution). Returns `Ok(None)` when the fold
-/// exceeds its max size (the caller discards that context), or the first `Err` (fail-fast).
+/// Materialize a fold, returning `None` when it exceeds its maximum size.
 async fn collect_fold_elements<'query, V, E>(
     mut stream: FallibleContextStream<'query, V, E>,
     max_fold_count_limit: &Option<usize>,
@@ -603,10 +551,7 @@ async fn collect_fold_elements<'query, V, E>(
     }
 }
 
-/// Apply a post-fold `@filter` on a fold-specific field (e.g. the fold count). Mirrors the sync
-/// [`apply_fold_specific_filter`](super::execution): the fold-specific value is computed from the
-/// already-materialized `folded_contexts` (no adapter call), pushed as the left value, then the
-/// filter predicate is applied. `@tag`-argument fold-count filters are not yet supported.
+/// Apply a post-fold filter to a fold-specific field such as the fold count.
 #[allow(clippy::too_many_arguments)]
 fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
@@ -673,8 +618,7 @@ fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     filter_by_predicate(with_value, predicate)
 }
 
-/// Shared final step of a value-based `@filter`: pop the pushed left value and keep the context if
-/// it's inside a nonexistent `@optional` or the predicate passes. Errors pass through (fail-fast).
+/// Pop a filter value and retain matching contexts.
 fn filter_by_predicate<'query, V, E>(
     stream: FallibleContextStream<'query, V, E>,
     predicate: ValuePredicate,
@@ -696,8 +640,7 @@ where
     }))
 }
 
-/// Resolve a fold's output properties for a single context from its materialized elements, building
-/// the `folded_values` map. Mirrors the output-computation tail of the sync `compute_fold`.
+/// Resolve outputs for one materialized fold.
 async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &Arc<AdapterT>,
     carrier: &mut QueryCarrier,

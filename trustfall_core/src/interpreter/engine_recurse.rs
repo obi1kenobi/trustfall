@@ -1,8 +1,6 @@
-//! Stream-native `@recurse` edge expansion.
+//! Stream-based `@recurse` edge expansion.
 //!
-//! Mirrors the synchronous [`expand_recursive_edge`](super::execution) logic (the depth loop, the
-//! `RecursiveEdgeExpander` piggyback bookkeeping, per-depth coercion, and piggyback unpacking) but
-//! on `Stream`s. See the sync engine for the detailed algorithm and invariants.
+//! This is the asynchronous form of [`expand_recursive_edge`](super::execution).
 
 use std::sync::Arc;
 
@@ -18,10 +16,7 @@ use super::{
     execution::QueryCarrier,
 };
 
-/// Expand a recursive (`@recurse`) edge over a fallible context stream.
-///
-/// Returns the expanded stream *before* entry into the destination vertex (the caller applies
-/// `perform_entry_into_new_vertex`), matching the sync engine's `expand_recursive_edge`.
+/// Expand a recursive edge before entering its destination vertex.
 pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,

@@ -1,13 +1,7 @@
-//! Stream-native `@filter` handling for tag arguments.
+//! Stream handling for `@filter` directives that use tags.
 //!
-//! The left-hand field value has already been resolved and pushed onto each context's value stack
-//! by `apply_local_field_filter`. This stage resolves the *tag's* value per context (an adapter
-//! call, possibly on another vertex or an imported outer-component tag), then compares. Mirrors the
-//! synchronous tag-filter path in [`filtering`](super::filtering) / [`execution`](super::execution)
-//! (`compute_context_field_with_separate_value` + `apply_filter_with_tagged_argument_value`).
-//!
-//! The comparison itself is a [`ComparisonOp`], so tag filters apply exactly the same semantics
-//! as runtime-argument filters — one source of truth for filter semantics.
+//! The local field has already been resolved. This module resolves the tagged value and compares
+//! the two values with the same [`ComparisonOp`] used for runtime arguments.
 
 use async_stream::try_stream;
 use futures_util::StreamExt;
@@ -25,8 +19,7 @@ use super::{
     filtering::ComparisonOp,
 };
 
-/// Apply a tag-argument `@filter`. The incoming `stream` already has the left field value pushed
-/// onto each context's value stack.
+/// Apply a tag-argument `@filter` to a stream with its left value resolved.
 pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -46,9 +39,7 @@ pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'quer
     apply_tag_comparison(adapter, carrier, component, current_vid, op, tag_ref, stream)
 }
 
-/// Compare each context's already-pushed left value against a resolved tag value, keeping the
-/// contexts that pass. Shared by local-field tag filters and post-`@fold` fold-count tag filters;
-/// the left value must already sit on top of each context's value stack.
+/// Compare the resolved tag value with each context's left value.
 pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -188,9 +179,7 @@ fn apply_imported_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'qu
     })
 }
 
-/// Apply a filter whose tag refers to a fold-specific field (e.g. a fold count) of a `@fold` in the
-/// current component. The value is derived from the already-materialized `folded_contexts`; a fold
-/// inside a nonexistent `@optional` yields `NonexistentOptional` (the filter then passes).
+/// Apply a filter tagged with a field from an already-materialized fold.
 fn apply_fold_specific_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'query>(
     op: ComparisonOp,
     fold_eid: Eid,
@@ -215,9 +204,7 @@ fn apply_fold_specific_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E
     })
 }
 
-/// Return true if the context should be kept given the filter operation and tagged right-hand value.
-///
-/// `NonexistentOptional` always passes (the filter is vacuous against an absent @optional scope).
+/// Return whether the context passes a tagged filter.
 fn passes_tagged_filter(op: ComparisonOp, left: &FieldValue, tagged: TaggedValue) -> bool {
     let TaggedValue::Some(right) = tagged else {
         // NonexistentOptional: always pass.
