@@ -41,6 +41,7 @@ fn run_query(path: &str, max_results: Option<usize>) {
         .expect("not a legal query")
         .take(max_results.unwrap_or(usize::MAX))
     {
+        let data_item = data_item.expect("Hacker News adapter failed");
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.
         //
