@@ -59,6 +59,32 @@ pub mod provider {
 
     // Derive macros for common vertex implementation details.
     pub use trustfall_derive::{TrustfallEnumVertex, Typename};
+
+    // Async adapter traits and stream type aliases, available under the `async` feature.
+    #[cfg(feature = "async")]
+    pub use trustfall_core::interpreter::async_basic_adapter::AsyncBasicAdapter;
+    #[cfg(feature = "async")]
+    pub use trustfall_core::interpreter::{
+        AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream,
+    };
+
+    // Async helpers live in a dedicated submodule so their sequential `resolve_*_with`
+    // names do not collide with the sync helpers re-exported above. Prefer this path
+    // over hand-rolling streams (1:1 outcome order / `None` active-vertex contracts).
+    //
+    // Also re-export the uniquely-named concurrent helpers at this level for discoverability.
+    /// Async stream helpers (`resolve_*_with` and ordered concurrent fan-out).
+    ///
+    /// Available under the `async` feature. Example:
+    /// `use trustfall::provider::async_helpers::try_resolve_property_with_concurrent;`
+    #[cfg(feature = "async")]
+    pub use trustfall_core::interpreter::async_helpers;
+
+    #[cfg(feature = "async")]
+    pub use trustfall_core::interpreter::async_helpers::{
+        map_contexts_buffered, try_resolve_coercion_with_concurrent,
+        try_resolve_neighbors_with_concurrent, try_resolve_property_with_concurrent,
+    };
 }
 
 // Property values and query variables.
@@ -134,4 +160,37 @@ mod tests {
 
         assert!(rows.map(Result::unwrap).any(|row| row["name"] == "Item".into()));
     }
+}
+
+/// Run a Trustfall query asynchronously over the data provider specified by the given schema
+/// and adapter.
+///
+/// This is the async counterpart of [`execute_query`]. Query execution is fail-fast and lazy:
+/// adapter code runs only as the returned [`Stream`](futures_core::Stream) is polled, and the
+/// first error the adapter reports terminates the stream. Each yielded item is therefore an
+/// `Result<_, ExecutionError<A::Error>>`, preserving the adapter's concrete error type.
+///
+/// The outer `anyhow::Result` still reports query parsing and argument errors, which happen
+/// before any adapter code runs.
+///
+/// Requires the `async` feature.
+#[cfg(feature = "async")]
+pub fn execute_query_async<'vertex, A: provider::AsyncAdapter<'vertex> + 'vertex>(
+    schema: &Schema,
+    adapter: Arc<A>,
+    query: &str,
+    variables: BTreeMap<impl Into<Arc<str>>, impl Into<FieldValue>>,
+) -> anyhow::Result<
+    std::pin::Pin<
+        Box<
+            dyn futures_core::Stream<
+                    Item = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<A::Error>>,
+                > + 'vertex,
+        >,
+    >,
+> {
+    let parsed_query = trustfall_core::frontend::parse(schema, query)?;
+    let vars = Arc::new(variables.into_iter().map(|(k, v)| (k.into(), v.into())).collect());
+
+    Ok(trustfall_core::interpreter::interpret_ir_async(adapter, parsed_query, vars)?)
 }
