@@ -615,3 +615,103 @@ fn adversarial_nonexistent_optional_with_coercion() {
         }"#,
     );
 }
+
+// ---------------------------------------------------------------------------
+// Fault-injection parity: the sync and async execution routes must produce
+// identical results — including *where* an injected error surfaces.
+// ---------------------------------------------------------------------------
+
+mod fault_parity {
+    use std::{collections::BTreeMap, sync::Arc};
+
+    use super::super::{async_test_adapter::SyncToAsyncAdapter, error_propagation_tests as fault};
+    use crate::ir::FieldValue;
+    use crate::{
+        frontend::parse,
+        interpreter::{error::ExecutionError, interpret_ir_async},
+    };
+
+    type Row = BTreeMap<Arc<str>, FieldValue>;
+
+    fn run_async(
+        fault_kind: fault::Fault,
+        fail_after: usize,
+        query: &str,
+    ) -> Vec<Result<Row, ExecutionError<fault::TestError>>> {
+        let adapter = Arc::new(fault::FaultyAdapter::new(fault_kind, fail_after));
+        let schema = FaultySchemaSource::schema();
+        let indexed = parse(&schema, query).expect("query failed to parse");
+        let stream = interpret_ir_async(
+            Arc::new(SyncToAsyncAdapter::new(adapter)),
+            indexed,
+            Arc::new(BTreeMap::new()),
+        )
+        .expect("unexpected query arguments error");
+        futures_executor::block_on(futures_util::StreamExt::collect::<Vec<_>>(stream))
+    }
+
+    /// Supplies the numbers schema without double-constructing a `FaultyAdapter`.
+    struct FaultySchemaSource;
+
+    impl FaultySchemaSource {
+        fn schema() -> crate::schema::Schema {
+            fault::FaultyAdapter::new(fault::Fault::Property, usize::MAX).schema()
+        }
+    }
+
+    /// Errors carry identity only through `Debug` (they hold a local `Rc`), so compare that.
+    fn error_id(result: &Result<Row, ExecutionError<fault::TestError>>) -> String {
+        match result {
+            Ok(_) => "Ok".to_string(),
+            Err(e) => format!("{e:?}"),
+        }
+    }
+
+    #[test]
+    fn sync_and_async_fail_identically() {
+        let queries: &[&str] = &[
+            fault::FLAT,
+            fault::SUCCESSOR,
+            r#"{ Number(min: 0, max: 50) { successor @optional { ... on Prime { value @output } } } }"#,
+            r#"{ Number(min: 1, max: 30) { value @output, multiple(max: 10) @fold { factor: value @output } } }"#,
+            r#"{ Number(min: 0, max: 8) { successor @recurse(depth: 3) { succ: value @output } } }"#,
+        ];
+        let faults = [
+            fault::Fault::StartingVertices,
+            fault::Fault::Property,
+            fault::Fault::Neighbors,
+            fault::Fault::Coercion,
+        ];
+
+        for query in queries {
+            for fault_kind in faults {
+                for budget in 0..=5usize {
+                    let sync_results = fault::run(fault_kind, budget, query);
+                    let async_results = run_async(fault_kind, budget, query);
+                    assert_eq!(
+                        sync_results.len(),
+                        async_results.len(),
+                        "{fault_kind:?} budget {budget} on {query}: item counts diverged"
+                    );
+                    for (i, (sync_item, async_item)) in
+                        sync_results.iter().zip(async_results.iter()).enumerate()
+                    {
+                        assert_eq!(
+                            sync_item.is_ok(),
+                            async_item.is_ok(),
+                            "{fault_kind:?} budget {budget} on {query}: Ok/Err pattern diverged at {i}"
+                        );
+                        assert_eq!(
+                            error_id(sync_item),
+                            error_id(async_item),
+                            "{fault_kind:?} budget {budget} on {query}: item {i} diverged",
+                        );
+                        if let (Ok(sync_row), Ok(async_row)) = (sync_item, async_item) {
+                            assert_eq!(sync_row, async_row, "row {i} diverged");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

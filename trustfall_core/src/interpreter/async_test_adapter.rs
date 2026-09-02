@@ -23,18 +23,19 @@ use super::{
 /// - mid-stream errors surface without waiting for the rest of the batch,
 /// - adapters that assume large batches still see correct 1:1 pairing (batch size 1).
 ///
-pub(crate) struct SyncToAsyncAdapter<A> {
+#[doc(hidden)]
+pub struct SyncToAsyncAdapter<A> {
     inner: Arc<A>,
 }
 
 impl<A> SyncToAsyncAdapter<A> {
     /// Wrap a sync adapter (already behind [`Arc`]) as a streaming async adapter.
-    pub(crate) fn new(inner: Arc<A>) -> Self {
+    pub fn new(inner: Arc<A>) -> Self {
         Self { inner }
     }
 
     /// Access the underlying sync adapter.
-    pub(crate) fn inner(&self) -> &Arc<A> {
+    pub fn inner(&self) -> &Arc<A> {
         &self.inner
     }
 }

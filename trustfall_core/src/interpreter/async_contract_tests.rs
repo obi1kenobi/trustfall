@@ -373,11 +373,8 @@ fn sync_to_async_streams_one_context_at_a_time() {
             _edge_name: &Arc<str>,
             _parameters: &EdgeParameters,
             _resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<
-            'a,
-            V,
-            NeighborResolution<'a, Self::Vertex, Self::Error>,
-        > {
+        ) -> ContextOutcomeIterator<'a, V, NeighborResolution<'a, Self::Vertex, Self::Error>>
+        {
             Box::new(contexts.map(|ctx| {
                 let empty: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
                     Box::new(std::iter::empty());
@@ -653,4 +650,220 @@ fn contract_too_many_property_outcomes_are_accepted() {
     let items: Vec<_> = futures_executor::block_on(async { staged.collect().await });
     assert_eq!(items.len(), 3, "too-many outcomes produce extra items; got {items:?}");
     assert!(items.iter().all(|r| r.is_ok()));
+}
+
+// ---------------------------------------------------------------------------
+// Concurrent-helper contracts: bounded fan-out, order preservation, 1:1 pairing.
+// ---------------------------------------------------------------------------
+
+mod helper_contracts {
+    use std::{
+        cell::Cell,
+        pin::Pin,
+        rc::Rc,
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        task::{Context, Poll, Waker},
+    };
+
+    use futures_util::{StreamExt, stream};
+
+    use crate::interpreter::{
+        AsVertex, DataContext,
+        async_helpers::{map_contexts_buffered, try_resolve_property_with_concurrent},
+    };
+    use crate::ir::FieldValue;
+
+    /// A future that returns `Pending` exactly once (re-waking its waker immediately),
+    /// then is ready — exercises real suspension inside `buffered` fan-out.
+    struct SuspendOnce<T> {
+        value: Option<T>,
+        suspended: bool,
+        polls: Rc<Cell<usize>>,
+    }
+
+    impl<T> Unpin for SuspendOnce<T> {}
+
+    impl<T> Future for SuspendOnce<T> {
+        type Output = T;
+
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+            // `SuspendOnce` holds an `Rc` counter, so it is `Unpin` and can be mutated
+            // through the pin without projection.
+            let this = self.get_mut();
+            this.polls.set(this.polls.get() + 1);
+            if this.suspended {
+                Poll::Ready(this.value.take().expect("polled after ready"))
+            } else {
+                this.suspended = true;
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+        }
+    }
+
+    fn context_stream(
+        n: usize,
+    ) -> Pin<Box<dyn futures_core::Stream<Item = DataContext<u8>> + 'static>> {
+        Box::pin(stream::iter((0u8..n as u8).map(|value| DataContext::new(Some(value)))))
+    }
+
+    /// Outcomes stay in input order even when every future suspends once.
+    #[test]
+    fn buffered_fanout_preserves_order_under_suspension() {
+        let polls = Rc::new(Cell::new(0));
+        let tracked = polls.clone();
+
+        let stream = map_contexts_buffered(context_stream(8), 4, move |ctx| {
+            let tracked = tracked.clone();
+            let tag = ctx.active_vertex::<u8>().copied().unwrap_or(0);
+            SuspendOnce { value: Some((ctx, tag)), suspended: false, polls: tracked }
+        });
+
+        let outcomes: Vec<_> = futures_executor::block_on(stream.collect());
+        let tags: Vec<_> = outcomes.iter().map(|(_, tag)| *tag).collect();
+        assert_eq!(tags, vec![0, 1, 2, 3, 4, 5, 6, 7], "outcomes must preserve input order");
+        assert!(
+            polls.get() >= 16,
+            "every future must have suspended exactly once: {}",
+            polls.get()
+        );
+    }
+
+    /// Peak in-flight futures never exceed the requested concurrency bound.
+    #[test]
+    fn buffered_fanout_respects_concurrency_bound() {
+        let in_flight = Arc::new(AtomicUsize::new(0));
+        let peak = Arc::new(AtomicUsize::new(0));
+
+        let stream = map_contexts_buffered(context_stream(20), 3, {
+            let in_flight = in_flight.clone();
+            let peak = peak.clone();
+            move |ctx| {
+                let in_flight = in_flight.clone();
+                let peak = peak.clone();
+                async move {
+                    let now = in_flight.fetch_add(1, Ordering::SeqCst) + 1;
+                    peak.fetch_max(now, Ordering::SeqCst);
+                    // Yield-ish: no real timer; simulate work by returning immediately.
+                    let tag = ctx.active_vertex::<u8>().copied().unwrap_or(0);
+                    in_flight.fetch_sub(1, Ordering::SeqCst);
+                    (ctx, tag)
+                }
+            }
+        });
+
+        let outcomes: Vec<_> = futures_executor::block_on(stream.collect());
+        assert_eq!(outcomes.len(), 20, "1:1 context/outcome pairing");
+        assert!(
+            peak.load(Ordering::SeqCst) <= 3,
+            "peak concurrency {} exceeded the bound of 3",
+            peak.load(Ordering::SeqCst),
+        );
+    }
+
+    /// `concurrency` of zero is rejected up front rather than silently misbehaving.
+    #[test]
+    #[should_panic(expected = "concurrency must be at least 1")]
+    fn zero_concurrency_panics() {
+        let _ = map_contexts_buffered(context_stream(2), 0, |ctx| async move { (ctx, 0u8) });
+    }
+
+    /// The property helper: `None` active vertices resolve to `Ok(Null)` without calling
+    /// the resolver, exactly like the sequential helpers.
+    #[test]
+    fn concurrent_property_helper_null_vertices_skip_the_resolver() {
+        #[derive(Debug, Clone)]
+        enum Vertex {
+            Real(u8),
+            #[allow(dead_code)]
+            NoActiveVertex,
+        }
+
+        impl AsVertex<u8> for Vertex {
+            fn as_vertex(&self) -> Option<&u8> {
+                match self {
+                    Vertex::Real(value) => Some(value),
+                    Vertex::NoActiveVertex => None,
+                }
+            }
+
+            fn into_vertex(self) -> Option<u8> {
+                match self {
+                    Vertex::Real(value) => Some(value),
+                    Vertex::NoActiveVertex => None,
+                }
+            }
+        }
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let contexts: Pin<
+            Box<dyn futures_core::Stream<Item = crate::interpreter::DataContext<Vertex>> + 'static>,
+        > = Box::pin(stream::iter((0u8..6).map(|i| {
+            let vertex = if i % 2 == 0 { Some(Vertex::Real(i)) } else { None };
+            crate::interpreter::DataContext::new(vertex)
+        })));
+
+        let stream =
+            try_resolve_property_with_concurrent::<u8, Vertex, std::convert::Infallible, _, _>(
+                contexts,
+                4,
+                {
+                    let calls = calls.clone();
+                    move |vertex: u8| {
+                        let calls = calls.clone();
+                        async move {
+                            calls.fetch_add(1, Ordering::SeqCst);
+                            Ok(FieldValue::Uint64(u64::from(vertex)))
+                        }
+                    }
+                },
+            );
+
+        let outcomes: Vec<_> = futures_executor::block_on(stream.collect());
+        assert_eq!(outcomes.len(), 6);
+        assert_eq!(calls.load(Ordering::SeqCst), 3, "resolver runs only for real vertices");
+        for (i, (ctx, outcome)) in outcomes.iter().enumerate() {
+            let _ = ctx;
+            let value = outcome.as_ref().expect("infallible");
+            if i % 2 == 0 {
+                assert_eq!(*value, FieldValue::Uint64(u64::try_from(i).unwrap()));
+            } else {
+                assert_eq!(*value, FieldValue::Null);
+            }
+        }
+    }
+
+    /// A waker that records wake-ups, proving suspended fan-out futures register real wakers
+    /// and complete when driven to completion by a plain executor.
+    #[test]
+    fn suspension_registers_wakers_and_still_completes() {
+        let woken = Arc::new(AtomicUsize::new(0));
+        struct CountingWaker(Arc<AtomicUsize>);
+        impl futures_util::task::ArcWake for CountingWaker {
+            fn wake_by_ref(arc_self: &Arc<Self>) {
+                arc_self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let waker: Waker = futures_util::task::waker(Arc::new(CountingWaker(woken.clone())));
+        let mut stream = map_contexts_buffered(context_stream(4), 2, |ctx| {
+            let tag = ctx.active_vertex::<u8>().copied().unwrap_or(0);
+            SuspendOnce { value: Some((ctx, tag)), suspended: false, polls: Rc::new(Cell::new(0)) }
+        });
+
+        let mut collected = 0;
+        let mut cx = Context::from_waker(&waker);
+        loop {
+            match stream.as_mut().poll_next(&mut cx) {
+                Poll::Ready(Some(_)) => collected += 1,
+                Poll::Ready(None) => break,
+                Poll::Pending => {}
+            }
+        }
+        assert_eq!(collected, 4);
+        assert!(woken.load(Ordering::SeqCst) >= 4, "suspensions must have registered wakers");
+    }
 }
