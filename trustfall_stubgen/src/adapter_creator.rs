@@ -72,6 +72,8 @@ pub(super) fn make_adapter_file(
     let trustfall_adapter_impl = quote! {
         impl<'a> trustfall::provider::Adapter<'a> for Adapter {
             type Vertex = Vertex;
+            // Replace with a real error type if your adapter can fail.
+            type Error = std::convert::Infallible;
 
             #entrypoint_resolver_fn
 
@@ -107,7 +109,7 @@ fn emit_entrypoint_handling(
             edge_name: &Arc<str>,
             parameters: &EdgeParameters,
             resolve_info: &ResolveInfo,
-        ) -> VertexIterator<'a, Self::Vertex> {
+        ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
             match edge_name.as_ref() {
                 #entrypoint_match_arms
                 _ => unreachable!("attempted to resolve starting vertices for unexpected edge name: {edge_name}"),
@@ -142,6 +144,7 @@ fn emit_property_handling(
     let mut arms = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
+        .map(|r| r.expect("infallible adapter"))
         .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
@@ -150,7 +153,7 @@ fn emit_property_handling(
         let ident =
             syn::Ident::new(&property_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
-            #name => super::properties::#ident(contexts, property_name.as_ref(), resolve_info),
+            #name => Box::new(super::properties::#ident(contexts, property_name.as_ref(), resolve_info).map(|(ctx, v)| (ctx, Ok(v)))),
         });
     }
 
@@ -170,9 +173,9 @@ fn emit_property_handling(
             type_name: &Arc<str>,
             property_name: &Arc<str>,
             resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+        ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
             if property_name.as_ref() == "__typename" {
-                return resolve_property_with(contexts, |vertex| vertex.typename().into());
+                return Box::new(resolve_property_with(contexts, |vertex| vertex.typename().into()).map(|(ctx, v)| (ctx, Ok(v))));
             }
 
             match type_name.as_ref() {
@@ -209,6 +212,7 @@ fn emit_edge_handling(
     let mut arms = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
+        .map(|r| r.expect("infallible adapter"))
         .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
@@ -217,7 +221,7 @@ fn emit_edge_handling(
         let ident =
             syn::Ident::new(&type_edge_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
-            #name => super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info),
+            #name => Box::new(super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info).map(|(ctx, neighbors)| (ctx, Box::new(neighbors.map(Ok)) as VertexIterator<'a, Result<Self::Vertex, Self::Error>>))),
         });
     }
 
@@ -238,7 +242,7 @@ fn emit_edge_handling(
             edge_name: &Arc<str>,
             parameters: &EdgeParameters,
             resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
+        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
             match type_name.as_ref() {
                 #arms
                 _ => unreachable!("attempted to resolve edge '{edge_name}' on unexpected type: {type_name}"),
@@ -265,8 +269,8 @@ fn emit_coercion_handling(
             _type_name: &Arc<str>,
             coerce_to_type: &Arc<str>,
             _resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, V, bool> {
-            resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
+        ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+            Box::new(resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref()).map(|(ctx, v)| (ctx, Ok(v))))
         }
     }
 }
