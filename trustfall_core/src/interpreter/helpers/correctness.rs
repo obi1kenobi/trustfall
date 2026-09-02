@@ -127,7 +127,11 @@ fn run_query<'a, A: Adapter<'a> + 'a, T: serde::de::DeserializeOwned>(
     let indexed = crate::frontend::parse(schema, query).expect("not a valid query");
     crate::interpreter::execution::interpret_ir(adapter, indexed, Arc::new(variables))
         .expect("execution error")
-        .map(|row| row.try_into_struct::<T>().expect("incorrect result shape"))
+        .map(|row| {
+            row.unwrap_or_else(|e| panic!("adapter errored during invariant check: {e}"))
+                .try_into_struct::<T>()
+                .expect("incorrect result shape")
+        })
 }
 
 /// Construct a *believable* [`ResolveInfo`] that would pass muster under a cursory examination.
@@ -242,6 +246,12 @@ fn check_properties_are_implemented<'a, A: Adapter<'a>>(
                 &property_name,
                 &resolve_info,
             ) {
+                let value = value.unwrap_or_else(|e| {
+                    panic!(
+                        "resolve_property() errored during the invariant check for \
+                        type name '{type_name}' property '{property_name}': {e}"
+                    )
+                });
                 assert_eq!(
                     FieldValue::NULL,
                     value,
@@ -555,6 +565,12 @@ fn check_type_coercions_are_implemented<'a, A: Adapter<'a>>(
         for (ctx, value) in
             adapter_under_test.resolve_coercion(contexts, type_name, coerce_to, &resolve_info)
         {
+            let value = value.unwrap_or_else(|e| {
+                panic!(
+                    "resolve_coercion() errored during the invariant check for a coercion \
+                    from type {type_name} to {coerce_to}: {e}"
+                )
+            });
             assert!(
                 !value,
                 "resolve_coercion() claimed that a non-existent vertex could be coerced \

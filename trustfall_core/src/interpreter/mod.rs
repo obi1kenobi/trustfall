@@ -12,12 +12,16 @@ use self::error::QueryArgumentsError;
 
 mod async_adapter;
 pub mod basic_adapter;
+mod engine;
+mod engine_filter;
+mod engine_recurse;
 pub mod error;
 pub mod execution;
 mod filtering;
 pub mod helpers;
 mod hints;
 pub mod replay;
+mod sync_adapter;
 pub mod trace;
 
 pub use hints::{
@@ -494,6 +498,19 @@ pub trait Adapter<'vertex> {
     /// [rc]: std::rc::Rc
     type Vertex: Clone + Debug + 'vertex;
 
+    /// The error type this adapter may report while resolving parts of a query.
+    ///
+    /// Adapters that cannot fail should set this to [`std::convert::Infallible`], which makes
+    /// the error channel zero-cost. If you implement [`BasicAdapter`](self::basic_adapter::BasicAdapter)
+    /// instead of this trait directly, its blanket [`Adapter`] implementation already does this
+    /// for you — you never have to write `Result` or `Ok`.
+    ///
+    /// Query execution is fail-fast: the first error an adapter reports terminates the results
+    /// stream (see [`ExecutionError`](self::error::ExecutionError)). The bound is intentionally
+    /// only `Error + 'static` — `Send`/`Sync` are *not* required, so `!Send` adapters (such as
+    /// WASM adapters) remain supported.
+    type Error: std::error::Error + 'static;
+
     /// Produce an iterator of vertices for the specified starting edge.
     ///
     /// Starting edges are the entry points for querying according to a schema.
@@ -525,6 +542,8 @@ pub trait Adapter<'vertex> {
     /// - The specified edge is a starting edge in the schema being queried.
     /// - Any parameters the edge requires per the schema have values provided.
     ///
+    /// Each returned item is either a vertex of the edge's schema type or an adapter error.
+    ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
     /// [schema]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
     /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L128-L134
@@ -533,7 +552,7 @@ pub trait Adapter<'vertex> {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'vertex, Self::Vertex>;
+    ) -> VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>;
 
     /// Resolve a property required by the query that's being evaluated.
     ///
@@ -583,10 +602,10 @@ pub trait Adapter<'vertex> {
     ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
-    /// - Produce `(context, property_value)` tuples with the property's value for that context.
+    /// - Produce `(context, outcome)` tuples whose outcome is the property's value or an error.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
-    /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
+    /// - When a context's active vertex is `None`, its outcome is `Ok(FieldValue::Null)`.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
     /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
@@ -601,7 +620,7 @@ pub trait Adapter<'vertex> {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, FieldValue>;
+    ) -> ContextOutcomeIterator<'vertex, V, Result<FieldValue, Self::Error>>;
 
     /// Resolve the neighboring vertices across an edge.
     ///
@@ -656,9 +675,9 @@ pub trait Adapter<'vertex> {
     ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
-    /// - Produce `(context, neighbors)` tuples with an iterator of neighbor vertices for that edge.
+    /// - Produce `(context, neighbors)` tuples with an iterator of fallible neighbor vertices.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
-    /// - Each neighboring vertex is of the type specified for that edge in the schema.
+    /// - Each successfully resolved neighbor is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-usernames-and-karma-points-of-the-folks*l*3-who-submitted-the-latest-stories-on-HackerNews.*lquery---0Latest---2byUser---4id-*o*l--_4karma-*o*l--_2--*0*J*l*J&v=--0*l*J
@@ -666,6 +685,7 @@ pub trait Adapter<'vertex> {
     /// [edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L73
     /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L225
     /// [resolve-neighbors]: helpers::resolve_neighbors_with
+    #[allow(clippy::type_complexity)]
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
@@ -673,7 +693,11 @@ pub trait Adapter<'vertex> {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>>;
+    ) -> ContextOutcomeIterator<
+        'vertex,
+        V,
+        VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>,
+    >;
 
     /// Attempt to coerce vertices to a subtype, as required by the query that's being evaluated.
     ///
@@ -726,10 +750,10 @@ pub trait Adapter<'vertex> {
     ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
-    /// - Produce `(context, can_coerce)` tuples showing if the coercion succeded for that context.
+    /// - Produce `(context, outcome)` tuples whose outcome is the coercion result or an error.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
-    /// - Each neighboring vertex is of the type specified for that edge in the schema.
-    /// - When a context's active vertex is `None`, its coercion outcome is `false`.
+    /// - Each successful outcome says whether the active vertex has the requested subtype.
+    /// - When a context's active vertex is `None`, its coercion outcome is `Ok(false)`.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-title-of-stories-on-the-HN-front-page.*l*3-Discards-any-non*-story-items-on-the-front-page*L*l*3-such-as-job-postings-or-polls.*lquery---0FrontPage---2*E-Story---4title-*o*l--_2--*0*J*l*J&v=--0*l*J
     /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
@@ -743,7 +767,7 @@ pub trait Adapter<'vertex> {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, bool>;
+    ) -> ContextOutcomeIterator<'vertex, V, Result<bool, Self::Error>>;
 }
 
 /// Attempt to dereference a value to a `&V`, returning `None` if the value did not contain a `V`.

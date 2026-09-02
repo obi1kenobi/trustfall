@@ -397,12 +397,16 @@ where
 {
     type Vertex = Vertex;
 
+    // Replaying a recorded trace never fails: the values are read back from the trace, so every
+    // outcome is wrapped in `Ok` at the method boundary and the reader iterators stay unchanged.
+    type Error = std::convert::Infallible;
+
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'trace, Self::Vertex> {
+    ) -> VertexIterator<'trace, Result<Self::Vertex, Self::Error>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_starting_vertices() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -410,11 +414,14 @@ where
         if let TraceOpContent::Call(FunctionCall::ResolveStartingVertices(vid)) = trace_op.content {
             assert_eq!(vid, resolve_info.vid());
 
-            Box::new(TraceReaderStartingVerticesIter {
-                exhausted: false,
-                parent_opid: *root_opid,
-                inner: self.next_op.clone(),
-            })
+            Box::new(
+                TraceReaderStartingVerticesIter {
+                    exhausted: false,
+                    parent_opid: *root_opid,
+                    inner: self.next_op.clone(),
+                }
+                .map(Ok),
+            )
         } else {
             unreachable!()
         }
@@ -426,7 +433,7 @@ where
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'trace, V, FieldValue> {
+    ) -> ContextOutcomeIterator<'trace, V, Result<FieldValue, Self::Error>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -438,13 +445,16 @@ where
             assert_eq!(op_type_name, type_name);
             assert_eq!(property, property_name);
 
-            Box::new(TraceReaderResolvePropertiesIter {
-                exhausted: false,
-                parent_opid: *root_opid,
-                contexts,
-                input_batch: Default::default(),
-                inner: self.next_op.clone(),
-            })
+            Box::new(
+                TraceReaderResolvePropertiesIter {
+                    exhausted: false,
+                    parent_opid: *root_opid,
+                    contexts,
+                    input_batch: Default::default(),
+                    inner: self.next_op.clone(),
+                }
+                .map(|(ctx, value)| (ctx, Ok(value))),
+            )
         } else {
             unreachable!()
         }
@@ -457,7 +467,8 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'trace, V, VertexIterator<'trace, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<'trace, V, VertexIterator<'trace, Result<Self::Vertex, Self::Error>>>
+    {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -469,13 +480,20 @@ where
             assert_eq!(op_type_name, type_name);
             assert_eq!(*eid, resolve_info.eid());
 
-            Box::new(TraceReaderResolveNeighborsIter {
-                exhausted: false,
-                parent_opid: *root_opid,
-                contexts,
-                input_batch: Default::default(),
-                inner: self.next_op.clone(),
-            })
+            Box::new(
+                TraceReaderResolveNeighborsIter {
+                    exhausted: false,
+                    parent_opid: *root_opid,
+                    contexts,
+                    input_batch: Default::default(),
+                    inner: self.next_op.clone(),
+                }
+                .map(|(ctx, neighbors)| {
+                    let neighbors: VertexIterator<'trace, Result<Self::Vertex, Self::Error>> =
+                        Box::new(neighbors.map(Ok));
+                    (ctx, neighbors)
+                }),
+            )
         } else {
             unreachable!()
         }
@@ -487,7 +505,7 @@ where
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'trace, V, bool> {
+    ) -> ContextOutcomeIterator<'trace, V, Result<bool, Self::Error>> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -499,13 +517,16 @@ where
             assert_eq!(from_type, type_name);
             assert_eq!(to_type, coerce_to_type);
 
-            Box::new(TraceReaderResolveCoercionIter {
-                exhausted: false,
-                parent_opid: *root_opid,
-                contexts,
-                input_batch: Default::default(),
-                inner: self.next_op.clone(),
-            })
+            Box::new(
+                TraceReaderResolveCoercionIter {
+                    exhausted: false,
+                    parent_opid: *root_opid,
+                    contexts,
+                    input_batch: Default::default(),
+                    inner: self.next_op.clone(),
+                }
+                .map(|(ctx, can_coerce)| (ctx, Ok(can_coerce))),
+            )
         } else {
             unreachable!()
         }
@@ -528,7 +549,9 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
     let arguments = Arc::new(
         trace.arguments.iter().map(|(k, v)| (Arc::from(k.to_owned()), v.clone())).collect(),
     );
-    let mut trace_iter = interpret_ir(trace_reader_adapter, query, arguments).unwrap();
+    let mut trace_iter = interpret_ir(trace_reader_adapter, query, arguments)
+        .unwrap()
+        .map(|row| row.expect("replaying a trace is infallible"));
     let mut expected_iter = expected_results.iter();
 
     loop {
