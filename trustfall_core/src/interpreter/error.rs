@@ -35,8 +35,47 @@ pub enum QueryArgumentsError {
 pub enum ExecutionError<E: std::error::Error + 'static> {
     /// The adapter being queried reported an error while resolving a property, edge,
     /// coercion, or starting vertices.
-    #[error("the adapter reported an error while executing the query: {0}")]
+    #[error("The adapter reported an error while executing the query: {0}")]
     Adapter(#[source] E),
+}
+
+/// Fallible query results whose error type is uninhabited, resolved to their rows.
+///
+/// Adapters that set [`Adapter::Error`](crate::interpreter::Adapter::Error) to
+/// [`std::convert::Infallible`] can never fail, so their execution results can be
+/// unwrapped without ceremony — this trait performs that unwrap in the type system,
+/// keeping "infallible adapters never write `Result`, `Ok`, or `unwrap`" true on the
+/// consumer side as well.
+///
+/// ```
+/// # use std::collections::BTreeMap;
+/// # use trustfall_core::interpreter::error::{ExecutionError, IntoRow};
+/// let result: Result<BTreeMap<&str, i64>, ExecutionError<std::convert::Infallible>> =
+/// #     Ok(BTreeMap::from([("value", 42)]));
+/// # let result = result.map(|row| row.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
+/// # let result: Result<BTreeMap<String, i64>, _> = result;
+/// // instead of `.expect("infallible adapter")`:
+/// let row = result.into_row();
+/// # assert_eq!(row["value"], 42);
+/// ```
+pub trait IntoRow: Sized {
+    /// The successful value carried by this result.
+    type Row;
+
+    /// Consume this result, returning its row. Panics are impossible by construction:
+    /// the error type is uninhabited.
+    fn into_row(self) -> Self::Row;
+}
+
+impl<Row> IntoRow for Result<Row, ExecutionError<std::convert::Infallible>> {
+    type Row = Row;
+
+    fn into_row(self) -> Row {
+        match self {
+            Ok(row) => row,
+            Err(ExecutionError::Adapter(unreachable)) => match unreachable {},
+        }
+    }
 }
 
 impl From<Vec<QueryArgumentsError>> for QueryArgumentsError {

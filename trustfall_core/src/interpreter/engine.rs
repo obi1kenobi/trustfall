@@ -7,13 +7,12 @@
 //! # Strongly-typed, native error threading
 //!
 //! The engine's internal streams carry `Result<DataContext<V>, E>` ([`FallibleContextStream`]) and
-//! fail fast on the first `Err` using `?` inside [`async_stream::try_stream!`]. Adapter resolvers,
-//! however, take *plain* context streams and return `Result<(context, outcome), Error>` items.
-//! [`begin_stage`]
-//! temporarily projects successful contexts into that public resolver protocol and returns a
-//! linear [`StageContinuation`] token. Consuming that token in [`finish_stage`] reconnects the
-//! upstream error path. This preserves both the adapter's one-outcome-per-context contract and
-//! fail-fast semantics without exposing prior-stage errors to adapter implementations.
+//! fail fast on the first `Err`. Adapter resolvers, however, take *plain* context streams and
+//! return outcomes carrying `Result`. [`begin_stage`] temporarily projects successful contexts
+//! into that public resolver protocol and returns a linear [`StageContinuation`] token; consuming
+//! that token in [`finish_stage`] reconnects the upstream error path. This preserves both the
+//! adapter's one-outcome-per-context contract and fail-fast semantics without exposing prior-stage
+//! errors to adapter implementations.
 //!
 //! # Construction is synchronous
 //!
@@ -23,12 +22,13 @@
 //! as the sync engine does.
 
 use std::{
-    cell::RefCell,
+    cell::Cell,
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
     pin::Pin,
     rc::Rc,
     sync::Arc,
+    task::{Context, Poll},
 };
 
 use async_stream::try_stream;
@@ -49,13 +49,29 @@ use super::{
     async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream},
     error::{ExecutionError, QueryArgumentsError},
     execution::{QueryCarrier, get_max_fold_count_limit, get_min_fold_count_limit},
-    filtering::{static_argument_filter_predicate, unary_filter_predicate},
+    filtering::{ComparisonOp, ValuePredicate},
 };
 
 /// A stream of contexts that may fail: the engine's internal, strongly-typed representation.
 /// Fail-fast is expressed as an `Err` item, after which the stream ends.
 pub type FallibleContextStream<'vertex, VertexT, E> =
     Pin<Box<dyn Stream<Item = Result<DataContext<VertexT>, E>> + 'vertex>>;
+
+/// The endpoints and identity of an edge being expanded, bundled so stage functions don't
+/// take a wall of individually-transposable arguments.
+pub(super) struct EdgeRef<'a> {
+    pub(super) from: &'a IRVertex,
+    pub(super) to: &'a IRVertex,
+    pub(super) eid: Eid,
+    pub(super) name: &'a Arc<str>,
+    pub(super) parameters: &'a EdgeParameters,
+}
+
+impl<'a> EdgeRef<'a> {
+    fn new(from: &'a IRVertex, to: &'a IRVertex, edge: &'a IREdge) -> Self {
+        Self { from, to, eid: edge.eid, name: &edge.edge_name, parameters: &edge.parameters }
+    }
+}
 
 /// Proof that a resolver stage's upstream error path still needs to be reconnected.
 ///
@@ -64,13 +80,124 @@ pub type FallibleContextStream<'vertex, VertexT, E> =
 /// it, and no shared error state escapes the execution kernel.
 #[must_use = "a resolver stage continuation must be passed to finish_stage"]
 pub(super) struct StageContinuation<E> {
-    pending_error: Rc<RefCell<Option<E>>>,
+    pending_error: Rc<Cell<Option<E>>>,
 }
 
 impl<E> StageContinuation<E> {
     fn take_error(self) -> Option<E> {
-        self.pending_error.borrow_mut().take()
+        self.pending_error.take()
     }
+}
+
+/// Adapter-facing half of [`begin_stage`]: yields the successful contexts of a fallible
+/// stream and, upon the first `Err`, records it in the shared cell and ends.
+///
+/// A hand-rolled adapter rather than a generator: it adds no allocation beyond the shared
+/// cell created in [`begin_stage`], so per-stage machinery stays allocation-light on both
+/// the sync and async paths.
+struct TakeOk<'vertex, V, E> {
+    input: FallibleContextStream<'vertex, V, E>,
+    pending_error: Rc<Cell<Option<E>>>,
+    done: bool,
+}
+
+impl<'vertex, V, E> Stream for TakeOk<'vertex, V, E> {
+    type Item = DataContext<V>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        if this.done {
+            return Poll::Ready(None);
+        }
+        match this.input.as_mut().poll_next(cx) {
+            Poll::Ready(Some(Ok(ctx))) => Poll::Ready(Some(ctx)),
+            Poll::Ready(Some(Err(error))) => {
+                this.pending_error.set(Some(error));
+                this.done = true;
+                Poll::Ready(None)
+            }
+            Poll::Ready(None) => {
+                this.done = true;
+                Poll::Ready(None)
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+/// Engine-facing half of [`finish_stage`]: threads an adapter resolver's
+/// `(context, Result<outcome, E>)` outcomes into a fallible `(context, outcome)` stream.
+///
+/// The first adapter `Err` terminates the stream (fail-fast). Once the outcomes are
+/// exhausted, the upstream error captured by [`begin_stage`], if any, is re-surfaced —
+/// after every successfully-resolved outcome, and after any adapter error.
+struct FailFast<'vertex, V, O, E> {
+    outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
+    continuation: Option<StageContinuation<E>>,
+    finished: bool,
+}
+
+impl<'vertex, V, O, E> Stream for FailFast<'vertex, V, O, E> {
+    type Item = Result<(DataContext<V>, O), E>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        if this.finished {
+            return Poll::Ready(None);
+        }
+        match this.outcomes.as_mut().poll_next(cx) {
+            Poll::Ready(Some((ctx, Ok(value)))) => Poll::Ready(Some(Ok((ctx, value)))),
+            Poll::Ready(Some((_, Err(error)))) => {
+                this.finished = true;
+                Poll::Ready(Some(Err(error)))
+            }
+            Poll::Ready(None) => {
+                this.finished = true;
+                let upstream =
+                    this.continuation.take().map(StageContinuation::take_error).flatten();
+                match upstream {
+                    Some(error) => Poll::Ready(Some(Err(error))),
+                    None => Poll::Ready(None),
+                }
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+/// Peel the successful contexts off a fallible stream for feeding an adapter, capturing the first
+/// upstream error so a later stage can re-surface it. See the module docs.
+pub(super) fn begin_stage<'vertex, V, E>(
+    input: FallibleContextStream<'vertex, V, E>,
+) -> (ContextStream<'vertex, V>, StageContinuation<E>)
+where
+    V: Clone + Debug + 'vertex,
+    E: 'vertex,
+{
+    let pending_error = Rc::new(Cell::new(None));
+    let plain: ContextStream<'vertex, V> =
+        Box::pin(TakeOk { input, pending_error: pending_error.clone(), done: false });
+    (plain, StageContinuation { pending_error })
+}
+
+/// Thread an adapter resolver's `(context, Result<outcome, E>)` stream into a fallible
+/// `(context, outcome)` stream, failing fast on the adapter's own errors and then re-surfacing the
+/// upstream error captured by [`begin_stage`].
+///
+/// This handles every resolver kind uniformly: the outcome `O` is a resolved value
+/// (`FieldValue`, `bool`) or, for `resolve_neighbors`, the context's neighbor stream — whose
+/// context-level `Result` is itself the outcome.
+#[allow(clippy::type_complexity)]
+pub(super) fn finish_stage<'vertex, V, O, E>(
+    outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
+    continuation: StageContinuation<E>,
+) -> Pin<Box<dyn Stream<Item = Result<(DataContext<V>, O), E>> + 'vertex>>
+where
+    V: 'vertex,
+    O: 'vertex,
+    E: 'vertex,
+{
+    Box::pin(FailFast { outcomes, continuation: Some(continuation), finished: false })
 }
 
 /// Execute an indexed query as a stream.
@@ -122,59 +249,6 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     Ok(Box::pin(outputs.map(|result| result.map_err(ExecutionError::Adapter))))
 }
 
-/// Peel the successful contexts off a fallible stream for feeding an adapter, capturing the first
-/// upstream error so a later stage can re-surface it. See the module docs.
-pub(super) fn begin_stage<'vertex, V, E>(
-    input: FallibleContextStream<'vertex, V, E>,
-) -> (ContextStream<'vertex, V>, StageContinuation<E>)
-where
-    V: Clone + Debug + 'vertex,
-    E: 'vertex,
-{
-    let pending_error = Rc::new(RefCell::new(None));
-    let plain: ContextStream<'vertex, V> = {
-        let pending_error = pending_error.clone();
-        Box::pin(async_stream::stream! {
-            let mut input = input;
-            while let Some(item) = input.next().await {
-                match item {
-                    Ok(ctx) => yield ctx,
-                    Err(error) => {
-                        *pending_error.borrow_mut() = Some(error);
-                        break;
-                    }
-                }
-            }
-        })
-    };
-    (plain, StageContinuation { pending_error })
-}
-
-/// Thread an adapter resolver's fallible outcome stream into the engine, failing fast on the
-/// adapter's own errors and then re-surfacing the upstream error captured by [`begin_stage`].
-#[allow(clippy::type_complexity)]
-pub(super) fn finish_stage<'vertex, V, O, E>(
-    outcomes: ContextOutcomeStream<'vertex, V, O, E>,
-    continuation: StageContinuation<E>,
-) -> Pin<Box<dyn Stream<Item = Result<(DataContext<V>, O), E>> + 'vertex>>
-where
-    V: 'vertex,
-    O: 'vertex,
-    E: 'vertex,
-{
-    Box::pin(try_stream! {
-        let mut outcomes = outcomes;
-        while let Some(outcome) = outcomes.next().await {
-            yield outcome?;
-        }
-        // Bind before the branch so the `RefMut` is dropped and never held across a yield/await.
-        let pending = continuation.take_error();
-        if let Some(error) = pending {
-            Err(error)?;
-        }
-    })
-}
-
 pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
@@ -221,7 +295,7 @@ pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>
             },
         };
 
-        assert!(process_next_fold.is_some() ^ process_next_edge.is_some());
+        assert!(process_next_fold.is_some() != process_next_edge.is_some());
 
         if let Some(fold) = process_next_fold {
             let from_vid_unvisited = visited_vids.insert(fold.from_vid);
@@ -264,8 +338,8 @@ pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>
 
 /// Resolve a `@filter`'s local field value and drop contexts that fail the filter.
 ///
-/// Reuses the sync engine's filter predicates (see [`super::filtering`]) so the two engines apply
-/// identical semantics. Unary, static-argument, and `@tag`-argument filters are all supported
+/// Reuses the sync engine's filter semantics (see [`super::filtering`]) so the two engines apply
+/// identical comparisons. Unary, static-argument, and `@tag`-argument filters are all supported
 /// (tag filters via [`super::engine_filter`]).
 fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
@@ -278,13 +352,11 @@ fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let local_field = filter.left();
 
     // Resolve the local field's value and push it onto each context's value stack.
-    let (plain, upstream_error) = begin_stage(stream);
     let type_name = component.vertices[&current_vid].type_name.clone();
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, current_vid, true);
-    let field_data =
-        adapter.resolve_property(plain, &type_name, &local_field.field_name, &resolve_info);
-    carrier.query = Some(resolve_info.into_inner());
+    let (plain, upstream_error) = begin_stage(stream);
+    let field_data = carrier.resolve_with(current_vid, true, |info| {
+        adapter.resolve_property(plain, &type_name, &local_field.field_name, info)
+    });
 
     let staged = finish_stage(field_data, upstream_error);
     let with_value: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
@@ -311,36 +383,30 @@ fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     }
 
     // Build the per-value predicate for unary / static-argument filters, matching the sync engine.
-    let predicate: Box<dyn Fn(&FieldValue) -> bool> = if let Some(unary) =
-        unary_filter_predicate(&filter_without_field)
-    {
-        Box::new(unary)
-    } else {
-        match filter_without_field.right() {
-            Some(Argument::Variable(var)) => {
-                let right_value = carrier.query.as_ref().expect("query was not returned").arguments
-                    [var.variable_name.as_ref()]
-                .clone();
-                static_argument_filter_predicate(&filter_without_field, right_value)
-            }
-            Some(Argument::Tag(_)) => unreachable!("tag filters handled above"),
-            None => unreachable!("non-unary filter with no argument: {filter_without_field:?}"),
-        }
-    };
+    let predicate = build_value_predicate(carrier, &filter_without_field);
 
-    Box::pin(with_value.filter_map(move |result| {
-        let outcome = match result {
-            Ok(mut context) => {
-                let left_value = context.values.pop().expect("no value present");
-                // Keep the context if it's inside a nonexistent `@optional` (filter is vacuous
-                // there) or if the predicate passes.
-                (context.within_nonexistent_optional() || predicate(&left_value))
-                    .then_some(Ok(context))
-            }
-            Err(error) => Some(Err(error)),
-        };
-        std::future::ready(outcome)
-    }))
+    filter_by_predicate(with_value, predicate)
+}
+
+/// Construct the [`ValuePredicate`] for a filter whose right-hand side needs no adapter call:
+/// a unary operation, or a binary operation against a runtime argument value.
+fn build_value_predicate(
+    carrier: &QueryCarrier,
+    filter_without_field: &Operation<(), &Argument>,
+) -> ValuePredicate {
+    if let Some(unary) = ValuePredicate::unary(filter_without_field) {
+        return unary;
+    }
+    match filter_without_field.right() {
+        Some(Argument::Variable(var)) => {
+            let right_value = carrier.query.as_ref().expect("query was not returned").arguments
+                [var.variable_name.as_ref()]
+            .clone();
+            ValuePredicate::static_argument(filter_without_field, right_value)
+        }
+        Some(Argument::Tag(_)) => unreachable!("tag filters handled by the tag-filter stage"),
+        None => unreachable!("non-unary filter with no argument: {filter_without_field:?}"),
+    }
 }
 
 fn coerce_if_needed<'query, AdapterT: AsyncAdapter<'query> + 'query>(
@@ -367,10 +433,9 @@ fn perform_coercion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
     let (plain, upstream_error) = begin_stage(stream);
 
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, vertex.vid, false);
-    let coercion_outcomes = adapter.resolve_coercion(plain, coerced_from, coerce_to, &resolve_info);
-    carrier.query = Some(resolve_info.into_inner());
+    let coercion_outcomes = carrier.resolve_with(vertex.vid, false, |info| {
+        adapter.resolve_coercion(plain, coerced_from, coerce_to, info)
+    });
 
     let staged = finish_stage(coercion_outcomes, upstream_error);
     Box::pin(try_stream! {
@@ -395,36 +460,27 @@ fn expand_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     edge: &IREdge,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
+    let edge_ref = EdgeRef::new(
+        &component.vertices[&expanding_from_vid],
+        &component.vertices[&expanding_to_vid],
+        edge,
+    );
+
     let expanded = if let Some(recursive) = &edge.recursive {
         super::engine_recurse::expand_recursive_edge(
             adapter.clone(),
             carrier,
-            component,
-            &component.vertices[&expanding_from_vid],
-            &component.vertices[&expanding_to_vid],
-            edge.eid,
-            &edge.edge_name,
-            &edge.parameters,
+            &edge_ref,
             recursive,
             stream,
         )
     } else {
-        expand_non_recursive_edge(
-            adapter.as_ref(),
-            carrier,
-            &component.vertices[&expanding_from_vid],
-            &component.vertices[&expanding_to_vid],
-            edge.eid,
-            &edge.edge_name,
-            &edge.parameters,
-            edge.optional,
-            stream,
-        )
+        expand_non_recursive_edge(adapter.as_ref(), carrier, &edge_ref, edge.optional, stream)
     };
 
     // Recurse into the neighboring vertex's own component processing (coercions, filters,
     // sub-edges), exactly as the sync engine does via `expand_edge` -> `compute_component`.
-    let expanding_to = &component.vertices[&expanding_to_vid];
+    let expanding_to = edge_ref.to;
     perform_entry_into_new_vertex(adapter, carrier, component, expanding_to, expanded)
 }
 
@@ -456,15 +512,10 @@ pub(super) fn perform_entry_into_new_vertex<'query, AdapterT: AsyncAdapter<'quer
     stream
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
-    expanding_from: &IRVertex,
-    expanding_to: &IRVertex,
-    edge_id: Eid,
-    edge_name: &Arc<str>,
-    edge_parameters: &EdgeParameters,
+    edge: &EdgeRef<'_>,
     is_optional: bool,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
@@ -473,28 +524,22 @@ pub(super) fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> +
     // Re-activate the edge's source vertex before resolving neighbors. Without this, a second edge
     // expanded from an already-visited vertex would resolve neighbors of the *previous* edge's
     // destination instead (e.g. two `successor` edges off the same vertex). Mirrors the sync engine.
-    let expanding_from_vid = expanding_from.vid;
+    let expanding_from_vid = edge.from.vid;
     let plain: ContextStream<'query, AdapterT::Vertex> =
         Box::pin(plain.map(move |context| context.activate_vertex(&expanding_from_vid)));
 
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, expanding_to.vid, edge_id);
-    let edge_outcomes = adapter.resolve_neighbors(
-        plain,
-        &expanding_from.type_name,
-        edge_name,
-        edge_parameters,
-        &resolve_info,
-    );
-    carrier.query = Some(resolve_info.into_inner());
+    let type_name = edge.from.type_name.clone();
+    let edge_outcomes = carrier.resolve_edge_with(edge.from.vid, edge.to.vid, edge.eid, |info| {
+        adapter.resolve_neighbors(plain, &type_name, edge.name, edge.parameters, info)
+    });
 
     let staged = finish_stage(edge_outcomes, upstream_error);
     Box::pin(try_stream! {
         let mut staged = staged;
         while let Some(item) = staged.next().await {
             let (context, neighbors) = item?;
-            let mut has_neighbors = false;
             let mut neighbors = neighbors;
+            let mut has_neighbors = false;
             while let Some(neighbor) = neighbors.next().await {
                 let vertex = neighbor?;
                 has_neighbors = true;
@@ -600,31 +645,31 @@ fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let filter_without_field = filter.map(|_| (), |r| r);
     if let Some(Argument::Tag(tag_ref)) = filter_without_field.right() {
         let tag_ref = tag_ref.clone();
-        let filter_owned = filter.map(|_| (), |r| r.clone());
+        let op = ComparisonOp::from_binary_filter(&filter_without_field)
+            .expect("tag fold filters are binary operations");
         return super::engine_filter::apply_tag_comparison(
             adapter,
             carrier,
             parent_component,
             current_vid,
-            filter_owned,
+            op,
             tag_ref,
             with_value,
         );
     }
 
-    let predicate: Box<dyn Fn(&FieldValue) -> bool> =
-        if let Some(unary) = unary_filter_predicate(&filter_without_field) {
-            Box::new(unary)
-        } else {
-            match filter_without_field.right() {
-                Some(Argument::Variable(var)) => {
-                    let right_value = query_arguments[var.variable_name.as_ref()].clone();
-                    static_argument_filter_predicate(&filter_without_field, right_value)
-                }
-                Some(Argument::Tag(_)) => unreachable!("tag fold filters handled above"),
-                None => unreachable!("non-unary fold filter with no argument"),
+    let predicate = if let Some(unary) = ValuePredicate::unary(&filter_without_field) {
+        unary
+    } else {
+        match filter_without_field.right() {
+            Some(Argument::Variable(var)) => {
+                let right_value = query_arguments[var.variable_name.as_ref()].clone();
+                ValuePredicate::static_argument(&filter_without_field, right_value)
             }
-        };
+            Some(Argument::Tag(_)) => unreachable!("tag fold filters handled above"),
+            None => unreachable!("non-unary fold filter with no argument"),
+        }
+    };
 
     filter_by_predicate(with_value, predicate)
 }
@@ -633,7 +678,7 @@ fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 /// it's inside a nonexistent `@optional` or the predicate passes. Errors pass through (fail-fast).
 fn filter_by_predicate<'query, V, E>(
     stream: FallibleContextStream<'query, V, E>,
-    predicate: Box<dyn Fn(&FieldValue) -> bool>,
+    predicate: ValuePredicate,
 ) -> FallibleContextStream<'query, V, E>
 where
     V: Clone + Debug + 'query,
@@ -643,7 +688,7 @@ where
         let outcome = match result {
             Ok(mut context) => {
                 let left_value = context.values.pop().expect("no value present");
-                (context.within_nonexistent_optional() || predicate(&left_value))
+                (context.within_nonexistent_optional() || predicate.passes(&left_value))
                     .then_some(Ok(context))
             }
             Err(error) => Some(Err(error)),
@@ -722,15 +767,14 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                 }));
 
             let (plain, upstream_error) = begin_stage(moved);
-            let query = carrier.query.take().expect("query was not returned");
-            let resolve_info = ResolveInfo::new(query, vertex_id, true);
-            let field_data = adapter.resolve_property(
-                plain,
-                &fold.component.vertices[&vertex_id].type_name,
-                &context_field.field_name,
-                &resolve_info,
-            );
-            carrier.query = Some(resolve_info.into_inner());
+            let field_data = carrier.resolve_with(vertex_id, true, |info| {
+                adapter.resolve_property(
+                    plain,
+                    &fold.component.vertices[&vertex_id].type_name,
+                    &context_field.field_name,
+                    info,
+                )
+            });
 
             let staged = finish_stage(field_data, upstream_error);
             output_stream = Box::pin(staged.map(|result| {
@@ -804,11 +848,9 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 
                 let type_name = parent_component.vertices[&field.vertex_id].type_name.clone();
                 let (plain, upstream_error) = begin_stage(activated);
-                let query = carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-                let field_data =
-                    adapter.resolve_property(plain, &type_name, &field.field_name, &resolve_info);
-                carrier.query = Some(resolve_info.into_inner());
+                let field_data = carrier.resolve_with(vertex_id, true, |info| {
+                    adapter.resolve_property(plain, &type_name, &field.field_name, info)
+                });
 
                 let cloned_field = imported_field.clone();
                 let staged = finish_stage(field_data, upstream_error);
@@ -856,16 +898,14 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     );
     let type_name = expanding_from.type_name.clone();
     let (plain, upstream_error) = begin_stage(activated);
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.to_vid, fold.eid);
-    let edge_outcomes = adapter.resolve_neighbors(
-        plain,
-        &type_name,
-        &fold.edge_name,
-        &fold.parameters,
-        &resolve_info,
+    let edge_outcomes = carrier.resolve_edge_with(
+        expanding_from_vid,
+        fold.to_vid,
+        fold.eid,
+        |info| {
+            adapter.resolve_neighbors(plain, &type_name, &fold.edge_name, &fold.parameters, info)
+        },
     );
-    carrier.query = Some(resolve_info.into_inner());
     let edge_stream = finish_stage(edge_outcomes, upstream_error);
 
     // === Fold count limits (eager), mirroring the sync engine's optimization logic. ===
@@ -1006,6 +1046,7 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let mut output_names: Vec<Arc<str>> = root_component.outputs.keys().cloned().collect();
     output_names.sort_unstable(); // deterministic resolve_property() ordering
 
+    carrier.query = Some(query);
     let mut output_stream = stream;
 
     for output_name in output_names.iter() {
@@ -1022,11 +1063,14 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 
         let (plain, upstream_error) = begin_stage(moved_stream);
 
-        let resolve_info = ResolveInfo::new(query, vertex_id, true);
-        let type_name = &root_component.vertices[&vertex_id].type_name;
-        let field_data =
-            adapter.resolve_property(plain, type_name, &context_field.field_name, &resolve_info);
-        query = resolve_info.into_inner();
+        let field_data = carrier.resolve_with(vertex_id, true, |info| {
+            adapter.resolve_property(
+                plain,
+                &root_component.vertices[&vertex_id].type_name,
+                &context_field.field_name,
+                info,
+            )
+        });
 
         let staged = finish_stage(field_data, upstream_error);
         output_stream = Box::pin(staged.map(|result| {
@@ -1037,9 +1081,9 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         }));
     }
 
+    let query = carrier.query.as_ref().expect("query was not returned");
     let expected_output_names: BTreeSet<Arc<str>> =
         query.indexed_query.outputs.keys().cloned().collect();
-    carrier.query = Some(query);
 
     let output_names = Arc::new(output_names);
     Box::pin(output_stream.map(move |result| {

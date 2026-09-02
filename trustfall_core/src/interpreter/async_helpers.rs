@@ -7,6 +7,11 @@
 //! lazily, one context at a time, mirroring the sync helpers' per-context logic exactly
 //! (including the `None` active-vertex cases).
 //!
+//! Like their sync counterparts, the infallible `resolve_*_with` helpers take an error type `E`
+//! inferred from the calling context (the adapter's [`AsyncAdapter::Error`]): infallible
+//! resolvers never write `Ok` or `Result` themselves, and the values the helpers produce already
+//! carry the adapter's error type.
+//!
 //! # Concurrent helpers (bounded fan-out)
 //!
 //! For adapters that perform real IO, the `*_concurrent` helpers and [`map_contexts_buffered`]
@@ -30,7 +35,7 @@ use crate::ir::FieldValue;
 
 use super::{
     AsVertex, DataContext,
-    async_adapter::{ContextOutcomeStream, ContextStream, VertexStream},
+    async_adapter::{ContextOutcomeStream, ContextStream, NeighborResolutionStream, VertexStream},
 };
 
 // ---------------------------------------------------------------------------
@@ -40,17 +45,18 @@ use super::{
 /// Async mirror of [`resolve_property_with`](super::helpers::resolve_property_with).
 ///
 /// Applies a **sync** closure `resolver: FnMut(&Vertex) -> FieldValue` over each context in the
-/// input stream, one at a time. The result is wrapped in `Ok`.
+/// input stream, one at a time.
 ///
 /// When a context's active vertex is `None`, the property outcome is `Ok(FieldValue::Null)`.
 pub fn resolve_property_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
 >(
     contexts: ContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, std::convert::Infallible>> {
+) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, E>> {
     Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => (ctx, Ok(FieldValue::Null)),
         Some(vertex) => {
@@ -70,7 +76,7 @@ pub fn try_resolve_property_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
-    E,
+    E: 'vertex,
 >(
     contexts: ContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> Result<FieldValue, E> + 'vertex,
@@ -94,54 +100,57 @@ pub fn resolve_neighbors_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
 >(
     contexts: ContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> VertexStream<'vertex, Vertex> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Vertex, std::convert::Infallible>>>
-{
+) -> ContextOutcomeStream<'vertex, V, NeighborResolutionStream<'vertex, Vertex, E>> {
     Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => {
-            let no_neighbors: VertexStream<'vertex, Result<Vertex, std::convert::Infallible>> =
-                Box::pin(stream::empty());
-            (ctx, no_neighbors)
+            let no_neighbors: VertexStream<'vertex, Result<Vertex, E>> = Box::pin(stream::empty());
+            (ctx, Ok(no_neighbors))
         }
         Some(vertex) => {
             let neighbors = resolver(vertex);
-            let neighbors: VertexStream<'vertex, Result<Vertex, std::convert::Infallible>> =
+            let neighbors: VertexStream<'vertex, Result<Vertex, E>> =
                 Box::pin(neighbors.map(Ok));
-            (ctx, neighbors)
+            (ctx, Ok(neighbors))
         }
     }))
 }
 
-/// Fallible variant of [`resolve_neighbors_with`].
+/// Fallible, context-level variant of [`resolve_neighbors_with`].
 ///
-/// The resolver returns a **stream of per-neighbor results**
-/// (`VertexStream<'vertex, Result<Vertex, E>>`), matching
-/// [`AsyncAdapter::resolve_neighbors`](super::async_adapter::AsyncAdapter::resolve_neighbors):
+/// The resolver may fail the whole edge resolution for a context, which becomes a context-level
+/// `Err` outcome — the natural fit for a failed batched fetch for that context. Individual
+/// neighbors are infallible.
 ///
-/// - Each item is a neighbor (`Ok`) or a failure for that neighbor fetch (`Err`).
-/// - A context-level failure (cannot resolve the edge at all) is expressed by yielding a single
-///   `Err` item, e.g. `stream::once(async { Err(e) })`. The outer outcome slot is always a
-///   neighbor **stream**, never `Result<VertexStream, E>` — the trait cannot carry that shape.
-/// - When a context's active vertex is `None`, pass an **empty** stream (not an error).
+/// When a context's active vertex is `None`, the neighbors outcome is an empty stream.
 pub fn try_resolve_neighbors_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
     E: 'vertex,
+    Neighbors: IntoIterator<Item = Vertex>,
 >(
     contexts: ContextStream<'vertex, V>,
-    mut resolver: impl FnMut(&Vertex) -> VertexStream<'vertex, Result<Vertex, E>> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Vertex, E>>> {
+    mut resolver: impl FnMut(&Vertex) -> Result<Neighbors, E> + 'vertex,
+) -> ContextOutcomeStream<'vertex, V, NeighborResolutionStream<'vertex, Vertex, E>>
+where
+    Neighbors::IntoIter: 'vertex,
+{
     Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => {
             let no_neighbors: VertexStream<'vertex, Result<Vertex, E>> = Box::pin(stream::empty());
-            (ctx, no_neighbors)
+            (ctx, Ok(no_neighbors))
         }
         Some(vertex) => {
-            let neighbors = resolver(vertex);
-            (ctx, neighbors)
+            let outcome = resolver(vertex).map(|neighbors| {
+                let neighbors: VertexStream<'vertex, Result<Vertex, E>> =
+                    Box::pin(stream::iter(neighbors.into_iter().map(Ok)));
+                neighbors
+            });
+            (ctx, outcome)
         }
     }))
 }
@@ -149,17 +158,18 @@ pub fn try_resolve_neighbors_with<
 /// Async mirror of [`resolve_coercion_with`](super::helpers::resolve_coercion_with).
 ///
 /// Applies a **sync** closure `resolver: FnMut(&Vertex) -> bool` over each context in the
-/// input stream, one at a time. The result is wrapped in `Ok`.
+/// input stream, one at a time.
 ///
 /// When a context's active vertex is `None`, the coercion outcome is `Ok(false)`.
 pub fn resolve_coercion_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
 >(
     contexts: ContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, Result<bool, std::convert::Infallible>> {
+) -> ContextOutcomeStream<'vertex, V, Result<bool, E>> {
     Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
         None => (ctx, Ok(false)),
         Some(vertex) => {
@@ -171,7 +181,7 @@ pub fn resolve_coercion_with<
 
 /// Fallible variant of [`resolve_coercion_with`].
 ///
-/// Like [`resolve_coercion_with`] but the resolver closure may return `Result<bool, E>`.
+/// Like [`resolve_coercion_with`] but the resolver closure may return a `Result<bool, E>`.
 /// An `Err` is forwarded directly as the context's outcome.
 ///
 /// When a context's active vertex is `None`, the coercion outcome is `Ok(false)`.
@@ -179,7 +189,7 @@ pub fn try_resolve_coercion_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
-    E,
+    E: 'vertex,
 >(
     contexts: ContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> Result<bool, E> + 'vertex,
@@ -275,16 +285,16 @@ where
     })
 }
 
-/// Concurrent, order-preserving fallible neighbor resolution.
+/// Concurrent, order-preserving, context-level fallible neighbor resolution.
 ///
 /// The `resolver` is invoked with a **cloned** active vertex and returns a future that resolves
 /// to either:
 /// - `Ok(neighbors)` — an iterable of neighbor vertices (each becomes `Ok` in the neighbor stream),
-/// - `Err(e)` — a **context-level** failure, emitted as a single-item neighbor stream `Err(e)`.
+/// - `Err(e)` — a **context-level** failure for that context's edge resolution.
 ///
 /// When a context's active vertex is `None`, the neighbors outcome is an empty stream.
 ///
-/// Outcomes (the outer `(context, neighbor_stream)` pairs) are produced in input order with up
+/// Outcomes (the outer `(context, resolution)` pairs) are produced in input order with up
 /// to `concurrency` neighbor fetches in flight.
 pub fn try_resolve_neighbors_with_concurrent<
     'vertex,
@@ -293,30 +303,29 @@ pub fn try_resolve_neighbors_with_concurrent<
     E: 'vertex,
     F,
     Fut,
-    I,
+    Neighbors,
 >(
     contexts: ContextStream<'vertex, V>,
     concurrency: usize,
     resolver: F,
-) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Vertex, E>>>
+) -> ContextOutcomeStream<'vertex, V, NeighborResolutionStream<'vertex, Vertex, E>>
 where
     F: Fn(Vertex) -> Fut + 'vertex,
-    Fut: Future<Output = Result<I, E>> + 'vertex,
-    I: IntoIterator<Item = Vertex> + 'vertex,
+    Fut: Future<Output = Result<Neighbors, E>> + 'vertex,
+    Neighbors: IntoIterator<Item = Vertex>,
+    Neighbors::IntoIter: 'vertex,
 {
     map_contexts_buffered(contexts, concurrency, move |ctx| {
         let pending = ctx.active_vertex::<Vertex>().cloned().map(&resolver);
         async move {
-            let neighbors: VertexStream<'vertex, Result<Vertex, E>> = match pending {
-                None => Box::pin(stream::empty()),
+            let resolution: NeighborResolutionStream<'vertex, Vertex, E> = match pending {
+                None => Ok(Box::pin(stream::empty())),
                 Some(fut) => match fut.await {
-                    Ok(iter) => Box::pin(stream::iter(iter.into_iter().map(Ok))),
-                    // Context-level failure: one Err neighbor item (trait cannot carry
-                    // Result<VertexStream, E> on the outer outcome).
-                    Err(e) => Box::pin(stream::once(async move { Err(e) })),
+                    Ok(iter) => Ok(Box::pin(stream::iter(iter.into_iter().map(Ok)))),
+                    Err(e) => Err(e),
                 },
             };
-            (ctx, neighbors)
+            (ctx, resolution)
         }
     })
 }

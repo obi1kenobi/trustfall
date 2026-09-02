@@ -220,65 +220,147 @@ fn is_null(value: &FieldValue) -> bool {
     matches!(value, FieldValue::Null)
 }
 
-/// The per-value comparison of a unary filter (`@filter(op: "is_null")` / `"is_not_null"`),
-/// or `None` if `filter` is not a unary operation.
+/// The comparison performed by a binary `@filter` operation, independent of where its
+/// operands come from (a runtime argument, a `@tag` value, or a fold-specific field).
 ///
-/// Shared with the async engine so both engines apply identical filter semantics.
-pub(super) fn unary_filter_predicate(
-    filter: &Operation<(), &Argument>,
-) -> Option<fn(&FieldValue) -> bool> {
-    match filter {
-        Operation::IsNull(_) => Some(is_null),
-        Operation::IsNotNull(_) => Some(|value| !is_null(value)),
-        _ => None,
+/// This is the single source of truth for filter comparison semantics: every filter path
+/// in the engine (unary, runtime-argument, and tag-argument filters) dispatches through
+/// [`ComparisonOp::apply`], so the sync and async execution paths cannot drift apart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ComparisonOp {
+    Equals,
+    NotEquals,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    Contains,
+    NotContains,
+    OneOf,
+    NotOneOf,
+    HasPrefix,
+    NotHasPrefix,
+    HasSuffix,
+    NotHasSuffix,
+    HasSubstring,
+    NotHasSubstring,
+    RegexMatches,
+    NotRegexMatches,
+}
+
+impl ComparisonOp {
+    /// The comparison performed by a binary filter operation, or `None` for unary operations.
+    pub(super) fn from_binary_filter(filter: &Operation<(), &Argument>) -> Option<Self> {
+        match filter {
+            Operation::Equals(..) => Some(Self::Equals),
+            Operation::NotEquals(..) => Some(Self::NotEquals),
+            Operation::LessThan(..) => Some(Self::LessThan),
+            Operation::LessThanOrEqual(..) => Some(Self::LessThanOrEqual),
+            Operation::GreaterThan(..) => Some(Self::GreaterThan),
+            Operation::GreaterThanOrEqual(..) => Some(Self::GreaterThanOrEqual),
+            Operation::Contains(..) => Some(Self::Contains),
+            Operation::NotContains(..) => Some(Self::NotContains),
+            Operation::OneOf(..) => Some(Self::OneOf),
+            Operation::NotOneOf(..) => Some(Self::NotOneOf),
+            Operation::HasPrefix(..) => Some(Self::HasPrefix),
+            Operation::NotHasPrefix(..) => Some(Self::NotHasPrefix),
+            Operation::HasSuffix(..) => Some(Self::HasSuffix),
+            Operation::NotHasSuffix(..) => Some(Self::NotHasSuffix),
+            Operation::HasSubstring(..) => Some(Self::HasSubstring),
+            Operation::NotHasSubstring(..) => Some(Self::NotHasSubstring),
+            Operation::RegexMatches(..) => Some(Self::RegexMatches),
+            Operation::NotRegexMatches(..) => Some(Self::NotRegexMatches),
+            Operation::IsNull(..) | Operation::IsNotNull(..) => None,
+        }
+    }
+
+    /// Apply this operation to the filter's left-hand (field) and right-hand values.
+    ///
+    /// Regex operations compile their pattern on every call; when the right-hand value is
+    /// known ahead of time, prefer [`ValuePredicate::static_argument`] which precompiles it.
+    #[inline]
+    pub(super) fn apply(self, left: &FieldValue, right: &FieldValue) -> bool {
+        match self {
+            Self::Equals => equals(left, right),
+            Self::NotEquals => !equals(left, right),
+            Self::LessThan => less_than(left, right),
+            Self::LessThanOrEqual => less_than_or_equal(left, right),
+            Self::GreaterThan => greater_than(left, right),
+            Self::GreaterThanOrEqual => greater_than_or_equal(left, right),
+            Self::Contains => contains(left, right),
+            Self::NotContains => !contains(left, right),
+            Self::OneOf => one_of(left, right),
+            Self::NotOneOf => !one_of(left, right),
+            Self::HasPrefix => has_prefix(left, right),
+            Self::NotHasPrefix => !has_prefix(left, right),
+            Self::HasSuffix => has_suffix(left, right),
+            Self::NotHasSuffix => !has_suffix(left, right),
+            Self::HasSubstring => has_substring(left, right),
+            Self::NotHasSubstring => !has_substring(left, right),
+            Self::RegexMatches => regex_matches_slow_path(left, right),
+            Self::NotRegexMatches => !regex_matches_slow_path(left, right),
+        }
     }
 }
 
-/// The per-value comparison of a filter whose right-hand side is a static (runtime-argument) value,
-/// e.g. `equals` bound to the provided `right_value`. Panics on unary ops (use
-/// [`unary_filter_predicate`]) and is not applicable to tag arguments.
+/// The per-value predicate of a `@filter` whose right-hand side is known without an
+/// adapter call: a unary operation, or a binary operation against a runtime argument.
 ///
-/// Shared with the async engine so both engines apply identical filter semantics.
-pub(super) fn static_argument_filter_predicate<'query>(
-    filter: &Operation<(), &Argument>,
-    right_value: FieldValue,
-) -> Box<dyn Fn(&FieldValue) -> bool + 'query> {
-    macro_rules! bind {
-        ($op:expr) => {
-            Box::new(move |left: &FieldValue| $op(left, &right_value))
-        };
+/// Stored by value in the pipeline's filter stage (no boxed closures): applying it is
+/// a direct call, and regexes against runtime arguments are compiled exactly once.
+#[derive(Debug)]
+pub(super) enum ValuePredicate {
+    /// `@filter(op: "is_null")`
+    IsNull,
+    /// `@filter(op: "is_not_null")`
+    IsNotNull,
+    /// A binary operation against a value known when the pipeline is constructed.
+    Static { op: ComparisonOp, right: FieldValue },
+    /// A regex operation whose pattern is known when the pipeline is constructed.
+    StaticRegex { negated: bool, pattern: Regex },
+}
+
+impl ValuePredicate {
+    /// The predicate of a unary filter (`is_null` / `is_not_null`),
+    /// or `None` if `filter` is a binary operation.
+    pub(super) fn unary(filter: &Operation<(), &Argument>) -> Option<Self> {
+        match filter {
+            Operation::IsNull(_) => Some(Self::IsNull),
+            Operation::IsNotNull(_) => Some(Self::IsNotNull),
+            _ => None,
+        }
     }
-    match filter {
-        Operation::Equals(_, _) => bind!(equals),
-        Operation::NotEquals(_, _) => bind!(|l, r| !equals(l, r)),
-        Operation::LessThan(_, _) => bind!(less_than),
-        Operation::LessThanOrEqual(_, _) => bind!(less_than_or_equal),
-        Operation::GreaterThan(_, _) => bind!(greater_than),
-        Operation::GreaterThanOrEqual(_, _) => bind!(greater_than_or_equal),
-        Operation::Contains(_, _) => bind!(contains),
-        Operation::NotContains(_, _) => bind!(|l, r| !contains(l, r)),
-        Operation::OneOf(_, _) => bind!(one_of),
-        Operation::NotOneOf(_, _) => bind!(|l, r| !one_of(l, r)),
-        Operation::HasPrefix(_, _) => bind!(has_prefix),
-        Operation::NotHasPrefix(_, _) => bind!(|l, r| !has_prefix(l, r)),
-        Operation::HasSuffix(_, _) => bind!(has_suffix),
-        Operation::NotHasSuffix(_, _) => bind!(|l, r| !has_suffix(l, r)),
-        Operation::HasSubstring(_, _) => bind!(has_substring),
-        Operation::NotHasSubstring(_, _) => bind!(|l, r| !has_substring(l, r)),
-        Operation::RegexMatches(_, _) => {
-            let pattern =
-                Regex::new(right_value.as_str().expect("regex argument was not a string"))
-                    .expect("regex argument was not a valid regex");
-            Box::new(move |left: &FieldValue| regex_matches_optimized(left, &pattern))
+
+    /// The predicate of a binary filter whose right-hand side is the given runtime
+    /// argument value. Panics for unary filters (use [`ValuePredicate::unary`]) and is
+    /// not applicable to tag arguments, whose values are resolved per context.
+    pub(super) fn static_argument(
+        filter: &Operation<(), &Argument>,
+        right_value: FieldValue,
+    ) -> Self {
+        match ComparisonOp::from_binary_filter(filter) {
+            Some(ComparisonOp::RegexMatches | ComparisonOp::NotRegexMatches) => {
+                let negated = matches!(filter, Operation::NotRegexMatches(..));
+                let pattern =
+                    Regex::new(right_value.as_str().expect("regex argument was not a string"))
+                        .expect("regex argument was not a valid regex");
+                Self::StaticRegex { negated, pattern }
+            }
+            Some(op) => Self::Static { op, right: right_value },
+            None => unreachable!("unary filter passed to ValuePredicate::static_argument: {filter:?}"),
         }
-        Operation::NotRegexMatches(_, _) => {
-            let pattern =
-                Regex::new(right_value.as_str().expect("regex argument was not a string"))
-                    .expect("regex argument was not a valid regex");
-            Box::new(move |left: &FieldValue| !regex_matches_optimized(left, &pattern))
-        }
-        Operation::IsNull(_) | Operation::IsNotNull(_) => {
-            unreachable!("unary filter passed to static_argument_filter_predicate: {filter:?}")
+    }
+
+    /// Whether the filter's left-hand value passes this predicate.
+    #[inline]
+    pub(super) fn passes(&self, left: &FieldValue) -> bool {
+        match self {
+            Self::IsNull => is_null(left),
+            Self::IsNotNull => !is_null(left),
+            Self::Static { op, right } => op.apply(left, right),
+            Self::StaticRegex { negated, pattern } => {
+                regex_matches_optimized(left, pattern) ^ *negated
+            }
         }
     }
 }

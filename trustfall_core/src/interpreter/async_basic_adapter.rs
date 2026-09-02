@@ -21,7 +21,9 @@ use futures_util::StreamExt as _;
 
 use super::{
     AsVertex, Typename,
-    async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
+    async_adapter::{
+        AsyncAdapter, ContextOutcomeStream, ContextStream, NeighborResolutionStream, VertexStream,
+    },
 };
 
 /// A simplified variant of the [`AsyncAdapter`] trait.
@@ -118,9 +120,10 @@ pub trait AsyncBasicAdapter<'vertex> {
     ///   the vertex's type implements.
     ///
     /// The returned stream must satisfy these properties:
-    /// - Produce `(context, neighbors)` tuples with a stream of neighbor vertices for that edge.
+    /// - Produce `(context, neighbors)` tuples with a stream of (individually fallible) neighbor
+    ///   vertices for that edge.
     /// - Produce contexts in the same order as the input `contexts` stream produced them.
-    /// - Each neighboring vertex is of the type specified for that edge in the schema.
+    /// - Each successfully resolved neighbor is of the type specified for that edge in the schema.
     /// - When a context's active vertex is `None`, it has an empty neighbors stream.
     #[allow(clippy::type_complexity)]
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
@@ -271,14 +274,22 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &super::ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Self::Vertex, Self::Error>>>
-    {
-        <Self as AsyncBasicAdapter>::resolve_neighbors(
-            self,
-            contexts,
-            type_name.as_ref(),
-            edge_name.as_ref(),
-            parameters,
+    ) -> ContextOutcomeStream<
+        'vertex,
+        V,
+        NeighborResolutionStream<'vertex, Self::Vertex, Self::Error>,
+    > {
+        // The basic layer's resolvers never fail the edge resolution for a context as a whole;
+        // failures (if any) ride on individual neighbors inside the stream.
+        Box::pin(
+            <Self as AsyncBasicAdapter>::resolve_neighbors(
+                self,
+                contexts,
+                type_name.as_ref(),
+                edge_name.as_ref(),
+                parameters,
+            )
+            .map(|(ctx, neighbors)| (ctx, Ok(neighbors))),
         )
     }
 
