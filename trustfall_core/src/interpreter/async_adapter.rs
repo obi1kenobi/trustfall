@@ -1,7 +1,7 @@
 //! Asynchronous, `Stream`-native adapter trait and pipeline type aliases.
 //!
 //! This is the async counterpart of the synchronous [`Adapter`](super::Adapter) trait. Where the
-//! sync engine composes lazy [`Iterator`]s, the async engine composes lazy [`Stream`]s, so adapter
+//! synchronous protocol uses lazy [`Iterator`]s, this protocol uses lazy [`Stream`]s, so adapter
 //! resolvers can overlap IO across the contexts in a batch (order-preserving concurrency, e.g.
 //! `contexts.map(fetch).buffered(N)`), instead of blocking one context at a time.
 //!
@@ -51,6 +51,8 @@ pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT, ErrorT> =
 /// preconditions and postconditions of each resolver (they are identical here). The differences
 /// are purely in shape: inputs and outputs are [`Stream`]s rather than [`Iterator`]s.
 ///
+/// For most adapters, [`AsyncBasicAdapter`](super::async_basic_adapter::AsyncBasicAdapter) is the
+/// smaller implementation surface and provides this trait through a blanket implementation.
 pub trait AsyncAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries. See [`FallibleAdapter::Vertex`].
     ///

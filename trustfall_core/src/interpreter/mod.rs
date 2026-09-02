@@ -24,6 +24,11 @@ pub mod replay;
 mod sync_adapter;
 pub mod trace;
 
+#[cfg(feature = "async")]
+pub use async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream};
+#[cfg(feature = "async")]
+pub use engine::interpret_ir as interpret_ir_async;
+
 #[cfg(test)]
 mod error_propagation_tests;
 
