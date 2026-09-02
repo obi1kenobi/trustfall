@@ -16,6 +16,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
+# Opt-in public asynchronous adapter API. The runtime-agnostic stream kernel is
+# always present: synchronous execution is one of its frontends.
+async = []
 __private = []
 
 [lib]
