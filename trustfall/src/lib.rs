@@ -64,6 +64,12 @@ pub mod provider {
 pub use trustfall_core::interpreter::error::ExecutionError;
 pub use trustfall_core::ir::{FieldValue, TransparentValue};
 
+/// A single result yielded while executing a query.
+pub type QueryResult<E> = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<E>>;
+
+/// The lazy result stream returned by [`execute_query`].
+pub type QueryResultIterator<'vertex, E> = Box<dyn Iterator<Item = QueryResult<E>> + 'vertex>;
+
 // Trustfall query schema.
 pub use trustfall_core::schema::{Schema, SchemaAdapter};
 
@@ -84,12 +90,7 @@ pub fn execute_query<'vertex, A: provider::Adapter<'vertex> + 'vertex>(
     adapter: Arc<A>,
     query: &str,
     variables: BTreeMap<impl Into<Arc<str>>, impl Into<FieldValue>>,
-) -> anyhow::Result<
-    Box<
-        dyn Iterator<Item = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<A::Error>>>
-            + 'vertex,
-    >,
-> {
+) -> anyhow::Result<QueryResultIterator<'vertex, A::Error>> {
     let parsed_query = trustfall_core::frontend::parse(schema, query)?;
     let vars = Arc::new(variables.into_iter().map(|(k, v)| (k.into(), v.into())).collect());
 

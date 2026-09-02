@@ -2,8 +2,8 @@
 //!
 //! Trustfall has one execution kernel, built from runtime-agnostic streams. This
 //! module projects that kernel as the traditional synchronous API. The projection
-//! does not buffer, collect, or split adapter batches: [`SyncAdapter`] turns each
-//! ready stream into a lazy iterator and [`ReadyIterator`] exposes the result stream
+//! does not buffer, collect, or split adapter batches: `SyncAdapter` turns each
+//! ready stream into a lazy iterator and `ReadyIterator` exposes the result stream
 //! the same way.
 
 use std::{collections::BTreeMap, sync::Arc};
