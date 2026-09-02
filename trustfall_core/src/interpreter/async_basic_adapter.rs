@@ -1,7 +1,9 @@
 //! A simplified async adapter trait and its [`AsyncAdapter`] implementation.
 //!
-//! This is the async counterpart of [`BasicAdapter`](super::basic_adapter::BasicAdapter). It
-//! uses `&str` names, omits resolver hints, and resolves `__typename` through [`Typename`].
+//! This is the async counterpart of [`BasicAdapter`](super::basic_adapter::BasicAdapter). It uses
+//! `&str` names, omits resolver hints, and resolves `__typename` through [`Typename`]. Implement
+//! it when those conveniences are sufficient; use [`AsyncAdapter`] directly to inspect hints or
+//! report an edge-resolution error before producing its neighbor stream.
 //!
 //! The blanket implementation supplies [`AsyncAdapter`]. Infallible adapters set `Error` to
 //! [`std::convert::Infallible`].
@@ -22,7 +24,8 @@ use super::{
 /// A smaller [`AsyncAdapter`] interface for most async adapters.
 ///
 /// It uses `&str` names, omits resolver hints, and resolves `__typename` automatically.
-/// Implementing this trait also implements [`AsyncAdapter`].
+/// Implementing this trait also implements [`AsyncAdapter`]. Its methods still obey the full
+/// stream contract: one outcome per context, in input order.
 pub trait AsyncBasicAdapter<'vertex> {
     /// The type of vertices this adapter queries.
     ///
@@ -33,6 +36,8 @@ pub trait AsyncBasicAdapter<'vertex> {
     type Error: std::error::Error + 'static;
 
     /// Resolve a schema starting edge.
+    ///
+    /// Each item becomes one root query context. Returning an error stops query execution.
     fn resolve_starting_vertices(
         &self,
         edge_name: &str,
@@ -141,8 +146,8 @@ where
         V,
         NeighborResolutionStream<'vertex, Self::Vertex, Self::Error>,
     > {
-        // The basic layer's resolvers never fail the edge resolution for a context as a whole;
-        // failures (if any) ride on individual neighbors inside the stream.
+        // The basic trait has no context-level edge error. Wrap its neighbor stream in `Ok`; any
+        // failure it can report already appears as an item in that stream.
         Box::pin(
             <Self as AsyncBasicAdapter>::resolve_neighbors(
                 self,

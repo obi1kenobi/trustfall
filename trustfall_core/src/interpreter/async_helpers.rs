@@ -1,7 +1,8 @@
 //! Async resolver helpers.
 //!
 //! The sequential helpers mirror [`super::helpers`]. The concurrent helpers use bounded,
-//! order-preserving fan-out for independent I/O.
+//! order-preserving fan-out for independent I/O. All helpers implement the interpreter's missing
+//! optional contract, so adapter code can focus only on present vertices.
 
 use std::{fmt::Debug, future::Future};
 
@@ -15,7 +16,9 @@ use super::{
 };
 
 /// Async mirror of [`resolve_property_with`](super::helpers::resolve_property_with).
-/// Missing optional vertices resolve to [`FieldValue::Null`].
+///
+/// The resolver is called only for present vertices. A missing optional vertex still produces its
+/// matching context, with [`FieldValue::Null`] as the property value.
 pub fn resolve_property_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -35,6 +38,9 @@ pub fn resolve_property_with<
 }
 
 /// Fallible variant of [`resolve_property_with`].
+///
+/// Errors apply to the current context and stop the query result stream when the interpreter sees
+/// them. Missing optional vertices still resolve to `Null` without calling `resolver`.
 pub fn try_resolve_property_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -54,7 +60,9 @@ pub fn try_resolve_property_with<
 }
 
 /// Async mirror of [`resolve_neighbors_with`](super::helpers::resolve_neighbors_with).
-/// Missing optional vertices resolve to an empty stream.
+///
+/// The resolver is called only for present vertices. A missing optional vertex returns an empty
+/// neighbor stream, which preserves the optional scope for later output resolution.
 pub fn resolve_neighbors_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -78,6 +86,10 @@ pub fn resolve_neighbors_with<
 }
 
 /// Fallible, context-level variant of [`resolve_neighbors_with`].
+///
+/// `resolver` either produces the complete neighbor collection for a context or reports that its
+/// edge resolution failed. Use a custom [`NeighborResolutionStream`] when failures can arise while
+/// producing individual neighbors instead.
 pub fn try_resolve_neighbors_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -108,7 +120,9 @@ where
 }
 
 /// Async mirror of [`resolve_coercion_with`](super::helpers::resolve_coercion_with).
-/// Missing optional vertices resolve to `false`.
+///
+/// The resolver is called only for present vertices. Missing optional vertices resolve to `false`,
+/// which lets the interpreter preserve their enclosing optional scope.
 pub fn resolve_coercion_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -128,6 +142,8 @@ pub fn resolve_coercion_with<
 }
 
 /// Fallible variant of [`resolve_coercion_with`].
+///
+/// Missing optional vertices resolve to `false` without calling `resolver`.
 pub fn try_resolve_coercion_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -148,7 +164,9 @@ pub fn try_resolve_coercion_with<
 
 /// Order-preserving, bounded concurrent map over a context stream.
 ///
-/// At most `concurrency` futures run at once. Output order matches input order.
+/// At most `concurrency` futures run at once. Completed work is held until all earlier contexts
+/// finish, so output order matches input order even when the underlying I/O does not. `concurrency`
+/// must be at least one.
 pub fn map_contexts_buffered<'vertex, V, O, F, Fut>(
     contexts: ContextStream<'vertex, V>,
     concurrency: usize,
@@ -165,6 +183,9 @@ where
 }
 
 /// Concurrent, order-preserving fallible property resolution.
+///
+/// The input vertex is cloned before its future starts, which lets the future own its request
+/// state. Missing optional vertices bypass the resolver and produce `Null` immediately.
 pub fn try_resolve_property_with_concurrent<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -194,6 +215,9 @@ where
 }
 
 /// Concurrent, order-preserving, context-level fallible neighbor resolution.
+///
+/// A completed resolver future becomes the complete neighbor stream for one context. Missing
+/// optional vertices bypass the resolver and produce an empty stream.
 pub fn try_resolve_neighbors_with_concurrent<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -229,6 +253,8 @@ where
 }
 
 /// Concurrent, order-preserving fallible coercion resolution.
+///
+/// Missing optional vertices bypass the resolver and produce `false`.
 pub fn try_resolve_coercion_with_concurrent<
     'vertex,
     Vertex: Debug + Clone + 'vertex,

@@ -1,7 +1,9 @@
 //! Stream handling for `@filter` directives that use tags.
 //!
-//! The local field has already been resolved. This module resolves the tagged value and compares
-//! the two values with the same [`ComparisonOp`] used for runtime arguments.
+//! The local field has already been resolved and pushed onto `DataContext::values`. This module
+//! finds the tagged value, compares it with that left value, and removes the stack entry before
+//! forwarding the context. The tag can come from the active vertex, another local vertex, a fold,
+//! or an enclosing component; those locations determine whether resolving it needs an adapter call.
 
 use async_stream::try_stream;
 use futures_util::StreamExt;
@@ -20,6 +22,9 @@ use super::{
 };
 
 /// Apply a tag-argument `@filter` to a stream with its left value resolved.
+///
+/// The caller has resolved the filter's local field. We retain that ordering because a tagged
+/// field may itself need resolution and must not overwrite the left value it is compared against.
 pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -40,6 +45,10 @@ pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'quer
 }
 
 /// Compare the resolved tag value with each context's left value.
+///
+/// Local context fields may be resolved from the adapter. Fields from an outer component were
+/// copied into `DataContext::imported_tags` when entering the nested component. Fold-specific
+/// fields are already materialized by the time a post-fold filter can read them.
 pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
@@ -61,12 +70,8 @@ pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'que
         ),
         FieldRef::FoldSpecificField(fold_field) => {
             if component.folds.contains_key(&fold_field.fold_eid) {
-                // A fold-specific field (e.g. the fold count) from a `@fold` in this component. The
-                // fold is already materialized by the time filters run, so the tag value is read
-                // from `folded_contexts` — no adapter call needed.
                 apply_fold_specific_tag_filter(op, fold_field.fold_eid, fold_field.kind, stream)
             } else {
-                // Imported tag from an outer component stored in context.imported_tags.
                 let field_ref = FieldRef::FoldSpecificField(fold_field);
                 apply_imported_tag_filter(op, field_ref, stream)
             }
@@ -83,8 +88,9 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
     context_field: ContextField,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    // Local tag: the field lives on the current vertex — resolve as a local property.
     if context_field.vertex_id == current_vid {
+        // The tag belongs to the active vertex. Resolve it directly, leaving the filter's left
+        // value below it on the context stack until `tagged_filter_matches()` consumes it.
         let local_field = LocalField {
             field_name: context_field.field_name.clone(),
             field_type: context_field.field_type.clone(),
@@ -100,26 +106,23 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
             let mut staged = staged;
             while let Some(item) = staged.next().await {
                 let (mut ctx, right_value) = item?;
-                let left_value = ctx.values.pop().expect("no value present");
-                // within_nonexistent_optional: filter vacuously passes (same as sync engine).
-                if ctx.within_nonexistent_optional()
-                    || passes_tagged_filter(op, &left_value, TaggedValue::Some(right_value))
-                {
+                if tagged_filter_matches(&mut ctx, op, TaggedValue::Some(right_value)) {
                     yield ctx;
                 }
             }
         });
     }
 
-    // Non-local context field within the current component: move to that vertex, resolve, restore.
     if let Some(vertex) = component.vertices.get(&context_field.vertex_id) {
+        // The tag belongs to another vertex in this component. Resolver helpers always inspect
+        // the active vertex, so save the current one, activate the tagged vertex, then restore it
+        // before evaluating the comparison.
         let vertex_id = context_field.vertex_id;
         let type_name = vertex.type_name.clone();
         let field_name = context_field.field_name.clone();
 
         let (plain, upstream_error) = begin_stage(stream);
 
-        // Push current active vertex onto suspended_vertices and switch to the tag's vertex.
         let plain = Box::pin(plain.map(move |mut context| {
             let active_vertex = context.active_vertex.clone();
             let new_vertex = context.vertices[&vertex_id].clone();
@@ -141,26 +144,24 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
                 } else {
                     TaggedValue::NonexistentOptional
                 };
-                // Restore the previous active vertex.
+                // This balances the temporary activation above. The filter continues at the
+                // original vertex, which is where later fields and edges expect the context.
                 let old_active = ctx.suspended_vertices.pop().unwrap();
                 ctx = ctx.move_to_vertex(old_active);
 
-                let left_value = ctx.values.pop().expect("no value present");
-                // within_nonexistent_optional: filter vacuously passes (same as sync engine).
-                if ctx.within_nonexistent_optional() || passes_tagged_filter(op, &left_value, tagged)
-                {
+                if tagged_filter_matches(&mut ctx, op, tagged) {
                     yield ctx;
                 }
             }
         });
     }
 
-    // Imported outer-component tag: value is stored in context.imported_tags.
+    // The component does not own this vertex, so the tag was imported before the component began.
     let field_ref = FieldRef::ContextField(context_field);
     apply_imported_tag_filter(op, field_ref, stream)
 }
 
-fn apply_imported_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'query>(
+fn apply_imported_tag_filter<'query, V: 'query, E: 'query>(
     op: ComparisonOp,
     field_ref: FieldRef,
     stream: FallibleContextStream<'query, V, E>,
@@ -170,9 +171,7 @@ fn apply_imported_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'qu
         while let Some(item) = stream.next().await {
             let mut ctx = item?;
             let tagged = ctx.imported_tags[&field_ref].clone();
-            let left_value = ctx.values.pop().expect("no value present");
-            // within_nonexistent_optional: filter vacuously passes.
-            if ctx.within_nonexistent_optional() || passes_tagged_filter(op, &left_value, tagged) {
+            if tagged_filter_matches(&mut ctx, op, tagged) {
                 yield ctx;
             }
         }
@@ -180,7 +179,10 @@ fn apply_imported_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'qu
 }
 
 /// Apply a filter tagged with a field from an already-materialized fold.
-fn apply_fold_specific_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'query>(
+///
+/// A fold inside a nonexistent optional is represented by `None`, which is the same
+/// `NonexistentOptional` tag value used for a missing tagged context field.
+fn apply_fold_specific_tag_filter<'query, V: 'query, E: 'query>(
     op: ComparisonOp,
     fold_eid: Eid,
     kind: FoldSpecificFieldKind,
@@ -196,18 +198,30 @@ fn apply_fold_specific_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E
                     Some(elements) => TaggedValue::Some(FieldValue::Uint64(elements.len() as u64)),
                 },
             };
-            let left_value = ctx.values.pop().expect("no value present");
-            if ctx.within_nonexistent_optional() || passes_tagged_filter(op, &left_value, tagged) {
+            if tagged_filter_matches(&mut ctx, op, tagged) {
                 yield ctx;
             }
         }
     })
 }
 
-/// Return whether the context passes a tagged filter.
+/// Remove this filter's left value and compare it with a tagged value.
+///
+/// Missing optional data passes every comparison. The optional scope represents absence, not a
+/// value that can fail a predicate, so an inner filter must not discard the parent context.
+fn tagged_filter_matches<Vertex>(
+    context: &mut super::DataContext<Vertex>,
+    op: ComparisonOp,
+    tagged: TaggedValue,
+) -> bool {
+    let left = context.values.pop().expect("no value present");
+    context.within_nonexistent_optional() || passes_tagged_filter(op, &left, tagged)
+}
+
 fn passes_tagged_filter(op: ComparisonOp, left: &FieldValue, tagged: TaggedValue) -> bool {
     let TaggedValue::Some(right) = tagged else {
-        // NonexistentOptional: always pass.
+        // A tagged value can also be absent because it came from an optional ancestor component.
+        // Preserve the context for the same reason as `within_nonexistent_optional()` above.
         return true;
     };
     op.apply(left, &right)
