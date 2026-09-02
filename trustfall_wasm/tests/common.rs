@@ -162,7 +162,12 @@ pub fn run_numbers_query(
         Arc::new(args.into_iter().map(|(k, v)| (Arc::from(k), v.into())).collect()),
     )
     .map_err(|e| e.to_string())?
-    .map(|res| res.into_iter().map(|(k, v)| (k.to_string(), v.into())).collect())
+    .map(|res| {
+        res.expect("JavaScript adapter is currently infallible")
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.into()))
+            .collect()
+    })
     .collect();
 
     Ok(results)
