@@ -250,7 +250,9 @@ fn execute_query_with_fuzzed_batching(test_case: TestCase<'_>) {
     #[allow(clippy::arc_with_non_send_sync)]
     let adapter =
         Arc::new(VariableBatchingAdapter::new(numbers_adapter::NumbersAdapter, test_case.cursor));
-    interpret_ir(adapter, test_case.query, test_case.arguments).unwrap().for_each(drop);
+    interpret_ir(adapter, test_case.query, test_case.arguments)
+        .unwrap()
+        .for_each(|row| drop(row.expect("fuzz adapter is infallible")));
 }
 
 fuzz_target!(|data: &[u8]| {
