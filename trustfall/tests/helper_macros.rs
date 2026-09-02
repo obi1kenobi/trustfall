@@ -109,6 +109,7 @@ type Vertex {
         std::collections::BTreeMap::new();
     let res = trustfall::execute_query(&schema, adapter, query, variables)
         .expect("query should resolve")
+        .map(|row| row.expect("test adapter is infallible"))
         .collect::<Vec<_>>();
 
     assert_eq!(res.len(), 1);
