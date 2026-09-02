@@ -35,6 +35,10 @@ pub mod async_helpers;
 
 #[cfg(test)]
 mod error_propagation_tests;
+#[cfg(all(test, feature = "async"))]
+mod async_contract_tests;
+#[cfg(all(test, feature = "async"))]
+mod async_test_adapter;
 
 pub use hints::{
     CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,
