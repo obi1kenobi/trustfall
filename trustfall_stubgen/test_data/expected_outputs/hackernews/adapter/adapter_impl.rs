@@ -27,13 +27,14 @@ impl Adapter {
 
 impl<'a> trustfall::provider::Adapter<'a> for Adapter {
     type Vertex = Vertex;
+    type Error = std::convert::Infallible;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'a, Self::Vertex> {
+    ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
         match edge_name.as_ref() {
             "AskHN" => {
                 let max: Option<i64> = parameters
@@ -42,7 +43,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'AskHN' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::ask_hn(max, resolve_info)
+                Box::new(super::entrypoints::ask_hn(max, resolve_info).map(Ok))
             }
             "Best" => {
                 let max: Option<i64> = parameters
@@ -51,9 +52,9 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'Best' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::best(max, resolve_info)
+                Box::new(super::entrypoints::best(max, resolve_info).map(Ok))
             }
-            "FrontPage" => super::entrypoints::front_page(resolve_info),
+            "FrontPage" => Box::new(super::entrypoints::front_page(resolve_info).map(Ok)),
             "Item" => {
                 let id: i64 = parameters
                     .get("id")
@@ -64,7 +65,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                     .expect(
                         "unexpected null or other incorrect datatype for Trustfall type 'Int!'",
                     );
-                super::entrypoints::item(id, resolve_info)
+                Box::new(super::entrypoints::item(id, resolve_info).map(Ok))
             }
             "Latest" => {
                 let max: Option<i64> = parameters
@@ -73,7 +74,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'Latest' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::latest(max, resolve_info)
+                Box::new(super::entrypoints::latest(max, resolve_info).map(Ok))
             }
             "RecentJob" => {
                 let max: Option<i64> = parameters
@@ -82,7 +83,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'RecentJob' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::recent_job(max, resolve_info)
+                Box::new(super::entrypoints::recent_job(max, resolve_info).map(Ok))
             }
             "SearchByDate" => {
                 let query: &str = parameters
@@ -94,7 +95,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                     .expect(
                         "unexpected null or other incorrect datatype for Trustfall type 'String!'",
                     );
-                super::entrypoints::search_by_date(query, resolve_info)
+                Box::new(super::entrypoints::search_by_date(query, resolve_info).map(Ok))
             }
             "SearchByRelevance" => {
                 let query: &str = parameters
@@ -106,7 +107,9 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                     .expect(
                         "unexpected null or other incorrect datatype for Trustfall type 'String!'",
                     );
-                super::entrypoints::search_by_relevance(query, resolve_info)
+                Box::new(
+                    super::entrypoints::search_by_relevance(query, resolve_info).map(Ok),
+                )
             }
             "ShowHN" => {
                 let max: Option<i64> = parameters
@@ -115,7 +118,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'ShowHN' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::show_hn(max, resolve_info)
+                Box::new(super::entrypoints::show_hn(max, resolve_info).map(Ok))
             }
             "Top" => {
                 let max: Option<i64> = parameters
@@ -124,7 +127,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'Top' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::top(max, resolve_info)
+                Box::new(super::entrypoints::top(max, resolve_info).map(Ok))
             }
             "UpdatedItem" => {
                 let max: Option<i64> = parameters
@@ -133,7 +136,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'UpdatedItem' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::updated_item(max, resolve_info)
+                Box::new(super::entrypoints::updated_item(max, resolve_info).map(Ok))
             }
             "UpdatedUserProfile" => {
                 let max: Option<i64> = parameters
@@ -142,7 +145,9 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                         "failed to find parameter 'max' when resolving 'UpdatedUserProfile' starting vertices",
                     )
                     .as_i64();
-                super::entrypoints::updated_user_profile(max, resolve_info)
+                Box::new(
+                    super::entrypoints::updated_user_profile(max, resolve_info).map(Ok),
+                )
             }
             "User" => {
                 let name: &str = parameters
@@ -154,7 +159,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                     .expect(
                         "unexpected null or other incorrect datatype for Trustfall type 'String!'",
                     );
-                super::entrypoints::user(name, resolve_info)
+                Box::new(super::entrypoints::user(name, resolve_info).map(Ok))
             }
             _ => {
                 unreachable!(
@@ -170,51 +175,72 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
         if property_name.as_ref() == "__typename" {
-            return resolve_property_with(contexts, |vertex| vertex.typename().into());
+            return Box::new(
+                resolve_property_with(contexts, |vertex| vertex.typename().into())
+                    .map(|(ctx, v)| (ctx, Ok(v))),
+            );
         }
         match type_name.as_ref() {
             "Comment" => {
-                super::properties::resolve_comment_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
+                Box::new(
+                    super::properties::resolve_comment_property(
+                            contexts,
+                            property_name.as_ref(),
+                            resolve_info,
+                        )
+                        .map(|(ctx, v)| (ctx, Ok(v))),
                 )
             }
             "Item" => {
-                super::properties::resolve_item_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
+                Box::new(
+                    super::properties::resolve_item_property(
+                            contexts,
+                            property_name.as_ref(),
+                            resolve_info,
+                        )
+                        .map(|(ctx, v)| (ctx, Ok(v))),
                 )
             }
             "Job" => {
-                super::properties::resolve_job_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
+                Box::new(
+                    super::properties::resolve_job_property(
+                            contexts,
+                            property_name.as_ref(),
+                            resolve_info,
+                        )
+                        .map(|(ctx, v)| (ctx, Ok(v))),
                 )
             }
             "Story" => {
-                super::properties::resolve_story_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
+                Box::new(
+                    super::properties::resolve_story_property(
+                            contexts,
+                            property_name.as_ref(),
+                            resolve_info,
+                        )
+                        .map(|(ctx, v)| (ctx, Ok(v))),
                 )
             }
             "User" => {
-                super::properties::resolve_user_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
+                Box::new(
+                    super::properties::resolve_user_property(
+                            contexts,
+                            property_name.as_ref(),
+                            resolve_info,
+                        )
+                        .map(|(ctx, v)| (ctx, Ok(v))),
                 )
             }
             "Webpage" => {
-                super::properties::resolve_webpage_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
+                Box::new(
+                    super::properties::resolve_webpage_property(
+                            contexts,
+                            property_name.as_ref(),
+                            resolve_info,
+                        )
+                        .map(|(ctx, v)| (ctx, Ok(v))),
                 )
             }
             _ => {
@@ -232,38 +258,70 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+    > {
         match type_name.as_ref() {
             "Comment" => {
-                super::edges::resolve_comment_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
+                Box::new(
+                    super::edges::resolve_comment_edge(
+                            contexts,
+                            edge_name.as_ref(),
+                            parameters,
+                            resolve_info,
+                        )
+                        .map(|(ctx, neighbors)| (
+                            ctx,
+                            Box::new(neighbors.map(Ok))
+                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                        )),
                 )
             }
             "Job" => {
-                super::edges::resolve_job_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
+                Box::new(
+                    super::edges::resolve_job_edge(
+                            contexts,
+                            edge_name.as_ref(),
+                            parameters,
+                            resolve_info,
+                        )
+                        .map(|(ctx, neighbors)| (
+                            ctx,
+                            Box::new(neighbors.map(Ok))
+                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                        )),
                 )
             }
             "Story" => {
-                super::edges::resolve_story_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
+                Box::new(
+                    super::edges::resolve_story_edge(
+                            contexts,
+                            edge_name.as_ref(),
+                            parameters,
+                            resolve_info,
+                        )
+                        .map(|(ctx, neighbors)| (
+                            ctx,
+                            Box::new(neighbors.map(Ok))
+                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                        )),
                 )
             }
             "User" => {
-                super::edges::resolve_user_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
+                Box::new(
+                    super::edges::resolve_user_edge(
+                            contexts,
+                            edge_name.as_ref(),
+                            parameters,
+                            resolve_info,
+                        )
+                        .map(|(ctx, neighbors)| (
+                            ctx,
+                            Box::new(neighbors.map(Ok))
+                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                        )),
                 )
             }
             _ => {
@@ -280,7 +338,14 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         _type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, bool> {
-        resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
+    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+        Box::new(
+            resolve_coercion_using_schema(
+                    contexts,
+                    Self::schema(),
+                    coerce_to_type.as_ref(),
+                )
+                .map(|(ctx, v)| (ctx, Ok(v))),
+        )
     }
 }
