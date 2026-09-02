@@ -10,6 +10,7 @@ use crate::{
 
 use self::error::QueryArgumentsError;
 
+mod async_adapter;
 pub mod basic_adapter;
 pub mod error;
 pub mod execution;
