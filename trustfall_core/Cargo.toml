@@ -51,10 +51,3 @@ similar-asserts = { workspace = true, features = ["serde"] }
 globset = { workspace = true }
 walkdir = { workspace = true }
 futures-executor = { workspace = true }
-criterion = "0.5"
-
-[[bench]]
-name = "execution"
-harness = false
-required-features = ["__private", "async"]
-
