@@ -3,12 +3,13 @@
 //! # Sequential helpers (default)
 //!
 //! The sequential helpers apply per-vertex resolver closures over a [`ContextStream`] using
-//! [`StreamExt::map`]. No concurrency or buffering is introduced — the closures are applied
+//! `StreamExt::map`. No concurrency or buffering is introduced — the closures are applied
 //! lazily, one context at a time, mirroring the sync helpers' per-context logic exactly
 //! (including the `None` active-vertex cases).
 //!
 //! Like their sync counterparts, the infallible `resolve_*_with` helpers take an error type `E`
-//! inferred from the calling context (the adapter's [`AsyncAdapter::Error`]): infallible
+//! inferred from the calling context (the adapter's
+//! [`AsyncAdapter::Error`](super::async_adapter::AsyncAdapter::Error)): infallible
 //! resolvers never write `Ok` or `Result` themselves, and the values the helpers produce already
 //! carry the adapter's error type.
 //!
@@ -16,7 +17,7 @@
 //!
 //! For adapters that perform real IO, the `*_concurrent` helpers and [`map_contexts_buffered`]
 //! start up to `concurrency` resolver futures at once while **preserving input order** of
-//! `(context, outcome)` pairs (via [`StreamExt::buffered`]). Prefer these when each resolution
+//! `(context, outcome)` pairs (via `StreamExt::buffered`). Prefer these when each resolution
 //! is an independent network/disk call.
 //!
 //! For the sync counterparts see [`helpers::resolve_property_with`][sync-prop],
@@ -112,8 +113,7 @@ pub fn resolve_neighbors_with<
         }
         Some(vertex) => {
             let neighbors = resolver(vertex);
-            let neighbors: VertexStream<'vertex, Result<Vertex, E>> =
-                Box::pin(neighbors.map(Ok));
+            let neighbors: VertexStream<'vertex, Result<Vertex, E>> = Box::pin(neighbors.map(Ok));
             (ctx, Ok(neighbors))
         }
     }))
@@ -228,7 +228,7 @@ pub fn try_resolve_coercion_with<
 ///
 /// - Up to `concurrency` futures produced by `f` may be polled concurrently.
 /// - `(context, outcome)` pairs are yielded in the **same order** as the input contexts
-///   (uses [`StreamExt::buffered`], not `buffer_unordered`).
+///   (uses `StreamExt::buffered`, not `buffer_unordered`).
 /// - `concurrency` must be at least `1` (sequential when `1`).
 ///
 /// # Adapter contract

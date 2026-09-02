@@ -45,8 +45,7 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
 
     let max_depth = usize::from(recursive.depth);
 
-    let edge_endpoint_type =
-        edge.to.coerced_from_type.as_ref().unwrap_or(&edge.to.type_name);
+    let edge_endpoint_type = edge.to.coerced_from_type.as_ref().unwrap_or(&edge.to.type_name);
     let recursing_from = recursive.coerce_to.as_ref().unwrap_or(edge_endpoint_type);
 
     // First expansion uses the expanding_from type name (before any coercion-based recursing).

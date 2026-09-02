@@ -347,7 +347,9 @@ impl ValuePredicate {
                 Self::StaticRegex { negated, pattern }
             }
             Some(op) => Self::Static { op, right: right_value },
-            None => unreachable!("unary filter passed to ValuePredicate::static_argument: {filter:?}"),
+            None => {
+                unreachable!("unary filter passed to ValuePredicate::static_argument: {filter:?}")
+            }
         }
     }
 
@@ -362,5 +364,241 @@ impl ValuePredicate {
                 regex_matches_optimized(left, pattern) ^ *negated
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ir::{Eid, FieldRef, FoldSpecificField, FoldSpecificFieldKind, Vid};
+    use std::num::NonZeroUsize;
+
+    fn s(value: &str) -> FieldValue {
+        FieldValue::String(std::sync::Arc::from(value))
+    }
+
+    fn list(values: &[FieldValue]) -> FieldValue {
+        FieldValue::List(std::sync::Arc::from(values))
+    }
+
+    /// Scalar value pairs that every binary comparison must handle.
+    ///
+    /// Note: comparisons between mismatched non-integer kinds (e.g. string vs. int,
+    /// or lists) are contract violations on the adapter's part and panic in the slow
+    /// paths, so they deliberately do not appear here.
+    fn scalar_pairs() -> Vec<(&'static str, FieldValue, FieldValue)> {
+        vec![
+            ("int/int", FieldValue::Int64(2), FieldValue::Int64(3)),
+            ("int/int eq", FieldValue::Int64(3), FieldValue::Int64(3)),
+            ("uint/uint", FieldValue::Uint64(2), FieldValue::Uint64(3)),
+            ("int/uint cross", FieldValue::Int64(3), FieldValue::Uint64(3)),
+            ("uint/int cross", FieldValue::Uint64(3), FieldValue::Int64(3)),
+            ("int neg/uint", FieldValue::Int64(-1), FieldValue::Uint64(1)),
+            ("float/float", FieldValue::Float64(2.5), FieldValue::Float64(2.75)),
+            ("float/float eq", FieldValue::Float64(2.5), FieldValue::Float64(2.5)),
+            ("string/string", s("hello"), s("hel")),
+            ("string/string eq", s("hello"), s("hello")),
+            ("null left", FieldValue::Null, FieldValue::Int64(0)),
+            ("null right", s("x"), FieldValue::Null),
+            ("null/null", FieldValue::Null, FieldValue::Null),
+        ]
+    }
+
+    /// Pairs where only textual operations apply (strings and nulls); ordering
+    /// comparisons on strings are valid too, so they appear in `scalar_pairs`.
+    fn textual_pairs() -> Vec<(&'static str, FieldValue, FieldValue)> {
+        vec![
+            ("string/string", s("hello"), s("hel")),
+            ("string/string eq", s("hello"), s("hello")),
+            ("string/null", s("x"), FieldValue::Null),
+            ("null/string", FieldValue::Null, s("x")),
+            ("null/null", FieldValue::Null, FieldValue::Null),
+        ]
+    }
+
+    #[test]
+    fn comparison_op_golden_table() {
+        let scalar = scalar_pairs();
+        // (op, expected over `scalar_pairs` order)
+        let ordering: Vec<(ComparisonOp, Vec<bool>)> = vec![
+            (
+                ComparisonOp::Equals,
+                vec![
+                    false, true, false, true, true, false, false, true, false, true, false, false,
+                    true,
+                ],
+            ),
+            (
+                ComparisonOp::NotEquals,
+                vec![
+                    true, false, true, false, false, true, true, false, true, false, true, true,
+                    false,
+                ],
+            ),
+            (
+                ComparisonOp::LessThan,
+                vec![
+                    true, false, true, false, false, true, true, false, false, false, false, false,
+                    false,
+                ],
+            ),
+            (
+                ComparisonOp::LessThanOrEqual,
+                vec![
+                    true, true, true, true, true, true, true, true, false, true, false, false,
+                    false,
+                ],
+            ),
+            (
+                ComparisonOp::GreaterThan,
+                vec![
+                    false, false, false, false, false, false, false, false, true, false, false,
+                    false, false,
+                ],
+            ),
+            (
+                ComparisonOp::GreaterThanOrEqual,
+                vec![
+                    false, true, false, true, true, false, false, true, true, true, false, false,
+                    false,
+                ],
+            ),
+        ];
+        for (op, expected) in ordering {
+            for ((label, left, right), want) in scalar.iter().zip(expected) {
+                assert_eq!(
+                    op.apply(left, right),
+                    want,
+                    "{op:?}({label}): left {left:?} right {right:?}",
+                );
+            }
+        }
+
+        let textual = textual_pairs();
+        let textual_ops: Vec<(ComparisonOp, Vec<bool>)> = vec![
+            (ComparisonOp::HasPrefix, vec![true, true, false, false, false]),
+            (ComparisonOp::NotHasPrefix, vec![false, false, true, true, true]),
+            (ComparisonOp::HasSuffix, vec![false, true, false, false, false]),
+            (ComparisonOp::NotHasSuffix, vec![true, false, true, true, true]),
+            (ComparisonOp::HasSubstring, vec![true, true, false, false, false]),
+            (ComparisonOp::NotHasSubstring, vec![false, false, true, true, true]),
+            (ComparisonOp::RegexMatches, vec![true, true, false, false, false]),
+            (ComparisonOp::NotRegexMatches, vec![false, false, true, true, true]),
+        ];
+        for (op, expected) in textual_ops {
+            for ((label, left, right), want) in textual.iter().zip(expected) {
+                assert_eq!(
+                    op.apply(left, right),
+                    want,
+                    "{op:?}({label}): left {left:?} right {right:?}",
+                );
+            }
+        }
+    }
+
+    /// Values that only support (in)equality: lists, and integer pairs outside the other
+    /// type's range where ordering comparisons are documented to panic instead.
+    #[test]
+    fn comparison_op_equality_only_values() {
+        // List equality recurses element-wise.
+        let l1 = list(&[FieldValue::Int64(1), FieldValue::Int64(2)]);
+        let l2 = list(&[FieldValue::Int64(1), FieldValue::Int64(2)]);
+        let l3 = list(&[FieldValue::Int64(1)]);
+        assert!(ComparisonOp::Equals.apply(&l1, &l2));
+        assert!(ComparisonOp::NotEquals.apply(&l1, &l3));
+        assert!(!ComparisonOp::Equals.apply(&l1, &l3));
+
+        // u64::MAX vs -1: representable in neither other type; equality is false, not a panic.
+        let big = FieldValue::Uint64(u64::MAX);
+        let neg = FieldValue::Int64(-1);
+        assert!(!ComparisonOp::Equals.apply(&big, &neg));
+        assert!(!ComparisonOp::Equals.apply(&neg, &big));
+        assert!(ComparisonOp::NotEquals.apply(&big, &neg));
+
+        // one_of: right must be a list; contains is one_of with operands swapped.
+        let left = FieldValue::Int64(2);
+        let members = list(&[FieldValue::Int64(1), FieldValue::Int64(2)]);
+        assert!(ComparisonOp::OneOf.apply(&left, &members));
+        assert!(!ComparisonOp::NotOneOf.apply(&left, &members));
+        // A field holding a list "contains" a member value.
+        assert!(ComparisonOp::Contains.apply(&members, &left));
+        // one_of against a null list is false, not a panic.
+        assert!(!ComparisonOp::OneOf.apply(&left, &FieldValue::Null));
+
+        // Regexes: an invalid pattern matches nothing.
+        assert!(!ComparisonOp::RegexMatches.apply(&s("anything"), &s("(unclosed")));
+        assert!(ComparisonOp::NotRegexMatches.apply(&s("anything"), &s("(unclosed")));
+    }
+
+    #[test]
+    fn value_predicate_matches_comparison_op() {
+        let ordering_ops = [
+            ComparisonOp::Equals,
+            ComparisonOp::NotEquals,
+            ComparisonOp::LessThan,
+            ComparisonOp::LessThanOrEqual,
+            ComparisonOp::GreaterThan,
+            ComparisonOp::GreaterThanOrEqual,
+        ];
+        for op in ordering_ops {
+            for (_, left, right) in scalar_pairs() {
+                let predicate = ValuePredicate::Static { op, right: right.clone() };
+                assert_eq!(
+                    predicate.passes(&left),
+                    op.apply(&left, &right),
+                    "ValuePredicate({op:?}) diverged from ComparisonOp::apply",
+                );
+            }
+        }
+        for op in [ComparisonOp::HasPrefix, ComparisonOp::NotHasSubstring] {
+            for (_, left, right) in textual_pairs() {
+                let predicate = ValuePredicate::Static { op, right: right.clone() };
+                assert_eq!(predicate.passes(&left), op.apply(&left, &right), "{op:?}");
+            }
+        }
+
+        // Precompiled regex predicates agree with the slow path.
+        let pattern = Regex::new("^ab").expect("valid regex");
+        let slow_path_pattern = s("^ab");
+        for candidate in ["ab", "ba", "abc"] {
+            let value = s(candidate);
+            let predicate =
+                ValuePredicate::StaticRegex { negated: false, pattern: pattern.clone() };
+            assert_eq!(
+                predicate.passes(&value),
+                ComparisonOp::RegexMatches.apply(&value, &slow_path_pattern),
+                "precompiled regex diverged for {candidate:?}",
+            );
+            let negated = ValuePredicate::StaticRegex { negated: true, pattern: pattern.clone() };
+            assert_eq!(negated.passes(&value), !predicate.passes(&value));
+        }
+    }
+
+    #[test]
+    fn unary_predicates() {
+        let is_null = ValuePredicate::unary(&Operation::IsNull(())).unwrap();
+        assert!(is_null.passes(&FieldValue::Null));
+        assert!(!is_null.passes(&FieldValue::Int64(0)));
+
+        let is_not_null =
+            ValuePredicate::unary(&Operation::<(), &Argument>::IsNotNull(())).unwrap();
+        assert!(!is_not_null.passes(&FieldValue::Null));
+        assert!(is_not_null.passes(&FieldValue::Int64(0)));
+
+        assert!(
+            ValuePredicate::unary(&Operation::<(), &Argument>::Equals((), null_arg())).is_none()
+        );
+    }
+
+    fn null_arg() -> &'static Argument {
+        // Only the operation kind matters to `ValuePredicate::unary`, never the argument.
+        static NONE: std::sync::OnceLock<Argument> = std::sync::OnceLock::new();
+        NONE.get_or_init(|| {
+            Argument::Tag(FieldRef::FoldSpecificField(FoldSpecificField {
+                fold_eid: Eid::new(NonZeroUsize::new(1).unwrap()),
+                fold_root_vid: Vid::new(NonZeroUsize::new(1).unwrap()),
+                kind: FoldSpecificFieldKind::Count,
+            }))
+        })
     }
 }

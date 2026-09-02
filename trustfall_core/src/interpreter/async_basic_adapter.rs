@@ -9,9 +9,10 @@
 //! - Automatic handling of the `__typename` special property via [`Typename`].
 //!
 //! Implementing `AsyncBasicAdapter` gives a "free" [`AsyncAdapter`] implementation through the
-//! blanket `impl` at the bottom of this module. Unlike the sync [`BasicAdapter`], which is
-//! always infallible, `AsyncBasicAdapter` keeps its own `type Error` because async adapters
-//! typically perform IO and must be able to report errors.
+//! blanket `impl` at the bottom of this module. Just like the sync
+//! [`BasicAdapter`](super::basic_adapter::BasicAdapter), fallibility is declared via
+//! `type Error`: infallible adapters set it to `std::convert::Infallible` and never
+//! write `Result` or `Ok` themselves.
 
 use std::{fmt::Debug, sync::Arc};
 

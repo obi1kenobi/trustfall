@@ -153,8 +153,7 @@ impl<'vertex, V, O, E> Stream for FailFast<'vertex, V, O, E> {
             }
             Poll::Ready(None) => {
                 this.finished = true;
-                let upstream =
-                    this.continuation.take().map(StageContinuation::take_error).flatten();
+                let upstream = this.continuation.take().and_then(StageContinuation::take_error);
                 match upstream {
                     Some(error) => Poll::Ready(Some(Err(error))),
                     None => Poll::Ready(None),
@@ -898,14 +897,10 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     );
     let type_name = expanding_from.type_name.clone();
     let (plain, upstream_error) = begin_stage(activated);
-    let edge_outcomes = carrier.resolve_edge_with(
-        expanding_from_vid,
-        fold.to_vid,
-        fold.eid,
-        |info| {
+    let edge_outcomes =
+        carrier.resolve_edge_with(expanding_from_vid, fold.to_vid, fold.eid, |info| {
             adapter.resolve_neighbors(plain, &type_name, &fold.edge_name, &fold.parameters, info)
-        },
-    );
+        });
     let edge_stream = finish_stage(edge_outcomes, upstream_error);
 
     // === Fold count limits (eager), mirroring the sync engine's optimization logic. ===
@@ -1110,4 +1105,88 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
             output
         })
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::pin::Pin;
+
+    use futures_util::StreamExt;
+
+    use super::{begin_stage, finish_stage};
+    use crate::interpreter::{ContextOutcomeStream, DataContext};
+
+    type Upstream =
+        Pin<Box<dyn futures_core::Stream<Item = Result<DataContext<i32>, u8>> + 'static>>;
+
+    fn ctx(v: i32) -> DataContext<i32> {
+        DataContext::new(Some(v))
+    }
+
+    fn upstream(items: Vec<Result<DataContext<i32>, u8>>) -> Upstream {
+        Box::pin(futures_util::stream::iter(items))
+    }
+
+    type Staged =
+        Pin<Box<dyn futures_core::Stream<Item = Result<(DataContext<i32>, &'static str), u8>>>>;
+
+    /// Compose a stage exactly like the engine does: the adapter's resolver consumes the
+    /// plain contexts and produces one fallible outcome per context it saw.
+    fn staged(
+        input: Upstream,
+        mut resolver: impl FnMut(DataContext<i32>) -> Result<&'static str, u8> + 'static,
+    ) -> Staged {
+        let (plain, continuation) = begin_stage(input);
+        let outcomes: ContextOutcomeStream<'static, i32, Result<&'static str, u8>> =
+            Box::pin(plain.map(move |ctx| (ctx.clone(), resolver(ctx))));
+        finish_stage(outcomes, continuation)
+    }
+
+    /// The adapter's error takes precedence over a later upstream error, and rows before
+    /// the error still flow: fail-fast means "first error wins, then the stream ends".
+    #[test]
+    fn adapter_error_precedes_later_upstream_error() {
+        let stream = staged(upstream(vec![Ok(ctx(1)), Ok(ctx(2)), Err(9), Ok(ctx(3))]), |ctx| {
+            match ctx.active_vertex {
+                Some(2) => Err(7),
+                Some(_) => Ok("a"),
+                None => Ok("n"),
+            }
+        });
+        let items: Vec<_> = futures_executor::block_on(stream.collect());
+        assert_eq!(items, vec![Ok((ctx(1), "a")), Err(7)]);
+    }
+
+    /// An upstream error surfaces exactly once, after all successfully-resolved outcomes.
+    #[test]
+    fn upstream_error_surfaces_after_outcomes() {
+        let stream = staged(upstream(vec![Ok(ctx(1)), Ok(ctx(2)), Err(9), Ok(ctx(3))]), |ctx| {
+            match ctx.active_vertex {
+                Some(2) => Ok("b"),
+                Some(_) => Ok("a"),
+                None => Ok("n"),
+            }
+        });
+        let items: Vec<_> = futures_executor::block_on(stream.collect());
+        assert_eq!(items, vec![Ok((ctx(1), "a")), Ok((ctx(2), "b")), Err(9)]);
+    }
+
+    /// Terminal-on-error contract (as in DataFusion's stream docs): after yielding an
+    /// error the stream returns `None` on every subsequent poll.
+    #[test]
+    fn stream_is_terminal_after_error() {
+        let mut stream = staged(upstream(vec![Err(1)]), |_| unreachable!("no contexts to resolve"));
+        assert_eq!(futures_executor::block_on(stream.next()), Some(Err(1)));
+        assert_eq!(futures_executor::block_on(stream.next()), None);
+        assert_eq!(futures_executor::block_on(stream.next()), None);
+    }
+
+    /// The stream is fused after successful completion as well.
+    #[test]
+    fn stream_is_terminal_after_completion() {
+        let mut stream = staged(upstream(vec![Ok(ctx(1))]), |_| Ok("done"));
+        assert_eq!(futures_executor::block_on(stream.next()), Some(Ok((ctx(1), "done"))));
+        assert_eq!(futures_executor::block_on(stream.next()), None);
+        assert_eq!(futures_executor::block_on(stream.next()), None);
+    }
 }
