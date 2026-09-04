@@ -16,7 +16,7 @@ use crate::ir::{
 
 use super::{
     DataContext, TaggedValue,
-    async_adapter::{AsyncAdapter, ContextOutcomeStream},
+    async_adapter::{ContextOutcomeStream, FallibleAsyncAdapter},
     engine::FallibleContextStream,
     execution::QueryCarrier,
     filtering::ComparisonOp,
@@ -26,7 +26,7 @@ use super::{
 ///
 /// The caller has resolved the filter's local field. We retain that ordering because a tagged
 /// field may itself need resolution and must not overwrite the left value it is compared against.
-pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub(super) fn apply_tagged_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -50,7 +50,7 @@ pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'quer
 /// Local context fields may be resolved from the adapter. Fields from an outer component were
 /// copied into `DataContext::imported_tags` when entering the nested component. Fold-specific
 /// fields are already materialized by the time a post-fold filter can read them.
-pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub(super) fn apply_tag_comparison<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -80,7 +80,7 @@ pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'que
     }
 }
 
-fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn apply_context_field_tagged_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,

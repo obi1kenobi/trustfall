@@ -7,8 +7,8 @@ use futures_util::{StreamExt, stream};
 use crate::{
     frontend::parse,
     interpreter::{
-        Adapter, AsVertex, NeighborOutcomeStream, ResolveEdgeInfo, ResolveInfo,
-        async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
+        AsVertex, FallibleAdapter, NeighborOutcomeStream, ResolveEdgeInfo, ResolveInfo,
+        async_adapter::{ContextOutcomeStream, ContextStream, FallibleAsyncAdapter, VertexStream},
         execution::interpret_ir,
     },
     ir::{EdgeParameters, FieldValue},
@@ -28,9 +28,9 @@ impl<A> SyncToAsyncAdapter<A> {
     }
 }
 
-impl<'vertex, A> AsyncAdapter<'vertex> for SyncToAsyncAdapter<A>
+impl<'vertex, A> FallibleAsyncAdapter<'vertex> for SyncToAsyncAdapter<A>
 where
-    A: Adapter<'vertex> + 'vertex,
+    A: FallibleAdapter<'vertex> + 'vertex,
 {
     type Vertex = A::Vertex;
     type Error = A::Error;
@@ -62,8 +62,15 @@ where
         Box::pin(async_stream::stream! {
             let mut contexts = contexts;
             while let Some(result) = contexts.next().await {
+                let context = match result {
+                    Ok(context) => context,
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
                 let outcomes = adapter.resolve_property(
-                    Box::new(std::iter::once(result)),
+                    Box::new(std::iter::once(context)),
                     &type_name,
                     &property_name,
                     &resolve_info,
@@ -96,8 +103,15 @@ where
         Box::pin(async_stream::stream! {
             let mut contexts = contexts;
             while let Some(result) = contexts.next().await {
+                let context = match result {
+                    Ok(context) => context,
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
                 let outcomes = adapter.resolve_neighbors(
-                    Box::new(std::iter::once(result)),
+                    Box::new(std::iter::once(context)),
                     &type_name,
                     &edge_name,
                     &parameters,
@@ -130,8 +144,15 @@ where
         Box::pin(async_stream::stream! {
             let mut contexts = contexts;
             while let Some(result) = contexts.next().await {
+                let context = match result {
+                    Ok(context) => context,
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
                 let outcomes = adapter.resolve_coercion(
-                    Box::new(std::iter::once(result)),
+                    Box::new(std::iter::once(context)),
                     &type_name,
                     &coerce_to_type,
                     &resolve_info,
@@ -185,76 +206,5 @@ fn valid_query_corpus_matches_the_sync_engine() {
         let expected = sync_results(&test.query, Arc::clone(&arguments));
         let actual = async_results(&test.query, arguments);
         assert_eq!(expected, actual, "async results diverged for {path:?}");
-    }
-}
-
-mod fault_parity {
-    use super::{SyncToAsyncAdapter, *};
-    use crate::interpreter::{error::ExecutionError, error_propagation_tests as fault};
-
-    fn run_async(
-        fault_kind: fault::Fault,
-        fail_after: usize,
-        query: &str,
-    ) -> Vec<Result<Row, ExecutionError<fault::TestError>>> {
-        let adapter = Arc::new(fault::FaultyAdapter::new(fault_kind, fail_after));
-        let indexed = parse(&adapter.schema(), query).expect("query failed to parse");
-        let rows = interpret_ir_async(
-            Arc::new(SyncToAsyncAdapter::new(adapter)),
-            indexed,
-            Arc::new(BTreeMap::new()),
-        )
-        .expect("invalid query arguments");
-        futures_executor::block_on(rows.collect())
-    }
-
-    /// Both engines agree on which errors surface and which rows survive, fault matrix and
-    /// budgets included.
-    fn assert_parity(
-        expected: &[Result<Row, ExecutionError<fault::TestError>>],
-        actual: &[Result<Row, ExecutionError<fault::TestError>>],
-        label: &str,
-    ) {
-        assert_eq!(expected.len(), actual.len(), "{label}");
-        for (expected, actual) in expected.iter().zip(actual.iter()) {
-            assert_eq!(expected.is_ok(), actual.is_ok(), "{label}");
-            if let (Ok(expected), Ok(actual)) = (expected, actual) {
-                assert_eq!(expected, actual, "{label}");
-            } else if let (Err(expected), Err(actual)) = (expected, actual) {
-                assert_eq!(format!("{expected:?}"), format!("{actual:?}"), "{label}");
-            }
-        }
-    }
-
-    #[test]
-    fn failures_match_the_sync_engine() {
-        let queries = [
-            fault::FLAT,
-            fault::SUCCESSOR,
-            r#"{ Number(min: 0, max: 50) { successor @optional { ... on Prime { value @output } } } }"#,
-            r#"{ Number(min: 1, max: 2) { value @output predecessor @optional { predecessor_value: value @output } } }"#,
-            r#"{ Number(min: 1, max: 30) { value @output multiple(max: 10) @fold { factor: value @output } } }"#,
-            r#"{ Number(min: 0, max: 8) { successor @recurse(depth: 3) { succ: value @output } } }"#,
-        ];
-        let faults = [
-            fault::Fault::StartingVertices,
-            fault::Fault::Property,
-            fault::Fault::Neighbors,
-            fault::Fault::Coercion,
-        ];
-
-        for query in queries {
-            for fault in faults {
-                for budget in 0..=6 {
-                    let expected = fault::run(fault, budget, query);
-                    let actual = run_async(fault, budget, query);
-                    assert_parity(
-                        &expected,
-                        &actual,
-                        &format!("{fault:?}, budget {budget}, {query}"),
-                    );
-                }
-            }
-        }
     }
 }

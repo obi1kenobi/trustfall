@@ -28,7 +28,7 @@ use crate::{
 
 use super::{
     DataContext, InterpretedQuery, ResolveInfo, TaggedValue, ValueOrVec,
-    async_adapter::{AsyncAdapter, ContextStream},
+    async_adapter::{ContextStream, FallibleAsyncAdapter},
     error::{ExecutionError, QueryArgumentsError},
     execution::{QueryCarrier, get_max_fold_count_limit, get_min_fold_count_limit},
     filtering::{ComparisonOp, ValuePredicate},
@@ -58,7 +58,7 @@ impl<'a> EdgeRef<'a> {
 /// stream. Every later resolver call remains lazy: it runs only when the caller polls for more
 /// results. This is the same boundary exposed by the synchronous interpreter.
 #[allow(clippy::type_complexity)]
-pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub fn interpret_ir<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     indexed_query: Arc<IndexedQuery>,
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
@@ -99,7 +99,7 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     Ok(Box::pin(outputs.map(|result| result.map_err(ExecutionError::Adapter))))
 }
 
-pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub(super) fn compute_component<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -180,7 +180,7 @@ pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>
 /// The resolved left value is pushed onto `DataContext::values` until the filter consumes it.
 /// Static arguments can then use a pure predicate. Tag arguments need a second, per-context
 /// lookup, so the tag-filter module takes over after the left value has been recorded.
-fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn apply_local_field_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -245,7 +245,7 @@ fn build_value_predicate(
     }
 }
 
-fn coerce_if_needed<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn coerce_if_needed<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     vertex: &IRVertex,
@@ -259,7 +259,7 @@ fn coerce_if_needed<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     }
 }
 
-fn perform_coercion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn perform_coercion<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     vertex: &IRVertex,
@@ -289,7 +289,7 @@ fn perform_coercion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     })
 }
 
-fn expand_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn expand_edge<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -326,7 +326,7 @@ fn expand_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 /// Every context that reaches a vertex is coerced, filtered, then recorded under its vertex ID.
 /// Recording last matters: filters and coercions operate on the active vertex, while later edges
 /// reactivate this stored value when they return to the vertex.
-fn prepare_vertex<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn prepare_vertex<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -354,7 +354,7 @@ fn prepare_vertex<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     stream
 }
 
-fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn expand_non_recursive_edge<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     edge: &EdgeRef<'_>,
@@ -461,13 +461,26 @@ async fn collect_fold_elements<'query, V, E>(
     }
 }
 
-/// Apply a post-fold filter to a fold-specific field such as the fold count.
+fn fold_field_value<V>(
+    context: &DataContext<V>,
+    fold_eid: Eid,
+    kind: FoldSpecificFieldKind,
+) -> FieldValue {
+    match kind {
+        FoldSpecificFieldKind::Count => match context.folded_contexts[&fold_eid].as_ref() {
+            Some(elements) => FieldValue::Uint64(elements.len() as u64),
+            None => unreachable!("post-fold filter reached a @fold inside a nonexistent @optional"),
+        },
+    }
+}
+
+/// Apply a post-fold filter to a materialized field such as the fold count.
 ///
 /// Like a local filter, this pushes the left value onto the context stack and delegates tag
 /// arguments to the tag-filter stage. The field is available only after the fold has been
 /// materialized, which is why these filters run after edge resolution and component execution.
 #[allow(clippy::too_many_arguments)]
-fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn apply_fold_specific_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     parent_component: &IRQueryComponent,
@@ -482,17 +495,7 @@ fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let with_value: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
         Box::pin(stream.map(move |result| {
             result.map(|mut context| {
-                let value = match &kind {
-                    FoldSpecificFieldKind::Count => {
-                        match context.folded_contexts[&fold_eid].as_ref() {
-                            Some(elements) => FieldValue::Uint64(elements.len() as u64),
-                            None => unreachable!(
-                                "post-fold filter reached a @fold inside a nonexistent @optional"
-                            ),
-                        }
-                    }
-                };
-                context.values.push(value);
+                context.values.push(fold_field_value(&context, fold_eid, kind));
                 context
             })
         }));
@@ -516,6 +519,22 @@ fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let predicate = build_value_predicate(carrier, &filter_without_field);
 
     filter_by_predicate(with_value, predicate)
+}
+
+fn seed_nested_fold_outputs(
+    fold: &IRFold,
+    default_value: &Option<ValueOrVec>,
+    values: &mut BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
+) {
+    for nested_fold in fold.component.folds.values() {
+        for output in nested_fold.fold_specific_outputs.keys() {
+            values.insert((nested_fold.eid, output.clone()), default_value.clone());
+        }
+        for output in nested_fold.component.outputs.keys() {
+            values.insert((nested_fold.eid, output.clone()), default_value.clone());
+        }
+        seed_nested_fold_outputs(nested_fold, default_value, values);
+    }
 }
 
 /// Pop a filter value and retain matching contexts.
@@ -546,7 +565,7 @@ where
 ///
 /// Fold outputs are accumulated as vectors in the order their element contexts were produced.
 /// An absent fold keeps those outputs `null`; an existing empty fold produces empty vectors.
-async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+async fn compute_fold_outputs<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     fold: &Arc<IRFold>,
@@ -583,18 +602,9 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let fold_contains_elements =
         fold_elements.as_ref().is_some_and(|elements| !elements.is_empty());
     if !fold_contains_elements {
-        // Nested folds cannot run without an outer element. Seed their declared outputs now so
-        // their shape still agrees with the query, even though no child context is evaluated.
-        let mut queue: Vec<_> = fold.component.folds.values().collect();
-        while let Some(inner_fold) = queue.pop() {
-            for output in inner_fold.fold_specific_outputs.keys() {
-                folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
-            }
-            for output in inner_fold.component.outputs.keys() {
-                folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
-            }
-            queue.extend(inner_fold.component.folds.values());
-        }
+        // Nested folds cannot run without an outer element. Seed their declared outputs so their
+        // shape still agrees with the query, even though no child context is evaluated.
+        seed_nested_fold_outputs(fold, &default_value, &mut folded_values);
     } else {
         let elements = fold_elements.as_ref().expect("fold did not contain elements").clone();
         let mut output_stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
@@ -676,7 +686,7 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn compute_fold<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     expanding_from: &IRVertex,
@@ -904,7 +914,7 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 }
 
 #[allow(clippy::type_complexity)]
-fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn construct_outputs<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,

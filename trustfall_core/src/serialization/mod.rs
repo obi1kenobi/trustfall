@@ -113,7 +113,7 @@ mod tests;
 ///
 /// use trustfall_core::TryIntoStruct;
 ///
-/// fn resolve_latest_stories(contexts: ContextIterator<Vertex, std::convert::Infallible>, parameters: &EdgeParameters) {
+/// fn resolve_latest_stories(contexts: ContextIterator<'_, Vertex>, parameters: &EdgeParameters) {
 ///     let parameters: LatestStoriesParameters = parameters
 ///         .try_into_struct()
 ///         .expect("edge parameters did not match struct definition");

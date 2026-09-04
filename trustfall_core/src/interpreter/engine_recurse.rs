@@ -14,7 +14,7 @@ use crate::ir::Recursive;
 
 use super::{
     DataContext,
-    async_adapter::AsyncAdapter,
+    async_adapter::FallibleAsyncAdapter,
     engine::{EdgeRef, FallibleContextStream},
     execution::QueryCarrier,
 };
@@ -24,7 +24,7 @@ use super::{
 /// Contexts that cannot continue at one depth are suspended instead of discarded: they still
 /// represent a result at an earlier depth. Once every expansion is complete, suspension and
 /// piggyback state are removed before the destination vertex is processed.
-pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub(super) fn expand_recursive_edge<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     edge: &EdgeRef<'_>,
@@ -104,7 +104,7 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
     }))
 }
 
-fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn perform_one_recursive_edge_expansion<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     edge: &EdgeRef<'_>,
