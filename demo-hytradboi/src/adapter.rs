@@ -164,7 +164,7 @@ macro_rules! impl_item_property {
                 })
                 .into();
 
-            (ctx, Ok(value))
+            Ok((ctx, value))
         }))
     };
 }
@@ -204,7 +204,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         match (type_name.as_ref(), property_name.as_ref()) {
             (_, "__typename") => Box::new(contexts.map(|ctx| {
                 let value = match ctx.active_vertex() {
@@ -212,7 +212,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                     None => FieldValue::Null,
                 };
 
-                (ctx, Ok(value))
+                Ok((ctx, value))
             })),
 
             // properties on HackerNewsItem and its implementers
@@ -228,200 +228,150 @@ impl<'a> Adapter<'a> for DemoAdapter {
             }
 
             // properties on HackerNewsJob
-            ("HackerNewsJob", "score") => Box::new(
-                resolve_property_with(contexts, field_property!(as_job, score))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsJob", "title") => Box::new(
-                resolve_property_with(contexts, field_property!(as_job, title))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsJob", "url") => Box::new(
-                resolve_property_with(contexts, field_property!(as_job, url))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("HackerNewsJob", "score") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_job, score)))
+            }
+            ("HackerNewsJob", "title") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_job, title)))
+            }
+            ("HackerNewsJob", "url") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_job, url)))
+            }
 
             // properties on HackerNewsStory
-            ("HackerNewsStory", "byUsername") => Box::new(
-                resolve_property_with(contexts, field_property!(as_story, by))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsStory", "text") => Box::new(
-                resolve_property_with(contexts, field_property!(as_story, text))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsStory", "commentsCount") => Box::new(
-                resolve_property_with(contexts, field_property!(as_story, descendants))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsStory", "score") => Box::new(
-                resolve_property_with(contexts, field_property!(as_story, score))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsStory", "title") => Box::new(
-                resolve_property_with(contexts, field_property!(as_story, title))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsStory", "url") => Box::new(
-                resolve_property_with(contexts, field_property!(as_story, url))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("HackerNewsStory", "byUsername") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_story, by)))
+            }
+            ("HackerNewsStory", "text") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_story, text)))
+            }
+            ("HackerNewsStory", "commentsCount") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_story, descendants)))
+            }
+            ("HackerNewsStory", "score") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_story, score)))
+            }
+            ("HackerNewsStory", "title") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_story, title)))
+            }
+            ("HackerNewsStory", "url") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_story, url)))
+            }
 
             // properties on HackerNewsComment
-            ("HackerNewsComment", "byUsername") => Box::new(
-                resolve_property_with(contexts, field_property!(as_comment, by))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsComment", "text") => Box::new(
-                resolve_property_with(contexts, field_property!(as_comment, text))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsComment", "childCount") => Box::new(
-                resolve_property_with(
-                    contexts,
-                    field_property!(as_comment, kids, {
-                        kids.as_ref().map(|v| v.len() as u64).unwrap_or(0).into()
-                    }),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("HackerNewsComment", "byUsername") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_comment, by)))
+            }
+            ("HackerNewsComment", "text") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_comment, text)))
+            }
+            ("HackerNewsComment", "childCount") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_comment, kids, {
+                    kids.as_ref().map(|v| v.len() as u64).unwrap_or(0).into()
+                }),
+            )),
 
             // properties on HackerNewsUser
-            ("HackerNewsUser", "id") => Box::new(
-                resolve_property_with(contexts, field_property!(as_user, id))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsUser", "karma") => Box::new(
-                resolve_property_with(contexts, field_property!(as_user, karma))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsUser", "about") => Box::new(
-                resolve_property_with(contexts, field_property!(as_user, about))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsUser", "unixCreatedAt") => Box::new(
-                resolve_property_with(contexts, field_property!(as_user, created))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("HackerNewsUser", "delay") => Box::new(
-                resolve_property_with(contexts, field_property!(as_user, delay))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("HackerNewsUser", "id") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_user, id)))
+            }
+            ("HackerNewsUser", "karma") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_user, karma)))
+            }
+            ("HackerNewsUser", "about") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_user, about)))
+            }
+            ("HackerNewsUser", "unixCreatedAt") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_user, created)))
+            }
+            ("HackerNewsUser", "delay") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_user, delay)))
+            }
 
             // properties on Crate
-            ("Crate", "name") => Box::new(
-                resolve_property_with(contexts, field_property!(as_crate, name))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("Crate", "latestVersion") => Box::new(
-                resolve_property_with(contexts, field_property!(as_crate, max_version))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("Crate", "name") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_crate, name)))
+            }
+            ("Crate", "latestVersion") => {
+                Box::new(resolve_property_with(contexts, field_property!(as_crate, max_version)))
+            }
 
             // properties on Webpage
-            ("Webpage" | "Repository" | "GitHubRepository", "url") => Box::new(
-                resolve_property_with(contexts, |vertex| {
+            ("Webpage" | "Repository" | "GitHubRepository", "url") => {
+                Box::new(resolve_property_with(contexts, |vertex| {
                     vertex.as_webpage().expect("not a Webpage").into()
-                })
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+                }))
+            }
 
             // properties on GitHubRepository
-            ("GitHubRepository", "owner") => Box::new(
-                resolve_property_with(contexts, |vertex| {
-                    let repo = vertex.as_github_repository().expect("not a GitHubRepository");
-                    let (owner, _) = get_owner_and_repo(repo);
-                    owner.into()
-                })
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("GitHubRepository", "name") => Box::new(
-                resolve_property_with(contexts, field_property!(as_github_repository, name))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("GitHubRepository", "fullName") => Box::new(
-                resolve_property_with(contexts, field_property!(as_github_repository, full_name))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("GitHubRepository", "lastModified") => Box::new(
-                resolve_property_with(
-                    contexts,
-                    field_property!(as_github_repository, updated_at, {
-                        updated_at.map(|value| value.timestamp()).into()
-                    }),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("GitHubRepository", "owner") => Box::new(resolve_property_with(contexts, |vertex| {
+                let repo = vertex.as_github_repository().expect("not a GitHubRepository");
+                let (owner, _) = get_owner_and_repo(repo);
+                owner.into()
+            })),
+            ("GitHubRepository", "name") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_repository, name),
+            )),
+            ("GitHubRepository", "fullName") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_repository, full_name),
+            )),
+            ("GitHubRepository", "lastModified") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_repository, updated_at, {
+                    updated_at.map(|value| value.timestamp()).into()
+                }),
+            )),
 
             // properties on GitHubWorkflow
-            ("GitHubWorkflow", "name") => Box::new(
-                resolve_property_with(
-                    contexts,
-                    field_property!(as_github_workflow, workflow, {
-                        workflow.name.as_str().into()
-                    }),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("GitHubWorkflow", "path") => Box::new(
-                resolve_property_with(
-                    contexts,
-                    field_property!(as_github_workflow, workflow, {
-                        workflow.path.as_str().into()
-                    }),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("GitHubWorkflow", "name") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_workflow, workflow, { workflow.name.as_str().into() }),
+            )),
+            ("GitHubWorkflow", "path") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_workflow, workflow, { workflow.path.as_str().into() }),
+            )),
 
             // properties on GitHubActionsJob
-            ("GitHubActionsJob", "name") => Box::new(
-                resolve_property_with(contexts, field_property!(as_github_actions_job, name))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("GitHubActionsJob", "runsOn") => Box::new(
-                resolve_property_with(contexts, field_property!(as_github_actions_job, runs_on))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("GitHubActionsJob", "name") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_actions_job, name),
+            )),
+            ("GitHubActionsJob", "runsOn") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_actions_job, runs_on),
+            )),
 
             // properties on GitHubActionsStep and its implementers
             (
                 "GitHubActionsStep" | "GitHubActionsImportedStep" | "GitHubActionsRunStep",
                 "name",
-            ) => Box::new(
-                resolve_property_with(contexts, |vertex| {
-                    vertex.as_github_actions_step().expect("not a step").into()
-                })
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ) => Box::new(resolve_property_with(contexts, |vertex| {
+                vertex.as_github_actions_step().expect("not a step").into()
+            })),
 
             // properties on GitHubActionsImportedStep
-            ("GitHubActionsImportedStep", "uses") => Box::new(
-                resolve_property_with(
-                    contexts,
-                    field_property!(as_github_actions_imported_step, uses),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("GitHubActionsImportedStep", "uses") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_actions_imported_step, uses),
+            )),
 
             // properties on GitHubActionsRunStep
-            ("GitHubActionsRunStep", "run") => Box::new(
-                resolve_property_with(contexts, field_property!(as_github_actions_run_step, run))
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("GitHubActionsRunStep", "run") => Box::new(resolve_property_with(
+                contexts,
+                field_property!(as_github_actions_run_step, run),
+            )),
 
             // properties on NameValuePair
-            ("NameValuePair", "name") => Box::new(
-                resolve_property_with(contexts, |vertex| {
-                    vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
-                })
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
-            ("NameValuePair", "value") => Box::new(
-                resolve_property_with(contexts, |vertex| {
-                    vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
-                })
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            ),
+            ("NameValuePair", "name") => Box::new(resolve_property_with(contexts, |vertex| {
+                vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
+            })),
+            ("NameValuePair", "value") => Box::new(resolve_property_with(contexts, |vertex| {
+                vertex.as_name_value_pair().expect("not a NameValuePair").0.clone().into()
+            })),
             _ => unreachable!(),
         }
     }
@@ -433,7 +383,12 @@ impl<'a> Adapter<'a> for DemoAdapter {
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("HackerNewsStory", "byUser") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
@@ -457,7 +412,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsStory", "comment") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
@@ -493,7 +448,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsStory", "link") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
@@ -512,7 +467,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsJob", "link") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
@@ -530,7 +485,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsComment", "byUser") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex();
@@ -554,7 +509,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsComment", "parent") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -579,7 +534,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsComment", "topmostAncestor") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -617,7 +572,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsComment", "reply") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -650,7 +605,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("HackerNewsUser", "submitted") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -676,7 +631,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("Crate", "repository") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -695,7 +650,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("GitHubRepository", "workflows") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -709,7 +664,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("GitHubWorkflow", "jobs") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -731,7 +686,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("GitHubActionsJob", "step") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -742,7 +697,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             ("GitHubActionsRunStep", "env") => Box::new(contexts.map(|ctx| {
                 let vertex = ctx.active_vertex().cloned();
@@ -753,7 +708,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 };
 
                 let result_neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = Box::new(neighbors.map(Ok));
-                (ctx, result_neighbors)
+                Ok((ctx, result_neighbors))
             })),
             _ => unreachable!("{} {}", type_name.as_ref(), edge_name.as_ref()),
         }
@@ -765,13 +720,13 @@ impl<'a> Adapter<'a> for DemoAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
         let type_name = type_name.clone();
         let coerce_to_type = coerce_to_type.clone();
         let iterator = contexts.map(move |ctx| {
             let vertex = match ctx.active_vertex() {
                 Some(t) => t,
-                None => return (ctx, Ok(false)),
+                None => return Ok((ctx, false)),
             };
 
             // Possible optimization here:
@@ -794,7 +749,7 @@ impl<'a> Adapter<'a> for DemoAdapter {
                 unhandled => unreachable!("{:?}", unhandled),
             };
 
-            (ctx, Ok(can_coerce))
+            Ok((ctx, can_coerce))
         });
 
         Box::new(iterator)

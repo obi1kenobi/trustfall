@@ -36,7 +36,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         unimplemented!()
     }
 
@@ -47,7 +47,12 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         unimplemented!()
     }
 
@@ -57,7 +62,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
         unimplemented!()
     }
 }

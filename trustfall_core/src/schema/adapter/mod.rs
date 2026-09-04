@@ -9,7 +9,7 @@ use crate::{
     interpreter::{
         AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         ResolveInfo, Typename, VertexInfo, VertexIterator,
-        helpers::{resolve_neighbors_with, resolve_property_with},
+        helpers::{resolve_neighbors_with_fallible, resolve_property_with},
     },
     ir::{EdgeParameters, FieldValue, TransparentValue, Type},
 };
@@ -302,109 +302,72 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         if property_name.as_ref() == "__typename" {
-            return Box::new(
-                resolve_property_with::<Self::Vertex, V>(contexts, |vertex| {
-                    vertex.typename().into()
-                })
-                .map(|(ctx, v)| (ctx, Ok(v))),
-            );
+            return resolve_property_with::<Self::Vertex, V, Self::Error>(contexts, |vertex| {
+                vertex.typename().into()
+            });
         }
 
         match type_name.as_ref() {
             "VertexType" => match property_name.as_ref() {
-                "name" => Box::new(
-                    resolve_property_with(contexts, accessor_property!(as_vertex_type, name))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "docs" => Box::new(
-                    resolve_property_with(contexts, accessor_property!(as_vertex_type, docs))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "is_interface" => Box::new(
-                    resolve_property_with(
-                        contexts,
-                        accessor_property!(as_vertex_type, is_interface),
-                    )
-                    .map(|(ctx, v)| (ctx, Ok(v))),
+                "name" => resolve_property_with(contexts, accessor_property!(as_vertex_type, name)),
+                "docs" => resolve_property_with(contexts, accessor_property!(as_vertex_type, docs)),
+                "is_interface" => resolve_property_with(
+                    contexts,
+                    accessor_property!(as_vertex_type, is_interface),
                 ),
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             "Property" => match property_name.as_ref() {
-                "name" => Box::new(
-                    resolve_property_with(contexts, field_property!(as_property, name))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "docs" => Box::new(
-                    resolve_property_with(contexts, field_property!(as_property, docs))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "type" => Box::new(
-                    resolve_property_with(
-                        contexts,
-                        field_property!(as_property, type_, { type_.to_string().into() }),
-                    )
-                    .map(|(ctx, v)| (ctx, Ok(v))),
+                "name" => resolve_property_with(contexts, field_property!(as_property, name)),
+                "docs" => resolve_property_with(contexts, field_property!(as_property, docs)),
+                "type" => resolve_property_with(
+                    contexts,
+                    field_property!(as_property, type_, { type_.to_string().into() }),
                 ),
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             "Edge" => match property_name.as_ref() {
-                "name" => Box::new(
-                    resolve_property_with(contexts, accessor_property!(as_edge, name))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "docs" => Box::new(
-                    resolve_property_with(contexts, accessor_property!(as_edge, docs))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "to_many" => Box::new(
-                    resolve_property_with(contexts, accessor_property!(as_edge, to_many))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "at_least_one" => Box::new(
+                "name" => resolve_property_with(contexts, accessor_property!(as_edge, name)),
+                "docs" => resolve_property_with(contexts, accessor_property!(as_edge, docs)),
+                "to_many" => resolve_property_with(contexts, accessor_property!(as_edge, to_many)),
+                "at_least_one" => {
                     resolve_property_with(contexts, accessor_property!(as_edge, at_least_one))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
+                }
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             "EdgeParameter" => match property_name.as_ref() {
-                "name" => Box::new(
+                "name" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, name))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "docs" => Box::new(
+                }
+                "docs" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, docs))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "type" => Box::new(
+                }
+                "type" => {
                     resolve_property_with(contexts, accessor_property!(as_edge_parameter, type_))
-                        .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
-                "default" => Box::new(
-                    resolve_property_with(contexts, |vertex| {
-                        let vertex = vertex.as_edge_parameter().expect("not an EdgeParameter");
-                        vertex
-                            .defn
-                            .default_value
-                            .as_ref()
-                            .map(|v| {
-                                let value = &v.node;
-                                value.clone().try_into().expect("failed to convert ConstValue")
-                            })
-                            .or_else(|| {
-                                // Nullable edge parameters have an implicit default value of `null`.
-                                vertex.defn.ty.node.nullable.then_some(FieldValue::NULL)
-                            })
-                            .map(|value| {
-                                let transparent = TransparentValue::from(value);
-                                serde_json::to_string(&transparent)
-                                    .expect("serde_json failed to serialize value")
-                            })
-                            .into()
-                    })
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-                ),
+                }
+                "default" => resolve_property_with(contexts, |vertex| {
+                    let vertex = vertex.as_edge_parameter().expect("not an EdgeParameter");
+                    vertex
+                        .defn
+                        .default_value
+                        .as_ref()
+                        .map(|v| {
+                            let value = &v.node;
+                            value.clone().try_into().expect("failed to convert ConstValue")
+                        })
+                        .or_else(|| {
+                            // Nullable edge parameters have an implicit default value of `null`.
+                            vertex.defn.ty.node.nullable.then_some(FieldValue::NULL)
+                        })
+                        .map(|value| {
+                            let transparent = TransparentValue::from(value);
+                            serde_json::to_string(&transparent)
+                                .expect("serde_json failed to serialize value")
+                        })
+                        .into()
+                }),
                 _ => unreachable!("unexpected property name on type {type_name}: {property_name}"),
             },
             _ => unreachable!("unexpected type name: {type_name}"),
@@ -418,91 +381,54 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         let schema = self.schema;
         match type_name.as_ref() {
             "VertexType" => match edge_name.as_ref() {
-                "implements" => Box::new(
-                    resolve_neighbors_with(contexts, move |vertex| {
-                        resolve_vertex_type_implements_edge(schema, vertex)
-                    })
-                    .map(|(ctx, n)| {
-                        let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                            Box::new(n.map(Ok));
-                        (ctx, n)
-                    }),
-                ),
-                "implementer" => Box::new(
-                    resolve_neighbors_with(contexts, move |vertex| {
-                        resolve_vertex_type_implementer_edge(schema, vertex)
-                    })
-                    .map(|(ctx, n)| {
-                        let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                            Box::new(n.map(Ok));
-                        (ctx, n)
-                    }),
-                ),
-                "property" => Box::new(
-                    resolve_neighbors_with(contexts, move |vertex| {
-                        resolve_vertex_type_property_edge(schema, vertex)
-                    })
-                    .map(|(ctx, n)| {
-                        let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                            Box::new(n.map(Ok));
-                        (ctx, n)
-                    }),
-                ),
-                "edge" => Box::new(
-                    resolve_neighbors_with(contexts, move |vertex| {
-                        resolve_vertex_type_edge_edge(schema, vertex)
-                    })
-                    .map(|(ctx, n)| {
-                        let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                            Box::new(n.map(Ok));
-                        (ctx, n)
-                    }),
-                ),
+                "implements" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                    resolve_vertex_type_implements_edge(schema, vertex)
+                }),
+                "implementer" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                    resolve_vertex_type_implementer_edge(schema, vertex)
+                }),
+                "property" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                    resolve_vertex_type_property_edge(schema, vertex)
+                }),
+                "edge" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                    resolve_vertex_type_edge_edge(schema, vertex)
+                }),
                 _ => unreachable!("unexpected edge name on type {type_name}: {edge_name}"),
             },
-            "Edge" => {
-                match edge_name.as_ref() {
-                    "target" => Box::new(
-                        resolve_neighbors_with(contexts, move |vertex| {
-                            let vertex = vertex.as_edge().expect("not an Edge");
-                            let edge_type = Type::from_type(&vertex.defn.ty.node);
-                            let target_type = edge_type.base_type();
-                            Box::new(
-                                schema
-                                    .vertex_types
-                                    .get(target_type)
-                                    .map(|defn| SchemaVertex::VertexType(VertexType::new(defn)))
-                                    .into_iter(),
-                            )
-                        })
-                        .map(|(ctx, n)| {
-                            let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                                Box::new(n.map(Ok));
-                            (ctx, n)
-                        }),
-                    ),
-                    "parameter" => Box::new(
-                        resolve_neighbors_with(contexts, move |vertex| {
-                            let vertex = vertex.as_edge().expect("not an Edge");
-                            let parameters = vertex.defn.arguments.as_slice();
+            "Edge" => match edge_name.as_ref() {
+                "target" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                    let vertex = vertex.as_edge().expect("not an Edge");
+                    let edge_type = Type::from_type(&vertex.defn.ty.node);
+                    let target_type = edge_type.base_type();
+                    Box::new(
+                        schema
+                            .vertex_types
+                            .get(target_type)
+                            .map(|defn| SchemaVertex::VertexType(VertexType::new(defn)))
+                            .into_iter(),
+                    )
+                }),
+                "parameter" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                    let vertex = vertex.as_edge().expect("not an Edge");
+                    let parameters = vertex.defn.arguments.as_slice();
 
-                            Box::new(parameters.iter().map(|inp| {
-                                SchemaVertex::EdgeParameter(EdgeParameter::new(&inp.node))
-                            }))
-                        })
-                        .map(|(ctx, n)| {
-                            let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                                Box::new(n.map(Ok));
-                            (ctx, n)
-                        }),
-                    ),
-                    _ => unreachable!("unexpected edge name on type {type_name}: {edge_name}"),
-                }
-            }
+                    Box::new(
+                        parameters
+                            .iter()
+                            .map(|inp| SchemaVertex::EdgeParameter(EdgeParameter::new(&inp.node))),
+                    )
+                }),
+                _ => unreachable!("unexpected edge name on type {type_name}: {edge_name}"),
+            },
             "Schema" => match edge_name.as_ref() {
                 "vertex_type" => {
                     let schema = self.schema;
@@ -511,29 +437,14 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     // `.cloned()` to get rid of reference, so we can own it when we need to move it later
                     let vertex_type_name = destination.statically_required_property("name");
 
-                    Box::new(
-                        resolve_neighbors_with(contexts, move |_| {
-                            // `.clone()` each time as we may have multiple "vertex_type" edges
-                            vertex_type_iter(schema, vertex_type_name.clone())
-                        })
-                        .map(|(ctx, n)| {
-                            let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                                Box::new(n.map(Ok));
-                            (ctx, n)
-                        }),
-                    )
+                    resolve_neighbors_with_fallible(contexts, move |_| {
+                        // `.clone()` each time as we may have multiple "vertex_type" edges
+                        vertex_type_iter(schema, vertex_type_name.clone())
+                    })
                 }
                 "entrypoint" => {
                     let schema = self.schema;
-                    Box::new(
-                        resolve_neighbors_with(contexts, move |_| entrypoints_iter(schema)).map(
-                            |(ctx, n)| {
-                                let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                                    Box::new(n.map(Ok));
-                                (ctx, n)
-                            },
-                        ),
-                    )
+                    resolve_neighbors_with_fallible(contexts, move |_| entrypoints_iter(schema))
                 }
                 _ => unreachable!("unexpected property name on type {type_name}: {edge_name}"),
             },
@@ -548,7 +459,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
         unreachable!("unexpected type coercion: {type_name} -> {coerce_to_type}")
     }
 }

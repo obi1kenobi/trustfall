@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-    Typename, VertexIterator, helpers::resolve_property_with,
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, NeighborOutcome, ResolveEdgeInfo,
+    ResolveInfo, Typename, VertexIterator, helpers::resolve_property_with,
 };
 
 /// A simplified variant of the [`Adapter`] trait.
@@ -239,8 +239,8 @@ where
         type_name: &std::sync::Arc<str>,
         property_name: &std::sync::Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, Result<FieldValue, Self::Error>> {
-        let outcomes = if property_name.as_ref() == "__typename" {
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
+        if property_name.as_ref() == "__typename" {
             self.resolve_typename(contexts, type_name)
         } else {
             <Self as BasicAdapter>::resolve_property(
@@ -249,8 +249,7 @@ where
                 type_name.as_ref(),
                 property_name.as_ref(),
             )
-        };
-        Box::new(outcomes.map(|(ctx, value)| (ctx, Ok(value))))
+        }
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
@@ -263,7 +262,8 @@ where
     ) -> ContextOutcomeIterator<
         'vertex,
         V,
-        VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>,
+        NeighborOutcome<'vertex, Self::Vertex, Self::Error>,
+        Self::Error,
     > {
         Box::new(
             <Self as BasicAdapter>::resolve_neighbors(
@@ -273,10 +273,12 @@ where
                 edge_name.as_ref(),
                 parameters,
             )
-            .map(|(ctx, neighbors)| {
-                let neighbors: VertexIterator<'vertex, Result<Self::Vertex, Self::Error>> =
-                    Box::new(neighbors.map(Ok));
-                (ctx, neighbors)
+            .map(|outcome| {
+                outcome.map(|(context, neighbors)| {
+                    let neighbors: NeighborOutcome<'vertex, Self::Vertex, Self::Error> =
+                        Box::new(neighbors.map(Ok));
+                    (context, neighbors)
+                })
             }),
         )
     }
@@ -287,15 +289,12 @@ where
         type_name: &std::sync::Arc<str>,
         coerce_to_type: &std::sync::Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, Result<bool, Self::Error>> {
-        Box::new(
-            <Self as BasicAdapter>::resolve_coercion(
-                self,
-                contexts,
-                type_name.as_ref(),
-                coerce_to_type.as_ref(),
-            )
-            .map(|(ctx, can_coerce)| (ctx, Ok(can_coerce))),
+    ) -> ContextOutcomeIterator<'vertex, V, bool, Self::Error> {
+        <Self as BasicAdapter>::resolve_coercion(
+            self,
+            contexts,
+            type_name.as_ref(),
+            coerce_to_type.as_ref(),
         )
     }
 }

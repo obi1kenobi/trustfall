@@ -81,7 +81,7 @@ use super::CandidateValue;
 /// #         type_name: &Arc<str>,
 /// #         property_name: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+/// #     ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
 /// #         todo!()
 /// #     }
 /// #
@@ -92,7 +92,7 @@ use super::CandidateValue;
 /// #         edge_name: &Arc<str>,
 /// #         parameters: &EdgeParameters,
 /// #         resolve_info: &ResolveEdgeInfo,
-/// #     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+/// #     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>, Self::Error> {
 /// #         todo!()
 /// #     }
 /// #
@@ -102,7 +102,7 @@ use super::CandidateValue;
 /// #         type_name: &Arc<str>,
 /// #         coerce_to_type: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+/// #     ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
 /// #         todo!()
 /// #     }
 /// # }
@@ -116,7 +116,7 @@ use super::CandidateValue;
 /// #
 /// # fn resolve_recipient_otherwise<'a, V>(
 /// #     contexts: ContextIterator<'a, V>,
-/// # ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, std::convert::Infallible>>> {
+/// # ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, std::convert::Infallible>>, std::convert::Infallible> {
 /// #     todo!()
 /// # }
 /// #
@@ -127,7 +127,7 @@ use super::CandidateValue;
 ///     &self,
 ///     contexts: ContextIterator<'a, V>,
 ///     resolve_info: &ResolveEdgeInfo,
-/// ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, std::convert::Infallible>>> {
+/// ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, std::convert::Infallible>>, std::convert::Infallible> {
 ///     if let Some(dynamic_value) = resolve_info.destination().dynamically_required_property("address") {
 ///         // The query is looking for a specific recipient's address,
 ///         // so let's look it up directly.
@@ -167,11 +167,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         self,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, Result<CandidateValue<FieldValue>, AdapterT::Error>>
-    {
-        // Only the `compute_candidate_from_tagged_value` branch touches the (fallible) adapter,
-        // so it surfaces `Result` outcomes directly; the tag-from-context branches are infallible
-        // and are wrapped in `Ok` to unify the outcome type.
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error> {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -180,9 +176,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                     //
                     // We'll have to grab the tag's value from the context directly.
                     let field_ref = self.field;
-                    ok_outcomes(self.compute_candidate_from_tagged_value_with_imported_tags(
-                        field_ref, contexts,
-                    ))
+                    self.compute_candidate_from_tagged_value_with_imported_tags(field_ref, contexts)
                 } else {
                     self.compute_candidate_from_tagged_value(context_field, adapter, contexts)
                 }
@@ -195,11 +189,9 @@ impl<'a> DynamicallyResolvedValue<'a> {
                     //
                     // We'll have to grab the tag's value from the context directly.
                     let field_ref = self.field;
-                    ok_outcomes(self.compute_candidate_from_tagged_value_with_imported_tags(
-                        field_ref, contexts,
-                    ))
+                    self.compute_candidate_from_tagged_value_with_imported_tags(field_ref, contexts)
                 } else {
-                    ok_outcomes(self.resolve_fold_specific_field(fold_field, contexts))
+                    self.resolve_fold_specific_field(fold_field, contexts)
                 }
             }
         }
@@ -224,21 +216,17 @@ impl<'a> DynamicallyResolvedValue<'a> {
         'vertex,
         V,
         VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>>,
+        AdapterT::Error,
     > {
-        Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
-            let neighbors: VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>> =
-                match candidate {
-                    // Surface a dynamic-resolution error into the neighbor stream so the
-                    // engine's outer error tracking sees it and fails the query fast.
-                    Err(error) => Box::new(std::iter::once(Err(error))),
-                    Ok(candidate) => {
-                        match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
-                            Some(vertex) => Box::new(neighbor_resolver(vertex, candidate).map(Ok)),
-                            None => Box::new(std::iter::empty()),
-                        }
-                    }
-                };
-            (ctx, neighbors)
+        Box::new(self.resolve(adapter, contexts).map(move |outcome| {
+            outcome.map(|(ctx, candidate)| {
+                let neighbors: VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>> =
+                    match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
+                        Some(vertex) => Box::new(neighbor_resolver(vertex, candidate).map(Ok)),
+                        None => Box::new(std::iter::empty()),
+                    };
+                (ctx, neighbors)
+            })
         }))
     }
 
@@ -251,8 +239,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         context_field: &'a ContextField,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, Result<CandidateValue<FieldValue>, AdapterT::Error>>
-    {
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error> {
         let vertex_id = context_field.vertex_id;
         let field_name = context_field.field_name.clone();
         let field_type = context_field.field_type.clone();
@@ -271,7 +258,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                     true,
                     tagged,
                 );
-                (context, Ok(candidate))
+                Ok((context, candidate))
             }));
         };
 
@@ -290,42 +277,43 @@ impl<'a> DynamicallyResolvedValue<'a> {
             &resolve_info,
         );
 
-        Box::new(outcomes.map(move |(mut context, outcome)| {
-            let tagged = outcome.map(|value| {
-                if context.vertices[&vertex_id].is_some() {
-                    TaggedValue::Some(value)
-                } else {
-                    TaggedValue::NonexistentOptional
-                }
-            });
-            let previous_vertex = context.suspended_vertices.pop().unwrap();
-            let context = context.move_to_vertex(previous_vertex);
-            let candidate = tagged.map(|tagged| {
-                candidate_from_tagged_value(
+        Box::new(outcomes.map(move |outcome| {
+            outcome.map(|(mut context, value)| {
+                let tagged = {
+                    if context.vertices[&vertex_id].is_some() {
+                        TaggedValue::Some(value)
+                    } else {
+                        TaggedValue::NonexistentOptional
+                    }
+                };
+                let previous_vertex = context.suspended_vertices.pop().unwrap();
+                let context = context.move_to_vertex(previous_vertex);
+                let candidate = candidate_from_tagged_value(
                     &operation,
                     &initial_candidate,
                     &field_name,
                     &field_type,
                     true,
                     tagged,
-                )
-            });
-            (context, candidate)
+                );
+                (context, candidate)
+            })
         }))
     }
 
     fn compute_candidate_from_tagged_value_with_imported_tags<
         'vertex,
         VertexT: Debug + Clone + 'vertex,
+        E: 'vertex,
     >(
         self,
         field_ref: &'a FieldRef,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let cloned_field_ref = field_ref.clone();
         let iterator = Box::new(contexts.map(move |ctx| {
             let value = ctx.imported_tags[&cloned_field_ref].clone();
-            (ctx, value)
+            Ok((ctx, value))
         }));
         let (field_name, field_type) = match field_ref {
             FieldRef::ContextField(c) => (c.field_name.clone(), c.field_type.clone()),
@@ -342,65 +330,59 @@ impl<'a> DynamicallyResolvedValue<'a> {
         )
     }
 
-    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex>(
+    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex, E: 'vertex>(
         self,
         fold_field: &'a FoldSpecificField,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let fold_eid = fold_field.fold_eid;
         let iterator = contexts.map(move |context| {
             let tagged = match context.folded_contexts[&fold_eid].as_ref() {
                 None => TaggedValue::NonexistentOptional,
                 Some(values) => TaggedValue::Some(FieldValue::Uint64(values.len() as u64)),
             };
-            (context, tagged)
+            Ok((context, tagged))
         });
         let initial_candidate = self.initial_candidate;
         let operation = self.operation;
         let field_name: Arc<str> = fold_field.kind.field_name().into();
         let field_type = fold_field.kind.field_type().clone();
-        Box::new(iterator.map(move |(context, tagged)| {
+        Box::new(iterator.map(move |outcome| {
+            outcome.map(|(context, tagged)| {
+                let candidate = candidate_from_tagged_value(
+                    &operation,
+                    &initial_candidate,
+                    &field_name,
+                    &field_type,
+                    false,
+                    tagged,
+                );
+                (context, candidate)
+            })
+        }))
+    }
+}
+
+fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex, E: 'vertex>(
+    operation: &Operation<(), ()>,
+    initial_candidate: CandidateValue<FieldValue>,
+    field_name: Arc<str>,
+    field_type: Type,
+    iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue, E>,
+) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>, E> {
+    let operation = operation.clone();
+    Box::new(iterator.map(move |outcome| {
+        outcome.map(|(context, tagged)| {
             let candidate = candidate_from_tagged_value(
                 &operation,
                 &initial_candidate,
                 &field_name,
                 &field_type,
-                false,
+                true,
                 tagged,
             );
             (context, candidate)
-        }))
-    }
-}
-
-/// The single boundary where the infallible tag-from-context resolution paths meet
-/// [`DynamicallyResolvedValue::resolve`]'s fallible outcome type: each candidate is wrapped in
-/// `Ok`. Keeping this here means the infallible helpers (and the `compute_candidate_*` macros)
-/// never mention `Result` themselves.
-fn ok_outcomes<'vertex, V: 'vertex, E: 'vertex>(
-    outcomes: ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>>,
-) -> ContextOutcomeIterator<'vertex, V, Result<CandidateValue<FieldValue>, E>> {
-    Box::new(outcomes.map(|(ctx, candidate)| (ctx, Ok(candidate))))
-}
-
-fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
-    operation: &Operation<(), ()>,
-    initial_candidate: CandidateValue<FieldValue>,
-    field_name: Arc<str>,
-    field_type: Type,
-    iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue>,
-) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>> {
-    let operation = operation.clone();
-    Box::new(iterator.map(move |(context, tagged)| {
-        let candidate = candidate_from_tagged_value(
-            &operation,
-            &initial_candidate,
-            &field_name,
-            &field_type,
-            true,
-            tagged,
-        );
-        (context, candidate)
+        })
     }))
 }
 

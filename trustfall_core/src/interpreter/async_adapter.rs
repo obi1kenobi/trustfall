@@ -9,9 +9,9 @@
 //!
 //! The execution kernel threads `Result` natively through its streams and fails fast on the first
 //! `Err` via `?`. Accordingly, resolver *outputs* carry `Result`s in the
-//! outcome slot, exactly as the sync [`Adapter`](super::Adapter) trait does:
+//! iterator item, exactly as the sync [`Adapter`](super::Adapter) trait does:
 //! - `resolve_starting_vertices` yields `Result<Vertex, Error>`,
-//! - `resolve_property` / `resolve_coercion` carry `Result<_, Error>` in the outcome,
+//! - resolver outcomes yield `Result<(context, outcome), Error>`,
 //! - `resolve_neighbors` yields `Result<Vertex, Error>` per neighbor.
 //!
 //! Resolver *inputs* (`contexts`) are plain `DataContext` streams: the engine handles upstream
@@ -42,8 +42,8 @@ pub type ContextStream<'vertex, VertexT> = VertexStream<'vertex, DataContext<Ver
 
 /// A stream of `(context, outcome)` pairs — the async counterpart of
 /// [`ContextOutcomeIterator`](super::ContextOutcomeIterator).
-pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT> =
-    Pin<Box<dyn Stream<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>>;
+pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT, ErrorT> =
+    Pin<Box<dyn Stream<Item = Result<(DataContext<VertexT>, OutcomeT), ErrorT>> + 'vertex>>;
 
 /// Asynchronous data providers implement this trait to enable streaming query execution.
 ///
@@ -79,7 +79,7 @@ pub trait AsyncAdapter<'vertex> {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>>;
+    ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error>;
 
     /// Resolve the neighbors across an edge over a stream of contexts.
     /// See [`Adapter::resolve_neighbors`](super::Adapter::resolve_neighbors).
@@ -91,7 +91,12 @@ pub trait AsyncAdapter<'vertex> {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Self::Vertex, Self::Error>>>;
+    ) -> ContextOutcomeStream<
+        'vertex,
+        V,
+        VertexStream<'vertex, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    >;
 
     /// Attempt to coerce vertices to a subtype over a stream of contexts.
     /// See [`Adapter::resolve_coercion`](super::Adapter::resolve_coercion).
@@ -101,5 +106,5 @@ pub trait AsyncAdapter<'vertex> {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>>;
+    ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error>;
 }

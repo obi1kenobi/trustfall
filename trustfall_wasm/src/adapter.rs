@@ -263,7 +263,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'static, V, FieldValue, Self::Error> {
         let opaques: Box<dyn Iterator<Item = Opaque>> = Box::new(contexts.map(Opaque::new));
 
         let ctx_iter = JsContextIterator::new(opaques);
@@ -275,7 +275,7 @@ impl Adapter<'static> for AdapterShim {
             //         in this `resolve_property()` call, so the `V` type must be the same.
             let ctx = unsafe { opaque.into_inner() };
 
-            (ctx, Ok(value))
+            Ok((ctx, value))
         }))
     }
 
@@ -290,6 +290,7 @@ impl Adapter<'static> for AdapterShim {
         'static,
         V,
         VertexIterator<'static, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
     > {
         let opaques: Box<dyn Iterator<Item = Opaque>> = Box::new(contexts.map(Opaque::new));
 
@@ -311,7 +312,7 @@ impl Adapter<'static> for AdapterShim {
 
                 let neighbors: VertexIterator<'static, Result<Self::Vertex, Self::Error>> =
                     Box::new(neighbors.map(Ok));
-                (ctx, neighbors)
+                Ok((ctx, neighbors))
             },
         ))
     }
@@ -322,7 +323,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'static, V, bool, Self::Error> {
         let opaques: Box<dyn Iterator<Item = Opaque>> = Box::new(contexts.map(Opaque::new));
 
         let ctx_iter = JsContextIterator::new(opaques);
@@ -334,7 +335,7 @@ impl Adapter<'static> for AdapterShim {
             //         in this `resolve_coercion()` call, so the `V` type must be the same.
             let ctx = unsafe { opaque.into_inner() };
 
-            (ctx, Ok(value))
+            Ok((ctx, value))
         }))
     }
 }

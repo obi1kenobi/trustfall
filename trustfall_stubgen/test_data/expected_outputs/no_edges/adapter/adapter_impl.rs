@@ -107,22 +107,16 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         if property_name.as_ref() == "__typename" {
-            return Box::new(
-                resolve_property_with(contexts, |vertex| vertex.typename().into())
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            );
+            return resolve_property_with(contexts, |vertex| vertex.typename().into());
         }
         match type_name.as_ref() {
             "Item" => {
-                Box::new(
-                    super::properties::resolve_item_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_item_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             _ => {
@@ -144,6 +138,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         'a,
         V,
         VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
     > {
         match type_name.as_ref() {
             _ => {
@@ -160,14 +155,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         _type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
-        Box::new(
-            resolve_coercion_using_schema(
-                    contexts,
-                    Self::schema(),
-                    coerce_to_type.as_ref(),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-        )
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+        resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
     }
 }

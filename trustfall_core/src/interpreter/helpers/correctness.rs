@@ -240,13 +240,13 @@ fn check_properties_are_implemented<'a, A: Adapter<'a>>(
 
             let mut final_contexts = Vec::with_capacity(sample_size);
 
-            for (ctx, value) in adapter_under_test.resolve_property(
+            for outcome in adapter_under_test.resolve_property(
                 contexts,
                 type_name,
                 &property_name,
                 &resolve_info,
             ) {
-                let value = value.unwrap_or_else(|e| {
+                let (ctx, value) = outcome.unwrap_or_else(|e| {
                     panic!(
                         "resolve_property() errored during the invariant check for \
                         type name '{type_name}' property '{property_name}': {e}"
@@ -436,13 +436,19 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
 
         let mut final_contexts = Vec::with_capacity(sample_size);
 
-        for (ctx, mut neighbors) in adapter_under_test.resolve_neighbors(
+        for outcome in adapter_under_test.resolve_neighbors(
             contexts,
             &type_name,
             &edge_name,
             &parameters,
             &resolve_info,
         ) {
+            let (ctx, mut neighbors) = outcome.unwrap_or_else(|e| {
+                panic!(
+                    "resolve_neighbors() errored during the invariant check for type \
+                    '{type_name}' edge '{edge_name}': {e}"
+                )
+            });
             assert!(
                 neighbors.next().is_none(),
                 "resolve_neighbors() produced a non-empty neighbor iterator \
@@ -562,10 +568,10 @@ fn check_type_coercions_are_implemented<'a, A: Adapter<'a>>(
 
         let mut final_contexts = Vec::with_capacity(sample_size);
 
-        for (ctx, value) in
+        for outcome in
             adapter_under_test.resolve_coercion(contexts, type_name, coerce_to, &resolve_info)
         {
-            let value = value.unwrap_or_else(|e| {
+            let (ctx, value) = outcome.unwrap_or_else(|e| {
                 panic!(
                     "resolve_coercion() errored during the invariant check for a coercion \
                     from type {type_name} to {coerce_to}: {e}"

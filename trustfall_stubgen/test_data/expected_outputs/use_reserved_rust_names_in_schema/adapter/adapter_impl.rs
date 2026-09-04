@@ -68,102 +68,72 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         if property_name.as_ref() == "__typename" {
-            return Box::new(
-                resolve_property_with(contexts, |vertex| vertex.typename().into())
-                    .map(|(ctx, v)| (ctx, Ok(v))),
-            );
+            return resolve_property_with(contexts, |vertex| vertex.typename().into());
         }
         match type_name.as_ref() {
             "const2" => {
-                Box::new(
-                    super::properties::resolve_const2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_const2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "continue2" => {
-                Box::new(
-                    super::properties::resolve_continue2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_continue2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "dyn2" => {
-                Box::new(
-                    super::properties::resolve_dyn2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_dyn2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "if2" => {
-                Box::new(
-                    super::properties::resolve_if2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_if2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "mod2" => {
-                Box::new(
-                    super::properties::resolve_mod2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_mod2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "self2" => {
-                Box::new(
-                    super::properties::resolve_self2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_self2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "type2" => {
-                Box::new(
-                    super::properties::resolve_type2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_type2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "unsafe2" => {
-                Box::new(
-                    super::properties::resolve_unsafe2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_unsafe2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             "where2" => {
-                Box::new(
-                    super::properties::resolve_where2_property(
-                            contexts,
-                            property_name.as_ref(),
-                            resolve_info,
-                        )
-                        .map(|(ctx, v)| (ctx, Ok(v))),
+                super::properties::resolve_where2_property(
+                    contexts,
+                    property_name.as_ref(),
+                    resolve_info,
                 )
             }
             _ => {
@@ -185,6 +155,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         'a,
         V,
         VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
     > {
         match type_name.as_ref() {
             "const" => {
@@ -195,11 +166,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "continue" => {
@@ -210,11 +181,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "dyn" => {
@@ -225,11 +196,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "if" => {
@@ -240,11 +211,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "mod" => {
@@ -255,11 +226,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "self" => {
@@ -270,11 +241,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "type" => {
@@ -285,11 +256,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "unsafe" => {
@@ -300,11 +271,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             "where" => {
@@ -315,11 +286,11 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| (
+                        .map(|(ctx, neighbors)| Ok((
                             ctx,
                             Box::new(neighbors.map(Ok))
                                 as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        )),
+                        ))),
                 )
             }
             _ => {
@@ -336,14 +307,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         _type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
-        Box::new(
-            resolve_coercion_using_schema(
-                    contexts,
-                    Self::schema(),
-                    coerce_to_type.as_ref(),
-                )
-                .map(|(ctx, v)| (ctx, Ok(v))),
-        )
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+        resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
     }
 }

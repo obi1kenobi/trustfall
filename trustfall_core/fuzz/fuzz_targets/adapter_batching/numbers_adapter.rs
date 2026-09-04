@@ -7,7 +7,9 @@ use trustfall_core::{
     interpreter::{
         Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexIterator,
-        helpers::{resolve_coercion_with, resolve_neighbors_with, resolve_property_with},
+        helpers::{
+            resolve_coercion_with, resolve_neighbors_with_fallible, resolve_property_with,
+        },
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -222,7 +224,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         let outcomes = if property_name.as_ref() == "__typename" {
             resolve_property_with(contexts, |vertex| Number::typename(vertex).into())
         } else {
@@ -241,7 +243,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 }
             }
         };
-        Box::new(outcomes.map(|(ctx, value)| (ctx, Ok(value))))
+        outcomes
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
@@ -251,12 +253,12 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>, Self::Error> {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
         let outcomes = match (type_name.as_ref(), edge_name.as_ref()) {
             ("Number" | "Prime" | "Composite", "predecessor") => {
-                resolve_neighbors_with(contexts, move |vertex| {
+                resolve_neighbors_with_fallible(contexts, move |vertex| {
                     let value = match &vertex {
                         NumbersVertex::Neither(inner) => inner.value(),
                         NumbersVertex::Prime(inner) => inner.value(),
@@ -270,7 +272,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 })
             }
             ("Number" | "Prime" | "Composite", "successor") => {
-                resolve_neighbors_with(contexts, move |vertex| {
+                resolve_neighbors_with_fallible(contexts, move |vertex| {
                     let value = match &vertex {
                         NumbersVertex::Neither(inner) => inner.value(),
                         NumbersVertex::Prime(inner) => inner.value(),
@@ -280,7 +282,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 })
             }
             ("Number" | "Prime" | "Composite", "multiple") => {
-                resolve_neighbors_with(contexts, move |vertex| {
+                resolve_neighbors_with_fallible(contexts, move |vertex| {
                     match vertex {
                         NumbersVertex::Neither(..) => Box::new(std::iter::empty()),
                         NumbersVertex::Prime(vertex) => {
@@ -312,7 +314,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 })
             }
             ("Composite", "primeFactor") => {
-                resolve_neighbors_with(contexts, move |vertex| match vertex {
+                resolve_neighbors_with_fallible(contexts, move |vertex| match vertex {
                     NumbersVertex::Composite(vertex) => {
                         let factors = &vertex.1;
                         Box::new(
@@ -327,7 +329,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 })
             }
             ("Composite", "divisor") => {
-                resolve_neighbors_with(contexts, move |vertex| match vertex {
+                resolve_neighbors_with_fallible(contexts, move |vertex| match vertex {
                     NumbersVertex::Composite(vertex) => {
                         let value = vertex.0;
                         if value <= 0 {
@@ -354,11 +356,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 unreachable!("Unexpected edge {} on vertex type {}", &edge_name, &type_name);
             }
         };
-        Box::new(outcomes.map(|(ctx, neighbors)| {
-            let neighbors: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
-                Box::new(neighbors.map(Ok));
-            (ctx, neighbors)
-        }))
+        outcomes
     }
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
@@ -367,7 +365,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
         let outcomes = match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => {
                 resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersVertex::Prime(..)))
@@ -377,6 +375,6 @@ impl<'a> Adapter<'a> for NumbersAdapter {
             }),
             _ => unimplemented!("Unexpected coercion attempted: {} {}", type_name, coerce_to_type),
         };
-        Box::new(outcomes.map(|(ctx, value)| (ctx, Ok(value))))
+        outcomes
     }
 }

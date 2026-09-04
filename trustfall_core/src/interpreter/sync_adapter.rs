@@ -94,7 +94,7 @@ where
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error> {
         let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
         Box::pin(stream::iter(self.inner.resolve_property(
             contexts,
@@ -111,15 +111,21 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Self::Vertex, Self::Error>>>
-    {
+    ) -> ContextOutcomeStream<
+        'vertex,
+        V,
+        VertexStream<'vertex, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
         let outcomes =
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info);
-        Box::pin(stream::iter(outcomes.map(|(context, neighbors)| {
-            let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
-                Box::pin(stream::iter(neighbors));
-            (context, neighbors)
+        Box::pin(stream::iter(outcomes.map(|outcome| {
+            outcome.map(|(context, neighbors)| {
+                let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
+                    Box::pin(stream::iter(neighbors));
+                (context, neighbors)
+            })
         })))
     }
 
@@ -129,7 +135,7 @@ where
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error> {
         let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
         Box::pin(stream::iter(self.inner.resolve_coercion(
             contexts,
@@ -195,7 +201,7 @@ mod tests {
             let outcomes = contexts.map(move |context| {
                 pulled.set(pulled.get() + 1);
                 let value = FieldValue::Int64(context.active_vertex::<Vertex>().unwrap().0.into());
-                (context, value)
+                Ok((context, value))
             });
 
             if self.collect_batch {

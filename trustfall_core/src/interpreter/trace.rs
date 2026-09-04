@@ -260,7 +260,7 @@ where
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveProperty(
@@ -306,8 +306,8 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |(context, value)| {
-                if let Ok(value) = &value {
+            .inspect(move |outcome| {
+                if let Ok((context, value)) = &outcome {
                     tracer_ref_5.borrow_mut().record(
                         TraceOpContent::YieldFrom(YieldValue::ResolveProperty(
                             context.clone().flat_map(&mut |v| v.into_vertex()),
@@ -316,8 +316,6 @@ where
                         Some(call_opid),
                     );
                 }
-
-                (context, value)
             }),
         )
     }
@@ -333,6 +331,7 @@ where
         'vertex,
         V,
         VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
     > {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
@@ -384,42 +383,46 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |(context, neighbor_iter)| {
-                let mut trace = tracer_ref_5.borrow_mut();
-                let outer_iterator_opid = trace.record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(
-                        context.clone().flat_map(&mut |v| v.into_vertex()),
-                    )),
-                    Some(call_opid),
-                );
-                drop(trace);
+            .map(move |outcome| {
+                outcome.map(|(context, neighbor_iter)| {
+                    let mut trace = tracer_ref_5.borrow_mut();
+                    let outer_iterator_opid = trace.record(
+                        TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(
+                            context.clone().flat_map(&mut |v| v.into_vertex()),
+                        )),
+                        Some(call_opid),
+                    );
+                    drop(trace);
 
-                let tracer_ref_6 = tracer_ref_5.clone();
-                let tapped_neighbor_iter = neighbor_iter.enumerate().map(move |(pos, vertex)| {
-                    if let Ok(vertex) = &vertex {
-                        tracer_ref_6.borrow_mut().record(
-                            TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(
-                                pos,
-                                vertex.clone(),
-                            )),
+                    let tracer_ref_6 = tracer_ref_5.clone();
+                    let tapped_neighbor_iter =
+                        neighbor_iter.enumerate().map(move |(pos, vertex)| {
+                            if let Ok(vertex) = &vertex {
+                                tracer_ref_6.borrow_mut().record(
+                                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(
+                                        pos,
+                                        vertex.clone(),
+                                    )),
+                                    Some(outer_iterator_opid),
+                                );
+                            }
+
+                            vertex
+                        });
+
+                    let tracer_ref_7 = tracer_ref_5.clone();
+                    let final_neighbor_iter: VertexIterator<
+                        'vertex,
+                        Result<Self::Vertex, Self::Error>,
+                    > = Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
+                        tracer_ref_7.borrow_mut().record(
+                            TraceOpContent::OutputIteratorExhausted,
                             Some(outer_iterator_opid),
                         );
-                    }
+                    }));
 
-                    vertex
-                });
-
-                let tracer_ref_7 = tracer_ref_5.clone();
-                let final_neighbor_iter: VertexIterator<
-                    'vertex,
-                    Result<Self::Vertex, Self::Error>,
-                > = Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
-                    tracer_ref_7
-                        .borrow_mut()
-                        .record(TraceOpContent::OutputIteratorExhausted, Some(outer_iterator_opid));
-                }));
-
-                (context, final_neighbor_iter)
+                    (context, final_neighbor_iter)
+                })
             }),
         )
     }
@@ -430,7 +433,7 @@ where
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'vertex, V, bool, Self::Error> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveCoercion(
@@ -476,8 +479,8 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |(context, can_coerce)| {
-                if let Ok(can_coerce) = &can_coerce {
+            .inspect(move |outcome| {
+                if let Ok((context, can_coerce)) = &outcome {
                     tracer_ref_5.borrow_mut().record(
                         TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(
                             context.clone().flat_map(&mut |v| v.into_vertex()),
@@ -486,8 +489,6 @@ where
                         Some(call_opid),
                     );
                 }
-
-                (context, can_coerce)
             }),
         )
     }

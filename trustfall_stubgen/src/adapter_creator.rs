@@ -153,7 +153,7 @@ fn emit_property_handling(
         let ident =
             syn::Ident::new(&property_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
-            #name => Box::new(super::properties::#ident(contexts, property_name.as_ref(), resolve_info).map(|(ctx, v)| (ctx, Ok(v)))),
+            #name => super::properties::#ident(contexts, property_name.as_ref(), resolve_info),
         });
     }
 
@@ -173,9 +173,9 @@ fn emit_property_handling(
             type_name: &Arc<str>,
             property_name: &Arc<str>,
             resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+        ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
             if property_name.as_ref() == "__typename" {
-                return Box::new(resolve_property_with(contexts, |vertex| vertex.typename().into()).map(|(ctx, v)| (ctx, Ok(v))));
+                return resolve_property_with(contexts, |vertex| vertex.typename().into());
             }
 
             match type_name.as_ref() {
@@ -221,7 +221,7 @@ fn emit_edge_handling(
         let ident =
             syn::Ident::new(&type_edge_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
-            #name => Box::new(super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info).map(|(ctx, neighbors)| (ctx, Box::new(neighbors.map(Ok)) as VertexIterator<'a, Result<Self::Vertex, Self::Error>>))),
+            #name => Box::new(super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info).map(|(ctx, neighbors)| Ok((ctx, Box::new(neighbors.map(Ok)) as VertexIterator<'a, Result<Self::Vertex, Self::Error>>)))),
         });
     }
 
@@ -242,7 +242,7 @@ fn emit_edge_handling(
             edge_name: &Arc<str>,
             parameters: &EdgeParameters,
             resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+        ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>, Self::Error> {
             match type_name.as_ref() {
                 #arms
                 _ => unreachable!("attempted to resolve edge '{edge_name}' on unexpected type: {type_name}"),
@@ -269,8 +269,8 @@ fn emit_coercion_handling(
             _type_name: &Arc<str>,
             coerce_to_type: &Arc<str>,
             _resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
-            Box::new(resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref()).map(|(ctx, v)| (ctx, Ok(v))))
+        ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+            resolve_coercion_using_schema(contexts, Self::schema(), coerce_to_type.as_ref())
         }
     }
 }

@@ -251,81 +251,77 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         match type_name.as_ref() {
-            "Directory" => {
-                match property_name.as_ref() {
-                    "name" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(FilesystemVertex::Directory(x)) => {
-                                let value = FieldValue::String(x.name.clone().into());
-                                (context, Ok(value))
-                            }
-                            _ => unreachable!(),
+            "Directory" => match property_name.as_ref() {
+                "name" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(FilesystemVertex::Directory(x)) => {
+                            let value = FieldValue::String(x.name.clone().into());
+                            (context, value)
                         }
-                    })),
-                    "path" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(FilesystemVertex::Directory(x)) => {
-                                let value = FieldValue::String(x.path.clone().into());
-                                (context, Ok(value))
-                            }
-                            _ => unreachable!(),
+                        _ => unreachable!(),
+                    })
+                })),
+                "path" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(FilesystemVertex::Directory(x)) => {
+                            let value = FieldValue::String(x.path.clone().into());
+                            (context, value)
                         }
-                    })),
-                    "__typename" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(_) => (context, Ok("Directory".into())),
+                        _ => unreachable!(),
+                    })
+                })),
+                "__typename" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(_) => (context, "Directory".into()),
+                    })
+                })),
+                _ => todo!(),
+            },
+            "File" => match property_name.as_ref() {
+                "name" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(FilesystemVertex::File(x)) => {
+                            let value = FieldValue::String(x.name.clone().into());
+                            (context, value)
                         }
-                    })),
-                    _ => todo!(),
-                }
-            }
-            "File" => {
-                match property_name.as_ref() {
-                    "name" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(FilesystemVertex::File(x)) => {
-                                let value = FieldValue::String(x.name.clone().into());
-                                (context, Ok(value))
-                            }
-                            _ => unreachable!(),
+                        _ => unreachable!(),
+                    })
+                })),
+                "path" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(FilesystemVertex::File(x)) => {
+                            let value = FieldValue::String(x.path.clone().into());
+                            (context, value)
                         }
-                    })),
-                    "path" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(FilesystemVertex::File(x)) => {
-                                let value = FieldValue::String(x.path.clone().into());
-                                (context, Ok(value))
-                            }
-                            _ => unreachable!(),
+                        _ => unreachable!(),
+                    })
+                })),
+                "extension" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(FilesystemVertex::File(x)) => {
+                            let value =
+                                x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
+                            (context, value)
                         }
-                    })),
-                    "extension" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(FilesystemVertex::File(x)) => {
-                                let value =
-                                    x.extension.clone().map(Into::into).unwrap_or(FieldValue::Null);
-                                (context, Ok(value))
-                            }
-                            _ => unreachable!(),
-                        }
-                    })),
-                    "__typename" => Box::new(contexts.map(|context| {
-                        match context.active_vertex::<Self::Vertex>() {
-                            None => (context, Ok(FieldValue::Null)),
-                            Some(_) => (context, Ok("File".into())),
-                        }
-                    })),
-                    _ => todo!(),
-                }
-            }
+                        _ => unreachable!(),
+                    })
+                })),
+                "__typename" => Box::new(contexts.map(|context| {
+                    Ok(match context.active_vertex::<Self::Vertex>() {
+                        None => (context, FieldValue::Null),
+                        Some(_) => (context, "File".into()),
+                    })
+                })),
+                _ => todo!(),
+            },
             _ => todo!(),
         }
     }
@@ -337,7 +333,12 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         match (type_name.as_ref(), edge_name.as_ref()) {
             ("Directory", "out_Directory_ContainsFile") => {
                 let iterator = EdgeResolverIterator::new(
@@ -348,7 +349,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 Box::from(iterator.map(|(ctx, n)| {
                     let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
                         Box::new(n.map(Ok));
-                    (ctx, n)
+                    Ok((ctx, n))
                 }))
             }
             ("Directory", "out_Directory_Subdirectory") => {
@@ -360,7 +361,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
                 Box::from(iterator.map(|(ctx, n)| {
                     let n: VertexIterator<'a, Result<Self::Vertex, Self::Error>> =
                         Box::new(n.map(Ok));
-                    (ctx, n)
+                    Ok((ctx, n))
                 }))
             }
             _ => unimplemented!(),
@@ -373,7 +374,7 @@ impl<'a> Adapter<'a> for FilesystemInterpreter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
         todo!()
     }
 }

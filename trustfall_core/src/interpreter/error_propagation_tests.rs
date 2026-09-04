@@ -127,23 +127,26 @@ impl<'a> Adapter<'a> for FaultyAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         let inner = self
             .inner
             .resolve_property(contexts, type_name, property_name, resolve_info)
-            .map(|(ctx, value)| (ctx, unwrap_ok(value)));
+            .map(|outcome| match outcome {
+                Ok((ctx, value)) => (ctx, value),
+                Err(never) => match never {},
+            });
         if self.fault == Fault::Property {
             let remaining = self.remaining.clone();
             let error_emitted = self.error_emitted.clone();
             Box::new(inner.map(move |(ctx, value)| {
                 if should_error(&remaining, &error_emitted) {
-                    (ctx, Err(TestError::new()))
+                    Err(TestError::new())
                 } else {
-                    (ctx, Ok(value))
+                    Ok((ctx, value))
                 }
             }))
         } else {
-            Box::new(inner.map(|(ctx, value)| (ctx, Ok(value))))
+            Box::new(inner.map(Ok))
         }
     }
 
@@ -155,28 +158,36 @@ impl<'a> Adapter<'a> for FaultyAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         let faulted = self.fault == Fault::Neighbors;
         let remaining = self.remaining.clone();
         let error_emitted = self.error_emitted.clone();
         let inner =
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info);
-        Box::new(inner.map(move |(ctx, neighbors)| {
-            let neighbors = neighbors.map(unwrap_ok);
-            let out: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = if faulted {
-                let remaining = remaining.clone();
-                let error_emitted = error_emitted.clone();
-                Box::new(neighbors.map(move |v| {
-                    if should_error(&remaining, &error_emitted) {
-                        Err(TestError::new())
-                    } else {
-                        Ok(v)
-                    }
-                }))
-            } else {
-                Box::new(neighbors.map(Ok))
-            };
-            (ctx, out)
+        Box::new(inner.map(move |outcome| match outcome {
+            Ok((ctx, neighbors)) => {
+                let neighbors = neighbors.map(unwrap_ok);
+                let out: VertexIterator<'a, Result<Self::Vertex, Self::Error>> = if faulted {
+                    let remaining = remaining.clone();
+                    let error_emitted = error_emitted.clone();
+                    Box::new(neighbors.map(move |v| {
+                        if should_error(&remaining, &error_emitted) {
+                            Err(TestError::new())
+                        } else {
+                            Ok(v)
+                        }
+                    }))
+                } else {
+                    Box::new(neighbors.map(Ok))
+                };
+                Ok((ctx, out))
+            }
+            Err(never) => match never {},
         }))
     }
 
@@ -186,23 +197,26 @@ impl<'a> Adapter<'a> for FaultyAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
         let inner = self
             .inner
             .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
-            .map(|(ctx, value)| (ctx, unwrap_ok(value)));
+            .map(|outcome| match outcome {
+                Ok((ctx, value)) => (ctx, value),
+                Err(never) => match never {},
+            });
         if self.fault == Fault::Coercion {
             let remaining = self.remaining.clone();
             let error_emitted = self.error_emitted.clone();
             Box::new(inner.map(move |(ctx, value)| {
                 if should_error(&remaining, &error_emitted) {
-                    (ctx, Err(TestError::new()))
+                    Err(TestError::new())
                 } else {
-                    (ctx, Ok(value))
+                    Ok((ctx, value))
                 }
             }))
         } else {
-            Box::new(inner.map(|(ctx, value)| (ctx, Ok(value))))
+            Box::new(inner.map(Ok))
         }
     }
 }

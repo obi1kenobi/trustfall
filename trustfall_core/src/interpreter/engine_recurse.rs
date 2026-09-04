@@ -14,7 +14,7 @@ use crate::ir::{EdgeParameters, Eid, IRQueryComponent, IRVertex, Recursive};
 use super::{
     DataContext, ResolveEdgeInfo, ResolveInfo,
     async_adapter::AsyncAdapter,
-    engine::{FallibleContextStream, begin_stage, finish_stage, finish_stage_plain},
+    engine::{FallibleContextStream, begin_stage, finish_stage},
     execution::QueryCarrier,
 };
 
@@ -146,7 +146,7 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> +
     );
     carrier.query = Some(resolve_info.into_inner());
 
-    let staged = finish_stage_plain(edge_outcomes, upstream_error);
+    let staged = finish_stage(edge_outcomes, upstream_error);
 
     // For each (context, neighbors) pair, emit the piggyback-packed neighbor contexts,
     // plus the original context itself (which will be collected when unpacking piggybacked riders).

@@ -8,7 +8,8 @@
 //!
 //! The engine's internal streams carry `Result<DataContext<V>, E>` ([`FallibleContextStream`]) and
 //! fail fast on the first `Err` using `?` inside [`async_stream::try_stream!`]. Adapter resolvers,
-//! however, take *plain* context streams and return outcomes carrying `Result`. [`begin_stage`]
+//! however, take *plain* context streams and return `Result<(context, outcome), Error>` items.
+//! [`begin_stage`]
 //! temporarily projects successful contexts into that public resolver protocol and returns a
 //! linear [`StageContinuation`] token. Consuming that token in [`finish_stage`] reconnects the
 //! upstream error path. This preserves both the adapter's one-outcome-per-context contract and
@@ -149,12 +150,11 @@ where
     (plain, StageContinuation { pending_error })
 }
 
-/// Thread an adapter resolver's `(context, Result<outcome, E>)` stream into a fallible
-/// `(context, outcome)` stream, failing fast on the adapter's own errors and then re-surfacing the
-/// upstream error captured by [`begin_stage`].
+/// Thread an adapter resolver's fallible outcome stream into the engine, failing fast on the
+/// adapter's own errors and then re-surfacing the upstream error captured by [`begin_stage`].
 #[allow(clippy::type_complexity)]
 pub(super) fn finish_stage<'vertex, V, O, E>(
-    outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
+    outcomes: ContextOutcomeStream<'vertex, V, O, E>,
     continuation: StageContinuation<E>,
 ) -> Pin<Box<dyn Stream<Item = Result<(DataContext<V>, O), E>> + 'vertex>>
 where
@@ -164,35 +164,8 @@ where
 {
     Box::pin(try_stream! {
         let mut outcomes = outcomes;
-        while let Some((ctx, outcome)) = outcomes.next().await {
-            let value = outcome?;
-            yield (ctx, value);
-        }
-        // Bind before the branch so the `RefMut` is dropped and never held across a yield/await.
-        let pending = continuation.take_error();
-        if let Some(error) = pending {
-            Err(error)?;
-        }
-    })
-}
-
-/// Like [`finish_stage`] but for resolvers whose outcome slot is *not* itself a `Result`
-/// (i.e. `resolve_neighbors`, whose errors ride on each neighbor, not on the outcome). Only the
-/// upstream error is re-surfaced; the outcome is passed through unchanged.
-#[allow(clippy::type_complexity)]
-pub(super) fn finish_stage_plain<'vertex, V, O, E>(
-    outcomes: ContextOutcomeStream<'vertex, V, O>,
-    continuation: StageContinuation<E>,
-) -> Pin<Box<dyn Stream<Item = Result<(DataContext<V>, O), E>> + 'vertex>>
-where
-    V: 'vertex,
-    O: 'vertex,
-    E: 'vertex,
-{
-    Box::pin(try_stream! {
-        let mut outcomes = outcomes;
-        while let Some((ctx, outcome)) = outcomes.next().await {
-            yield (ctx, outcome);
+        while let Some(outcome) = outcomes.next().await {
+            yield outcome?;
         }
         // Bind before the branch so the `RefMut` is dropped and never held across a yield/await.
         let pending = continuation.take_error();
@@ -515,7 +488,7 @@ pub(super) fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> +
     );
     carrier.query = Some(resolve_info.into_inner());
 
-    let staged = finish_stage_plain(edge_outcomes, upstream_error);
+    let staged = finish_stage(edge_outcomes, upstream_error);
     Box::pin(try_stream! {
         let mut staged = staged;
         while let Some(item) = staged.next().await {
@@ -893,7 +866,7 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         &resolve_info,
     );
     carrier.query = Some(resolve_info.into_inner());
-    let edge_stream = finish_stage_plain(edge_outcomes, upstream_error);
+    let edge_stream = finish_stage(edge_outcomes, upstream_error);
 
     // === Fold count limits (eager), mirroring the sync engine's optimization logic. ===
     let max_fold_size = get_max_fold_count_limit(carrier, fold.as_ref());

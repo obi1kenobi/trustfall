@@ -433,7 +433,7 @@ where
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'trace, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'trace, V, FieldValue, Self::Error> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -453,7 +453,7 @@ where
                     input_batch: Default::default(),
                     inner: self.next_op.clone(),
                 }
-                .map(|(ctx, value)| (ctx, Ok(value))),
+                .map(Ok),
             )
         } else {
             unreachable!()
@@ -467,8 +467,12 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'trace, V, VertexIterator<'trace, Result<Self::Vertex, Self::Error>>>
-    {
+    ) -> ContextOutcomeIterator<
+        'trace,
+        V,
+        VertexIterator<'trace, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_property() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -491,7 +495,7 @@ where
                 .map(|(ctx, neighbors)| {
                     let neighbors: VertexIterator<'trace, Result<Self::Vertex, Self::Error>> =
                         Box::new(neighbors.map(Ok));
-                    (ctx, neighbors)
+                    Ok((ctx, neighbors))
                 }),
             )
         } else {
@@ -505,7 +509,7 @@ where
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'trace, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'trace, V, bool, Self::Error> {
         let (root_opid, trace_op) = advance_ref_iter(self.next_op.as_ref())
             .expect("Expected a resolve_coercion() call operation, but found none.");
         assert_eq!(None, trace_op.parent_opid);
@@ -525,7 +529,7 @@ where
                     input_batch: Default::default(),
                     inner: self.next_op.clone(),
                 }
-                .map(|(ctx, can_coerce)| (ctx, Ok(can_coerce))),
+                .map(|(ctx, can_coerce)| Ok((ctx, can_coerce))),
             )
         } else {
             unreachable!()

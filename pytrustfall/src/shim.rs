@@ -238,7 +238,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, Result<TrustfallFieldValue, Self::Error>> {
+    ) -> ContextOutcomeIterator<'static, V, TrustfallFieldValue, Self::Error> {
         let contexts = ContextIterator::new(contexts);
         Python::attach(|py| {
             let py_iterable = self
@@ -257,7 +257,7 @@ impl Adapter<'static> for AdapterShim {
 
             Box::new(iter.map(|(opaque, value)| {
                 let ctx = take_context(opaque);
-                (ctx, Ok(value.into()))
+                Ok((ctx, value.into()))
             }))
         })
     }
@@ -273,6 +273,7 @@ impl Adapter<'static> for AdapterShim {
         'static,
         V,
         VertexIterator<'static, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
     > {
         let contexts = ContextIterator::new(contexts);
         Python::attach(|py| {
@@ -306,7 +307,7 @@ impl Adapter<'static> for AdapterShim {
                 let ctx = take_context(opaque);
                 let neighbors: VertexIterator<'static, Result<Self::Vertex, Self::Error>> =
                     Box::new(neighbors.map(Ok));
-                (ctx, neighbors)
+                Ok((ctx, neighbors))
             }))
         })
     }
@@ -317,7 +318,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeIterator<'static, V, bool, Self::Error> {
         let contexts = ContextIterator::new(contexts);
         Python::attach(|py| {
             let py_iterable = self
@@ -335,7 +336,7 @@ impl Adapter<'static> for AdapterShim {
             );
             Box::new(iter.map(|(opaque, value)| {
                 let ctx = take_context(opaque);
-                (ctx, Ok(value))
+                Ok((ctx, value))
             }))
         })
     }
