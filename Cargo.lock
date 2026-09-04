@@ -3786,6 +3786,7 @@ dependencies = [
  "feed-rs",
  "flate2",
  "futures-core",
+ "futures-executor",
  "futures-util",
  "hn_api",
  "regex",
