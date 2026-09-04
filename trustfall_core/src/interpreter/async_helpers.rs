@@ -12,7 +12,10 @@ use crate::ir::FieldValue;
 
 use super::{
     AsVertex, DataContext,
-    async_adapter::{ContextOutcomeStream, ContextStream, NeighborOutcomeStream, VertexStream},
+    async_adapter::{
+        AsyncContextOutcomeStream, AsyncContextStream, AsyncNeighborStream, ContextOutcomeStream,
+        ContextStream, NeighborOutcomeStream, VertexStream,
+    },
 };
 
 /// Async mirror of [`resolve_property_with`](super::helpers::resolve_property_with).
@@ -23,19 +26,16 @@ pub fn resolve_property_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
-    E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V, E>,
+    contexts: AsyncContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, FieldValue, E> {
-    Box::pin(contexts.map(move |result| {
-        result.map(|ctx| {
-            let value = match ctx.active_vertex::<Vertex>() {
-                None => FieldValue::Null,
-                Some(vertex) => resolver(vertex),
-            };
-            (ctx, value)
-        })
+) -> AsyncContextOutcomeStream<'vertex, V, FieldValue> {
+    Box::pin(contexts.map(move |ctx| {
+        let value = match ctx.active_vertex::<Vertex>() {
+            None => FieldValue::Null,
+            Some(vertex) => resolver(vertex),
+        };
+        (ctx, value)
     }))
 }
 
@@ -72,20 +72,16 @@ pub fn resolve_neighbors_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
-    E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V, E>,
+    contexts: AsyncContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> VertexStream<'vertex, Vertex> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, NeighborOutcomeStream<'vertex, Vertex, E>, E> {
-    Box::pin(contexts.map(move |result| {
-        result.map(|ctx| {
-            let neighbors: VertexStream<'vertex, Result<Vertex, E>> =
-                match ctx.active_vertex::<Vertex>() {
-                    None => Box::pin(stream::empty()),
-                    Some(vertex) => Box::pin(resolver(vertex).map(Ok)),
-                };
-            (ctx, neighbors)
-        })
+) -> AsyncContextOutcomeStream<'vertex, V, AsyncNeighborStream<'vertex, Vertex>> {
+    Box::pin(contexts.map(move |ctx| {
+        let neighbors = match ctx.active_vertex::<Vertex>() {
+            None => Box::pin(stream::empty()) as AsyncNeighborStream<'vertex, Vertex>,
+            Some(vertex) => resolver(vertex),
+        };
+        (ctx, neighbors)
     }))
 }
 
@@ -131,16 +127,13 @@ pub fn resolve_coercion_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
-    E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V, E>,
+    contexts: AsyncContextStream<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, bool, E> {
-    Box::pin(contexts.map(move |result| {
-        result.map(|ctx| {
-            let can_coerce = ctx.active_vertex::<Vertex>().is_some_and(&mut resolver);
-            (ctx, can_coerce)
-        })
+) -> AsyncContextOutcomeStream<'vertex, V, bool> {
+    Box::pin(contexts.map(move |ctx| {
+        let can_coerce = ctx.active_vertex::<Vertex>().is_some_and(&mut resolver);
+        (ctx, can_coerce)
     }))
 }
 

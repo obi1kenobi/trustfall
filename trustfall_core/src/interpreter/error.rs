@@ -28,8 +28,7 @@ pub enum QueryArgumentsError {
 /// being queried. It is `#[non_exhaustive]` because interpreter-detected contract violations
 /// (today expressed as panics) are expected to migrate into dedicated variants later.
 ///
-/// Execution is fail-fast: the first error an adapter reports terminates the results stream.
-/// The in-flight partial result is discarded, exactly one `Err` is yielded, and the stream ends.
+/// A resolver failure is yielded in the row position where it occurred. Other rows may continue.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum ExecutionError<E: std::error::Error + 'static> {
@@ -37,45 +36,6 @@ pub enum ExecutionError<E: std::error::Error + 'static> {
     /// coercion, or starting vertices.
     #[error("The adapter reported an error while executing the query: {0}")]
     Adapter(#[source] E),
-}
-
-/// Fallible query results whose error type is uninhabited, resolved to their rows.
-///
-/// Adapters that set [`Adapter::Error`](crate::interpreter::Adapter::Error) to
-/// [`std::convert::Infallible`] can never fail, so their execution results can be
-/// unwrapped without ceremony — this trait performs that unwrap in the type system,
-/// keeping "infallible adapters never write `Result`, `Ok`, or `unwrap`" true on the
-/// consumer side as well.
-///
-/// ```
-/// # use std::collections::BTreeMap;
-/// # use trustfall_core::interpreter::error::{ExecutionError, IntoRow};
-/// let result: Result<BTreeMap<&str, i64>, ExecutionError<std::convert::Infallible>> =
-/// #     Ok(BTreeMap::from([("value", 42)]));
-/// # let result = result.map(|row| row.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
-/// # let result: Result<BTreeMap<String, i64>, _> = result;
-/// // instead of `.expect("infallible adapter")`:
-/// let row = result.into_row();
-/// # assert_eq!(row["value"], 42);
-/// ```
-pub trait IntoRow: Sized {
-    /// The successful value carried by this result.
-    type Row;
-
-    /// Consume this result, returning its row. Panics are impossible by construction:
-    /// the error type is uninhabited.
-    fn into_row(self) -> Self::Row;
-}
-
-impl<Row> IntoRow for Result<Row, ExecutionError<std::convert::Infallible>> {
-    type Row = Row;
-
-    fn into_row(self) -> Row {
-        match self {
-            Ok(row) => row,
-            Err(ExecutionError::Adapter(unreachable)) => match unreachable {},
-        }
-    }
 }
 
 impl From<Vec<QueryArgumentsError>> for QueryArgumentsError {

@@ -8,10 +8,12 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::ir::{Argument, FieldValue, FoldSpecificFieldKind, IRFold, IndexedQuery, Operation};
+use crate::ir::{
+    Argument, Eid, FieldValue, FoldSpecificFieldKind, IRFold, IndexedQuery, Operation, Vid,
+};
 
 use super::{
-    FallibleAdapter, InterpretedQuery,
+    FallibleAdapter, InterpretedQuery, ResolveEdgeInfo, ResolveInfo,
     engine::interpret_ir as interpret_stream,
     error::{ExecutionError, QueryArgumentsError},
     sync_adapter::{ReadyIterator, SyncAdapter},
@@ -20,6 +22,41 @@ use super::{
 #[derive(Debug, Clone)]
 pub(super) struct QueryCarrier {
     pub(in crate::interpreter) query: Option<InterpretedQuery>,
+}
+
+impl QueryCarrier {
+    /// Run a resolver while temporarily lending it the query's property-resolution metadata.
+    pub(super) fn resolve_with<T>(
+        &mut self,
+        vid: Vid,
+        filtered: bool,
+        resolver: impl FnOnce(&ResolveInfo) -> T,
+    ) -> T {
+        let info =
+            ResolveInfo::new(self.query.take().expect("query was not returned"), vid, filtered);
+        let output = resolver(&info);
+        self.query = Some(info.into_inner());
+        output
+    }
+
+    /// Run an edge resolver while temporarily lending it the edge-resolution metadata.
+    pub(super) fn resolve_edge_with<T>(
+        &mut self,
+        from_vid: Vid,
+        to_vid: Vid,
+        edge_id: Eid,
+        resolver: impl FnOnce(&ResolveEdgeInfo) -> T,
+    ) -> T {
+        let info = ResolveEdgeInfo::new(
+            self.query.take().expect("query was not returned"),
+            from_vid,
+            to_vid,
+            edge_id,
+        );
+        let output = resolver(&info);
+        self.query = Some(info.into_inner());
+        output
+    }
 }
 
 /// Execute an indexed query synchronously.

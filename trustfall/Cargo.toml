@@ -21,6 +21,7 @@ all-features = true
 async = ["dep:futures-core", "dep:futures-util", "trustfall_core/async"]
 
 [dependencies]
+anyhow = { workspace = true }
 thiserror = { workspace = true }
 futures-core = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }

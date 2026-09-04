@@ -27,20 +27,21 @@ mod sync_adapter;
 pub mod trace;
 
 #[cfg(feature = "async")]
-pub use async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream};
+pub use async_adapter::{
+    AsyncAdapter, AsyncContextOutcomeStream, AsyncContextStream, AsyncNeighborStream,
+    ContextOutcomeStream, ContextStream, FallibleAsyncAdapter, NeighborOutcomeStream, VertexStream,
+};
 #[cfg(feature = "async")]
 pub use engine::interpret_ir as interpret_ir_async;
 #[cfg(feature = "async")]
 pub mod async_helpers;
 
-#[cfg(test)]
-mod error_propagation_tests;
 #[cfg(all(test, feature = "async"))]
 mod async_contract_tests;
 #[cfg(all(test, feature = "async"))]
 mod async_differential_tests;
-#[cfg(all(test, feature = "async"))]
-mod async_test_adapter;
+#[cfg(test)]
+mod error_propagation_tests;
 
 pub use hints::{
     CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,
