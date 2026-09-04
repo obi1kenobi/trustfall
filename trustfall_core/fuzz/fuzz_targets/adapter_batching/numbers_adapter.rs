@@ -225,7 +225,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
-        let outcomes = if property_name.as_ref() == "__typename" {
+        if property_name.as_ref() == "__typename" {
             resolve_property_with(contexts, |vertex| Number::typename(vertex).into())
         } else {
             match (type_name.as_ref(), property_name.as_ref()) {
@@ -242,8 +242,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                     unreachable!("failed to resolve type {type_name} property {property_name}")
                 }
             }
-        };
-        outcomes
+        }
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
@@ -256,7 +255,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>, Self::Error> {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
-        let outcomes = match (type_name.as_ref(), edge_name.as_ref()) {
+        match (type_name.as_ref(), edge_name.as_ref()) {
             ("Number" | "Prime" | "Composite", "predecessor") => {
                 resolve_neighbors_with_fallible(contexts, move |vertex| {
                     let value = match &vertex {
@@ -355,8 +354,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
             _ => {
                 unreachable!("Unexpected edge {} on vertex type {}", &edge_name, &type_name);
             }
-        };
-        outcomes
+        }
     }
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
@@ -366,7 +364,7 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
-        let outcomes = match (type_name.as_ref(), coerce_to_type.as_ref()) {
+        match (type_name.as_ref(), coerce_to_type.as_ref()) {
             ("Number", "Prime") => {
                 resolve_coercion_with(contexts, |vertex| matches!(vertex, NumbersVertex::Prime(..)))
             }
@@ -374,7 +372,6 @@ impl<'a> Adapter<'a> for NumbersAdapter {
                 matches!(vertex, NumbersVertex::Composite(..))
             }),
             _ => unimplemented!("Unexpected coercion attempted: {} {}", type_name, coerce_to_type),
-        };
-        outcomes
+        }
     }
 }
