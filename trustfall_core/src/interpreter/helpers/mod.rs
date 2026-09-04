@@ -75,6 +75,8 @@ pub fn resolve_neighbors_with<
 /// This is the fallible counterpart to [`resolve_neighbors_with`]. It lifts each neighbor into
 /// `Ok` once at the resolver boundary, so adapter implementations can return a standard
 /// fallible neighbor stream without repeating that conversion for every edge resolver.
+///
+/// [`Adapter::resolve_neighbors`]: super::Adapter::resolve_neighbors
 pub fn resolve_neighbors_with_fallible<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
