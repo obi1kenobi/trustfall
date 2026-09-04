@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 use async_stream::stream;
-use futures_util::{StreamExt, stream as futures_stream};
+use futures_util::StreamExt;
 
 use crate::ir::Recursive;
 
@@ -87,20 +87,20 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
     }
 
     // A piggyback holds contexts that must be emitted before the descendant which carried them.
-    // Flatten each resolved context into those rows, restoring its suspended vertex as it leaves
-    // recursion. An error stays a one-element stream at its original position.
+    // Flatten lazily, restoring each suspended vertex as it leaves recursion. An error stays a
+    // one-element stream at its original position.
     Box::pin(recursion_stream.flat_map(|result| {
-        let rows = match result {
-            Ok(context) => unpack_piggyback(context)
-                .into_iter()
-                .map(|context| {
-                    assert!(context.piggyback.is_none());
-                    Ok(context.ensure_unsuspended())
-                })
-                .collect(),
-            Err(error) => vec![Err(error)],
-        };
-        futures_stream::iter(rows)
+        stream! {
+            match result {
+                Ok(context) => {
+                    for context in unpack_piggyback(context) {
+                        assert!(context.piggyback.is_none());
+                        yield Ok(context.ensure_unsuspended());
+                    }
+                }
+                Err(error) => yield Err(error),
+            }
+        }
     }))
 }
 
@@ -173,21 +173,23 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> +
     })
 }
 
-/// Return a recursive context and every parent context attached to it, in result order.
-fn unpack_piggyback<Vertex>(context: DataContext<Vertex>) -> Vec<DataContext<Vertex>> {
-    let mut result = Vec::new();
-    unpack_piggyback_inner(&mut result, context);
-    result
-}
-
-fn unpack_piggyback_inner<Vertex>(
-    output: &mut Vec<DataContext<Vertex>>,
-    mut context: DataContext<Vertex>,
-) {
-    if let Some(mut piggyback) = context.piggyback.take() {
-        for ctx in piggyback.drain(..) {
-            unpack_piggyback_inner(output, ctx);
+/// Iterate through a recursive context and its attached parents in result order.
+///
+/// The explicit stack avoids recursively materializing every row before downstream stages poll
+/// for the first one. Pushing siblings in reverse preserves their original left-to-right order.
+fn unpack_piggyback<Vertex>(
+    context: DataContext<Vertex>,
+) -> impl Iterator<Item = DataContext<Vertex>> {
+    let mut pending = vec![context];
+    std::iter::from_fn(move || {
+        loop {
+            let mut context = pending.pop()?;
+            if let Some(piggyback) = context.piggyback.take() {
+                pending.push(context);
+                pending.extend(piggyback.into_iter().rev());
+            } else {
+                return Some(context);
+            }
         }
-    }
-    output.push(context);
+    })
 }
