@@ -252,11 +252,14 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| Ok((
-                            ctx,
-                            Box::new(neighbors.map(Ok))
-                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        ))),
+                        .map(|outcome| {
+                            outcome
+                                .map(|(ctx, neighbors)| (
+                                    ctx,
+                                    Box::new(neighbors.map(Ok))
+                                        as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                                ))
+                        }),
                 )
             }
             "Job" => {
@@ -267,11 +270,14 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| Ok((
-                            ctx,
-                            Box::new(neighbors.map(Ok))
-                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        ))),
+                        .map(|outcome| {
+                            outcome
+                                .map(|(ctx, neighbors)| (
+                                    ctx,
+                                    Box::new(neighbors.map(Ok))
+                                        as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                                ))
+                        }),
                 )
             }
             "Story" => {
@@ -282,11 +288,14 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| Ok((
-                            ctx,
-                            Box::new(neighbors.map(Ok))
-                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        ))),
+                        .map(|outcome| {
+                            outcome
+                                .map(|(ctx, neighbors)| (
+                                    ctx,
+                                    Box::new(neighbors.map(Ok))
+                                        as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                                ))
+                        }),
                 )
             }
             "User" => {
@@ -297,11 +306,14 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                             parameters,
                             resolve_info,
                         )
-                        .map(|(ctx, neighbors)| Ok((
-                            ctx,
-                            Box::new(neighbors.map(Ok))
-                                as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-                        ))),
+                        .map(|outcome| {
+                            outcome
+                                .map(|(ctx, neighbors)| (
+                                    ctx,
+                                    Box::new(neighbors.map(Ok))
+                                        as VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+                                ))
+                        }),
                 )
             }
             _ => {

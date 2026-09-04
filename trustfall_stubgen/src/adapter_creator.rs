@@ -221,7 +221,7 @@ fn emit_edge_handling(
         let ident =
             syn::Ident::new(&type_edge_resolver_fn_name(name), proc_macro2::Span::call_site());
         arms.extend(quote! {
-            #name => Box::new(super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info).map(|(ctx, neighbors)| Ok((ctx, Box::new(neighbors.map(Ok)) as VertexIterator<'a, Result<Self::Vertex, Self::Error>>)))),
+            #name => Box::new(super::edges::#ident(contexts, edge_name.as_ref(), parameters, resolve_info).map(|outcome| outcome.map(|(ctx, neighbors)| (ctx, Box::new(neighbors.map(Ok)) as VertexIterator<'a, Result<Self::Vertex, Self::Error>>)))),
         });
     }
 
