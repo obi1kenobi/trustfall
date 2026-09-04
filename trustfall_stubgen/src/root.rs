@@ -383,7 +383,6 @@ fn make_vertex_file(
     let mut variants = proc_macro2::TokenStream::new();
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|r| r.expect("infallible adapter"))
         .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
@@ -422,7 +421,6 @@ fn ensure_no_vertex_name_conflicts(querying_schema: &Schema, adapter: Arc<Schema
 
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|r| r.expect("infallible adapter"))
         .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
@@ -471,7 +469,6 @@ fn ensure_no_field_name_conflicts_on_vertex_type(
 
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|r| r.expect("infallible adapter"))
         .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();

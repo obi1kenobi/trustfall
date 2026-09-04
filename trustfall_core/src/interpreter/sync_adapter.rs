@@ -1,4 +1,4 @@
-//! Projection of a synchronous [`Adapter`] onto the interpreter's stream kernel.
+//! Projection of a synchronous [`FallibleAdapter`] onto the stream kernel.
 //!
 //! This is deliberately private. It relies on a strong invariant established by
 //! [`interpret_ir`](super::execution::interpret_ir): every stream in the pipeline is
@@ -18,7 +18,7 @@ use futures_util::{stream, task::noop_waker_ref};
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    Adapter, AsVertex, ContextIterator, ResolveEdgeInfo, ResolveInfo,
+    AsVertex, ContextIterator, FallibleAdapter, ResolveEdgeInfo, ResolveInfo,
     async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
 };
 
@@ -70,7 +70,7 @@ impl<A> SyncAdapter<A> {
 
 impl<'vertex, A> AsyncAdapter<'vertex> for SyncAdapter<A>
 where
-    A: Adapter<'vertex> + 'vertex,
+    A: FallibleAdapter<'vertex> + 'vertex,
 {
     type Vertex = A::Vertex;
     type Error = A::Error;
@@ -201,7 +201,7 @@ mod tests {
             let outcomes = contexts.map(move |context| {
                 pulled.set(pulled.get() + 1);
                 let value = FieldValue::Int64(context.active_vertex::<Vertex>().unwrap().0.into());
-                Ok((context, value))
+                (context, value)
             });
 
             if self.collect_batch {

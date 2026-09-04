@@ -16,7 +16,7 @@ use walkdir::WalkDir;
 extern crate trustfall_core;
 
 use trustfall_core::{
-    interpreter::{Adapter, AsVertex, execution::interpret_ir},
+    interpreter::{AsVertex, FallibleAdapter, execution::interpret_ir},
     ir::{FieldValue, IndexedQuery},
 };
 
@@ -70,19 +70,21 @@ impl<I: Iterator> Iterator for VariableChunkIterator<I> {
     }
 }
 
-struct VariableBatchingAdapter<'a, AdapterT: Adapter<'a> + 'a> {
+struct VariableBatchingAdapter<'a, AdapterT: FallibleAdapter<'a> + 'a> {
     adapter: AdapterT,
     cursor: RefCell<Cursor<&'a [u8]>>,
     _marker: PhantomData<&'a ()>,
 }
 
-impl<'a, AdapterT: Adapter<'a> + 'a> VariableBatchingAdapter<'a, AdapterT> {
+impl<'a, AdapterT: FallibleAdapter<'a> + 'a> VariableBatchingAdapter<'a, AdapterT> {
     fn new(adapter: AdapterT, cursor: Cursor<&'a [u8]>) -> Self {
         Self { adapter, cursor: RefCell::new(cursor), _marker: PhantomData }
     }
 }
 
-impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a, AdapterT> {
+impl<'a, AdapterT: FallibleAdapter<'a> + 'a> FallibleAdapter<'a>
+    for VariableBatchingAdapter<'a, AdapterT>
+{
     type Vertex = AdapterT::Vertex;
     type Error = AdapterT::Error;
 
@@ -106,7 +108,8 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
-    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+    ) -> trustfall_core::interpreter::FallibleContextOutcomeIterator<'a, V, FieldValue, Self::Error>
+    {
         let mut cursor_ref = self.cursor.borrow_mut();
         let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
         drop(cursor_ref);
@@ -127,7 +130,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         edge_name: &Arc<str>,
         parameters: &trustfall_core::ir::EdgeParameters,
         resolve_info: &trustfall_core::interpreter::ResolveEdgeInfo,
-    ) -> trustfall_core::interpreter::ContextOutcomeIterator<
+    ) -> trustfall_core::interpreter::FallibleContextOutcomeIterator<
         'a,
         V,
         trustfall_core::interpreter::VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
@@ -153,7 +156,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
-    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, V, bool, Self::Error> {
+    ) -> trustfall_core::interpreter::FallibleContextOutcomeIterator<'a, V, bool, Self::Error> {
         let mut cursor_ref = self.cursor.borrow_mut();
         let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
         drop(cursor_ref);

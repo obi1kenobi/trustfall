@@ -246,12 +246,7 @@ fn check_properties_are_implemented<'a, A: Adapter<'a>>(
                 &property_name,
                 &resolve_info,
             ) {
-                let (ctx, value) = outcome.unwrap_or_else(|e| {
-                    panic!(
-                        "resolve_property() errored during the invariant check for \
-                        type name '{type_name}' property '{property_name}': {e}"
-                    )
-                });
+                let (ctx, value) = outcome;
                 assert_eq!(
                     FieldValue::NULL,
                     value,
@@ -443,12 +438,7 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
             &parameters,
             &resolve_info,
         ) {
-            let (ctx, mut neighbors) = outcome.unwrap_or_else(|e| {
-                panic!(
-                    "resolve_neighbors() errored during the invariant check for type \
-                    '{type_name}' edge '{edge_name}': {e}"
-                )
-            });
+            let (ctx, mut neighbors) = outcome;
             assert!(
                 neighbors.next().is_none(),
                 "resolve_neighbors() produced a non-empty neighbor iterator \
@@ -571,12 +561,7 @@ fn check_type_coercions_are_implemented<'a, A: Adapter<'a>>(
         for outcome in
             adapter_under_test.resolve_coercion(contexts, type_name, coerce_to, &resolve_info)
         {
-            let (ctx, value) = outcome.unwrap_or_else(|e| {
-                panic!(
-                    "resolve_coercion() errored during the invariant check for a coercion \
-                    from type {type_name} to {coerce_to}: {e}"
-                )
-            });
+            let (ctx, value) = outcome;
             assert!(
                 !value,
                 "resolve_coercion() claimed that a non-existent vertex could be coerced \

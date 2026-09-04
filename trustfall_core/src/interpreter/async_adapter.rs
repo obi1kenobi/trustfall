@@ -47,19 +47,19 @@ pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT, ErrorT> =
 
 /// Asynchronous data providers implement this trait to enable streaming query execution.
 ///
-/// It mirrors [`Adapter`](super::Adapter) method-for-method; see that trait for the detailed
+/// It mirrors [`FallibleAdapter`](super::FallibleAdapter) method-for-method; see that trait for the detailed
 /// preconditions and postconditions of each resolver (they are identical here). The differences
 /// are purely in shape: inputs and outputs are [`Stream`]s rather than [`Iterator`]s.
 ///
 pub trait AsyncAdapter<'vertex> {
-    /// The type of vertices in the dataset this adapter queries. See [`Adapter::Vertex`].
+    /// The type of vertices in the dataset this adapter queries. See [`FallibleAdapter::Vertex`].
     ///
-    /// [`Adapter::Vertex`]: super::Adapter::Vertex
+    /// [`FallibleAdapter::Vertex`]: super::FallibleAdapter::Vertex
     type Vertex: Clone + Debug + 'vertex;
 
-    /// The error type this adapter may report. See [`Adapter::Error`].
+    /// The error type this adapter may report. See [`FallibleAdapter::Error`].
     ///
-    /// [`Adapter::Error`]: super::Adapter::Error
+    /// [`FallibleAdapter::Error`]: super::FallibleAdapter::Error
     type Error: std::error::Error + 'static;
 
     /// Produce a stream of vertices for the specified starting edge.

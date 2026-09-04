@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, NeighborOutcome, ResolveEdgeInfo,
-    ResolveInfo, Typename, VertexIterator, helpers::resolve_property_with,
+    Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+    Typename, VertexIterator, helpers::resolve_property_with,
 };
 
 /// A simplified variant of the [`Adapter`] trait.
@@ -216,21 +216,13 @@ where
 {
     type Vertex = T::Vertex;
 
-    // `BasicAdapter` is the infallible ergonomic layer: implementors never write `Result` or
-    // `Ok`. This blanket impl bridges to the fallible `Adapter` trait by declaring the error
-    // type uninhabited and wrapping every produced value in `Ok`.
-    type Error = std::convert::Infallible;
-
     fn resolve_starting_vertices(
         &self,
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'vertex, Result<Self::Vertex, Self::Error>> {
-        Box::new(
-            <Self as BasicAdapter>::resolve_starting_vertices(self, edge_name.as_ref(), parameters)
-                .map(Ok),
-        )
+    ) -> VertexIterator<'vertex, Self::Vertex> {
+        <Self as BasicAdapter>::resolve_starting_vertices(self, edge_name.as_ref(), parameters)
     }
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
@@ -239,17 +231,17 @@ where
         type_name: &std::sync::Arc<str>,
         property_name: &std::sync::Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
         if property_name.as_ref() == "__typename" {
-            self.resolve_typename(contexts, type_name)
-        } else {
-            <Self as BasicAdapter>::resolve_property(
-                self,
-                contexts,
-                type_name.as_ref(),
-                property_name.as_ref(),
-            )
+            return self.resolve_typename(contexts, type_name);
         }
+
+        <Self as BasicAdapter>::resolve_property(
+            self,
+            contexts,
+            type_name.as_ref(),
+            property_name.as_ref(),
+        )
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
@@ -259,27 +251,13 @@ where
         edge_name: &std::sync::Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
-        'vertex,
-        V,
-        NeighborOutcome<'vertex, Self::Vertex, Self::Error>,
-        Self::Error,
-    > {
-        Box::new(
-            <Self as BasicAdapter>::resolve_neighbors(
-                self,
-                contexts,
-                type_name.as_ref(),
-                edge_name.as_ref(),
-                parameters,
-            )
-            .map(|outcome| {
-                outcome.map(|(context, neighbors)| {
-                    let neighbors: NeighborOutcome<'vertex, Self::Vertex, Self::Error> =
-                        Box::new(neighbors.map(Ok));
-                    (context, neighbors)
-                })
-            }),
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>> {
+        <Self as BasicAdapter>::resolve_neighbors(
+            self,
+            contexts,
+            type_name.as_ref(),
+            edge_name.as_ref(),
+            parameters,
         )
     }
 
@@ -289,7 +267,7 @@ where
         type_name: &std::sync::Arc<str>,
         coerce_to_type: &std::sync::Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, bool, Self::Error> {
+    ) -> ContextOutcomeIterator<'vertex, V, bool> {
         <Self as BasicAdapter>::resolve_coercion(
             self,
             contexts,

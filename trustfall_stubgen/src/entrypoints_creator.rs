@@ -44,7 +44,6 @@ pub(super) fn make_entrypoints_file(
 
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|r| r.expect("infallible adapter"))
         .map(|x| x.try_into_struct::<ResultRow>().expect("invalid conversion"))
         .collect();
     rows.sort_unstable();
@@ -82,13 +81,13 @@ fn make_entrypoint_fn(
 
     let match_arm = if parameters.is_empty() {
         quote! {
-            #entrypoint => Box::new(super::entrypoints::#ident(resolve_info).map(Ok)),
+            #entrypoint => super::entrypoints::#ident(resolve_info),
         }
     } else {
         quote! {
             #entrypoint => {
                 #fn_arg_prep
-                Box::new(super::entrypoints::#ident(#fn_args resolve_info).map(Ok))
+                super::entrypoints::#ident(#fn_args resolve_info)
             }
         }
     };

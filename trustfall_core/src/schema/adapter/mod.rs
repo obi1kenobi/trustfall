@@ -9,7 +9,7 @@ use crate::{
     interpreter::{
         AsVertex, CandidateValue, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         ResolveInfo, Typename, VertexInfo, VertexIterator,
-        helpers::{resolve_neighbors_with_fallible, resolve_property_with},
+        helpers::{resolve_neighbors_with, resolve_property_with},
     },
     ir::{EdgeParameters, FieldValue, TransparentValue, Type},
 };
@@ -277,21 +277,20 @@ impl<'a> EdgeParameter<'a> {
 
 impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
     type Vertex = SchemaVertex<'a>;
-    type Error = std::convert::Infallible;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         match edge_name.as_ref() {
             "VertexType" => {
                 let name = resolve_info.statically_required_property("name");
-                Box::new(vertex_type_iter(self.schema, name).map(Ok))
+                vertex_type_iter(self.schema, name)
             }
-            "Entrypoint" => Box::new(entrypoints_iter(self.schema).map(Ok)),
-            "Schema" => Box::new(std::iter::once(SchemaVertex::Schema).map(Ok)),
+            "Entrypoint" => entrypoints_iter(self.schema),
+            "Schema" => Box::new(std::iter::once(SchemaVertex::Schema)),
             _ => unreachable!("unexpected starting edge: {edge_name}"),
         }
     }
@@ -302,9 +301,9 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         if property_name.as_ref() == "__typename" {
-            return resolve_property_with::<Self::Vertex, V, Self::Error>(contexts, |vertex| {
+            return resolve_property_with::<Self::Vertex, V>(contexts, |vertex| {
                 vertex.typename().into()
             });
         }
@@ -381,31 +380,26 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         edge_name: &Arc<str>,
         _parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
-        'a,
-        V,
-        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-        Self::Error,
-    > {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         let schema = self.schema;
         match type_name.as_ref() {
             "VertexType" => match edge_name.as_ref() {
-                "implements" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                "implements" => resolve_neighbors_with(contexts, move |vertex| {
                     resolve_vertex_type_implements_edge(schema, vertex)
                 }),
-                "implementer" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                "implementer" => resolve_neighbors_with(contexts, move |vertex| {
                     resolve_vertex_type_implementer_edge(schema, vertex)
                 }),
-                "property" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                "property" => resolve_neighbors_with(contexts, move |vertex| {
                     resolve_vertex_type_property_edge(schema, vertex)
                 }),
-                "edge" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                "edge" => resolve_neighbors_with(contexts, move |vertex| {
                     resolve_vertex_type_edge_edge(schema, vertex)
                 }),
                 _ => unreachable!("unexpected edge name on type {type_name}: {edge_name}"),
             },
             "Edge" => match edge_name.as_ref() {
-                "target" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                "target" => resolve_neighbors_with(contexts, move |vertex| {
                     let vertex = vertex.as_edge().expect("not an Edge");
                     let edge_type = Type::from_type(&vertex.defn.ty.node);
                     let target_type = edge_type.base_type();
@@ -417,7 +411,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                             .into_iter(),
                     )
                 }),
-                "parameter" => resolve_neighbors_with_fallible(contexts, move |vertex| {
+                "parameter" => resolve_neighbors_with(contexts, move |vertex| {
                     let vertex = vertex.as_edge().expect("not an Edge");
                     let parameters = vertex.defn.arguments.as_slice();
 
@@ -437,14 +431,14 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
                     // `.cloned()` to get rid of reference, so we can own it when we need to move it later
                     let vertex_type_name = destination.statically_required_property("name");
 
-                    resolve_neighbors_with_fallible(contexts, move |_| {
+                    resolve_neighbors_with(contexts, move |_| {
                         // `.clone()` each time as we may have multiple "vertex_type" edges
                         vertex_type_iter(schema, vertex_type_name.clone())
                     })
                 }
                 "entrypoint" => {
                     let schema = self.schema;
-                    resolve_neighbors_with_fallible(contexts, move |_| entrypoints_iter(schema))
+                    resolve_neighbors_with(contexts, move |_| entrypoints_iter(schema))
                 }
                 _ => unreachable!("unexpected property name on type {type_name}: {edge_name}"),
             },
@@ -459,7 +453,7 @@ impl<'a> crate::interpreter::Adapter<'a> for SchemaAdapter<'a> {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         unreachable!("unexpected type coercion: {type_name} -> {coerce_to_type}")
     }
 }

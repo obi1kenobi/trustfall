@@ -2,8 +2,9 @@ use std::{fmt::Debug, ops::Bound, sync::Arc};
 
 use crate::{
     interpreter::{
-        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, ResolveInfo,
-        TaggedValue, VertexIterator, hints::Range,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, FallibleAdapter,
+        FallibleContextOutcomeIterator, InterpretedQuery, ResolveInfo, TaggedValue, VertexIterator,
+        hints::Range,
     },
     ir::{
         ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation, Type,
@@ -64,14 +65,12 @@ use super::CandidateValue;
 /// # impl<'a> Adapter<'a> for EmailAdapter {
 /// #     type Vertex = Vertex;
 /// #
-/// #     type Error = std::convert::Infallible;
-/// #
 /// #     fn resolve_starting_vertices(
 /// #         &self,
 /// #         edge_name: &Arc<str>,
 /// #         parameters: &EdgeParameters,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
+/// #     ) -> VertexIterator<'a, Self::Vertex> {
 /// #         todo!()
 /// #     }
 /// #
@@ -81,7 +80,7 @@ use super::CandidateValue;
 /// #         type_name: &Arc<str>,
 /// #         property_name: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+/// #     ) -> ContextOutcomeIterator<'a, V, FieldValue> {
 /// #         todo!()
 /// #     }
 /// #
@@ -92,7 +91,7 @@ use super::CandidateValue;
 /// #         edge_name: &Arc<str>,
 /// #         parameters: &EdgeParameters,
 /// #         resolve_info: &ResolveEdgeInfo,
-/// #     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>, Self::Error> {
+/// #     ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
 /// #         todo!()
 /// #     }
 /// #
@@ -102,7 +101,7 @@ use super::CandidateValue;
 /// #         type_name: &Arc<str>,
 /// #         coerce_to_type: &Arc<str>,
 /// #         resolve_info: &ResolveInfo,
-/// #     ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+/// #     ) -> ContextOutcomeIterator<'a, V, bool> {
 /// #         todo!()
 /// #     }
 /// # }
@@ -116,7 +115,7 @@ use super::CandidateValue;
 /// #
 /// # fn resolve_recipient_otherwise<'a, V>(
 /// #     contexts: ContextIterator<'a, V>,
-/// # ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, std::convert::Infallible>>, std::convert::Infallible> {
+/// # ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
 /// #     todo!()
 /// # }
 /// #
@@ -127,7 +126,7 @@ use super::CandidateValue;
 ///     &self,
 ///     contexts: ContextIterator<'a, V>,
 ///     resolve_info: &ResolveEdgeInfo,
-/// ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, std::convert::Infallible>>, std::convert::Infallible> {
+/// ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>> {
 ///     if let Some(dynamic_value) = resolve_info.destination().dynamically_required_property("address") {
 ///         // The query is looking for a specific recipient's address,
 ///         // so let's look it up directly.
@@ -167,7 +166,24 @@ impl<'a> DynamicallyResolvedValue<'a> {
         self,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error> {
+    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
+        Box::new(self.try_resolve(adapter, contexts).map(|outcome| match outcome {
+            Ok(value) => value,
+            Err(never) => match never {},
+        }))
+    }
+
+    /// Fallible counterpart of [`DynamicallyResolvedValue::resolve`].
+    pub fn try_resolve<
+        'vertex,
+        AdapterT: FallibleAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, V>,
+    ) -> FallibleContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error>
+    {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -212,13 +228,38 @@ impl<'a> DynamicallyResolvedValue<'a> {
             CandidateValue<FieldValue>,
         ) -> VertexIterator<'vertex, AdapterT::Vertex>
         + 'vertex,
-    ) -> ContextOutcomeIterator<
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, AdapterT::Vertex>> {
+        Box::new(self.resolve(adapter, contexts).map(move |(ctx, candidate)| {
+            let neighbors = match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
+                Some(vertex) => neighbor_resolver(vertex, candidate),
+                None => Box::new(std::iter::empty()),
+            };
+            (ctx, neighbors)
+        }))
+    }
+
+    /// Fallible counterpart of [`DynamicallyResolvedValue::resolve_with`].
+    #[allow(clippy::type_complexity)]
+    pub fn try_resolve_with<
+        'vertex,
+        AdapterT: FallibleAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, V>,
+        mut neighbor_resolver: impl FnMut(
+            &AdapterT::Vertex,
+            CandidateValue<FieldValue>,
+        ) -> VertexIterator<'vertex, AdapterT::Vertex>
+        + 'vertex,
+    ) -> FallibleContextOutcomeIterator<
         'vertex,
         V,
         VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>>,
         AdapterT::Error,
     > {
-        Box::new(self.resolve(adapter, contexts).map(move |outcome| {
+        Box::new(self.try_resolve(adapter, contexts).map(move |outcome| {
             outcome.map(|(ctx, candidate)| {
                 let neighbors: VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>> =
                     match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
@@ -232,14 +273,15 @@ impl<'a> DynamicallyResolvedValue<'a> {
 
     fn compute_candidate_from_tagged_value<
         'vertex,
-        AdapterT: Adapter<'vertex>,
+        AdapterT: FallibleAdapter<'vertex>,
         V: AsVertex<AdapterT::Vertex> + 'vertex,
     >(
         self,
         context_field: &'a ContextField,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error> {
+    ) -> FallibleContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error>
+    {
         let vertex_id = context_field.vertex_id;
         let field_name = context_field.field_name.clone();
         let field_type = context_field.field_type.clone();
@@ -309,7 +351,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         self,
         field_ref: &'a FieldRef,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
+    ) -> FallibleContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let cloned_field_ref = field_ref.clone();
         let iterator = Box::new(contexts.map(move |ctx| {
             let value = ctx.imported_tags[&cloned_field_ref].clone();
@@ -334,7 +376,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
         self,
         fold_field: &'a FoldSpecificField,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
+    ) -> FallibleContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let fold_eid = fold_field.fold_eid;
         let iterator = contexts.map(move |context| {
             let tagged = match context.folded_contexts[&fold_eid].as_ref() {
@@ -368,8 +410,8 @@ fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex, E:
     initial_candidate: CandidateValue<FieldValue>,
     field_name: Arc<str>,
     field_type: Type,
-    iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue, E>,
-) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>, E> {
+    iterator: FallibleContextOutcomeIterator<'vertex, Vertex, TaggedValue, E>,
+) -> FallibleContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>, E> {
     let operation = operation.clone();
     Box::new(iterator.map(move |outcome| {
         outcome.map(|(context, tagged)| {

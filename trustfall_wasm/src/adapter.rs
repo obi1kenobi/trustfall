@@ -243,18 +243,17 @@ impl Opaque {
 
 impl Adapter<'static> for AdapterShim {
     type Vertex = JsValue;
-    type Error = std::convert::Infallible;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
         _resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'static, Result<Self::Vertex, Self::Error>> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         let parameters: JsEdgeParameters = parameters.clone().into();
         let js_iter =
             self.inner.resolve_starting_vertices(edge_name.as_ref(), parameters.into_js_dict());
-        Box::new(JsVertexIterator::new(js_iter.into_iter()).map(Ok))
+        Box::new(JsVertexIterator::new(js_iter.into_iter()))
     }
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'static>(
@@ -263,7 +262,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, FieldValue, Self::Error> {
+    ) -> ContextOutcomeIterator<'static, V, FieldValue> {
         let opaques: Box<dyn Iterator<Item = Opaque>> = Box::new(contexts.map(Opaque::new));
 
         let ctx_iter = JsContextIterator::new(opaques);
@@ -275,7 +274,7 @@ impl Adapter<'static> for AdapterShim {
             //         in this `resolve_property()` call, so the `V` type must be the same.
             let ctx = unsafe { opaque.into_inner() };
 
-            Ok((ctx, value))
+            (ctx, value)
         }))
     }
 
@@ -286,12 +285,7 @@ impl Adapter<'static> for AdapterShim {
         edge_name: &Arc<str>,
         parameters: &CoreEdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
-        'static,
-        V,
-        VertexIterator<'static, Result<Self::Vertex, Self::Error>>,
-        Self::Error,
-    > {
+    ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>> {
         let opaques: Box<dyn Iterator<Item = Opaque>> = Box::new(contexts.map(Opaque::new));
 
         let ctx_iter = JsContextIterator::new(opaques);
@@ -310,9 +304,7 @@ impl Adapter<'static> for AdapterShim {
                 //         in this `resolve_neighbors()` call, so the `V` type must be the same.
                 let ctx = unsafe { opaque.into_inner() };
 
-                let neighbors: VertexIterator<'static, Result<Self::Vertex, Self::Error>> =
-                    Box::new(neighbors.map(Ok));
-                Ok((ctx, neighbors))
+                (ctx, neighbors)
             },
         ))
     }
@@ -323,7 +315,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, bool, Self::Error> {
+    ) -> ContextOutcomeIterator<'static, V, bool> {
         let opaques: Box<dyn Iterator<Item = Opaque>> = Box::new(contexts.map(Opaque::new));
 
         let ctx_iter = JsContextIterator::new(opaques);
@@ -335,7 +327,7 @@ impl Adapter<'static> for AdapterShim {
             //         in this `resolve_coercion()` call, so the `V` type must be the same.
             let ctx = unsafe { opaque.into_inner() };
 
-            Ok((ctx, value))
+            (ctx, value)
         }))
     }
 }

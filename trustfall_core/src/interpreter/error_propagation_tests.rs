@@ -1,4 +1,4 @@
-//! End-to-end tests for the fallible `Adapter` error channel.
+//! End-to-end tests for the fallible `FallibleAdapter` error channel.
 //!
 //! The rest of the test suite uses infallible adapters, so it never exercises the error path.
 //! These tests wrap the (infallible) `NumbersAdapter` in a fault-injecting adapter that reports
@@ -20,8 +20,9 @@ use std::{
 use crate::{
     frontend::parse,
     interpreter::{
-        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
-        VertexIterator, error::ExecutionError, execution::interpret_ir,
+        AsVertex, ContextIterator, FallibleAdapter, FallibleContextOutcomeIterator,
+        ResolveEdgeInfo, ResolveInfo, VertexIterator, error::ExecutionError,
+        execution::interpret_ir,
     },
     ir::{EdgeParameters, FieldValue},
     numbers_interpreter::NumbersAdapter,
@@ -96,8 +97,8 @@ fn should_error(remaining: &AtomicUsize, error_emitted: &AtomicBool) -> bool {
     }
 }
 
-impl<'a> Adapter<'a> for FaultyAdapter {
-    type Vertex = <NumbersAdapter as Adapter<'a>>::Vertex;
+impl<'a> FallibleAdapter<'a> for FaultyAdapter {
+    type Vertex = <NumbersAdapter as FallibleAdapter<'a>>::Vertex;
     type Error = TestError;
 
     fn resolve_starting_vertices(
@@ -127,7 +128,7 @@ impl<'a> Adapter<'a> for FaultyAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+    ) -> FallibleContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         let inner = self
             .inner
             .resolve_property(contexts, type_name, property_name, resolve_info)
@@ -158,7 +159,7 @@ impl<'a> Adapter<'a> for FaultyAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
+    ) -> FallibleContextOutcomeIterator<
         'a,
         V,
         VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
@@ -197,7 +198,7 @@ impl<'a> Adapter<'a> for FaultyAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+    ) -> FallibleContextOutcomeIterator<'a, V, bool, Self::Error> {
         let inner = self
             .inner
             .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)

@@ -60,7 +60,6 @@ fn run_query(path: &str) {
     let mut current_instant = Instant::now();
     for (index, data_item) in execute_query(schema, adapter, input_query.query, input_query.args)
         .expect("not a valid query")
-        .map(|r| r.expect("infallible adapter"))
         .enumerate()
     {
         let next_item_duration = current_instant.elapsed();

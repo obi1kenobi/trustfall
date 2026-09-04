@@ -36,7 +36,6 @@ pub(super) fn make_properties_file(
 
     let mut rows: Vec<_> = trustfall::execute_query(querying_schema, adapter, query, variables)
         .expect("invalid query")
-        .map(|r| r.expect("infallible adapter"))
         .map(|x| {
             x.try_into_struct::<ResultRow>()
                 .map(|mut value| {

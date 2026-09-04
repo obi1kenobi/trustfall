@@ -23,7 +23,8 @@ pub enum QueryArgumentsError {
 /// An error surfaced while *executing* a query, i.e. while pulling results from the
 /// iterator returned by [`interpret_ir`](crate::interpreter::execution::interpret_ir).
 ///
-/// Currently this only wraps errors reported by the [`Adapter`](crate::interpreter::Adapter)
+/// Currently this only wraps errors reported by a
+/// [`FallibleAdapter`](crate::interpreter::FallibleAdapter)
 /// being queried. It is `#[non_exhaustive]` because interpreter-detected contract violations
 /// (today expressed as panics) are expected to migrate into dedicated variants later.
 ///

@@ -6,14 +6,14 @@ use std::{
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::{
-    interpreter::{Adapter, DataContext},
+    interpreter::{DataContext, FallibleAdapter},
     ir::{EdgeParameters, Eid, FieldValue, IRQuery, Vid},
     util::BTreeMapTryInsertExt,
 };
 
 use super::{
-    AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
-    VertexIterator, error::ExecutionError,
+    AsVertex, ContextIterator, FallibleContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+    VertexInfo, VertexIterator, error::ExecutionError,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -160,7 +160,7 @@ fn make_iter_with_pre_action<T, I: Iterator<Item = T>, F: Fn()>(
 #[derive(Debug, Clone)]
 pub struct AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex>,
+    AdapterT: FallibleAdapter<'vertex>,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>,
@@ -170,7 +170,7 @@ where
 
 impl<'vertex, AdapterT> AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex>,
+    AdapterT: FallibleAdapter<'vertex>,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>) -> Self {
@@ -194,7 +194,7 @@ pub fn tap_results<'vertex, AdapterT>(
 ) -> impl Iterator<Item = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<AdapterT::Error>>>
 + 'vertex
 where
-    AdapterT: Adapter<'vertex> + 'vertex,
+    AdapterT: FallibleAdapter<'vertex> + 'vertex,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     result_iter.inspect(move |result| {
@@ -208,9 +208,9 @@ where
     })
 }
 
-impl<'vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, AdapterT>
+impl<'vertex, AdapterT> FallibleAdapter<'vertex> for AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex>,
+    AdapterT: FallibleAdapter<'vertex>,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     type Vertex = AdapterT::Vertex;
@@ -260,7 +260,7 @@ where
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
+    ) -> FallibleContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveProperty(
@@ -327,7 +327,7 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
+    ) -> FallibleContextOutcomeIterator<
         'vertex,
         V,
         VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>,
@@ -433,7 +433,7 @@ where
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, bool, Self::Error> {
+    ) -> FallibleContextOutcomeIterator<'vertex, V, bool, Self::Error> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveCoercion(

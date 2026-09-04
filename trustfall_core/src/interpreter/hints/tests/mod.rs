@@ -72,14 +72,13 @@ impl Default for TestAdapter {
 
 impl<'a> Adapter<'a> for TestAdapter {
     type Vertex = NumbersVertex;
-    type Error = std::convert::Infallible;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &crate::ir::EdgeParameters,
         resolve_info: &super::ResolveInfo,
-    ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         let mut map_ref = self.on_starting_vertices.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
             x.call(resolve_info);
@@ -94,7 +93,7 @@ impl<'a> Adapter<'a> for TestAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &super::ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         let mut map_ref = self.on_property_resolver.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
             x.call(resolve_info);
@@ -110,12 +109,7 @@ impl<'a> Adapter<'a> for TestAdapter {
         edge_name: &Arc<str>,
         parameters: &crate::ir::EdgeParameters,
         resolve_info: &super::ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
-        'a,
-        V,
-        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-        Self::Error,
-    > {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         let mut map_ref = self.on_edge_resolver.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.eid()) {
             x.call(resolve_info);
@@ -130,7 +124,7 @@ impl<'a> Adapter<'a> for TestAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &super::ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         let mut map_ref = self.on_type_coercion.borrow_mut();
         if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
             x.call(resolve_info);
@@ -167,7 +161,6 @@ fn run_query<A: Adapter<'static> + 'static>(adapter: A, input_name: &str) -> Arc
         ),
     )
     .unwrap()
-    .map(|r| r.expect("infallible adapter"))
     .collect::<Vec<_>>();
     adapter
 }
@@ -1370,14 +1363,13 @@ mod dynamic_property_values {
         Adapter<'static> for DynamicTestAdapter<A, B, C, D>
     {
         type Vertex = <NumbersAdapter as Adapter<'static>>::Vertex;
-        type Error = std::convert::Infallible;
 
         fn resolve_starting_vertices(
             &self,
             edge_name: &Arc<str>,
             parameters: &crate::ir::EdgeParameters,
             resolve_info: &ResolveInfo,
-        ) -> VertexIterator<'static, Result<Self::Vertex, Self::Error>> {
+        ) -> VertexIterator<'static, Self::Vertex> {
             let mut map_ref = self.on_starting_vertices.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
                 // the starting vertices call doesn't have an iterator
@@ -1397,7 +1389,7 @@ mod dynamic_property_values {
             type_name: &Arc<str>,
             property_name: &Arc<str>,
             resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'static, V, FieldValue, Self::Error> {
+        ) -> ContextOutcomeIterator<'static, V, FieldValue> {
             let mut map_ref = self.on_property_resolver.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
                 contexts = x.resolve_call(&self.inner, contexts, resolve_info);
@@ -1413,12 +1405,7 @@ mod dynamic_property_values {
             edge_name: &Arc<str>,
             parameters: &crate::ir::EdgeParameters,
             resolve_info: &ResolveEdgeInfo,
-        ) -> ContextOutcomeIterator<
-            'static,
-            V,
-            VertexIterator<'static, Result<Self::Vertex, Self::Error>>,
-            Self::Error,
-        > {
+        ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>> {
             let mut map_ref = self.on_edge_resolver.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.eid()) {
                 contexts = x.resolve_edge_call(&self.inner, contexts, resolve_info);
@@ -1433,7 +1420,7 @@ mod dynamic_property_values {
             type_name: &Arc<str>,
             coerce_to_type: &Arc<str>,
             resolve_info: &ResolveInfo,
-        ) -> ContextOutcomeIterator<'static, V, bool, Self::Error> {
+        ) -> ContextOutcomeIterator<'static, V, bool> {
             let mut map_ref = self.on_type_coercion.borrow_mut();
             if let Some(x) = map_ref.get_mut(&resolve_info.current_vid) {
                 contexts = x.resolve_call(&self.inner, contexts, resolve_info);
@@ -1500,7 +1487,7 @@ mod dynamic_property_values {
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
                         .map(move |data| {
-                            if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) = data {
+                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
                                 ctx
                             } else {
@@ -1606,7 +1593,7 @@ mod dynamic_property_values {
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
                         .map(move |data| {
-                            if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) = data {
+                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
                                 ctx
                             } else {
@@ -1755,7 +1742,7 @@ mod dynamic_property_values {
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
                         .map(move |data| {
-                            if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) = data {
+                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
                                 ctx
                             } else {
@@ -1854,9 +1841,7 @@ mod dynamic_property_values {
                                 .resolve(adapter, ctxs)
                                 .zip_longest(expected_values)
                                 .map(move |data| {
-                                    if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) =
-                                        data
-                                    {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                         assert_eq!(expected_value, value);
                                         ctx
                                     } else {
@@ -1939,7 +1924,7 @@ mod dynamic_property_values {
                         .resolve(adapter, ctxs)
                         .zip_longest(expected_values)
                         .map(move |data| {
-                            if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) = data {
+                            if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                 assert_eq!(expected_value, value);
                                 ctx
                             } else {
@@ -2137,9 +2122,7 @@ mod dynamic_property_values {
                                 .resolve(adapter, ctxs)
                                 .zip_longest(expected_values)
                                 .map(move |data| {
-                                    if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) =
-                                        data
-                                    {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                         assert_eq!(expected_value, value);
                                         ctx
                                     } else {
@@ -2254,9 +2237,7 @@ mod dynamic_property_values {
                                 .resolve(adapter, ctxs)
                                 .zip_longest(expected_values)
                                 .map(move |data| {
-                                    if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) =
-                                        data
-                                    {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                         assert_eq!(expected_value, value);
                                         ctx
                                     } else {
@@ -2354,9 +2335,7 @@ mod dynamic_property_values {
                                 .resolve(adapter, ctxs)
                                 .zip_longest(expected_values)
                                 .map(move |data| {
-                                    if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) =
-                                        data
-                                    {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                         assert_eq!(expected_value, value);
                                         ctx
                                     } else {
@@ -2380,9 +2359,7 @@ mod dynamic_property_values {
                                 .resolve(adapter, ctxs)
                                 .zip_longest(expected_values)
                                 .map(move |data| {
-                                    if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) =
-                                        data
-                                    {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                         assert_eq!(expected_value, value);
                                         ctx
                                     } else {
@@ -2514,9 +2491,7 @@ mod dynamic_property_values {
                                 .resolve(adapter, ctxs)
                                 .zip_longest(expected_values)
                                 .map(move |data| {
-                                    if let EitherOrBoth::Both(Ok((ctx, value)), expected_value) =
-                                        data
-                                    {
+                                    if let EitherOrBoth::Both((ctx, value), expected_value) = data {
                                         assert_eq!(expected_value, value);
                                         ctx
                                     } else {

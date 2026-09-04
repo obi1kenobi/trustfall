@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use crate::ir::{Argument, FieldValue, FoldSpecificFieldKind, IRFold, IndexedQuery, Operation};
 
 use super::{
-    Adapter, InterpretedQuery,
+    FallibleAdapter, InterpretedQuery,
     engine::interpret_ir as interpret_stream,
     error::{ExecutionError, QueryArgumentsError},
     sync_adapter::{ReadyIterator, SyncAdapter},
@@ -28,7 +28,7 @@ pub(super) struct QueryCarrier {
 /// consuming the returned iterator drives the shared stream kernel until either a
 /// row or the first adapter error is produced.
 #[allow(clippy::type_complexity)]
-pub fn interpret_ir<'query, A: Adapter<'query> + 'query>(
+pub fn interpret_ir<'query, A: FallibleAdapter<'query> + 'query>(
     adapter: Arc<A>,
     indexed_query: Arc<IndexedQuery>,
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,

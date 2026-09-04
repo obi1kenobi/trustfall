@@ -76,7 +76,6 @@ pub fn interpret_query(
         .map_err(|err| crate::errors::QueryArgumentsError::new_err(format!("{err}")))?;
     let owned_iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>> =
         Box::new(execution.map(|res| {
-            let res = res.expect("Python adapter is currently infallible");
             res.iter()
                 .map(|(k, v)| {
                     let py_value: FieldValue = v.clone().into();
@@ -195,14 +194,13 @@ impl ContextIterator {
 
 impl Adapter<'static> for AdapterShim {
     type Vertex = Arc<Py<PyAny>>;
-    type Error = std::convert::Infallible;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'static, Result<Self::Vertex, Self::Error>> {
+    ) -> VertexIterator<'static, Self::Vertex> {
         Python::attach(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
                 .iter()
@@ -228,7 +226,7 @@ impl Adapter<'static> for AdapterShim {
                 .unwrap();
 
             let iter = make_iterator(py_iterable.bind(py), "resolve_starting_vertices()");
-            Box::new(PythonVertexIterator::new(iter.unbind()).map(Ok))
+            Box::new(PythonVertexIterator::new(iter.unbind()))
         })
     }
 
@@ -238,7 +236,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, TrustfallFieldValue, Self::Error> {
+    ) -> ContextOutcomeIterator<'static, V, TrustfallFieldValue> {
         let contexts = ContextIterator::new(contexts);
         Python::attach(|py| {
             let py_iterable = self
@@ -257,7 +255,7 @@ impl Adapter<'static> for AdapterShim {
 
             Box::new(iter.map(|(opaque, value)| {
                 let ctx = take_context(opaque);
-                Ok((ctx, value.into()))
+                (ctx, value.into())
             }))
         })
     }
@@ -269,12 +267,7 @@ impl Adapter<'static> for AdapterShim {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         _resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
-        'static,
-        V,
-        VertexIterator<'static, Result<Self::Vertex, Self::Error>>,
-        Self::Error,
-    > {
+    ) -> ContextOutcomeIterator<'static, V, VertexIterator<'static, Self::Vertex>> {
         let contexts = ContextIterator::new(contexts);
         Python::attach(|py| {
             let parameter_data: BTreeMap<String, Py<PyAny>> = parameters
@@ -305,9 +298,7 @@ impl Adapter<'static> for AdapterShim {
             );
             Box::new(iter.map(|(opaque, neighbors)| {
                 let ctx = take_context(opaque);
-                let neighbors: VertexIterator<'static, Result<Self::Vertex, Self::Error>> =
-                    Box::new(neighbors.map(Ok));
-                Ok((ctx, neighbors))
+                (ctx, neighbors)
             }))
         })
     }
@@ -318,7 +309,7 @@ impl Adapter<'static> for AdapterShim {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'static, V, bool, Self::Error> {
+    ) -> ContextOutcomeIterator<'static, V, bool> {
         let contexts = ContextIterator::new(contexts);
         Python::attach(|py| {
             let py_iterable = self
@@ -336,7 +327,7 @@ impl Adapter<'static> for AdapterShim {
             );
             Box::new(iter.map(|(opaque, value)| {
                 let ctx = take_context(opaque);
-                Ok((ctx, value))
+                (ctx, value)
             }))
         })
     }

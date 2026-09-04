@@ -19,14 +19,13 @@ pub struct NullablesAdapter;
 #[allow(unused_variables)]
 impl<'a> Adapter<'a> for NullablesAdapter {
     type Vertex = NullablesVertex;
-    type Error = std::convert::Infallible;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
+    ) -> VertexIterator<'a, Self::Vertex> {
         Box::new(std::iter::empty())
     }
 
@@ -36,7 +35,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
         unimplemented!()
     }
 
@@ -47,12 +46,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<
-        'a,
-        V,
-        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
-        Self::Error,
-    > {
+    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
         unimplemented!()
     }
 
@@ -62,7 +56,7 @@ impl<'a> Adapter<'a> for NullablesAdapter {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'a, V, bool, Self::Error> {
+    ) -> ContextOutcomeIterator<'a, V, bool> {
         unimplemented!()
     }
 }
