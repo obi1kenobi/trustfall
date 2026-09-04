@@ -5,7 +5,8 @@
 //! forwarding the context. The tag can come from the active vertex, another local vertex, a fold,
 //! or an enclosing component; those locations determine whether resolving it needs an adapter call.
 
-use async_stream::stream;
+use std::future::ready;
+
 use futures_util::StreamExt;
 
 use crate::ir::{
@@ -14,8 +15,11 @@ use crate::ir::{
 };
 
 use super::{
-    TaggedValue, async_adapter::AsyncAdapter, engine::FallibleContextStream,
-    execution::QueryCarrier, filtering::ComparisonOp,
+    DataContext, TaggedValue,
+    async_adapter::{AsyncAdapter, ContextOutcomeStream},
+    engine::FallibleContextStream,
+    execution::QueryCarrier,
+    filtering::ComparisonOp,
 };
 
 /// Apply a tag-argument `@filter` to a stream with its left value resolved.
@@ -97,18 +101,8 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
             adapter.resolve_property(stream, &type_name, &local_field.field_name, info)
         });
 
-        return Box::pin(stream! {
-            let mut field_data = field_data;
-            while let Some(item) = field_data.next().await {
-                match item {
-                    Ok((mut ctx, right_value)) => {
-                        if tagged_filter_matches(&mut ctx, op, TaggedValue::Some(right_value)) {
-                            yield Ok(ctx);
-                        }
-                    }
-                    Err(error) => yield Err(error),
-                }
-            }
+        return filter_resolved_contexts(field_data, move |mut ctx, right_value| {
+            tagged_filter_matches(&mut ctx, op, TaggedValue::Some(right_value)).then_some(ctx)
         });
     }
 
@@ -133,30 +127,18 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
             adapter.resolve_property(stream, &type_name, &field_name, info)
         });
 
-        return Box::pin(stream! {
-            let mut field_data = field_data;
-            while let Some(item) = field_data.next().await {
-                let (mut ctx, value) = match item {
-                    Ok(pair) => pair,
-                    Err(error) => {
-                        yield Err(error);
-                        continue;
-                    }
-                };
-                let tagged = if ctx.vertices[&vertex_id].is_some() {
-                    TaggedValue::Some(value)
-                } else {
-                    TaggedValue::NonexistentOptional
-                };
-                // This balances the temporary activation above. The filter continues at the
-                // original vertex, which is where later fields and edges expect the context.
-                let old_active = ctx.suspended_vertices.pop().unwrap();
-                ctx = ctx.move_to_vertex(old_active);
+        return filter_resolved_contexts(field_data, move |mut ctx, value| {
+            let tagged = if ctx.vertices[&vertex_id].is_some() {
+                TaggedValue::Some(value)
+            } else {
+                TaggedValue::NonexistentOptional
+            };
+            // This balances the temporary activation above. The filter continues at the
+            // original vertex, which is where later fields and edges expect the context.
+            let old_active = ctx.suspended_vertices.pop().unwrap();
+            ctx = ctx.move_to_vertex(old_active);
 
-                if tagged_filter_matches(&mut ctx, op, tagged) {
-                    yield Ok(ctx);
-                }
-            }
+            tagged_filter_matches(&mut ctx, op, tagged).then_some(ctx)
         });
     }
 
@@ -170,20 +152,39 @@ fn apply_imported_tag_filter<'query, V: 'query, E: 'query>(
     field_ref: FieldRef,
     stream: FallibleContextStream<'query, V, E>,
 ) -> FallibleContextStream<'query, V, E> {
-    Box::pin(stream! {
-        let mut stream = stream;
-        while let Some(item) = stream.next().await {
-            match item {
-                Ok(mut ctx) => {
-                    let tagged = ctx.imported_tags[&field_ref].clone();
-                    if tagged_filter_matches(&mut ctx, op, tagged) {
-                        yield Ok(ctx);
-                    }
-                }
-                Err(error) => yield Err(error),
-            }
-        }
+    retain_contexts(stream, move |ctx| {
+        let tagged = ctx.imported_tags[&field_ref].clone();
+        tagged_filter_matches(ctx, op, tagged)
     })
+}
+
+/// Retain successful contexts that satisfy `predicate`, while preserving failed row positions.
+fn retain_contexts<'query, V: 'query, E: 'query>(
+    stream: FallibleContextStream<'query, V, E>,
+    mut predicate: impl FnMut(&mut DataContext<V>) -> bool + 'query,
+) -> FallibleContextStream<'query, V, E> {
+    Box::pin(stream.filter_map(move |item| {
+        ready(match item {
+            Ok(mut context) => predicate(&mut context).then_some(Ok(context)),
+            Err(error) => Some(Err(error)),
+        })
+    }))
+}
+
+/// Apply a predicate to resolved values, retaining the context only on success.
+///
+/// Resolver errors remain items in the output stream, so the stage cannot accidentally turn a
+/// row-local failure into a dropped row.
+fn filter_resolved_contexts<'query, V: 'query, T: 'query, E: 'query>(
+    outcomes: ContextOutcomeStream<'query, V, T, E>,
+    mut filter: impl FnMut(DataContext<V>, T) -> Option<DataContext<V>> + 'query,
+) -> FallibleContextStream<'query, V, E> {
+    Box::pin(outcomes.filter_map(move |item| {
+        ready(match item {
+            Ok((context, value)) => filter(context, value).map(Ok),
+            Err(error) => Some(Err(error)),
+        })
+    }))
 }
 
 /// Apply a filter tagged with a field from an already-materialized fold.
@@ -196,28 +197,14 @@ fn apply_fold_specific_tag_filter<'query, V: 'query, E: 'query>(
     kind: FoldSpecificFieldKind,
     stream: FallibleContextStream<'query, V, E>,
 ) -> FallibleContextStream<'query, V, E> {
-    Box::pin(stream! {
-        let mut stream = stream;
-        while let Some(item) = stream.next().await {
-            match item {
-                Ok(mut ctx) => {
-                    let tagged = match &kind {
-                        FoldSpecificFieldKind::Count => {
-                            match ctx.folded_contexts[&fold_eid].as_ref() {
-                                None => TaggedValue::NonexistentOptional,
-                                Some(elements) => {
-                                    TaggedValue::Some(FieldValue::Uint64(elements.len() as u64))
-                                }
-                            }
-                        }
-                    };
-                    if tagged_filter_matches(&mut ctx, op, tagged) {
-                        yield Ok(ctx);
-                    }
-                }
-                Err(error) => yield Err(error),
-            }
-        }
+    retain_contexts(stream, move |ctx| {
+        let tagged = match &kind {
+            FoldSpecificFieldKind::Count => match ctx.folded_contexts[&fold_eid].as_ref() {
+                None => TaggedValue::NonexistentOptional,
+                Some(elements) => TaggedValue::Some(FieldValue::Uint64(elements.len() as u64)),
+            },
+        };
+        tagged_filter_matches(ctx, op, tagged)
     })
 }
 

@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 use async_stream::stream;
-use futures_util::StreamExt;
+use futures_util::{StreamExt, stream as futures_stream};
 
 use crate::ir::Recursive;
 
@@ -68,21 +68,13 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
                 adapter.resolve_coercion(recursion_stream, edge_endpoint_type, coerce_to, info)
             });
 
-            recursion_stream = Box::pin(stream! {
-                let mut coercion_outcomes = coercion_outcomes;
-                while let Some(item) = coercion_outcomes.next().await {
-                    match item {
-                        Ok((ctx, can_coerce)) => {
-                            if can_coerce {
-                                yield Ok(ctx);
-                            } else {
-                                yield Ok(ctx.ensure_suspended());
-                            }
-                        }
-                        Err(error) => yield Err(error),
-                    }
-                }
-            });
+            recursion_stream = Box::pin(coercion_outcomes.map(|result| {
+                result.map(
+                    |(context, can_coerce)| {
+                        if can_coerce { context } else { context.ensure_suspended() }
+                    },
+                )
+            }));
         }
 
         recursion_stream = perform_one_recursive_edge_expansion(
@@ -94,22 +86,22 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
         );
     }
 
-    Box::pin(stream! {
-        let mut recursion_stream = recursion_stream;
-        while let Some(item) = recursion_stream.next().await {
-            match item {
-                Ok(context) => {
-                    // A piggyback holds contexts that must be emitted before the descendant
-                    // which carried them. Unpack recursively, then restore the suspended vertex.
-                    for unpacked in unpack_piggyback(context) {
-                        assert!(unpacked.piggyback.is_none());
-                        yield Ok(unpacked.ensure_unsuspended());
-                    }
-                }
-                Err(error) => yield Err(error),
-            }
-        }
-    })
+    // A piggyback holds contexts that must be emitted before the descendant which carried them.
+    // Flatten each resolved context into those rows, restoring its suspended vertex as it leaves
+    // recursion. An error stays a one-element stream at its original position.
+    Box::pin(recursion_stream.flat_map(|result| {
+        let rows = match result {
+            Ok(context) => unpack_piggyback(context)
+                .into_iter()
+                .map(|context| {
+                    assert!(context.piggyback.is_none());
+                    Ok(context.ensure_unsuspended())
+                })
+                .collect(),
+            Err(error) => vec![Err(error)],
+        };
+        futures_stream::iter(rows)
+    }))
 }
 
 fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
