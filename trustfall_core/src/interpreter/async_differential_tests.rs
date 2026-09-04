@@ -7,7 +7,7 @@ use futures_util::{StreamExt, stream};
 use crate::{
     frontend::parse,
     interpreter::{
-        Adapter, AsVertex, NeighborResolutionStream, ResolveEdgeInfo, ResolveInfo,
+        Adapter, AsVertex, NeighborOutcomeStream, ResolveEdgeInfo, ResolveInfo,
         async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
         execution::interpret_ir,
     },
@@ -50,20 +50,20 @@ where
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error> {
         let adapter = Arc::clone(&self.0);
         let type_name = Arc::clone(type_name);
         let property_name = Arc::clone(property_name);
         let resolve_info = resolve_info.clone();
         Box::pin(async_stream::stream! {
             let mut contexts = contexts;
-            while let Some(context) = contexts.next().await {
+            while let Some(result) = contexts.next().await {
                 let outcomes = adapter.resolve_property(
-                    Box::new(std::iter::once(context)),
+                    Box::new(std::iter::once(result)),
                     &type_name,
                     &property_name,
                     &resolve_info,
@@ -77,7 +77,7 @@ where
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
@@ -85,7 +85,8 @@ where
     ) -> ContextOutcomeStream<
         'vertex,
         V,
-        NeighborResolutionStream<'vertex, Self::Vertex, Self::Error>,
+        NeighborOutcomeStream<'vertex, Self::Vertex, Self::Error>,
+        Self::Error,
     > {
         let adapter = Arc::clone(&self.0);
         let type_name = Arc::clone(type_name);
@@ -94,21 +95,22 @@ where
         let resolve_info = resolve_info.clone();
         Box::pin(async_stream::stream! {
             let mut contexts = contexts;
-            while let Some(context) = contexts.next().await {
+            while let Some(result) = contexts.next().await {
                 let outcomes = adapter.resolve_neighbors(
-                    Box::new(std::iter::once(context)),
+                    Box::new(std::iter::once(result)),
                     &type_name,
                     &edge_name,
                     &parameters,
                     &resolve_info,
                 );
-                for (context, resolution) in outcomes {
-                    let resolution = resolution.map(|neighbors| {
-                        let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
-                            Box::pin(stream::iter(neighbors));
-                        neighbors
+                for outcome in outcomes {
+                    yield outcome.map(|(context, neighbors)| {
+                        let neighbors: VertexStream<
+                            'vertex,
+                            Result<Self::Vertex, Self::Error>,
+                        > = Box::pin(stream::iter(neighbors));
+                        (context, neighbors)
                     });
-                    yield (context, resolution);
                 }
             }
         })
@@ -116,20 +118,20 @@ where
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error> {
         let adapter = Arc::clone(&self.0);
         let type_name = Arc::clone(type_name);
         let coerce_to_type = Arc::clone(coerce_to_type);
         let resolve_info = resolve_info.clone();
         Box::pin(async_stream::stream! {
             let mut contexts = contexts;
-            while let Some(context) = contexts.next().await {
+            while let Some(result) = contexts.next().await {
                 let outcomes = adapter.resolve_coercion(
-                    Box::new(std::iter::once(context)),
+                    Box::new(std::iter::once(result)),
                     &type_name,
                     &coerce_to_type,
                     &resolve_info,
@@ -206,12 +208,31 @@ mod fault_parity {
         futures_executor::block_on(rows.collect())
     }
 
+    /// Both engines agree on which errors surface and which rows survive, fault matrix and
+    /// budgets included.
+    fn assert_parity(
+        expected: &[Result<Row, ExecutionError<fault::TestError>>],
+        actual: &[Result<Row, ExecutionError<fault::TestError>>],
+        label: &str,
+    ) {
+        assert_eq!(expected.len(), actual.len(), "{label}");
+        for (expected, actual) in expected.iter().zip(actual.iter()) {
+            assert_eq!(expected.is_ok(), actual.is_ok(), "{label}");
+            if let (Ok(expected), Ok(actual)) = (expected, actual) {
+                assert_eq!(expected, actual, "{label}");
+            } else if let (Err(expected), Err(actual)) = (expected, actual) {
+                assert_eq!(format!("{expected:?}"), format!("{actual:?}"), "{label}");
+            }
+        }
+    }
+
     #[test]
     fn failures_match_the_sync_engine() {
         let queries = [
             fault::FLAT,
             fault::SUCCESSOR,
             r#"{ Number(min: 0, max: 50) { successor @optional { ... on Prime { value @output } } } }"#,
+            r#"{ Number(min: 1, max: 2) { value @output predecessor @optional { predecessor_value: value @output } } }"#,
             r#"{ Number(min: 1, max: 30) { value @output multiple(max: 10) @fold { factor: value @output } } }"#,
             r#"{ Number(min: 0, max: 8) { successor @recurse(depth: 3) { succ: value @output } } }"#,
         ];
@@ -227,23 +248,11 @@ mod fault_parity {
                 for budget in 0..=6 {
                     let expected = fault::run(fault, budget, query);
                     let actual = run_async(fault, budget, query);
-                    assert_eq!(expected.len(), actual.len(), "{fault:?}, budget {budget}, {query}");
-                    for (expected, actual) in expected.iter().zip(actual.iter()) {
-                        assert_eq!(
-                            expected.is_ok(),
-                            actual.is_ok(),
-                            "{fault:?}, budget {budget}, {query}"
-                        );
-                        if let (Ok(expected), Ok(actual)) = (expected, actual) {
-                            assert_eq!(expected, actual, "{fault:?}, budget {budget}, {query}");
-                        } else if let (Err(expected), Err(actual)) = (expected, actual) {
-                            assert_eq!(
-                                format!("{expected:?}"),
-                                format!("{actual:?}"),
-                                "{fault:?}, budget {budget}, {query}"
-                            );
-                        }
-                    }
+                    assert_parity(
+                        &expected,
+                        &actual,
+                        &format!("{fault:?}, budget {budget}, {query}"),
+                    );
                 }
             }
         }

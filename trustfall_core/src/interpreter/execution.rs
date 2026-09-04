@@ -24,9 +24,8 @@ pub(super) struct QueryCarrier {
 
 /// Execute an indexed query synchronously.
 ///
-/// Query validation happens eagerly. Data resolution remains lazy and fail-fast:
-/// consuming the returned iterator drives the shared stream kernel until either a
-/// row or the first adapter error is produced.
+/// Query validation happens eagerly. Data resolution remains lazy: consuming the returned
+/// iterator drives the shared stream kernel one successful or failed row at a time.
 #[allow(clippy::type_complexity)]
 pub fn interpret_ir<'query, A: FallibleAdapter<'query> + 'query>(
     adapter: Arc<A>,

@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use async_stream::try_stream;
+use async_stream::stream;
 use futures_util::StreamExt;
 
 use crate::ir::Recursive;
@@ -15,7 +15,7 @@ use crate::ir::Recursive;
 use super::{
     DataContext,
     async_adapter::AsyncAdapter,
-    engine::{EdgeRef, FallibleContextStream, begin_stage, finish_stage},
+    engine::{EdgeRef, FallibleContextStream},
     execution::QueryCarrier,
 };
 
@@ -64,20 +64,22 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
         if let Some(coerce_to) = recursive.coerce_to.as_ref() {
             // A vertex that fails this coercion is still an answer for a shallower depth. Suspend
             // it so the next edge resolver sees no active vertex and produces no further children.
-            let (plain, upstream_error) = begin_stage(recursion_stream);
             let coercion_outcomes = carrier.resolve_with(expanding_from_vid, false, |info| {
-                adapter.resolve_coercion(plain, edge_endpoint_type, coerce_to, info)
+                adapter.resolve_coercion(recursion_stream, edge_endpoint_type, coerce_to, info)
             });
 
-            let staged = finish_stage(coercion_outcomes, upstream_error);
-            recursion_stream = Box::pin(try_stream! {
-                let mut staged = staged;
-                while let Some(item) = staged.next().await {
-                    let (ctx, can_coerce) = item?;
-                    if can_coerce {
-                        yield ctx;
-                    } else {
-                        yield ctx.ensure_suspended();
+            recursion_stream = Box::pin(stream! {
+                let mut coercion_outcomes = coercion_outcomes;
+                while let Some(item) = coercion_outcomes.next().await {
+                    match item {
+                        Ok((ctx, can_coerce)) => {
+                            if can_coerce {
+                                yield Ok(ctx);
+                            } else {
+                                yield Ok(ctx.ensure_suspended());
+                            }
+                        }
+                        Err(error) => yield Err(error),
                     }
                 }
             });
@@ -92,15 +94,19 @@ pub(super) fn expand_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'qu
         );
     }
 
-    Box::pin(try_stream! {
+    Box::pin(stream! {
         let mut recursion_stream = recursion_stream;
         while let Some(item) = recursion_stream.next().await {
-            let context = item?;
-            // A piggyback holds contexts that must be emitted before the descendant which carried
-            // them. Unpack recursively, then restore whichever active vertex was suspended.
-            for unpacked in unpack_piggyback(context) {
-                assert!(unpacked.piggyback.is_none());
-                yield unpacked.ensure_unsuspended();
+            match item {
+                Ok(context) => {
+                    // A piggyback holds contexts that must be emitted before the descendant
+                    // which carried them. Unpack recursively, then restore the suspended vertex.
+                    for unpacked in unpack_piggyback(context) {
+                        assert!(unpacked.piggyback.is_none());
+                        yield Ok(unpacked.ensure_unsuspended());
+                    }
+                }
+                Err(error) => yield Err(error),
             }
         }
     })
@@ -115,18 +121,21 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> +
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
     // The initial context is at the edge source; later iterations are at the prior neighbor. In
     // either case the active vertex is already correct, unlike ordinary edge expansion.
-    let (plain, upstream_error) = begin_stage(stream);
-
     let edge_outcomes = carrier.resolve_edge_with(edge.from.vid, edge.to.vid, edge.eid, |info| {
-        adapter.resolve_neighbors(plain, expanding_from_type, edge.name, edge.parameters, info)
+        adapter.resolve_neighbors(stream, expanding_from_type, edge.name, edge.parameters, info)
     });
 
-    let staged = finish_stage(edge_outcomes, upstream_error);
-
-    Box::pin(try_stream! {
-        let mut staged = staged;
-        while let Some(item) = staged.next().await {
-            let (context, neighbors) = item?;
+    Box::pin(stream! {
+        let mut edge_outcomes = edge_outcomes;
+        while let Some(item) = edge_outcomes.next().await {
+            // A failed row slot from upstream passes through untouched.
+            let (context, neighbors) = match item {
+                Ok(pair) => pair,
+                Err(error) => {
+                    yield Err(error);
+                    continue;
+                }
+            };
             let mut neighbors = neighbors;
 
             // Move the parent exactly once into the first child. Its vertex-less sibling becomes
@@ -134,8 +143,15 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> +
             let mut context_slot: Option<DataContext<AdapterT::Vertex>> = Some(context);
             let mut neighbor_base: Option<DataContext<AdapterT::Vertex>> = None;
 
-            while let Some(neighbor_result) = neighbors.next().await {
-                let vertex = neighbor_result?;
+            while let Some(neighbor) = neighbors.next().await {
+                let vertex = match neighbor {
+                    Ok(vertex) => vertex,
+                    // A failed neighbor becomes a failed row of its own, in its position.
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
 
                 if let Some(ctx) = context_slot.take() {
                     // The parent is an answer at the current depth. Attach it to the first child
@@ -147,16 +163,19 @@ fn perform_one_recursive_edge_expansion<'query, AdapterT: AsyncAdapter<'query> +
                         .get_or_insert_with(Default::default)
                         .push(ctx.ensure_suspended());
                     neighbor_base = Some(base);
-                    yield neighbor_ctx;
+                    yield Ok(neighbor_ctx);
                 } else {
-                    yield neighbor_base.as_ref().unwrap().split_and_move_to_vertex(Some(vertex));
+                    yield Ok(neighbor_base
+                        .as_ref()
+                        .unwrap()
+                        .split_and_move_to_vertex(Some(vertex)));
                 }
             }
 
             if let Some(ctx) = context_slot {
                 // No child was produced. This context is still an answer at its current depth;
                 // the final unpacking step will restore any suspended vertex.
-                yield ctx;
+                yield Ok(ctx);
             }
         }
     })

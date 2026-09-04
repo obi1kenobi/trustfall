@@ -5,7 +5,7 @@
 //! forwarding the context. The tag can come from the active vertex, another local vertex, a fold,
 //! or an enclosing component; those locations determine whether resolving it needs an adapter call.
 
-use async_stream::try_stream;
+use async_stream::stream;
 use futures_util::StreamExt;
 
 use crate::ir::{
@@ -14,11 +14,8 @@ use crate::ir::{
 };
 
 use super::{
-    TaggedValue,
-    async_adapter::AsyncAdapter,
-    engine::{FallibleContextStream, begin_stage, finish_stage},
-    execution::QueryCarrier,
-    filtering::ComparisonOp,
+    TaggedValue, async_adapter::AsyncAdapter, engine::FallibleContextStream,
+    execution::QueryCarrier, filtering::ComparisonOp,
 };
 
 /// Apply a tag-argument `@filter` to a stream with its left value resolved.
@@ -96,18 +93,20 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
             field_type: context_field.field_type.clone(),
         };
         let type_name = component.vertices[&current_vid].type_name.clone();
-        let (plain, upstream_error) = begin_stage(stream);
         let field_data = carrier.resolve_with(current_vid, true, |info| {
-            adapter.resolve_property(plain, &type_name, &local_field.field_name, info)
+            adapter.resolve_property(stream, &type_name, &local_field.field_name, info)
         });
 
-        let staged = finish_stage(field_data, upstream_error);
-        return Box::pin(try_stream! {
-            let mut staged = staged;
-            while let Some(item) = staged.next().await {
-                let (mut ctx, right_value) = item?;
-                if tagged_filter_matches(&mut ctx, op, TaggedValue::Some(right_value)) {
-                    yield ctx;
+        return Box::pin(stream! {
+            let mut field_data = field_data;
+            while let Some(item) = field_data.next().await {
+                match item {
+                    Ok((mut ctx, right_value)) => {
+                        if tagged_filter_matches(&mut ctx, op, TaggedValue::Some(right_value)) {
+                            yield Ok(ctx);
+                        }
+                    }
+                    Err(error) => yield Err(error),
                 }
             }
         });
@@ -121,24 +120,29 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
         let type_name = vertex.type_name.clone();
         let field_name = context_field.field_name.clone();
 
-        let (plain, upstream_error) = begin_stage(stream);
-
-        let plain = Box::pin(plain.map(move |mut context| {
-            let active_vertex = context.active_vertex.clone();
-            let new_vertex = context.vertices[&vertex_id].clone();
-            context.suspended_vertices.push(active_vertex);
-            context.move_to_vertex(new_vertex)
+        let stream = Box::pin(stream.map(move |result| {
+            result.map(|mut context| {
+                let active_vertex = context.active_vertex.clone();
+                let new_vertex = context.vertices[&vertex_id].clone();
+                context.suspended_vertices.push(active_vertex);
+                context.move_to_vertex(new_vertex)
+            })
         }));
 
         let field_data = carrier.resolve_with(vertex_id, true, |info| {
-            adapter.resolve_property(plain, &type_name, &field_name, info)
+            adapter.resolve_property(stream, &type_name, &field_name, info)
         });
 
-        let staged = finish_stage(field_data, upstream_error);
-        return Box::pin(try_stream! {
-            let mut staged = staged;
-            while let Some(item) = staged.next().await {
-                let (mut ctx, value) = item?;
+        return Box::pin(stream! {
+            let mut field_data = field_data;
+            while let Some(item) = field_data.next().await {
+                let (mut ctx, value) = match item {
+                    Ok(pair) => pair,
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
                 let tagged = if ctx.vertices[&vertex_id].is_some() {
                     TaggedValue::Some(value)
                 } else {
@@ -150,7 +154,7 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
                 ctx = ctx.move_to_vertex(old_active);
 
                 if tagged_filter_matches(&mut ctx, op, tagged) {
-                    yield ctx;
+                    yield Ok(ctx);
                 }
             }
         });
@@ -166,13 +170,17 @@ fn apply_imported_tag_filter<'query, V: 'query, E: 'query>(
     field_ref: FieldRef,
     stream: FallibleContextStream<'query, V, E>,
 ) -> FallibleContextStream<'query, V, E> {
-    Box::pin(try_stream! {
+    Box::pin(stream! {
         let mut stream = stream;
         while let Some(item) = stream.next().await {
-            let mut ctx = item?;
-            let tagged = ctx.imported_tags[&field_ref].clone();
-            if tagged_filter_matches(&mut ctx, op, tagged) {
-                yield ctx;
+            match item {
+                Ok(mut ctx) => {
+                    let tagged = ctx.imported_tags[&field_ref].clone();
+                    if tagged_filter_matches(&mut ctx, op, tagged) {
+                        yield Ok(ctx);
+                    }
+                }
+                Err(error) => yield Err(error),
             }
         }
     })
@@ -188,18 +196,26 @@ fn apply_fold_specific_tag_filter<'query, V: 'query, E: 'query>(
     kind: FoldSpecificFieldKind,
     stream: FallibleContextStream<'query, V, E>,
 ) -> FallibleContextStream<'query, V, E> {
-    Box::pin(try_stream! {
+    Box::pin(stream! {
         let mut stream = stream;
         while let Some(item) = stream.next().await {
-            let mut ctx = item?;
-            let tagged = match &kind {
-                FoldSpecificFieldKind::Count => match ctx.folded_contexts[&fold_eid].as_ref() {
-                    None => TaggedValue::NonexistentOptional,
-                    Some(elements) => TaggedValue::Some(FieldValue::Uint64(elements.len() as u64)),
-                },
-            };
-            if tagged_filter_matches(&mut ctx, op, tagged) {
-                yield ctx;
+            match item {
+                Ok(mut ctx) => {
+                    let tagged = match &kind {
+                        FoldSpecificFieldKind::Count => {
+                            match ctx.folded_contexts[&fold_eid].as_ref() {
+                                None => TaggedValue::NonexistentOptional,
+                                Some(elements) => {
+                                    TaggedValue::Some(FieldValue::Uint64(elements.len() as u64))
+                                }
+                            }
+                        }
+                    };
+                    if tagged_filter_matches(&mut ctx, op, tagged) {
+                        yield Ok(ctx);
+                    }
+                }
+                Err(error) => yield Err(error),
             }
         }
     })

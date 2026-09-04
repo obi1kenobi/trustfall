@@ -3,21 +3,17 @@
 //! Async adapters suspend while resolving data. The synchronous frontend supplies ready streams
 //! and projects results back to an iterator. Both use the same execution stages.
 //!
-//! Internal streams carry adapter errors, but adapter resolvers receive only plain contexts.
-//! [`begin_stage`] stops before an upstream error and saves it. [`finish_stage`] yields resolver
-//! outcomes first, then yields that saved error. This keeps the execution stream fail-fast without
-//! making every adapter implementation handle an error channel it did not create.
+//! Context streams are fallible end to end. Every resolver receives the engine's existing
+//! `Result` stream and returns another one, so earlier errors pass through at their original
+//! positions and newly resolved values compose with ordinary `TryStream` operations.
 
 use std::{
-    cell::Cell,
     collections::{BTreeMap, BTreeSet},
     pin::Pin,
-    rc::Rc,
     sync::Arc,
-    task::{Context, Poll},
 };
 
-use async_stream::try_stream;
+use async_stream::stream;
 use futures_core::Stream;
 use futures_util::StreamExt;
 use maplit::btreeset;
@@ -32,18 +28,14 @@ use crate::{
 
 use super::{
     DataContext, InterpretedQuery, ResolveInfo, TaggedValue, ValueOrVec,
-    async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream},
+    async_adapter::{AsyncAdapter, ContextStream},
     error::{ExecutionError, QueryArgumentsError},
     execution::{QueryCarrier, get_max_fold_count_limit, get_min_fold_count_limit},
     filtering::{ComparisonOp, ValuePredicate},
 };
 
-/// An internal context stream whose error is terminal.
-///
-/// A stage either yields successful contexts until it reaches an adapter error, or it ends.
-/// Downstream stages rely on this to avoid invoking an adapter after a failed earlier stage.
-pub type FallibleContextStream<'vertex, VertexT, E> =
-    Pin<Box<dyn Stream<Item = Result<DataContext<VertexT>, E>> + 'vertex>>;
+/// The engine's context stream is the same fallible stream adapters receive.
+pub type FallibleContextStream<'vertex, VertexT, E> = ContextStream<'vertex, VertexT, E>;
 
 /// The endpoints and identity of an edge being expanded.
 pub(super) struct EdgeRef<'a> {
@@ -60,119 +52,7 @@ impl<'a> EdgeRef<'a> {
     }
 }
 
-/// The saved upstream error path for one resolver stage.
-///
-/// [`begin_stage`] produces this together with a plain context stream. It must be passed to
-/// [`finish_stage`] after the adapter's resolver has been called, otherwise an upstream error
-/// would be silently lost.
-#[must_use = "a resolver stage continuation must be passed to finish_stage"]
-pub(super) struct StageContinuation<E> {
-    pending_error: Rc<Cell<Option<E>>>,
-}
-
-impl<E> StageContinuation<E> {
-    fn take_error(self) -> Option<E> {
-        self.pending_error.take()
-    }
-}
-
-/// Yields successful contexts and records the first upstream error.
-struct TakeOk<'vertex, V, E> {
-    input: FallibleContextStream<'vertex, V, E>,
-    pending_error: Rc<Cell<Option<E>>>,
-    done: bool,
-}
-
-impl<'vertex, V, E> Stream for TakeOk<'vertex, V, E> {
-    type Item = DataContext<V>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        if this.done {
-            return Poll::Ready(None);
-        }
-        match this.input.as_mut().poll_next(cx) {
-            Poll::Ready(Some(Ok(ctx))) => Poll::Ready(Some(ctx)),
-            Poll::Ready(Some(Err(error))) => {
-                this.pending_error.set(Some(error));
-                this.done = true;
-                Poll::Ready(None)
-            }
-            Poll::Ready(None) => {
-                this.done = true;
-                Poll::Ready(None)
-            }
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-/// Reconnects a resolver's outcomes with the upstream error path.
-///
-/// An adapter error wins immediately. Otherwise, after the resolver has drained every context it
-/// received, the saved error from the preceding stage becomes the final item in the stream.
-struct FailFast<'vertex, V, O, E> {
-    outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
-    continuation: Option<StageContinuation<E>>,
-    finished: bool,
-}
-
-impl<'vertex, V, O, E> Stream for FailFast<'vertex, V, O, E> {
-    type Item = Result<(DataContext<V>, O), E>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        if this.finished {
-            return Poll::Ready(None);
-        }
-        match this.outcomes.as_mut().poll_next(cx) {
-            Poll::Ready(Some((ctx, Ok(value)))) => Poll::Ready(Some(Ok((ctx, value)))),
-            Poll::Ready(Some((_, Err(error)))) => {
-                this.finished = true;
-                Poll::Ready(Some(Err(error)))
-            }
-            Poll::Ready(None) => {
-                this.finished = true;
-                let upstream = this.continuation.take().and_then(StageContinuation::take_error);
-                match upstream {
-                    Some(error) => Poll::Ready(Some(Err(error))),
-                    None => Poll::Ready(None),
-                }
-            }
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-/// Split a fallible stream into adapter contexts and its upstream error path.
-pub(super) fn begin_stage<'vertex, V, E>(
-    input: FallibleContextStream<'vertex, V, E>,
-) -> (ContextStream<'vertex, V>, StageContinuation<E>)
-where
-    V: 'vertex,
-    E: 'vertex,
-{
-    let pending_error = Rc::new(Cell::new(None));
-    let plain: ContextStream<'vertex, V> =
-        Box::pin(TakeOk { input, pending_error: pending_error.clone(), done: false });
-    (plain, StageContinuation { pending_error })
-}
-
-/// Merge resolver outcomes into a fail-fast engine stream.
-#[allow(clippy::type_complexity)]
-pub(super) fn finish_stage<'vertex, V, O, E>(
-    outcomes: ContextOutcomeStream<'vertex, V, Result<O, E>>,
-    continuation: StageContinuation<E>,
-) -> Pin<Box<dyn Stream<Item = Result<(DataContext<V>, O), E>> + 'vertex>>
-where
-    V: 'vertex,
-    O: 'vertex,
-    E: 'vertex,
-{
-    Box::pin(FailFast { outcomes, continuation: Some(continuation), finished: false })
-}
-
-/// Execute an indexed query lazily as a fail-fast stream.
+/// Execute an indexed query as a lazy stream of independently fallible rows.
 ///
 /// Query argument validation and the starting-vertex resolver call happen while building the
 /// stream. Every later resolver call remains lazy: it runs only when the caller polls for more
@@ -313,14 +193,12 @@ fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     // Resolve the filter's left side first. This stack entry survives a tag lookup, where the
     // active vertex may temporarily move to the tagged field's vertex.
     let type_name = component.vertices[&current_vid].type_name.clone();
-    let (plain, upstream_error) = begin_stage(stream);
     let field_data = carrier.resolve_with(current_vid, true, |info| {
-        adapter.resolve_property(plain, &type_name, &local_field.field_name, info)
+        adapter.resolve_property(stream, &type_name, &local_field.field_name, info)
     });
 
-    let staged = finish_stage(field_data, upstream_error);
     let with_value: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
-        Box::pin(staged.map(|result| {
+        Box::pin(field_data.map(|result| {
             result.map(|(mut context, value)| {
                 context.values.push(value);
                 context
@@ -389,21 +267,23 @@ fn perform_coercion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     coerce_to: &Arc<str>,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    let (plain, upstream_error) = begin_stage(stream);
-
     let coercion_outcomes = carrier.resolve_with(vertex.vid, false, |info| {
-        adapter.resolve_coercion(plain, coerced_from, coerce_to, info)
+        adapter.resolve_coercion(stream, coerced_from, coerce_to, info)
     });
 
-    let staged = finish_stage(coercion_outcomes, upstream_error);
-    Box::pin(try_stream! {
-        let mut staged = staged;
-        while let Some(item) = staged.next().await {
-            let (ctx, can_coerce) = item?;
-            // A nonexistent `@optional` has no vertex to test. Preserve it so later output
-            // resolution produces `null` instead of removing the outer context.
-            if can_coerce || ctx.active_vertex.is_none() {
-                yield ctx;
+    Box::pin(stream! {
+        let mut coercion_outcomes = coercion_outcomes;
+        while let Some(item) = coercion_outcomes.next().await {
+            match item {
+                Ok((ctx, can_coerce)) => {
+                    // A nonexistent `@optional` has no vertex to test. Preserve it so later
+                    // output resolution produces `null` instead of removing the outer context.
+                    if can_coerce || ctx.active_vertex.is_none() {
+                        yield Ok(ctx);
+                    }
+                }
+                // A failed coercion bubbles up as its own failed row.
+                Err(error) => yield Err(error),
             }
         }
     })
@@ -481,41 +361,61 @@ fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     is_optional: bool,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    let (plain, upstream_error) = begin_stage(stream);
-
     // Component execution leaves each context at the most recently visited vertex. An edge must
     // start at its declared source, especially when several sibling edges share that source.
     let expanding_from_vid = edge.from.vid;
-    let plain: ContextStream<'query, AdapterT::Vertex> =
-        Box::pin(plain.map(move |context| context.activate_vertex(&expanding_from_vid)));
+    let stream: ContextStream<'query, AdapterT::Vertex, AdapterT::Error> = Box::pin(
+        stream
+            .map(move |result| result.map(|context| context.activate_vertex(&expanding_from_vid))),
+    );
 
     let type_name = edge.from.type_name.clone();
     let edge_outcomes = carrier.resolve_edge_with(edge.from.vid, edge.to.vid, edge.eid, |info| {
-        adapter.resolve_neighbors(plain, &type_name, edge.name, edge.parameters, info)
+        adapter.resolve_neighbors(stream, &type_name, edge.name, edge.parameters, info)
     });
 
-    let staged = finish_stage(edge_outcomes, upstream_error);
-    Box::pin(try_stream! {
-        let mut staged = staged;
-        while let Some(item) = staged.next().await {
-            let (context, neighbors) = item?;
+    Box::pin(stream! {
+        let mut edge_outcomes = edge_outcomes;
+        while let Some(item) = edge_outcomes.next().await {
+            // A failed row slot passes through untouched, ahead of its siblings.
+            let (context, neighbors) = match item {
+                Ok(pair) => pair,
+                Err(error) => {
+                    yield Err(error);
+                    continue;
+                }
+            };
             let mut neighbors = neighbors;
-            let mut has_neighbors = false;
+            let mut has_resolved_neighbor = false;
+            let mut has_failed_neighbor = false;
             while let Some(neighbor) = neighbors.next().await {
-                let vertex = neighbor?;
-                has_neighbors = true;
-                yield context.split_and_move_to_vertex(Some(vertex));
+                match neighbor {
+                    Ok(vertex) => {
+                        has_resolved_neighbor = true;
+                        yield Ok(context.split_and_move_to_vertex(Some(vertex)));
+                    }
+                    // A failed neighbor becomes a failed row of its own, in its position.
+                    Err(error) => {
+                        has_failed_neighbor = true;
+                        yield Err(error);
+                    }
+                }
             }
 
             if context.active_vertex.is_none() {
-                assert!(!has_neighbors);
+                assert!(!has_resolved_neighbor);
             }
 
             // There are no neighbors beneath a nonexistent optional vertex. Preserve the absent
             // vertex, and do the same for an optional edge with no neighbors, so descendants and
-            // outputs observe the optional scope as `null` rather than losing the parent row.
-            if context.active_vertex.is_none() || (!has_neighbors && is_optional) {
-                yield context.split_and_move_to_vertex(None);
+            // outputs observe the optional scope as `null` rather than losing the parent row. A
+            // failed neighbor is not an absent neighbor: it already occupies the parent's row as
+            // an error, so synthesizing a `null` row would incorrectly turn that failure into a
+            // second, successful result.
+            if context.active_vertex.is_none()
+                || (!has_resolved_neighbor && !has_failed_neighbor && is_optional)
+            {
+                yield Ok(context.split_and_move_to_vertex(None));
             }
         }
     })
@@ -714,18 +614,16 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     })
                 }));
 
-            let (plain, upstream_error) = begin_stage(moved);
             let field_data = carrier.resolve_with(vertex_id, true, |info| {
                 adapter.resolve_property(
-                    plain,
+                    moved,
                     &fold.component.vertices[&vertex_id].type_name,
                     &context_field.field_name,
                     info,
                 )
             });
 
-            let staged = finish_stage(field_data, upstream_error);
-            output_stream = Box::pin(staged.map(|result| {
+            output_stream = Box::pin(field_data.map(|result| {
                 result.map(|(mut context, value)| {
                     context.values.push(value);
                     context
@@ -798,14 +696,12 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     }));
 
                 let type_name = parent_component.vertices[&field.vertex_id].type_name.clone();
-                let (plain, upstream_error) = begin_stage(activated);
                 let field_data = carrier.resolve_with(vertex_id, true, |info| {
-                    adapter.resolve_property(plain, &type_name, &field.field_name, info)
+                    adapter.resolve_property(activated, &type_name, &field.field_name, info)
                 });
 
                 let cloned_field = imported_field.clone();
-                let staged = finish_stage(field_data, upstream_error);
-                stream = Box::pin(staged.map(move |result| {
+                stream = Box::pin(field_data.map(move |result| {
                     result.map(|(mut context, value)| {
                         let tag_value = if context.vertices[&vertex_id].is_some() {
                             TaggedValue::Some(value)
@@ -849,12 +745,17 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
             .map(move |result| result.map(|context| context.activate_vertex(&expanding_from_vid))),
     );
     let type_name = expanding_from.type_name.clone();
-    let (plain, upstream_error) = begin_stage(activated);
     let edge_outcomes =
         carrier.resolve_edge_with(expanding_from_vid, fold.to_vid, fold.eid, |info| {
-            adapter.resolve_neighbors(plain, &type_name, &fold.edge_name, &fold.parameters, info)
+            adapter.resolve_neighbors(
+                activated,
+                &type_name,
+                &fold.edge_name,
+                &fold.parameters,
+                info,
+            )
         });
-    let edge_stream = finish_stage(edge_outcomes, upstream_error);
+    let edge_stream = edge_outcomes;
 
     let max_fold_size = get_max_fold_count_limit(carrier, fold.as_ref());
     let min_fold_size =
@@ -890,18 +791,28 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let moved_fold = fold.clone();
 
     let folded_stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> = Box::pin(
-        try_stream! {
+        stream! {
             let mut edge_stream = edge_stream;
             while let Some(item) = edge_stream.next().await {
-                let (mut context, neighbors) = item?;
+                // A failed row slot from upstream passes through untouched.
+                let (mut context, neighbors) = match item {
+                    Ok(pair) => pair,
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
                 let imported_tags = context.imported_tags.clone();
 
+                // A failed neighbor inside the fold becomes a failed element; materializing the
+                // fold bubbles it up as the parent's failed row. Fold data is never dropped.
                 let neighbor_contexts: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> = {
                     let imported_tags = imported_tags.clone();
                     Box::pin(neighbors.map(move |neighbor| {
+                        let imported_tags = imported_tags.clone();
                         neighbor.map(|vertex| {
                             let mut ctx = DataContext::new(Some(vertex));
-                            ctx.imported_tags = imported_tags.clone();
+                            ctx.imported_tags = imported_tags;
                             ctx
                         })
                     }))
@@ -918,9 +829,14 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                 // distinction is observable in both fold-specific outputs and tagged filters.
                 let fold_exists = context.vertices[&expanding_from_vid].is_some();
                 let fold_elements = if fold_exists {
-                    match collect_fold_elements(computed, &max_fold_size, &min_fold_size).await? {
-                        Some(elements) => Some(elements),
-                        None => continue,
+                    match collect_fold_elements(computed, &max_fold_size, &min_fold_size).await {
+                        Ok(Some(elements)) => Some(elements),
+                        Ok(None) => continue,
+                        // Any failed element fails the parent's row, carrying the error.
+                        Err(error) => {
+                            yield Err(error);
+                            continue;
+                        }
                     }
                 } else {
                     None
@@ -932,7 +848,7 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     context.imported_tags.remove(imported_tag).unwrap();
                 }
 
-                yield context;
+                yield Ok(context);
             }
         },
     );
@@ -960,11 +876,17 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let mut output_carrier = carrier.clone();
     let output_fold = fold.clone();
 
-    Box::pin(try_stream! {
+    Box::pin(stream! {
         let mut post_filtered = post_filtered;
         while let Some(item) = post_filtered.next().await {
-            let context = item?;
-            let output_context = compute_fold_outputs(
+            let context = match item {
+                Ok(context) => context,
+                Err(error) => {
+                    yield Err(error);
+                    continue;
+                }
+            };
+            match compute_fold_outputs(
                 &output_adapter,
                 &mut output_carrier,
                 &output_fold,
@@ -972,8 +894,11 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                 expanding_from_vid,
                 context,
             )
-            .await?;
-            yield output_context;
+            .await
+            {
+                Ok(output_context) => yield Ok(output_context),
+                Err(error) => yield Err(error),
+            }
         }
     })
 }
@@ -1006,19 +931,16 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                 })
             }));
 
-        let (plain, upstream_error) = begin_stage(moved_stream);
-
         let field_data = carrier.resolve_with(vertex_id, true, |info| {
             adapter.resolve_property(
-                plain,
+                moved_stream,
                 &root_component.vertices[&vertex_id].type_name,
                 &context_field.field_name,
                 info,
             )
         });
 
-        let staged = finish_stage(field_data, upstream_error);
-        output_stream = Box::pin(staged.map(|result| {
+        output_stream = Box::pin(field_data.map(|result| {
             result.map(|(mut context, value)| {
                 context.values.push(value);
                 context
@@ -1055,88 +977,4 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
             output
         })
     }))
-}
-
-#[cfg(test)]
-mod tests {
-    use std::pin::Pin;
-
-    use futures_util::StreamExt;
-
-    use super::{ContextOutcomeStream, begin_stage, finish_stage};
-    use crate::interpreter::DataContext;
-
-    type Upstream =
-        Pin<Box<dyn futures_core::Stream<Item = Result<DataContext<i32>, u8>> + 'static>>;
-
-    fn ctx(v: i32) -> DataContext<i32> {
-        DataContext::new(Some(v))
-    }
-
-    fn upstream(items: Vec<Result<DataContext<i32>, u8>>) -> Upstream {
-        Box::pin(futures_util::stream::iter(items))
-    }
-
-    type Staged =
-        Pin<Box<dyn futures_core::Stream<Item = Result<(DataContext<i32>, &'static str), u8>>>>;
-
-    /// Compose a stage exactly like the engine does: the adapter's resolver consumes the
-    /// plain contexts and produces one fallible outcome per context it saw.
-    fn staged(
-        input: Upstream,
-        mut resolver: impl FnMut(DataContext<i32>) -> Result<&'static str, u8> + 'static,
-    ) -> Staged {
-        let (plain, continuation) = begin_stage(input);
-        let outcomes: ContextOutcomeStream<'static, i32, Result<&'static str, u8>> =
-            Box::pin(plain.map(move |ctx| (ctx.clone(), resolver(ctx))));
-        finish_stage(outcomes, continuation)
-    }
-
-    /// The adapter's error takes precedence over a later upstream error, and rows before
-    /// the error still flow: fail-fast means "first error wins, then the stream ends".
-    #[test]
-    fn adapter_error_precedes_later_upstream_error() {
-        let stream = staged(upstream(vec![Ok(ctx(1)), Ok(ctx(2)), Err(9), Ok(ctx(3))]), |ctx| {
-            match ctx.active_vertex {
-                Some(2) => Err(7),
-                Some(_) => Ok("a"),
-                None => Ok("n"),
-            }
-        });
-        let items: Vec<_> = futures_executor::block_on(stream.collect());
-        assert_eq!(items, vec![Ok((ctx(1), "a")), Err(7)]);
-    }
-
-    /// An upstream error surfaces exactly once, after all successfully-resolved outcomes.
-    #[test]
-    fn upstream_error_surfaces_after_outcomes() {
-        let stream = staged(upstream(vec![Ok(ctx(1)), Ok(ctx(2)), Err(9), Ok(ctx(3))]), |ctx| {
-            match ctx.active_vertex {
-                Some(2) => Ok("b"),
-                Some(_) => Ok("a"),
-                None => Ok("n"),
-            }
-        });
-        let items: Vec<_> = futures_executor::block_on(stream.collect());
-        assert_eq!(items, vec![Ok((ctx(1), "a")), Ok((ctx(2), "b")), Err(9)]);
-    }
-
-    /// Terminal-on-error contract (as in DataFusion's stream docs): after yielding an
-    /// error the stream returns `None` on every subsequent poll.
-    #[test]
-    fn stream_is_terminal_after_error() {
-        let mut stream = staged(upstream(vec![Err(1)]), |_| unreachable!("no contexts to resolve"));
-        assert_eq!(futures_executor::block_on(stream.next()), Some(Err(1)));
-        assert_eq!(futures_executor::block_on(stream.next()), None);
-        assert_eq!(futures_executor::block_on(stream.next()), None);
-    }
-
-    /// The stream is fused after successful completion as well.
-    #[test]
-    fn stream_is_terminal_after_completion() {
-        let mut stream = staged(upstream(vec![Ok(ctx(1))]), |_| Ok("done"));
-        assert_eq!(futures_executor::block_on(stream.next()), Some(Ok((ctx(1), "done"))));
-        assert_eq!(futures_executor::block_on(stream.next()), None);
-        assert_eq!(futures_executor::block_on(stream.next()), None);
-    }
 }

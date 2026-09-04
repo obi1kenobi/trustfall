@@ -3,7 +3,7 @@
 //! This is the async counterpart of [`BasicAdapter`](super::basic_adapter::BasicAdapter). It uses
 //! `&str` names, omits resolver hints, and resolves `__typename` through [`Typename`]. Implement
 //! it when those conveniences are sufficient; use [`AsyncAdapter`] directly to inspect hints or
-//! report an edge-resolution error before producing its neighbor stream.
+//! to shape neighbor streams item by item.
 //!
 //! The blanket implementation supplies [`AsyncAdapter`]. Infallible adapters set `Error` to
 //! [`std::convert::Infallible`].
@@ -17,7 +17,7 @@ use futures_util::StreamExt as _;
 use super::{
     AsVertex, Typename,
     async_adapter::{
-        AsyncAdapter, ContextOutcomeStream, ContextStream, NeighborResolutionStream, VertexStream,
+        AsyncAdapter, ContextOutcomeStream, ContextStream, NeighborOutcomeStream, VertexStream,
     },
 };
 
@@ -37,7 +37,8 @@ pub trait AsyncBasicAdapter<'vertex> {
 
     /// Resolve a schema starting edge.
     ///
-    /// Each item becomes one root query context. Returning an error stops query execution.
+    /// Each item becomes one root query context. A failed vertex becomes a failed row in the
+    /// result stream, carrying the error; the caller decides whether to skip or surface it.
     fn resolve_starting_vertices(
         &self,
         edge_name: &str,
@@ -46,38 +47,46 @@ pub trait AsyncBasicAdapter<'vertex> {
 
     /// Resolve a property for every context.
     ///
-    /// Return one result per context, in input order. A context without an active vertex must
-    /// resolve to `Ok(FieldValue::Null)`. `__typename` is handled by [`Self::resolve_typename`].
+    /// Return one item per input item, in order, passing upstream errors through unchanged. A
+    /// context without an active vertex must resolve to `FieldValue::Null`. `__typename` is handled by
+    /// [`Self::resolve_typename`].
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>>;
+    ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error>;
 
     /// Resolve an edge for every context.
     ///
-    /// Return one result per context, in input order. A context without an active vertex must
-    /// have an empty neighbor stream. Successful neighbors must match the schema's edge type.
+    /// Return one item per input item, in order, passing upstream errors through unchanged. A
+    /// context without an active vertex must have an empty neighbor stream. Context-level errors
+    /// belong to the outer stream; errors encountered while streaming neighbors belong to the
+    /// inner stream.
     #[allow(clippy::type_complexity)]
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &str,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> ContextOutcomeStream<'vertex, V, VertexStream<'vertex, Result<Self::Vertex, Self::Error>>>;
+    ) -> ContextOutcomeStream<
+        'vertex,
+        V,
+        NeighborOutcomeStream<'vertex, Self::Vertex, Self::Error>,
+        Self::Error,
+    >;
 
     /// Test whether each context's active vertex has the requested subtype.
     ///
-    /// Return one result per context, in input order. A context without an active vertex must
-    /// resolve to `Ok(false)`.
+    /// Return one item per input item, in order, passing upstream errors through unchanged. A
+    /// context without an active vertex must resolve to `false`.
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>>;
+    ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error>;
 
     /// Resolve `__typename` for every context.
     ///
@@ -85,15 +94,17 @@ pub trait AsyncBasicAdapter<'vertex> {
     /// vertex and may be overridden for a more efficient implementation.
     fn resolve_typename<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         _type_name: &str,
-    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>> {
-        Box::pin(contexts.map(|ctx| match ctx.active_vertex::<Self::Vertex>() {
-            None => (ctx, Ok(FieldValue::Null)),
-            Some(vertex) => {
-                let value: FieldValue = vertex.typename().into();
-                (ctx, Ok(value))
-            }
+    ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error> {
+        Box::pin(contexts.map(|result| {
+            result.map(|ctx| {
+                let value = match ctx.active_vertex::<Self::Vertex>() {
+                    None => FieldValue::Null,
+                    Some(vertex) => vertex.typename().into(),
+                };
+                (ctx, value)
+            })
         }))
     }
 }
@@ -116,11 +127,11 @@ where
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         _resolve_info: &super::ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, Self::Error>> {
+    ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error> {
         if property_name.as_ref() == "__typename" {
             self.resolve_typename(contexts, type_name.as_ref())
         } else {
@@ -136,7 +147,7 @@ where
     #[allow(clippy::type_complexity)]
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
@@ -144,29 +155,25 @@ where
     ) -> ContextOutcomeStream<
         'vertex,
         V,
-        NeighborResolutionStream<'vertex, Self::Vertex, Self::Error>,
+        NeighborOutcomeStream<'vertex, Self::Vertex, Self::Error>,
+        Self::Error,
     > {
-        // The basic trait has no context-level edge error. Wrap its neighbor stream in `Ok`; any
-        // failure it can report already appears as an item in that stream.
-        Box::pin(
-            <Self as AsyncBasicAdapter>::resolve_neighbors(
-                self,
-                contexts,
-                type_name.as_ref(),
-                edge_name.as_ref(),
-                parameters,
-            )
-            .map(|(ctx, neighbors)| (ctx, Ok(neighbors))),
+        <Self as AsyncBasicAdapter>::resolve_neighbors(
+            self,
+            contexts,
+            type_name.as_ref(),
+            edge_name.as_ref(),
+            parameters,
         )
     }
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         _resolve_info: &super::ResolveInfo,
-    ) -> ContextOutcomeStream<'vertex, V, Result<bool, Self::Error>> {
+    ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error> {
         <Self as AsyncBasicAdapter>::resolve_coercion(
             self,
             contexts,
@@ -216,33 +223,39 @@ mod tests {
 
         fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
             &self,
-            contexts: ContextStream<'a, V>,
+            contexts: ContextStream<'a, V, Self::Error>,
             _: &str,
             _: &str,
-        ) -> ContextOutcomeStream<'a, V, Result<FieldValue, Self::Error>> {
-            Box::pin(contexts.map(|context| {
-                let value = context.active_vertex::<Vertex>().unwrap().0.into();
-                (context, Ok(FieldValue::Int64(value)))
+        ) -> ContextOutcomeStream<'a, V, FieldValue, Self::Error> {
+            Box::pin(contexts.map(|result| {
+                result.map(|context| {
+                    let value = context.active_vertex::<Vertex>().unwrap().0.into();
+                    (context, FieldValue::Int64(value))
+                })
             }))
         }
 
         fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
             &self,
-            _: ContextStream<'a, V>,
+            _: ContextStream<'a, V, Self::Error>,
             _: &str,
             _: &str,
             _: &EdgeParameters,
-        ) -> ContextOutcomeStream<'a, V, VertexStream<'a, Result<Self::Vertex, Self::Error>>>
-        {
+        ) -> ContextOutcomeStream<
+            'a,
+            V,
+            VertexStream<'a, Result<Self::Vertex, Self::Error>>,
+            Self::Error,
+        > {
             unreachable!()
         }
 
         fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
             &self,
-            _: ContextStream<'a, V>,
+            _: ContextStream<'a, V, Self::Error>,
             _: &str,
             _: &str,
-        ) -> ContextOutcomeStream<'a, V, Result<bool, Self::Error>> {
+        ) -> ContextOutcomeStream<'a, V, bool, Self::Error> {
             unreachable!()
         }
     }

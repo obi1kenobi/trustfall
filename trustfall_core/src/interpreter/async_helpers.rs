@@ -6,13 +6,13 @@
 
 use std::{fmt::Debug, future::Future};
 
-use futures_util::{StreamExt as _, stream};
+use futures_util::{StreamExt as _, future::Either, stream};
 
 use crate::ir::FieldValue;
 
 use super::{
     AsVertex, DataContext,
-    async_adapter::{ContextOutcomeStream, ContextStream, NeighborResolutionStream, VertexStream},
+    async_adapter::{ContextOutcomeStream, ContextStream, NeighborOutcomeStream, VertexStream},
 };
 
 /// Async mirror of [`resolve_property_with`](super::helpers::resolve_property_with).
@@ -25,37 +25,42 @@ pub fn resolve_property_with<
     V: AsVertex<Vertex> + 'vertex,
     E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     mut resolver: impl FnMut(&Vertex) -> FieldValue + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, E>> {
-    Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
-        None => (ctx, Ok(FieldValue::Null)),
-        Some(vertex) => {
-            let value = resolver(vertex);
-            (ctx, Ok(value))
-        }
+) -> ContextOutcomeStream<'vertex, V, FieldValue, E> {
+    Box::pin(contexts.map(move |result| {
+        result.map(|ctx| {
+            let value = match ctx.active_vertex::<Vertex>() {
+                None => FieldValue::Null,
+                Some(vertex) => resolver(vertex),
+            };
+            (ctx, value)
+        })
     }))
 }
 
 /// Fallible variant of [`resolve_property_with`].
 ///
-/// Errors apply to the current context and stop the query result stream when the interpreter sees
-/// them. Missing optional vertices still resolve to `Null` without calling `resolver`.
+/// A resolver error travels with the context's outcome: the affected row bubbles up to the
+/// result stream as a failed row carrying this error, while every other row continues.
+/// Missing optional vertices still resolve to `Null` without calling `resolver`.
 pub fn try_resolve_property_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
     V: AsVertex<Vertex> + 'vertex,
     E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     mut resolver: impl FnMut(&Vertex) -> Result<FieldValue, E> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, E>> {
-    Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
-        None => (ctx, Ok(FieldValue::Null)),
-        Some(vertex) => {
-            let outcome = resolver(vertex);
-            (ctx, outcome)
-        }
+) -> ContextOutcomeStream<'vertex, V, FieldValue, E> {
+    Box::pin(contexts.map(move |result| {
+        result.and_then(|ctx| {
+            let outcome = match ctx.active_vertex::<Vertex>() {
+                None => Ok(FieldValue::Null),
+                Some(vertex) => resolver(vertex),
+            };
+            outcome.map(|value| (ctx, value))
+        })
     }))
 }
 
@@ -69,27 +74,26 @@ pub fn resolve_neighbors_with<
     V: AsVertex<Vertex> + 'vertex,
     E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     mut resolver: impl FnMut(&Vertex) -> VertexStream<'vertex, Vertex> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, NeighborResolutionStream<'vertex, Vertex, E>> {
-    Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
-        None => {
-            let no_neighbors: VertexStream<'vertex, Result<Vertex, E>> = Box::pin(stream::empty());
-            (ctx, Ok(no_neighbors))
-        }
-        Some(vertex) => {
-            let neighbors = resolver(vertex);
-            let neighbors: VertexStream<'vertex, Result<Vertex, E>> = Box::pin(neighbors.map(Ok));
-            (ctx, Ok(neighbors))
-        }
+) -> ContextOutcomeStream<'vertex, V, NeighborOutcomeStream<'vertex, Vertex, E>, E> {
+    Box::pin(contexts.map(move |result| {
+        result.map(|ctx| {
+            let neighbors: VertexStream<'vertex, Result<Vertex, E>> =
+                match ctx.active_vertex::<Vertex>() {
+                    None => Box::pin(stream::empty()),
+                    Some(vertex) => Box::pin(resolver(vertex).map(Ok)),
+                };
+            (ctx, neighbors)
+        })
     }))
 }
 
 /// Fallible, context-level variant of [`resolve_neighbors_with`].
 ///
-/// `resolver` either produces the complete neighbor collection for a context or reports that its
-/// edge resolution failed. Use a custom [`NeighborResolutionStream`] when failures can arise while
-/// producing individual neighbors instead.
+/// `resolver` either produces the complete neighbor collection for a context or reports that
+/// its edge resolution failed. Since this failure happens before neighbor streaming begins, it
+/// is returned in the outer context stream.
 pub fn try_resolve_neighbors_with<
     'vertex,
     Vertex: Debug + Clone + 'vertex,
@@ -97,25 +101,25 @@ pub fn try_resolve_neighbors_with<
     E: 'vertex,
     Neighbors: IntoIterator<Item = Vertex>,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     mut resolver: impl FnMut(&Vertex) -> Result<Neighbors, E> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, NeighborResolutionStream<'vertex, Vertex, E>>
+) -> ContextOutcomeStream<'vertex, V, NeighborOutcomeStream<'vertex, Vertex, E>, E>
 where
     Neighbors::IntoIter: 'vertex,
 {
-    Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
-        None => {
-            let no_neighbors: VertexStream<'vertex, Result<Vertex, E>> = Box::pin(stream::empty());
-            (ctx, Ok(no_neighbors))
-        }
-        Some(vertex) => {
-            let outcome = resolver(vertex).map(|neighbors| {
+    Box::pin(contexts.map(move |result| {
+        result.and_then(|ctx| match ctx.active_vertex::<Vertex>() {
+            None => {
+                let no_neighbors: VertexStream<'vertex, Result<Vertex, E>> =
+                    Box::pin(stream::empty());
+                Ok((ctx, no_neighbors))
+            }
+            Some(vertex) => resolver(vertex).map(|neighbors| {
                 let neighbors: VertexStream<'vertex, Result<Vertex, E>> =
                     Box::pin(stream::iter(neighbors.into_iter().map(Ok)));
-                neighbors
-            });
-            (ctx, outcome)
-        }
+                (ctx, neighbors)
+            }),
+        })
     }))
 }
 
@@ -129,15 +133,14 @@ pub fn resolve_coercion_with<
     V: AsVertex<Vertex> + 'vertex,
     E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     mut resolver: impl FnMut(&Vertex) -> bool + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, Result<bool, E>> {
-    Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
-        None => (ctx, Ok(false)),
-        Some(vertex) => {
-            let can_coerce = resolver(vertex);
-            (ctx, Ok(can_coerce))
-        }
+) -> ContextOutcomeStream<'vertex, V, bool, E> {
+    Box::pin(contexts.map(move |result| {
+        result.map(|ctx| {
+            let can_coerce = ctx.active_vertex::<Vertex>().is_some_and(&mut resolver);
+            (ctx, can_coerce)
+        })
     }))
 }
 
@@ -150,36 +153,46 @@ pub fn try_resolve_coercion_with<
     V: AsVertex<Vertex> + 'vertex,
     E: 'vertex,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     mut resolver: impl FnMut(&Vertex) -> Result<bool, E> + 'vertex,
-) -> ContextOutcomeStream<'vertex, V, Result<bool, E>> {
-    Box::pin(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
-        None => (ctx, Ok(false)),
-        Some(vertex) => {
-            let outcome = resolver(vertex);
-            (ctx, outcome)
-        }
+) -> ContextOutcomeStream<'vertex, V, bool, E> {
+    Box::pin(contexts.map(move |result| {
+        result.and_then(|ctx| {
+            let outcome = match ctx.active_vertex::<Vertex>() {
+                None => Ok(false),
+                Some(vertex) => resolver(vertex),
+            };
+            outcome.map(|can_coerce| (ctx, can_coerce))
+        })
     }))
 }
 
-/// Order-preserving, bounded concurrent map over a context stream.
+/// Order-preserving, bounded concurrent map over a fallible context stream.
 ///
 /// At most `concurrency` futures run at once. Completed work is held until all earlier contexts
-/// finish, so output order matches input order even when the underlying I/O does not. `concurrency`
-/// must be at least one.
-pub fn map_contexts_buffered<'vertex, V, O, F, Fut>(
-    contexts: ContextStream<'vertex, V>,
+/// finish, so output order — including upstream and newly produced errors — matches input order
+/// even when the underlying I/O does not. `concurrency` must be at least one.
+pub fn map_contexts_buffered<'vertex, V, O, E: 'vertex, F, Fut>(
+    contexts: ContextStream<'vertex, V, E>,
     concurrency: usize,
     f: F,
-) -> ContextOutcomeStream<'vertex, V, O>
+) -> ContextOutcomeStream<'vertex, V, O, E>
 where
     V: 'vertex,
     O: 'vertex,
     F: FnMut(DataContext<V>) -> Fut + 'vertex,
-    Fut: Future<Output = (DataContext<V>, O)> + 'vertex,
+    Fut: Future<Output = Result<(DataContext<V>, O), E>> + 'vertex,
 {
     assert!(concurrency >= 1, "concurrency must be at least 1");
-    Box::pin(contexts.map(f).buffered(concurrency))
+    let mut f = f;
+    Box::pin(
+        contexts
+            .map(move |result| match result {
+                Ok(context) => Either::Left(f(context)),
+                Err(error) => Either::Right(std::future::ready(Err(error))),
+            })
+            .buffered(concurrency),
+    )
 }
 
 /// Concurrent, order-preserving fallible property resolution.
@@ -194,10 +207,10 @@ pub fn try_resolve_property_with_concurrent<
     F,
     Fut,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     concurrency: usize,
     resolver: F,
-) -> ContextOutcomeStream<'vertex, V, Result<FieldValue, E>>
+) -> ContextOutcomeStream<'vertex, V, FieldValue, E>
 where
     F: Fn(Vertex) -> Fut + 'vertex,
     Fut: Future<Output = Result<FieldValue, E>> + 'vertex,
@@ -209,7 +222,7 @@ where
                 None => Ok(FieldValue::Null),
                 Some(fut) => fut.await,
             };
-            (ctx, outcome)
+            outcome.map(|value| (ctx, value))
         }
     })
 }
@@ -227,10 +240,10 @@ pub fn try_resolve_neighbors_with_concurrent<
     Fut,
     Neighbors,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     concurrency: usize,
     resolver: F,
-) -> ContextOutcomeStream<'vertex, V, NeighborResolutionStream<'vertex, Vertex, E>>
+) -> ContextOutcomeStream<'vertex, V, NeighborOutcomeStream<'vertex, Vertex, E>, E>
 where
     F: Fn(Vertex) -> Fut + 'vertex,
     Fut: Future<Output = Result<Neighbors, E>> + 'vertex,
@@ -240,14 +253,14 @@ where
     map_contexts_buffered(contexts, concurrency, move |ctx| {
         let pending = ctx.active_vertex::<Vertex>().cloned().map(&resolver);
         async move {
-            let resolution: NeighborResolutionStream<'vertex, Vertex, E> = match pending {
-                None => Ok(Box::pin(stream::empty())),
-                Some(fut) => match fut.await {
-                    Ok(iter) => Ok(Box::pin(stream::iter(iter.into_iter().map(Ok)))),
-                    Err(e) => Err(e),
-                },
+            let resolution: NeighborOutcomeStream<'vertex, Vertex, E> = match pending {
+                None => Box::pin(stream::empty()),
+                Some(fut) => {
+                    let iter = fut.await?;
+                    Box::pin(stream::iter(iter.into_iter().map(Ok)))
+                }
             };
-            (ctx, resolution)
+            Ok((ctx, resolution))
         }
     })
 }
@@ -263,10 +276,10 @@ pub fn try_resolve_coercion_with_concurrent<
     F,
     Fut,
 >(
-    contexts: ContextStream<'vertex, V>,
+    contexts: ContextStream<'vertex, V, E>,
     concurrency: usize,
     resolver: F,
-) -> ContextOutcomeStream<'vertex, V, Result<bool, E>>
+) -> ContextOutcomeStream<'vertex, V, bool, E>
 where
     F: Fn(Vertex) -> Fut + 'vertex,
     Fut: Future<Output = Result<bool, E>> + 'vertex,
@@ -278,7 +291,7 @@ where
                 None => Ok(false),
                 Some(fut) => fut.await,
             };
-            (ctx, outcome)
+            outcome.map(|can_coerce| (ctx, can_coerce))
         }
     })
 }
