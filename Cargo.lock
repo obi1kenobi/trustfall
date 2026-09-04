@@ -3781,7 +3781,6 @@ dependencies = [
 name = "trustfall"
 version = "0.8.1"
 dependencies = [
- "anyhow",
  "csv",
  "feed-rs",
  "flate2",
@@ -3793,6 +3792,7 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
+ "thiserror 2.0.20",
  "time 0.3.55",
  "trustfall_core",
  "trustfall_derive",
