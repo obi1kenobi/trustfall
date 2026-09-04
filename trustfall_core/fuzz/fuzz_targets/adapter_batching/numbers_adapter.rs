@@ -7,9 +7,7 @@ use trustfall_core::{
     interpreter::{
         Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
         Typename, VertexIterator,
-        helpers::{
-            resolve_coercion_with, resolve_neighbors_with_fallible, resolve_property_with,
-        },
+        helpers::{resolve_coercion_with, resolve_neighbors_with_fallible, resolve_property_with},
     },
     ir::{EdgeParameters, FieldValue},
 };
@@ -252,7 +250,12 @@ impl<'a> Adapter<'a> for NumbersAdapter {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Self::Vertex, Self::Error>>, Self::Error> {
+    ) -> ContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         let mut primes = btreeset![2, 3];
         let parameters = parameters.clone();
         match (type_name.as_ref(), edge_name.as_ref()) {

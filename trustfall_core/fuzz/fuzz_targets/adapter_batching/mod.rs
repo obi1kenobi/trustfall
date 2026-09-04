@@ -106,8 +106,7 @@ impl<'a, AdapterT: Adapter<'a> + 'a> Adapter<'a> for VariableBatchingAdapter<'a,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &trustfall_core::interpreter::ResolveInfo,
-    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, V, FieldValue, Self::Error>
-    {
+    ) -> trustfall_core::interpreter::ContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
         let mut cursor_ref = self.cursor.borrow_mut();
         let sequence = cursor_ref.read_u64::<LittleEndian>().unwrap_or(0);
         drop(cursor_ref);
