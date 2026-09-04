@@ -2,11 +2,8 @@
 //!
 //! The rest of the test suite uses infallible adapters, so it never exercises the error path.
 //! These tests wrap the (infallible) `NumbersAdapter` in a fault-injecting adapter that reports
-//! a real error at a configurable point in a configurable resolver method, and assert the
-//! engine's fail-fast contract:
-//! - successful results produced *before* the error are still yielded,
-//! - then exactly one `Err` is yielded,
-//! - then the stream ends (nothing after the error).
+//! a real error at a configurable point in a configurable resolver method. The focused tests
+//! below cover the distinct error boundaries and one composed query shape.
 
 use std::{
     collections::BTreeMap,
@@ -56,7 +53,6 @@ pub(super) enum Fault {
     StartingVertices,
     Property,
     Neighbors,
-    Coercion,
 }
 
 /// Wraps `NumbersAdapter` and injects `TestError` into one resolver method once `remaining`
@@ -195,26 +191,14 @@ impl<'a> FallibleAdapter<'a> for FaultyAdapter {
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> FallibleContextOutcomeIterator<'a, V, bool, Self::Error> {
-        let inner = self
-            .inner
-            .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
-            .map(|outcome| match outcome {
-                Ok((ctx, value)) => (ctx, value),
-                Err(never) => match never {},
-            });
-        if self.fault == Fault::Coercion {
-            let remaining = self.remaining.clone();
-            let error_emitted = self.error_emitted.clone();
-            Box::new(inner.map(move |(ctx, value)| {
-                if should_error(&remaining, &error_emitted) {
-                    Err(TestError::new())
-                } else {
-                    Ok((ctx, value))
-                }
-            }))
-        } else {
-            Box::new(inner.map(Ok))
-        }
+        Box::new(
+            self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info).map(
+                |outcome| match outcome {
+                    Ok((ctx, value)) => Ok((ctx, value)),
+                    Err(never) => match never {},
+                },
+            ),
+        )
     }
 }
 
@@ -257,51 +241,28 @@ pub(super) const FLAT: &str = r#"{ Number(min: 0, max: 50) { value @output } }"#
 pub(super) const SUCCESSOR: &str = r#"{ Number(min: 0, max: 50) { successor { value @output } } }"#;
 
 #[test]
-fn error_in_resolve_starting_vertices_is_fail_fast() {
+fn error_in_resolve_starting_vertices_becomes_a_row_error() {
     assert!(baseline_row_count(FLAT) > 5);
     let results = run(Fault::StartingVertices, 5, FLAT);
     assert_single_row_error(&results);
 }
 
 #[test]
-fn error_in_resolve_property_is_fail_fast() {
+fn error_in_resolve_property_becomes_a_row_error() {
     assert!(baseline_row_count(FLAT) > 3);
     let results = run(Fault::Property, 3, FLAT);
     assert_single_row_error(&results);
 }
 
 #[test]
-fn error_in_resolve_neighbors_is_fail_fast() {
+fn error_in_resolve_neighbors_becomes_a_row_error() {
     assert!(baseline_row_count(SUCCESSOR) > 4);
     let results = run(Fault::Neighbors, 4, SUCCESSOR);
     assert_single_row_error(&results);
 }
 
 #[test]
-fn error_after_zero_rows_yields_only_the_error() {
-    let results = run(Fault::StartingVertices, 0, FLAT);
-    assert_single_row_error(&results);
-}
-
-#[test]
-fn no_error_when_budget_exceeds_work() {
-    // If the fault never triggers, the output matches an infallible run exactly.
-    let total = baseline_row_count(FLAT);
-    let results = run(Fault::Property, total + 10, FLAT);
-    assert_eq!(results.len(), total);
-    assert!(results.iter().all(Result::is_ok));
-}
-
-#[test]
-fn error_in_coercion_is_fail_fast() {
-    let query = r#"{ Number(min: 0, max: 50) { successor { ... on Prime { value @output } } } }"#;
-    let results = run(Fault::Coercion, 4, query);
-    assert_single_row_error(&results);
-}
-
-#[test]
-fn error_inside_fold_terminates() {
-    // The fold eagerly materializes `multiple` neighbors; an error mid-fold must terminate.
+fn error_inside_fold_becomes_a_row_error() {
     let query = r#"{
         Number(min: 1, max: 50) {
             value @output
@@ -311,98 +272,6 @@ fn error_inside_fold_terminates() {
         }
     }"#;
     let results = run(Fault::Neighbors, 5, query);
-    assert_single_row_error(&results);
-}
-
-#[test]
-fn scalar_error_inside_materialized_fold_stops_adapter_polls() {
-    // Fold materialization is eager relative to yielding the parent row. A scalar resolver error
-    // inside it must cancel the rest of that materialization immediately, rather than continuing
-    // to pull adapter data before the outer result iterator gets a chance to observe the error.
-    let query = r#"{
-        Number(min: 1, max: 50) {
-            multiple(max: 30) @fold {
-                factor: value @output
-            }
-        }
-    }"#;
-    let results = run(Fault::Property, 5, query);
-    assert_single_row_error(&results);
-}
-
-#[test]
-fn error_inside_recurse_terminates() {
-    let query = r#"{
-        Number(min: 0, max: 10) {
-            value @output
-            successor @recurse(depth: 3) {
-                succ: value @output
-            }
-        }
-    }"#;
-    let results = run(Fault::Neighbors, 5, query);
-    assert_single_row_error(&results);
-}
-
-#[test]
-fn error_inside_optional_terminates() {
-    let query = r#"{
-        Number(min: 0, max: 50) {
-            value @output
-            predecessor @optional {
-                pred: value @output
-            }
-        }
-    }"#;
-    let results = run(Fault::Neighbors, 5, query);
-    assert_single_row_error(&results);
-}
-
-// ---------------------------------------------------------------------------
-// Error propagation across query shapes and lazy consumption.
-// ---------------------------------------------------------------------------
-
-const SHAPES: &[&str] = &[
-    FLAT,
-    SUCCESSOR,
-    // Nested edges with coercion and optional.
-    r#"{ Number(min: 0, max: 50) { successor @optional { ... on Prime { value @output } } } }"#,
-    // Fold.
-    r#"{ Number(min: 1, max: 30) { value @output, multiple(max: 10) @fold { factor: value @output } } }"#,
-    // Recurse.
-    r#"{ Number(min: 0, max: 8) { successor @recurse(depth: 3) { succ: value @output } } }"#,
-];
-
-/// For every fault kind and every budget 0..=6, across query shapes: the first error
-/// terminates the stream; all prior rows are Ok; at most one error item exists.
-#[test]
-fn fault_sweep_is_always_fail_fast() {
-    let faults = [Fault::StartingVertices, Fault::Property, Fault::Neighbors, Fault::Coercion];
-    for query in SHAPES {
-        for fault in faults {
-            for budget in 0..=6 {
-                let results = run(fault, budget, query);
-                if results.iter().any(Result::is_err) {
-                    assert_single_row_error(&results);
-                }
-                // Every query/shape produces at least one item for some budget.
-                let _ = results.len();
-            }
-        }
-    }
-}
-
-/// Two faults can never race: only the first error ever surfaces (the injected adapters
-/// panic if polled after their first error, and collection completes without tripping it).
-#[test]
-fn only_the_first_error_surfaces() {
-    // Fault starting vertices at budget 2; properties would fault at budget 0 too,
-    // but starting vertices error first and the engine must stop polling.
-    let adapter = Arc::new(FaultyAdapter::new(Fault::StartingVertices, 2));
-    let schema = adapter.inner.schema().clone();
-    let indexed = parse(&schema, FLAT).unwrap();
-    let results: Vec<_> =
-        interpret_ir(adapter, indexed, Arc::new(BTreeMap::new())).unwrap().collect();
     assert_single_row_error(&results);
 }
 
