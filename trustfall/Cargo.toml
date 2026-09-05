@@ -13,9 +13,17 @@ authors.workspace = true
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
+# Build the docs with all public features: the async API is part of the public surface.
+all-features = true
+
+[features]
+# Opt-in asynchronous, `Stream`-native query engine and `AsyncAdapter` / `AsyncBasicAdapter` traits.
+async = ["dep:futures-core", "dep:futures-util", "trustfall_core/async"]
 
 [dependencies]
 anyhow = { workspace = true }
+futures-core = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
 trustfall_core = { version = "=0.8.1", path = "../trustfall_core" }
 trustfall_derive = { version = "=0.3.1", path = "../trustfall_derive" }
 
