@@ -11,11 +11,16 @@ authors.workspace = true
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
+# Build the docs with all public features: the async API is part of the public surface.
+all-features = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
 default = []
+# Opt-in public asynchronous adapter API. The runtime-agnostic stream kernel is
+# always present: synchronous execution is one of its frontends.
+async = []
 __private = []
 
 [lib]

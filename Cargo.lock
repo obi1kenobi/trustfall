@@ -3785,6 +3785,8 @@ dependencies = [
  "csv",
  "feed-rs",
  "flate2",
+ "futures-core",
+ "futures-util",
  "hn_api",
  "regex",
  "reqwest 0.13.4",
