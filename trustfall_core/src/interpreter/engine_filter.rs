@@ -15,7 +15,7 @@ use crate::ir::{
 };
 
 use super::{
-    ResolveInfo, TaggedValue,
+    DataContext, ResolveInfo, TaggedValue,
     async_adapter::AsyncAdapter,
     engine::{FallibleContextStream, begin_stage, finish_stage},
     execution::QueryCarrier,
@@ -117,10 +117,7 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
             while let Some(item) = staged.next().await {
                 let (mut ctx, right_value) = item?;
                 let left_value = ctx.values.pop().expect("no value present");
-                // within_nonexistent_optional: filter vacuously passes (same as sync engine).
-                if ctx.within_nonexistent_optional()
-                    || passes_tagged_filter(&filter, &left_value, TaggedValue::Some(right_value))
-                {
+                if keeps_tagged_context(&ctx, &filter, &left_value, TaggedValue::Some(right_value)) {
                     yield ctx;
                 }
             }
@@ -163,10 +160,7 @@ fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'q
                 ctx = ctx.move_to_vertex(old_active);
 
                 let left_value = ctx.values.pop().expect("no value present");
-                // within_nonexistent_optional: filter vacuously passes (same as sync engine).
-                if ctx.within_nonexistent_optional()
-                    || passes_tagged_filter(&filter, &left_value, tagged)
-                {
+                if keeps_tagged_context(&ctx, &filter, &left_value, tagged) {
                     yield ctx;
                 }
             }
@@ -189,10 +183,7 @@ fn apply_imported_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'qu
             let mut ctx = item?;
             let tagged = ctx.imported_tags[&field_ref].clone();
             let left_value = ctx.values.pop().expect("no value present");
-            // within_nonexistent_optional: filter vacuously passes.
-            if ctx.within_nonexistent_optional()
-                || passes_tagged_filter(&filter, &left_value, tagged)
-            {
+            if keeps_tagged_context(&ctx, &filter, &left_value, tagged) {
                 yield ctx;
             }
         }
@@ -219,18 +210,24 @@ fn apply_fold_specific_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E
                 },
             };
             let left_value = ctx.values.pop().expect("no value present");
-            if ctx.within_nonexistent_optional()
-                || passes_tagged_filter(&filter, &left_value, tagged)
-            {
+            if keeps_tagged_context(&ctx, &filter, &left_value, tagged) {
                 yield ctx;
             }
         }
     })
 }
 
-/// Return true if the context should be kept given the filter operation and tagged right-hand value.
-///
-/// `NonexistentOptional` always passes (the filter is vacuous against an absent @optional scope).
+/// Keep an absent optional scope or one whose tagged comparison succeeds.
+fn keeps_tagged_context<V>(
+    context: &DataContext<V>,
+    filter: &Operation<(), Argument>,
+    left: &FieldValue,
+    tagged: TaggedValue,
+) -> bool {
+    context.within_nonexistent_optional() || passes_tagged_filter(filter, left, tagged)
+}
+
+/// Return whether the tagged right-hand value satisfies a filter operation.
 fn passes_tagged_filter(
     filter: &Operation<(), Argument>,
     left: &FieldValue,
