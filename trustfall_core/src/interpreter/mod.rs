@@ -10,14 +10,22 @@ use crate::{
 
 use self::error::QueryArgumentsError;
 
+mod async_adapter;
 pub mod basic_adapter;
+mod engine;
+mod engine_filter;
+mod engine_recurse;
 pub mod error;
 pub mod execution;
 mod filtering;
 pub mod helpers;
 mod hints;
 pub mod replay;
+mod sync_adapter;
 pub mod trace;
+
+#[cfg(test)]
+mod error_propagation_tests;
 
 pub use hints::{
     CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,
@@ -45,8 +53,22 @@ pub type ContextIterator<'vertex, VertexT> = VertexIterator<'vertex, DataContext
 /// - resolve_coercion() gives a bool representing whether the vertex is of the desired type.
 ///
 /// This type lets us write those output types in a slightly more readable way.
+///
 pub type ContextOutcomeIterator<'vertex, VertexT, OutcomeT> =
     Box<dyn Iterator<Item = (DataContext<VertexT>, OutcomeT)> + 'vertex>;
+
+/// Fallible counterpart of [`ContextOutcomeIterator`].
+///
+/// Each item is either one context's resolved value or the error that prevented it.
+pub type FallibleContextOutcomeIterator<'vertex, VertexT, OutcomeT, ErrorT> =
+    Box<dyn Iterator<Item = Result<(DataContext<VertexT>, OutcomeT), ErrorT>> + 'vertex>;
+
+/// The neighbors yielded for one resolved edge context.
+///
+/// The outer [`ContextOutcomeIterator`] reports failures before the neighbor iterator exists.
+/// Individual neighbor failures are reported by this inner iterator.
+pub type NeighborOutcome<'vertex, VertexT, ErrorT = std::convert::Infallible> =
+    VertexIterator<'vertex, Result<VertexT, ErrorT>>;
 
 /// Accessor method for the `__typename` special property of Trustfall vertices.
 pub trait Typename {
@@ -467,7 +489,52 @@ fn validate_argument_type(
     }
 }
 
-/// Trustfall data providers implement this trait to enable querying their data sets.
+/// An infallible Trustfall data provider.
+///
+/// Resolver methods exchange plain vertices and values. Implement [`FallibleAdapter`] only when
+/// the data source needs to report resolution failures.
+pub trait Adapter<'vertex> {
+    /// The vertex type exposed by this adapter.
+    type Vertex: Clone + Debug + 'vertex;
+
+    /// Resolve a root query edge.
+    fn resolve_starting_vertices(
+        &self,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveInfo,
+    ) -> VertexIterator<'vertex, Self::Vertex>;
+
+    /// Resolve one property value per input context, preserving order.
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextIterator<'vertex, V>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> ContextOutcomeIterator<'vertex, V, FieldValue>;
+
+    /// Resolve one neighbor iterator per input context, preserving order.
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextIterator<'vertex, V>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveEdgeInfo,
+    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>>;
+
+    /// Resolve one subtype-coercion decision per input context, preserving order.
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextIterator<'vertex, V>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> ContextOutcomeIterator<'vertex, V, bool>;
+}
+
+/// A Trustfall data provider whose resolution can fail.
 ///
 /// The most straightforward way to implement this trait is to use
 /// the [`trustfall_stubgen` code-generator tool][stubgen] tool to auto-generate stubs
@@ -484,7 +551,7 @@ fn validate_argument_type(
 ///   Trustfall's static analysis capabilities, implement this trait directly instead.
 ///
 /// [stubgen]: https://docs.rs/trustfall_stubgen/latest/trustfall_stubgen/
-pub trait Adapter<'vertex> {
+pub trait FallibleAdapter<'vertex> {
     /// The type of vertices in the dataset this adapter queries.
     /// Unless your intended vertex type is cheap to clone, consider wrapping it an [`Rc`][rc]
     /// or [`Arc`] to make cloning it cheaper since that's a fairly common operation
@@ -492,6 +559,17 @@ pub trait Adapter<'vertex> {
     ///
     /// [rc]: std::rc::Rc
     type Vertex: Clone + Debug + 'vertex;
+
+    /// The error type this adapter may report while resolving parts of a query.
+    ///
+    /// Adapters that cannot fail should implement [`Adapter`] instead. It is lifted into this
+    /// trait automatically, without requiring `Result` or `Ok` in resolver implementations.
+    ///
+    /// Query execution yields adapter failures as [`ExecutionError`](self::error::ExecutionError)
+    /// in result-row order; independent rows may continue. The bound is intentionally only
+    /// `Error + 'static` — `Send`/`Sync` are *not* required, so `!Send` adapters (such as WASM
+    /// adapters) remain supported.
+    type Error: std::error::Error + 'static;
 
     /// Produce an iterator of vertices for the specified starting edge.
     ///
@@ -524,6 +602,8 @@ pub trait Adapter<'vertex> {
     /// - The specified edge is a starting edge in the schema being queried.
     /// - Any parameters the edge requires per the schema have values provided.
     ///
+    /// Each returned item is either a vertex of the edge's schema type or an adapter error.
+    ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
     /// [schema]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
     /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L128-L134
@@ -532,7 +612,7 @@ pub trait Adapter<'vertex> {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'vertex, Self::Vertex>;
+    ) -> VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>;
 
     /// Resolve a property required by the query that's being evaluated.
     ///
@@ -582,10 +662,10 @@ pub trait Adapter<'vertex> {
     ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
-    /// - Produce `(context, property_value)` tuples with the property's value for that context.
+    /// - Produce `Ok((context, value))` items, or an adapter error.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
     /// - Produce property values whose type matches the property's type defined in the schema.
-    /// - When a context's active vertex is `None`, its property value is [`FieldValue::Null`].
+    /// - When a context's active vertex is `None`, produce `Ok((context, FieldValue::Null))`.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-HackerNews-item-URLs-of-the-items*l*3-currently-on-the-front-page.*lquery---0FrontPage---2url-*o*l--_0*J*l*J&v=--0*l*J
     /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
@@ -600,7 +680,7 @@ pub trait Adapter<'vertex> {
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, FieldValue>;
+    ) -> FallibleContextOutcomeIterator<'vertex, V, FieldValue, Self::Error>;
 
     /// Resolve the neighboring vertices across an edge.
     ///
@@ -610,7 +690,7 @@ pub trait Adapter<'vertex> {
     /// for each active vertex in the input iterator.
     ///
     /// The most ergonomic way to implement this method is usually via
-    /// the [`resolve_neighbors_with()`][resolve-neighbors] helper method.
+    /// the [`resolve_neighbors_with_fallible()`][resolve-neighbors] helper method.
     ///
     /// # Example
     ///
@@ -655,16 +735,17 @@ pub trait Adapter<'vertex> {
     ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
-    /// - Produce `(context, neighbors)` tuples with an iterator of neighbor vertices for that edge.
+    /// - Produce `(context, neighbors)` tuples with an iterator of fallible neighbor vertices.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
-    /// - Each neighboring vertex is of the type specified for that edge in the schema.
+    /// - Each successfully resolved neighbor is of the type specified for that edge in the schema.
     /// - When a context's active vertex is None, it has an empty neighbors iterator.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-usernames-and-karma-points-of-the-folks*l*3-who-submitted-the-latest-stories-on-HackerNews.*lquery---0Latest---2byUser---4id-*o*l--_4karma-*o*l--_2--*0*J*l*J&v=--0*l*J
     /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L37
     /// [edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L73
     /// [method]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/adapter.rs#L225
-    /// [resolve-neighbors]: helpers::resolve_neighbors_with
+    /// [resolve-neighbors]: helpers::try_resolve_neighbors_with_fallible
+    #[allow(clippy::type_complexity)]
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
         contexts: ContextIterator<'vertex, V>,
@@ -672,7 +753,12 @@ pub trait Adapter<'vertex> {
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>>;
+    ) -> FallibleContextOutcomeIterator<
+        'vertex,
+        V,
+        VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    >;
 
     /// Attempt to coerce vertices to a subtype, as required by the query that's being evaluated.
     ///
@@ -725,10 +811,10 @@ pub trait Adapter<'vertex> {
     ///   the vertex's type.
     ///
     /// The returned iterator must satisfy these properties:
-    /// - Produce `(context, can_coerce)` tuples showing if the coercion succeded for that context.
+    /// - Produce `(context, outcome)` tuples whose outcome is the coercion result or an error.
     /// - Produce contexts in the same order as the input `contexts` iterator produced them.
-    /// - Each neighboring vertex is of the type specified for that edge in the schema.
-    /// - When a context's active vertex is `None`, its coercion outcome is `false`.
+    /// - Each successful outcome says whether the active vertex has the requested subtype.
+    /// - When a context's active vertex is `None`, its coercion outcome is `Ok(false)`.
     ///
     /// [playground]: https://play.predr.ag/hackernews#?f=2&q=*3-Get-the-title-of-stories-on-the-HN-front-page.*l*3-Discards-any-non*-story-items-on-the-front-page*L*l*3-such-as-job-postings-or-polls.*lquery---0FrontPage---2*E-Story---4title-*o*l--_2--*0*J*l*J&v=--0*l*J
     /// [starting-edge]: https://github.com/obi1kenobi/trustfall/blob/trustfall-v0.7.1/trustfall/examples/hackernews/hackernews.graphql#L35
@@ -742,7 +828,82 @@ pub trait Adapter<'vertex> {
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, bool>;
+    ) -> FallibleContextOutcomeIterator<'vertex, V, bool, Self::Error>;
+}
+
+impl<'vertex, T> FallibleAdapter<'vertex> for T
+where
+    T: Adapter<'vertex>,
+{
+    type Vertex = T::Vertex;
+    type Error = std::convert::Infallible;
+
+    fn resolve_starting_vertices(
+        &self,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveInfo,
+    ) -> VertexIterator<'vertex, Result<Self::Vertex, Self::Error>> {
+        Box::new(
+            Adapter::resolve_starting_vertices(self, edge_name, parameters, resolve_info).map(Ok),
+        )
+    }
+
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextIterator<'vertex, V>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> FallibleContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
+        Box::new(
+            Adapter::resolve_property(self, contexts, type_name, property_name, resolve_info)
+                .map(Ok),
+        )
+    }
+
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextIterator<'vertex, V>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveEdgeInfo,
+    ) -> FallibleContextOutcomeIterator<
+        'vertex,
+        V,
+        NeighborOutcome<'vertex, Self::Vertex, Self::Error>,
+        Self::Error,
+    > {
+        Box::new(
+            Adapter::resolve_neighbors(
+                self,
+                contexts,
+                type_name,
+                edge_name,
+                parameters,
+                resolve_info,
+            )
+            .map(|(context, neighbors)| {
+                let neighbors: NeighborOutcome<'vertex, Self::Vertex, Self::Error> =
+                    Box::new(neighbors.map(Ok));
+                Ok((context, neighbors))
+            }),
+        )
+    }
+
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
+        &self,
+        contexts: ContextIterator<'vertex, V>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> FallibleContextOutcomeIterator<'vertex, V, bool, Self::Error> {
+        Box::new(
+            Adapter::resolve_coercion(self, contexts, type_name, coerce_to_type, resolve_info)
+                .map(Ok),
+        )
+    }
 }
 
 /// Attempt to dereference a value to a `&V`, returning `None` if the value did not contain a `V`.

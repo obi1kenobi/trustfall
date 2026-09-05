@@ -4,9 +4,9 @@ use std::fs;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
-use adapter::DemoAdapter;
+use adapter::FallibleDemoAdapter;
 use serde::Deserialize;
-use trustfall::{FieldValue, Schema, TransparentValue, execute_query};
+use trustfall::{FieldValue, Schema, TransparentValue, try_execute_query};
 
 mod actions_parser;
 mod adapter;
@@ -34,7 +34,7 @@ fn run_query(path: &str) {
     let content = fs::read_to_string(path).unwrap();
     let input_query: InputQuery = ron::from_str(&content).unwrap();
 
-    let adapter = Arc::new(DemoAdapter::new());
+    let adapter = Arc::new(FallibleDemoAdapter::new());
     let schema = get_schema();
     let max_results = 20usize;
 
@@ -58,12 +58,21 @@ fn run_query(path: &str) {
 
     let mut total_query_duration: Duration = Default::default();
     let mut current_instant = Instant::now();
-    for (index, data_item) in execute_query(schema, adapter, input_query.query, input_query.args)
-        .expect("not a valid query")
-        .enumerate()
+    for (index, data_item) in
+        try_execute_query(schema, adapter, input_query.query, input_query.args)
+            .expect("not a valid query")
+            .enumerate()
     {
         let next_item_duration = current_instant.elapsed();
         total_query_duration += next_item_duration;
+
+        let data_item = match data_item {
+            Ok(data_item) => data_item,
+            Err(error) => {
+                eprintln!("\nResolver failed after {next_item_duration:?}: {error}");
+                continue;
+            }
+        };
 
         // Use the value variant with an untagged enum serialization, to make the printout cleaner.
         let data_item: BTreeMap<Arc<str>, TransparentValue> =
