@@ -562,15 +562,13 @@ pub trait FallibleAdapter<'vertex> {
 
     /// The error type this adapter may report while resolving parts of a query.
     ///
-    /// Adapters that cannot fail should set this to [`std::convert::Infallible`], which makes
-    /// the error channel zero-cost. If you implement [`BasicAdapter`](self::basic_adapter::BasicAdapter)
-    /// instead of this trait directly, its blanket [`Adapter`] implementation already does this
-    /// for you — you never have to write `Result` or `Ok`.
+    /// Adapters that cannot fail should implement [`Adapter`] instead. It is lifted into this
+    /// trait automatically, without requiring `Result` or `Ok` in resolver implementations.
     ///
-    /// Query execution is fail-fast: the first error an adapter reports terminates the results
-    /// stream (see [`ExecutionError`](self::error::ExecutionError)). The bound is intentionally
-    /// only `Error + 'static` — `Send`/`Sync` are *not* required, so `!Send` adapters (such as
-    /// WASM adapters) remain supported.
+    /// Query execution yields adapter failures as [`ExecutionError`](self::error::ExecutionError)
+    /// in result-row order; independent rows may continue. The bound is intentionally only
+    /// `Error + 'static` — `Send`/`Sync` are *not* required, so `!Send` adapters (such as WASM
+    /// adapters) remain supported.
     type Error: std::error::Error + 'static;
 
     /// Produce an iterator of vertices for the specified starting edge.

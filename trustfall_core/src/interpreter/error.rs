@@ -28,14 +28,13 @@ pub enum QueryArgumentsError {
 /// being queried. It is `#[non_exhaustive]` because interpreter-detected contract violations
 /// (today expressed as panics) are expected to migrate into dedicated variants later.
 ///
-/// Execution is fail-fast: the first error an adapter reports terminates the results stream.
-/// The in-flight partial result is discarded, exactly one `Err` is yielded, and the stream ends.
+/// A resolver failure is yielded in the row position where it occurred. Other rows may continue.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum ExecutionError<E: std::error::Error + 'static> {
     /// The adapter being queried reported an error while resolving a property, edge,
     /// coercion, or starting vertices.
-    #[error("the adapter reported an error while executing the query: {0}")]
+    #[error("The adapter reported an error while executing the query: {0}")]
     Adapter(#[source] E),
 }
 
