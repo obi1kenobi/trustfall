@@ -5,8 +5,9 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::sync::{Arc, OnceLock};
 use std::{env, process};
 
+use futures_util::StreamExt as _;
 use serde::Deserialize;
-use trustfall::{FieldValue, Schema, TransparentValue, execute_query};
+use trustfall::{FieldValue, Schema, TransparentValue, execute_query_async};
 
 use crate::{
     adapter::MetarAdapter,
@@ -84,16 +85,20 @@ fn run_query(path: &str) {
     let query = input_query.query;
     let variables = input_query.args;
 
-    for data_item in execute_query(schema, adapter, query, variables).expect("not a legal query") {
-        // The default `FieldValue` JSON representation is explicit about its type, so we can get
-        // reliable round-trip serialization of types tricky in JSON like integers and floats.
-        //
-        // The `TransparentValue` type is like `FieldValue` minus the explicit type representation,
-        // so it's more like what we'd expect to normally find in JSON.
-        let transparent: BTreeMap<_, TransparentValue> =
-            data_item.into_iter().map(|(k, v)| (k, v.into())).collect();
-        println!("\n{}", serde_json::to_string_pretty(&transparent).unwrap());
-    }
+    let rows = execute_query_async(schema, adapter, query, variables).expect("not a legal query");
+    futures_executor::block_on(async {
+        futures_util::pin_mut!(rows);
+        while let Some(data_item) = rows.next().await {
+            // The default `FieldValue` JSON representation is explicit about its type, so we can get
+            // reliable round-trip serialization of types tricky in JSON like integers and floats.
+            //
+            // The `TransparentValue` type is like `FieldValue` minus the explicit type representation,
+            // so it's more like what we'd expect to normally find in JSON.
+            let transparent: BTreeMap<_, TransparentValue> =
+                data_item.into_iter().map(|(k, v)| (k, v.into())).collect();
+            println!("\n{}", serde_json::to_string_pretty(&transparent).unwrap());
+        }
+    });
 }
 
 fn refresh_data() {

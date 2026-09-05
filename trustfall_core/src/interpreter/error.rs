@@ -20,6 +20,24 @@ pub enum QueryArgumentsError {
     MultipleErrors(DisplayVec<QueryArgumentsError>),
 }
 
+/// An error surfaced while *executing* a query, i.e. while pulling results from the
+/// iterator returned by [`interpret_ir`](crate::interpreter::execution::interpret_ir).
+///
+/// Currently this only wraps errors reported by a
+/// [`FallibleAdapter`](crate::interpreter::FallibleAdapter)
+/// being queried. It is `#[non_exhaustive]` because interpreter-detected contract violations
+/// (today expressed as panics) are expected to migrate into dedicated variants later.
+///
+/// A resolver failure is yielded in the row position where it occurred. Other rows may continue.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum ExecutionError<E: std::error::Error + 'static> {
+    /// The adapter being queried reported an error while resolving a property, edge,
+    /// coercion, or starting vertices.
+    #[error("The adapter reported an error while executing the query: {0}")]
+    Adapter(#[source] E),
+}
+
 impl From<Vec<QueryArgumentsError>> for QueryArgumentsError {
     fn from(v: Vec<QueryArgumentsError>) -> Self {
         assert!(!v.is_empty());
