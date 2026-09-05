@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use crate::ir::{Argument, FieldValue, FoldSpecificFieldKind, IRFold, IndexedQuery, Operation};
 
 use super::{
-    Adapter, InterpretedQuery,
+    FallibleAdapter, InterpretedQuery,
     engine::interpret_ir as interpret_stream,
     error::{ExecutionError, QueryArgumentsError},
     sync_adapter::{ReadyIterator, SyncAdapter},
@@ -24,24 +24,24 @@ pub(super) struct QueryCarrier {
 
 /// Execute an indexed query synchronously.
 ///
-/// Query validation happens eagerly. Data resolution remains lazy: consuming the returned
-/// iterator drives the shared stream kernel one row at a time.
+/// Query validation happens eagerly. Data resolution remains lazy and fail-fast:
+/// consuming the returned iterator drives the shared stream kernel until either a
+/// row or the first adapter error is produced.
 #[allow(clippy::type_complexity)]
-pub fn interpret_ir<'query, A: Adapter<'query> + 'query>(
+pub fn interpret_ir<'query, A: FallibleAdapter<'query> + 'query>(
     adapter: Arc<A>,
     indexed_query: Arc<IndexedQuery>,
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
-) -> Result<Box<dyn Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'query>, QueryArgumentsError>
-{
+) -> Result<
+    Box<
+        dyn Iterator<Item = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<A::Error>>>
+            + 'query,
+    >,
+    QueryArgumentsError,
+> {
     let adapter = Arc::new(SyncAdapter::new(adapter));
     let stream = interpret_stream(adapter, indexed_query, arguments)?;
-
-    // The kernel's error channel is uninhabited for a synchronous `Adapter`, so the `Result`
-    // wrapper is discharged here rather than being exposed to callers.
-    Ok(Box::new(ReadyIterator::new(stream).map(|row| match row {
-        Ok(row) => row,
-        Err(ExecutionError::Adapter(never)) => match never {},
-    })))
+    Ok(Box::new(ReadyIterator::new(stream)))
 }
 
 fn usize_from_field_value(field_value: &FieldValue) -> Option<usize> {

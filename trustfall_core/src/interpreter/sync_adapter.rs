@@ -1,4 +1,4 @@
-//! Projection of a synchronous [`Adapter`] onto the stream kernel.
+//! Projection of a synchronous [`FallibleAdapter`] onto the stream kernel.
 //!
 //! This is deliberately private. It relies on a strong invariant established by
 //! [`interpret_ir`](super::execution::interpret_ir): every stream in the pipeline is
@@ -18,7 +18,7 @@ use futures_util::{stream, task::noop_waker_ref};
 use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
-    Adapter, AsVertex, ContextIterator, ResolveEdgeInfo, ResolveInfo,
+    AsVertex, ContextIterator, FallibleAdapter, ResolveEdgeInfo, ResolveInfo,
     async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
 };
 
@@ -70,13 +70,10 @@ impl<A> SyncAdapter<A> {
 
 impl<'vertex, A> AsyncAdapter<'vertex> for SyncAdapter<A>
 where
-    A: Adapter<'vertex> + 'vertex,
+    A: FallibleAdapter<'vertex> + 'vertex,
 {
     type Vertex = A::Vertex;
-
-    /// The synchronous [`Adapter`] contract has no error channel, so the kernel's error type
-    /// is uninhabited here and its `Result`s carry no runtime cost.
-    type Error = std::convert::Infallible;
+    type Error = A::Error;
 
     fn resolve_starting_vertices(
         &self,
@@ -84,9 +81,11 @@ where
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
     ) -> VertexStream<'vertex, Result<Self::Vertex, Self::Error>> {
-        Box::pin(stream::iter(
-            self.inner.resolve_starting_vertices(edge_name, parameters, resolve_info).map(Ok),
-        ))
+        Box::pin(stream::iter(self.inner.resolve_starting_vertices(
+            edge_name,
+            parameters,
+            resolve_info,
+        )))
     }
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
@@ -97,9 +96,12 @@ where
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error> {
         let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
-        Box::pin(stream::iter(
-            self.inner.resolve_property(contexts, type_name, property_name, resolve_info).map(Ok),
-        ))
+        Box::pin(stream::iter(self.inner.resolve_property(
+            contexts,
+            type_name,
+            property_name,
+            resolve_info,
+        )))
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
@@ -118,10 +120,12 @@ where
         let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
         let outcomes =
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info);
-        Box::pin(stream::iter(outcomes.map(|(context, neighbors)| {
-            let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
-                Box::pin(stream::iter(neighbors.map(Ok)));
-            Ok((context, neighbors))
+        Box::pin(stream::iter(outcomes.map(|outcome| {
+            outcome.map(|(context, neighbors)| {
+                let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
+                    Box::pin(stream::iter(neighbors));
+                (context, neighbors)
+            })
         })))
     }
 
@@ -133,9 +137,12 @@ where
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error> {
         let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
-        Box::pin(stream::iter(
-            self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info).map(Ok),
-        ))
+        Box::pin(stream::iter(self.inner.resolve_coercion(
+            contexts,
+            type_name,
+            coerce_to_type,
+            resolve_info,
+        )))
     }
 }
 
@@ -235,7 +242,8 @@ mod tests {
         )
         .unwrap();
         let query = frontend::parse(&schema, "{ Item { value @output } }").unwrap();
-        Box::new(interpret_ir(Arc::new(adapter), query, Arc::new(BTreeMap::new())).unwrap())
+        let rows = interpret_ir(Arc::new(adapter), query, Arc::new(BTreeMap::new())).unwrap();
+        Box::new(rows.map(|row| row.expect("BasicAdapter is infallible")))
     }
 
     #[test]
