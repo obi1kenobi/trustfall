@@ -31,6 +31,8 @@ pub use async_adapter::{
     AsyncAdapter, AsyncContextOutcomeStream, AsyncContextStream, AsyncNeighborStream,
     ContextOutcomeStream, ContextStream, FallibleAsyncAdapter, NeighborOutcomeStream, VertexStream,
 };
+#[cfg(feature = "async")]
+pub mod async_helpers;
 
 #[cfg(test)]
 mod error_propagation_tests;
