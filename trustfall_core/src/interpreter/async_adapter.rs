@@ -1,27 +1,11 @@
-//! Asynchronous, `Stream`-native adapter trait and pipeline type aliases.
+//! The stream execution kernel's adapter contract.
 //!
-//! This is the async counterpart of the synchronous [`Adapter`](super::Adapter) trait. Where the
-//! sync engine composes lazy [`Iterator`]s, the async engine composes lazy [`Stream`]s, so adapter
-//! resolvers can overlap IO across the contexts in a batch (order-preserving concurrency, e.g.
-//! `contexts.map(fetch).buffered(N)`), instead of blocking one context at a time.
+//! [`FallibleAsyncAdapter`] is what every execution stage is written against. Context streams
+//! are fallible end to end: a resolver receives the engine's existing `Result` stream and
+//! returns another one, so an earlier failure keeps its position among later rows.
 //!
-//! # Error handling is strongly typed and native
-//!
-//! The execution kernel threads `Result` natively through its streams and fails fast on the first
-//! `Err` via `?`. Accordingly, resolver *outputs* carry `Result`s in the
-//! iterator item, exactly as the sync [`Adapter`](super::Adapter) trait does:
-//! - `resolve_starting_vertices` yields `Result<Vertex, Error>`,
-//! - resolver outcomes yield `Result<(context, outcome), Error>`,
-//! - `resolve_neighbors` yields `Result<Vertex, Error>` per neighbor.
-//!
-//! Resolver *inputs* (`contexts`) are plain `DataContext` streams: the engine handles upstream
-//! errors around the adapter, so adapters only ever produce errors, never have to forward them.
-//!
-//! # Runtime-agnostic
-//!
-//! Nothing here spawns, sleeps, or blocks; the only dependency is `futures` (`Stream`). The engine
-//! never requires `Send`, so `!Send` adapters (e.g. WASM) are supported; callers that need `Send`
-//! streams can require it at their own boundary.
+//! This module is private. The public asynchronous adapter API is a separate surface built on
+//! top of this contract.
 
 use std::{fmt::Debug, pin::Pin, sync::Arc};
 
@@ -31,39 +15,33 @@ use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{AsVertex, DataContext, ResolveEdgeInfo, ResolveInfo};
 
-/// A pinned, boxed [`Stream`] of `T` — the async counterpart of
-/// [`VertexIterator`](super::VertexIterator).
-pub type VertexStream<'vertex, VertexT> = Pin<Box<dyn Stream<Item = VertexT> + 'vertex>>;
+/// A pinned, boxed [`Stream`] of `T`.
+pub type VertexStream<'vertex, T> = Pin<Box<dyn Stream<Item = T> + 'vertex>>;
 
-/// A stream of query contexts flowing into an adapter resolver — the async counterpart of
-/// [`ContextIterator`](super::ContextIterator). These are plain contexts: the engine strips and
-/// re-surfaces upstream errors around the adapter, so resolvers never see `Err` on their input.
-pub type ContextStream<'vertex, VertexT> = VertexStream<'vertex, DataContext<VertexT>>;
+/// Contexts supplied to a [`FallibleAsyncAdapter`] resolver.
+pub type ContextStream<'vertex, V, E = std::convert::Infallible> =
+    VertexStream<'vertex, Result<DataContext<V>, E>>;
 
-/// A stream of `(context, outcome)` pairs — the async counterpart of
-/// [`ContextOutcomeIterator`](super::ContextOutcomeIterator).
-pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT, ErrorT> =
-    Pin<Box<dyn Stream<Item = Result<(DataContext<VertexT>, OutcomeT), ErrorT>> + 'vertex>>;
+/// Resolver outcomes produced by a [`FallibleAsyncAdapter`].
+pub type ContextOutcomeStream<'vertex, V, O, E = std::convert::Infallible> =
+    VertexStream<'vertex, Result<(DataContext<V>, O), E>>;
 
-/// Asynchronous data providers implement this trait to enable streaming query execution.
+/// Neighbor vertices produced by a [`FallibleAsyncAdapter`].
+pub type NeighborOutcomeStream<'vertex, V, E = std::convert::Infallible> =
+    VertexStream<'vertex, Result<V, E>>;
+
+/// An asynchronous data provider that may fail while resolving data.
 ///
-/// It mirrors [`FallibleAdapter`](super::FallibleAdapter) method-for-method; see that trait for the detailed
-/// preconditions and postconditions of each resolver (they are identical here). The differences
-/// are purely in shape: inputs and outputs are [`Stream`]s rather than [`Iterator`]s.
-///
-pub trait AsyncAdapter<'vertex> {
-    /// The type of vertices in the dataset this adapter queries. See [`FallibleAdapter::Vertex`].
-    ///
-    /// [`FallibleAdapter::Vertex`]: super::FallibleAdapter::Vertex
+/// Use this trait when an adapter needs to surface a concrete resolver error. Upstream failures
+/// remain in the context stream, and each resolver preserves their order.
+pub trait FallibleAsyncAdapter<'vertex> {
+    /// The type of vertices this adapter queries.
     type Vertex: Clone + Debug + 'vertex;
 
-    /// The error type this adapter may report. See [`FallibleAdapter::Error`].
-    ///
-    /// [`FallibleAdapter::Error`]: super::FallibleAdapter::Error
+    /// The error type reported by resolvers.
     type Error: std::error::Error + 'static;
 
-    /// Produce a stream of vertices for the specified starting edge.
-    /// See [`Adapter::resolve_starting_vertices`](super::Adapter::resolve_starting_vertices).
+    /// Resolve a starting edge into vertices.
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
@@ -71,22 +49,19 @@ pub trait AsyncAdapter<'vertex> {
         resolve_info: &ResolveInfo,
     ) -> VertexStream<'vertex, Result<Self::Vertex, Self::Error>>;
 
-    /// Resolve a property over a stream of contexts.
-    /// See [`Adapter::resolve_property`](super::Adapter::resolve_property).
+    /// Resolve one property for every input context.
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error>;
 
-    /// Resolve the neighbors across an edge over a stream of contexts.
-    /// See [`Adapter::resolve_neighbors`](super::Adapter::resolve_neighbors).
-    #[allow(clippy::type_complexity)]
+    /// Resolve neighboring vertices for every input context.
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
@@ -94,15 +69,14 @@ pub trait AsyncAdapter<'vertex> {
     ) -> ContextOutcomeStream<
         'vertex,
         V,
-        VertexStream<'vertex, Result<Self::Vertex, Self::Error>>,
+        NeighborOutcomeStream<'vertex, Self::Vertex, Self::Error>,
         Self::Error,
     >;
 
-    /// Attempt to coerce vertices to a subtype over a stream of contexts.
-    /// See [`Adapter::resolve_coercion`](super::Adapter::resolve_coercion).
+    /// Test each input vertex for a requested subtype.
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,

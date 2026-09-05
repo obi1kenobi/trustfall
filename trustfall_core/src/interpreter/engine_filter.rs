@@ -1,12 +1,12 @@
-//! Stream-native `@filter` handling for tag arguments.
+//! Stream handling for `@filter` directives that use tags.
 //!
-//! The left-hand field value has already been resolved and pushed onto each context's value stack
-//! by `apply_local_field_filter`. This stage resolves the *tag's* value per context (an adapter
-//! call, possibly on another vertex or an imported outer-component tag), then compares. Mirrors the
-//! synchronous tag-filter path in [`filtering`](super::filtering) / [`execution`](super::execution)
-//! (`compute_context_field_with_separate_value` + `apply_filter_with_tagged_argument_value`).
+//! The local field has already been resolved and pushed onto `DataContext::values`. This module
+//! finds the tagged value, compares it with that left value, and removes the stack entry before
+//! forwarding the context. The tag can come from the active vertex, another local vertex, a fold,
+//! or an enclosing component; those locations determine whether resolving it needs an adapter call.
 
-use async_stream::try_stream;
+use std::future::ready;
+
 use futures_util::StreamExt;
 
 use crate::ir::{
@@ -15,19 +15,18 @@ use crate::ir::{
 };
 
 use super::{
-    DataContext, ResolveInfo, TaggedValue,
-    async_adapter::AsyncAdapter,
-    engine::{FallibleContextStream, begin_stage, finish_stage},
+    DataContext, TaggedValue,
+    async_adapter::{ContextOutcomeStream, FallibleAsyncAdapter},
+    engine::FallibleContextStream,
     execution::QueryCarrier,
-    filtering::{
-        contains, equals, greater_than, greater_than_or_equal, has_prefix, has_substring,
-        has_suffix, less_than, less_than_or_equal, one_of, regex_matches_slow_path,
-    },
+    filtering::ComparisonOp,
 };
 
-/// Apply a tag-argument `@filter`. The incoming `stream` already has the left field value pushed
-/// onto each context's value stack.
-pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+/// Apply a tag-argument `@filter` to a stream with its left value resolved.
+///
+/// The caller has resolved the filter's local field. We retain that ordering because a tagged
+/// field may itself need resolution and must not overwrite the left value it is compared against.
+pub(super) fn apply_tagged_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -40,21 +39,23 @@ pub(super) fn apply_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'quer
         _ => unreachable!("apply_tagged_filter called on non-tag filter: {filter:?}"),
     };
 
-    // Build a value-owned filter so it can be 'static / moved into streams freely.
-    let filter_owned: Operation<(), Argument> = filter.map(|_| (), |r| r.clone());
+    let op = ComparisonOp::from_binary_filter(&filter.map(|_| (), |r| r))
+        .expect("tag filters are binary operations");
 
-    apply_tag_comparison(adapter, carrier, component, current_vid, filter_owned, tag_ref, stream)
+    apply_tag_comparison(adapter, carrier, component, current_vid, op, tag_ref, stream)
 }
 
-/// Compare each context's already-pushed left value against a resolved tag value, keeping the
-/// contexts that pass. Shared by local-field tag filters and post-`@fold` fold-count tag filters;
-/// the left value must already sit on top of each context's value stack.
-pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+/// Compare the resolved tag value with each context's left value.
+///
+/// Local context fields may be resolved from the adapter. Fields from an outer component were
+/// copied into `DataContext::imported_tags` when entering the nested component. Fold-specific
+/// fields are already materialized by the time a post-fold filter can read them.
+pub(super) fn apply_tag_comparison<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
-    filter_owned: Operation<(), Argument>,
+    op: ComparisonOp,
     tag_ref: FieldRef,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
@@ -64,208 +65,167 @@ pub(super) fn apply_tag_comparison<'query, AdapterT: AsyncAdapter<'query> + 'que
             carrier,
             component,
             current_vid,
-            filter_owned,
+            op,
             context_field,
             stream,
         ),
         FieldRef::FoldSpecificField(fold_field) => {
             if component.folds.contains_key(&fold_field.fold_eid) {
-                // A fold-specific field (e.g. the fold count) from a `@fold` in this component. The
-                // fold is already materialized by the time filters run, so the tag value is read
-                // from `folded_contexts` — no adapter call needed.
-                apply_fold_specific_tag_filter(
-                    filter_owned,
-                    fold_field.fold_eid,
-                    fold_field.kind,
-                    stream,
-                )
+                apply_fold_specific_tag_filter(op, fold_field.fold_eid, fold_field.kind, stream)
             } else {
-                // Imported tag from an outer component stored in context.imported_tags.
                 let field_ref = FieldRef::FoldSpecificField(fold_field);
-                apply_imported_tag_filter(filter_owned, field_ref, stream)
+                apply_imported_tag_filter(op, field_ref, stream)
             }
         }
     }
 }
 
-fn apply_context_field_tagged_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn apply_context_field_tagged_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     current_vid: Vid,
-    filter: Operation<(), Argument>,
+    op: ComparisonOp,
     context_field: ContextField,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    // Local tag: the field lives on the current vertex — resolve as a local property.
     if context_field.vertex_id == current_vid {
+        // The tag belongs to the active vertex. Resolve it directly, leaving the filter's left
+        // value below it on the context stack until `tagged_filter_matches()` consumes it.
         let local_field = LocalField {
             field_name: context_field.field_name.clone(),
             field_type: context_field.field_type.clone(),
         };
         let type_name = component.vertices[&current_vid].type_name.clone();
-        let (plain, upstream_error) = begin_stage(stream);
-        let query = carrier.query.take().expect("query was not returned");
-        let resolve_info = ResolveInfo::new(query, current_vid, true);
-        let field_data =
-            adapter.resolve_property(plain, &type_name, &local_field.field_name, &resolve_info);
-        carrier.query = Some(resolve_info.into_inner());
+        let field_data = carrier.resolve_with(current_vid, true, |info| {
+            adapter.resolve_property(stream, &type_name, &local_field.field_name, info)
+        });
 
-        let staged = finish_stage(field_data, upstream_error);
-        return Box::pin(try_stream! {
-            let mut staged = staged;
-            while let Some(item) = staged.next().await {
-                let (mut ctx, right_value) = item?;
-                let left_value = ctx.values.pop().expect("no value present");
-                if keeps_tagged_context(&ctx, &filter, &left_value, TaggedValue::Some(right_value)) {
-                    yield ctx;
-                }
-            }
+        return filter_resolved_contexts(field_data, move |mut ctx, right_value| {
+            tagged_filter_matches(&mut ctx, op, TaggedValue::Some(right_value)).then_some(ctx)
         });
     }
 
-    // Non-local context field within the current component: move to that vertex, resolve, restore.
     if let Some(vertex) = component.vertices.get(&context_field.vertex_id) {
+        // The tag belongs to another vertex in this component. Resolver helpers always inspect
+        // the active vertex, so save the current one, activate the tagged vertex, then restore it
+        // before evaluating the comparison.
         let vertex_id = context_field.vertex_id;
         let type_name = vertex.type_name.clone();
         let field_name = context_field.field_name.clone();
 
-        let (plain, upstream_error) = begin_stage(stream);
-
-        // Push current active vertex onto suspended_vertices and switch to the tag's vertex.
-        let plain = Box::pin(plain.map(move |mut context| {
-            let active_vertex = context.active_vertex.clone();
-            let new_vertex = context.vertices[&vertex_id].clone();
-            context.suspended_vertices.push(active_vertex);
-            context.move_to_vertex(new_vertex)
+        let stream = Box::pin(stream.map(move |result| {
+            result.map(|mut context| {
+                let active_vertex = context.active_vertex.clone();
+                let new_vertex = context.vertices[&vertex_id].clone();
+                context.suspended_vertices.push(active_vertex);
+                context.move_to_vertex(new_vertex)
+            })
         }));
 
-        let query = carrier.query.take().expect("query was not returned");
-        let resolve_info = ResolveInfo::new(query, vertex_id, true);
-        let field_data = adapter.resolve_property(plain, &type_name, &field_name, &resolve_info);
-        carrier.query = Some(resolve_info.into_inner());
+        let field_data = carrier.resolve_with(vertex_id, true, |info| {
+            adapter.resolve_property(stream, &type_name, &field_name, info)
+        });
 
-        let staged = finish_stage(field_data, upstream_error);
-        return Box::pin(try_stream! {
-            let mut staged = staged;
-            while let Some(item) = staged.next().await {
-                let (mut ctx, value) = item?;
-                let tagged = if ctx.vertices[&vertex_id].is_some() {
-                    TaggedValue::Some(value)
-                } else {
-                    TaggedValue::NonexistentOptional
-                };
-                // Restore the previous active vertex.
-                let old_active = ctx.suspended_vertices.pop().unwrap();
-                ctx = ctx.move_to_vertex(old_active);
+        return filter_resolved_contexts(field_data, move |mut ctx, value| {
+            let tagged = if ctx.vertices[&vertex_id].is_some() {
+                TaggedValue::Some(value)
+            } else {
+                TaggedValue::NonexistentOptional
+            };
+            // This balances the temporary activation above. The filter continues at the
+            // original vertex, which is where later fields and edges expect the context.
+            let old_active = ctx.suspended_vertices.pop().unwrap();
+            ctx = ctx.move_to_vertex(old_active);
 
-                let left_value = ctx.values.pop().expect("no value present");
-                if keeps_tagged_context(&ctx, &filter, &left_value, tagged) {
-                    yield ctx;
-                }
-            }
+            tagged_filter_matches(&mut ctx, op, tagged).then_some(ctx)
         });
     }
 
-    // Imported outer-component tag: value is stored in context.imported_tags.
+    // The component does not own this vertex, so the tag was imported before the component began.
     let field_ref = FieldRef::ContextField(context_field);
-    apply_imported_tag_filter(filter, field_ref, stream)
+    apply_imported_tag_filter(op, field_ref, stream)
 }
 
-fn apply_imported_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'query>(
-    filter: Operation<(), Argument>,
+fn apply_imported_tag_filter<'query, V: 'query, E: 'query>(
+    op: ComparisonOp,
     field_ref: FieldRef,
     stream: FallibleContextStream<'query, V, E>,
 ) -> FallibleContextStream<'query, V, E> {
-    Box::pin(try_stream! {
-        let mut stream = stream;
-        while let Some(item) = stream.next().await {
-            let mut ctx = item?;
-            let tagged = ctx.imported_tags[&field_ref].clone();
-            let left_value = ctx.values.pop().expect("no value present");
-            if keeps_tagged_context(&ctx, &filter, &left_value, tagged) {
-                yield ctx;
-            }
-        }
+    retain_contexts(stream, move |ctx| {
+        let tagged = ctx.imported_tags[&field_ref].clone();
+        tagged_filter_matches(ctx, op, tagged)
     })
 }
 
-/// Apply a filter whose tag refers to a fold-specific field (e.g. a fold count) of a `@fold` in the
-/// current component. The value is derived from the already-materialized `folded_contexts`; a fold
-/// inside a nonexistent `@optional` yields `NonexistentOptional` (the filter then passes).
-fn apply_fold_specific_tag_filter<'query, V: Clone + std::fmt::Debug + 'query, E: 'query>(
-    filter: Operation<(), Argument>,
+/// Retain successful contexts that satisfy `predicate`, while preserving failed row positions.
+fn retain_contexts<'query, V: 'query, E: 'query>(
+    stream: FallibleContextStream<'query, V, E>,
+    mut predicate: impl FnMut(&mut DataContext<V>) -> bool + 'query,
+) -> FallibleContextStream<'query, V, E> {
+    Box::pin(stream.filter_map(move |item| {
+        ready(match item {
+            Ok(mut context) => predicate(&mut context).then_some(Ok(context)),
+            Err(error) => Some(Err(error)),
+        })
+    }))
+}
+
+/// Apply a predicate to resolved values, retaining the context only on success.
+///
+/// Resolver errors remain items in the output stream, so the stage cannot accidentally turn a
+/// row-local failure into a dropped row.
+fn filter_resolved_contexts<'query, V: 'query, T: 'query, E: 'query>(
+    outcomes: ContextOutcomeStream<'query, V, T, E>,
+    mut filter: impl FnMut(DataContext<V>, T) -> Option<DataContext<V>> + 'query,
+) -> FallibleContextStream<'query, V, E> {
+    Box::pin(outcomes.filter_map(move |item| {
+        ready(match item {
+            Ok((context, value)) => filter(context, value).map(Ok),
+            Err(error) => Some(Err(error)),
+        })
+    }))
+}
+
+/// Apply a filter tagged with a field from an already-materialized fold.
+///
+/// A fold inside a nonexistent optional is represented by `None`, which is the same
+/// `NonexistentOptional` tag value used for a missing tagged context field.
+fn apply_fold_specific_tag_filter<'query, V: 'query, E: 'query>(
+    op: ComparisonOp,
     fold_eid: Eid,
     kind: FoldSpecificFieldKind,
     stream: FallibleContextStream<'query, V, E>,
 ) -> FallibleContextStream<'query, V, E> {
-    Box::pin(try_stream! {
-        let mut stream = stream;
-        while let Some(item) = stream.next().await {
-            let mut ctx = item?;
-            let tagged = match &kind {
-                FoldSpecificFieldKind::Count => match ctx.folded_contexts[&fold_eid].as_ref() {
-                    None => TaggedValue::NonexistentOptional,
-                    Some(elements) => TaggedValue::Some(FieldValue::Uint64(elements.len() as u64)),
-                },
-            };
-            let left_value = ctx.values.pop().expect("no value present");
-            if keeps_tagged_context(&ctx, &filter, &left_value, tagged) {
-                yield ctx;
-            }
-        }
+    retain_contexts(stream, move |ctx| {
+        let tagged = match &kind {
+            FoldSpecificFieldKind::Count => match ctx.folded_contexts[&fold_eid].as_ref() {
+                None => TaggedValue::NonexistentOptional,
+                Some(elements) => TaggedValue::Some(FieldValue::Uint64(elements.len() as u64)),
+            },
+        };
+        tagged_filter_matches(ctx, op, tagged)
     })
 }
 
-/// Keep an absent optional scope or one whose tagged comparison succeeds.
-fn keeps_tagged_context<V>(
-    context: &DataContext<V>,
-    filter: &Operation<(), Argument>,
-    left: &FieldValue,
+/// Remove this filter's left value and compare it with a tagged value.
+///
+/// Missing optional data passes every comparison. The optional scope represents absence, not a
+/// value that can fail a predicate, so an inner filter must not discard the parent context.
+fn tagged_filter_matches<Vertex>(
+    context: &mut super::DataContext<Vertex>,
+    op: ComparisonOp,
     tagged: TaggedValue,
 ) -> bool {
-    context.within_nonexistent_optional() || passes_tagged_filter(filter, left, tagged)
+    let left = context.values.pop().expect("no value present");
+    context.within_nonexistent_optional() || passes_tagged_filter(op, &left, tagged)
 }
 
-/// Return whether the tagged right-hand value satisfies a filter operation.
-fn passes_tagged_filter(
-    filter: &Operation<(), Argument>,
-    left: &FieldValue,
-    tagged: TaggedValue,
-) -> bool {
+fn passes_tagged_filter(op: ComparisonOp, left: &FieldValue, tagged: TaggedValue) -> bool {
     let TaggedValue::Some(right) = tagged else {
-        // NonexistentOptional: always pass.
+        // A tagged value can also be absent because it came from an optional ancestor component.
+        // Preserve the context for the same reason as `within_nonexistent_optional()` above.
         return true;
     };
-    apply_tagged_op(filter, left, &right)
-}
-
-fn apply_tagged_op(
-    filter: &Operation<(), Argument>,
-    left: &FieldValue,
-    right: &FieldValue,
-) -> bool {
-    match filter {
-        Operation::Equals(_, _) => equals(left, right),
-        Operation::NotEquals(_, _) => !equals(left, right),
-        Operation::LessThan(_, _) => less_than(left, right),
-        Operation::LessThanOrEqual(_, _) => less_than_or_equal(left, right),
-        Operation::GreaterThan(_, _) => greater_than(left, right),
-        Operation::GreaterThanOrEqual(_, _) => greater_than_or_equal(left, right),
-        Operation::Contains(_, _) => contains(left, right),
-        Operation::NotContains(_, _) => !contains(left, right),
-        Operation::OneOf(_, _) => one_of(left, right),
-        Operation::NotOneOf(_, _) => !one_of(left, right),
-        Operation::HasPrefix(_, _) => has_prefix(left, right),
-        Operation::NotHasPrefix(_, _) => !has_prefix(left, right),
-        Operation::HasSuffix(_, _) => has_suffix(left, right),
-        Operation::NotHasSuffix(_, _) => !has_suffix(left, right),
-        Operation::HasSubstring(_, _) => has_substring(left, right),
-        Operation::NotHasSubstring(_, _) => !has_substring(left, right),
-        Operation::RegexMatches(_, _) => regex_matches_slow_path(left, right),
-        Operation::NotRegexMatches(_, _) => !regex_matches_slow_path(left, right),
-        Operation::IsNull(_) | Operation::IsNotNull(_) => {
-            unreachable!("unary filter passed to apply_tagged_op: {filter:?}")
-        }
-    }
+    op.apply(left, &right)
 }

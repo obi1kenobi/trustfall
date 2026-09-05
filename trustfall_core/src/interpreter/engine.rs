@@ -1,37 +1,19 @@
-//! Trustfall's runtime-agnostic, `Stream`-native execution kernel.
+//! The shared stream execution kernel.
 //!
-//! Both public execution routes enter here. Native async adapters may suspend while resolving
-//! data; the synchronous frontend supplies streams that are always ready and projects the output
-//! back to an iterator. Query semantics therefore have exactly one implementation.
+//! Async adapters suspend while resolving data. The synchronous frontend supplies ready streams
+//! and projects results back to an iterator. Both use the same execution stages.
 //!
-//! # Strongly-typed, native error threading
-//!
-//! The engine's internal streams carry `Result<DataContext<V>, E>` ([`FallibleContextStream`]) and
-//! fail fast on the first `Err` using `?` inside [`async_stream::try_stream!`]. Adapter resolvers,
-//! however, take *plain* context streams and return `Result<(context, outcome), Error>` items.
-//! [`begin_stage`]
-//! temporarily projects successful contexts into that public resolver protocol and returns a
-//! linear [`StageContinuation`] token. Consuming that token in [`finish_stage`] reconnects the
-//! upstream error path. This preserves both the adapter's one-outcome-per-context contract and
-//! fail-fast semantics without exposing prior-stage errors to adapter implementations.
-//!
-//! # Construction is synchronous
-//!
-//! Just like the sync engine, building the pipeline (the `carrier`/`ResolveInfo` dance and the
-//! adapter resolver *calls*) happens eagerly and synchronously; only *consuming* the composed
-//! stream is async. Recursion-during-iteration (`@fold`/`@recurse`) uses cloned carriers, exactly
-//! as the sync engine does.
+//! Context streams are fallible end to end. Every resolver receives the engine's existing
+//! `Result` stream and returns another one, so earlier errors pass through at their original
+//! positions and newly resolved values compose with ordinary `TryStream` operations.
 
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
     pin::Pin,
-    rc::Rc,
     sync::Arc,
 };
 
-use async_stream::try_stream;
+use async_stream::stream;
 use futures_core::Stream;
 use futures_util::StreamExt;
 use maplit::btreeset;
@@ -45,42 +27,38 @@ use crate::{
 };
 
 use super::{
-    DataContext, InterpretedQuery, ResolveEdgeInfo, ResolveInfo, TaggedValue, ValueOrVec,
-    async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream},
+    DataContext, InterpretedQuery, ResolveInfo, TaggedValue, ValueOrVec,
+    async_adapter::{ContextStream, FallibleAsyncAdapter},
     error::{ExecutionError, QueryArgumentsError},
     execution::{QueryCarrier, get_max_fold_count_limit, get_min_fold_count_limit},
-    filtering::{static_argument_filter_predicate, unary_filter_predicate},
+    filtering::{ComparisonOp, ValuePredicate},
 };
 
-/// A stream of contexts that may fail: the engine's internal, strongly-typed representation.
-/// Fail-fast is expressed as an `Err` item, after which the stream ends.
-pub type FallibleContextStream<'vertex, VertexT, E> =
-    Pin<Box<dyn Stream<Item = Result<DataContext<VertexT>, E>> + 'vertex>>;
+/// The engine's context stream is the same fallible stream adapters receive.
+pub type FallibleContextStream<'vertex, VertexT, E> = ContextStream<'vertex, VertexT, E>;
 
-/// Proof that a resolver stage's upstream error path still needs to be reconnected.
-///
-/// The shared cell is an implementation detail of projecting a fallible stream into the
-/// adapter-facing plain-context protocol. The token itself is linear: finishing a stage consumes
-/// it, and no shared error state escapes the execution kernel.
-#[must_use = "a resolver stage continuation must be passed to finish_stage"]
-pub(super) struct StageContinuation<E> {
-    pending_error: Rc<RefCell<Option<E>>>,
+/// The endpoints and identity of an edge being expanded.
+pub(super) struct EdgeRef<'a> {
+    pub(super) from: &'a IRVertex,
+    pub(super) to: &'a IRVertex,
+    pub(super) eid: Eid,
+    pub(super) name: &'a Arc<str>,
+    pub(super) parameters: &'a EdgeParameters,
 }
 
-impl<E> StageContinuation<E> {
-    fn take_error(self) -> Option<E> {
-        self.pending_error.borrow_mut().take()
+impl<'a> EdgeRef<'a> {
+    fn new(from: &'a IRVertex, to: &'a IRVertex, edge: &'a IREdge) -> Self {
+        Self { from, to, eid: edge.eid, name: &edge.edge_name, parameters: &edge.parameters }
     }
 }
 
-/// Execute an indexed query as a stream.
+/// Execute an indexed query as a lazy stream of independently fallible rows.
 ///
-/// Returns rows (or the first execution error, fail-fast). Query parsing and
-/// argument validation still fail eagerly via the outer `Result<_, QueryArgumentsError>`.
-///
-/// The returned stream is lazy: adapter code runs only as it is polled.
+/// Query argument validation and the starting-vertex resolver call happen while building the
+/// stream. Every later resolver call remains lazy: it runs only when the caller polls for more
+/// results. This is the same boundary exposed by the synchronous interpreter.
 #[allow(clippy::type_complexity)]
-pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub fn interpret_ir<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     indexed_query: Arc<IndexedQuery>,
     arguments: Arc<BTreeMap<Arc<str>, FieldValue>>,
@@ -104,8 +82,8 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let mut carrier = QueryCarrier { query: None };
     let resolve_info = ResolveInfo::new(query.clone(), root_vid, false);
 
-    // Eager, synchronous construction: call the adapter for starting vertices, wrap each into a
-    // root context. Errors on starting vertices are threaded natively into the fallible stream.
+    // `ResolveInfo` owns the query while the adapter is called. Put the query back before building
+    // downstream stages: each resolver stage takes it out again for its own `ResolveInfo`.
     let starting =
         adapter.resolve_starting_vertices(&root_edge, &root_edge_parameters, &resolve_info);
     carrier.query = Some(resolve_info.into_inner());
@@ -118,91 +96,26 @@ pub fn interpret_ir<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 
     let outputs = construct_outputs(adapter.as_ref(), &mut carrier, stream);
 
-    // Wrap the raw adapter error type into `ExecutionError` at the boundary, matching the sync API.
     Ok(Box::pin(outputs.map(|result| result.map_err(ExecutionError::Adapter))))
 }
 
-/// Peel the successful contexts off a fallible stream for feeding an adapter, capturing the first
-/// upstream error so a later stage can re-surface it. See the module docs.
-pub(super) fn begin_stage<'vertex, V, E>(
-    input: FallibleContextStream<'vertex, V, E>,
-) -> (ContextStream<'vertex, V>, StageContinuation<E>)
-where
-    V: Clone + Debug + 'vertex,
-    E: 'vertex,
-{
-    let pending_error = Rc::new(RefCell::new(None));
-    let plain: ContextStream<'vertex, V> = {
-        let pending_error = pending_error.clone();
-        Box::pin(async_stream::stream! {
-            let mut input = input;
-            while let Some(item) = input.next().await {
-                match item {
-                    Ok(ctx) => yield ctx,
-                    Err(error) => {
-                        *pending_error.borrow_mut() = Some(error);
-                        break;
-                    }
-                }
-            }
-        })
-    };
-    (plain, StageContinuation { pending_error })
-}
-
-/// Thread an adapter resolver's fallible outcome stream into the engine, failing fast on the
-/// adapter's own errors and then re-surfacing the upstream error captured by [`begin_stage`].
-#[allow(clippy::type_complexity)]
-pub(super) fn finish_stage<'vertex, V, O, E>(
-    outcomes: ContextOutcomeStream<'vertex, V, O, E>,
-    continuation: StageContinuation<E>,
-) -> Pin<Box<dyn Stream<Item = Result<(DataContext<V>, O), E>> + 'vertex>>
-where
-    V: 'vertex,
-    O: 'vertex,
-    E: 'vertex,
-{
-    Box::pin(try_stream! {
-        let mut outcomes = outcomes;
-        while let Some(outcome) = outcomes.next().await {
-            yield outcome?;
-        }
-        // Bind before the branch so the `RefMut` is dropped and never held across a yield/await.
-        let pending = continuation.take_error();
-        if let Some(error) = pending {
-            Err(error)?;
-        }
-    })
-}
-
-pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+pub(super) fn compute_component<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
     mut stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
     let component_root_vid = component.root;
-    let root_vertex = &component.vertices[&component_root_vid];
 
-    stream = coerce_if_needed(adapter.as_ref(), carrier, root_vertex, stream);
-
-    for filter_expr in &root_vertex.filters {
-        stream = apply_local_field_filter(
-            adapter.as_ref(),
-            carrier,
-            component,
-            component_root_vid,
-            filter_expr,
-            stream,
-        );
-    }
-
-    stream = Box::pin(stream.map(move |result| {
-        result.map(|mut context| {
-            context.record_vertex(component_root_vid);
-            context
-        })
-    }));
+    // A component root and an edge destination enter the component the same way. Keeping that
+    // setup in `prepare_vertex` makes coercions, filters, and vertex bookkeeping identical.
+    stream = prepare_vertex(
+        adapter.clone(),
+        carrier,
+        component,
+        &component.vertices[&component_root_vid],
+        stream,
+    );
 
     let mut visited_vids: BTreeSet<Vid> = btreeset! {component_root_vid};
 
@@ -221,7 +134,7 @@ pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>
             },
         };
 
-        assert!(process_next_fold.is_some() ^ process_next_edge.is_some());
+        assert!(process_next_fold.is_some() != process_next_edge.is_some());
 
         if let Some(fold) = process_next_fold {
             let from_vid_unvisited = visited_vids.insert(fold.from_vid);
@@ -262,12 +175,12 @@ pub(super) fn compute_component<'query, AdapterT: AsyncAdapter<'query> + 'query>
     stream
 }
 
-/// Resolve a `@filter`'s local field value and drop contexts that fail the filter.
+/// Resolve a local `@filter` field and retain matching contexts.
 ///
-/// Reuses the sync engine's filter predicates (see [`super::filtering`]) so the two engines apply
-/// identical semantics. Unary, static-argument, and `@tag`-argument filters are all supported
-/// (tag filters via [`super::engine_filter`]).
-fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+/// The resolved left value is pushed onto `DataContext::values` until the filter consumes it.
+/// Static arguments can then use a pure predicate. Tag arguments need a second, per-context
+/// lookup, so the tag-filter module takes over after the left value has been recorded.
+fn apply_local_field_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -277,27 +190,21 @@ fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
     let local_field = filter.left();
 
-    // Resolve the local field's value and push it onto each context's value stack.
-    let (plain, upstream_error) = begin_stage(stream);
+    // Resolve the filter's left side first. This stack entry survives a tag lookup, where the
+    // active vertex may temporarily move to the tagged field's vertex.
     let type_name = component.vertices[&current_vid].type_name.clone();
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, current_vid, true);
-    let field_data =
-        adapter.resolve_property(plain, &type_name, &local_field.field_name, &resolve_info);
-    carrier.query = Some(resolve_info.into_inner());
+    let field_data = carrier.resolve_with(current_vid, true, |info| {
+        adapter.resolve_property(stream, &type_name, &local_field.field_name, info)
+    });
 
-    let staged = finish_stage(field_data, upstream_error);
     let with_value: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
-        Box::pin(staged.map(|result| {
+        Box::pin(field_data.map(|result| {
             result.map(|(mut context, value)| {
                 context.values.push(value);
                 context
             })
         }));
 
-    // Tag-argument filters must resolve the tag's value per context (an adapter call), so they're
-    // handled by a dedicated stage rather than a pure predicate. The left field value has already
-    // been pushed onto each context's value stack above.
     let filter_without_field = filter.map(|_| (), |r| r);
     if matches!(filter_without_field.right(), Some(Argument::Tag(_))) {
         return super::engine_filter::apply_tagged_filter(
@@ -310,40 +217,35 @@ fn apply_local_field_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         );
     }
 
-    // Build the per-value predicate for unary / static-argument filters, matching the sync engine.
-    let predicate: Box<dyn Fn(&FieldValue) -> bool> = if let Some(unary) =
-        unary_filter_predicate(&filter_without_field)
-    {
-        Box::new(unary)
-    } else {
-        match filter_without_field.right() {
-            Some(Argument::Variable(var)) => {
-                let right_value = carrier.query.as_ref().expect("query was not returned").arguments
-                    [var.variable_name.as_ref()]
-                .clone();
-                static_argument_filter_predicate(&filter_without_field, right_value)
-            }
-            Some(Argument::Tag(_)) => unreachable!("tag filters handled above"),
-            None => unreachable!("non-unary filter with no argument: {filter_without_field:?}"),
-        }
-    };
+    let predicate = build_value_predicate(carrier, &filter_without_field);
 
-    Box::pin(with_value.filter_map(move |result| {
-        let outcome = match result {
-            Ok(mut context) => {
-                let left_value = context.values.pop().expect("no value present");
-                // Keep the context if it's inside a nonexistent `@optional` (filter is vacuous
-                // there) or if the predicate passes.
-                (context.within_nonexistent_optional() || predicate(&left_value))
-                    .then_some(Ok(context))
-            }
-            Err(error) => Some(Err(error)),
-        };
-        std::future::ready(outcome)
-    }))
+    filter_by_predicate(with_value, predicate)
 }
 
-fn coerce_if_needed<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+/// Construct a predicate for a unary or runtime-argument filter.
+///
+/// Tags are deliberately excluded. Unlike variables, a tag can name a different vertex and must
+/// therefore be resolved against each individual context.
+fn build_value_predicate(
+    carrier: &QueryCarrier,
+    filter_without_field: &Operation<(), &Argument>,
+) -> ValuePredicate {
+    if let Some(unary) = ValuePredicate::unary(filter_without_field) {
+        return unary;
+    }
+    match filter_without_field.right() {
+        Some(Argument::Variable(var)) => {
+            let right_value = carrier.query.as_ref().expect("query was not returned").arguments
+                [var.variable_name.as_ref()]
+            .clone();
+            ValuePredicate::static_argument(filter_without_field, right_value)
+        }
+        Some(Argument::Tag(_)) => unreachable!("tag filters handled by the tag-filter stage"),
+        None => unreachable!("non-unary filter with no argument: {filter_without_field:?}"),
+    }
+}
+
+fn coerce_if_needed<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     vertex: &IRVertex,
@@ -357,7 +259,7 @@ fn coerce_if_needed<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     }
 }
 
-fn perform_coercion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn perform_coercion<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     vertex: &IRVertex,
@@ -365,28 +267,29 @@ fn perform_coercion<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     coerce_to: &Arc<str>,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    let (plain, upstream_error) = begin_stage(stream);
+    let coercion_outcomes = carrier.resolve_with(vertex.vid, false, |info| {
+        adapter.resolve_coercion(stream, coerced_from, coerce_to, info)
+    });
 
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveInfo::new(query, vertex.vid, false);
-    let coercion_outcomes = adapter.resolve_coercion(plain, coerced_from, coerce_to, &resolve_info);
-    carrier.query = Some(resolve_info.into_inner());
-
-    let staged = finish_stage(coercion_outcomes, upstream_error);
-    Box::pin(try_stream! {
-        let mut staged = staged;
-        while let Some(item) = staged.next().await {
-            let (ctx, can_coerce) = item?;
-            // Keep the vertex if the coercion succeeded, or if there's no vertex to coerce because
-            // we're inside an `@optional` that didn't exist (coercion result is then irrelevant).
-            if can_coerce || ctx.active_vertex.is_none() {
-                yield ctx;
+    Box::pin(stream! {
+        let mut coercion_outcomes = coercion_outcomes;
+        while let Some(item) = coercion_outcomes.next().await {
+            match item {
+                Ok((ctx, can_coerce)) => {
+                    // A nonexistent `@optional` has no vertex to test. Preserve it so later
+                    // output resolution produces `null` instead of removing the outer context.
+                    if can_coerce || ctx.active_vertex.is_none() {
+                        yield Ok(ctx);
+                    }
+                }
+                // A failed coercion bubbles up as its own failed row.
+                Err(error) => yield Err(error),
             }
         }
     })
 }
 
-fn expand_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn expand_edge<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -395,40 +298,35 @@ fn expand_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     edge: &IREdge,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
+    let edge_ref = EdgeRef::new(
+        &component.vertices[&expanding_from_vid],
+        &component.vertices[&expanding_to_vid],
+        edge,
+    );
+
     let expanded = if let Some(recursive) = &edge.recursive {
         super::engine_recurse::expand_recursive_edge(
             adapter.clone(),
             carrier,
-            component,
-            &component.vertices[&expanding_from_vid],
-            &component.vertices[&expanding_to_vid],
-            edge.eid,
-            &edge.edge_name,
-            &edge.parameters,
+            &edge_ref,
             recursive,
             stream,
         )
     } else {
-        expand_non_recursive_edge(
-            adapter.as_ref(),
-            carrier,
-            &component.vertices[&expanding_from_vid],
-            &component.vertices[&expanding_to_vid],
-            edge.eid,
-            &edge.edge_name,
-            &edge.parameters,
-            edge.optional,
-            stream,
-        )
+        expand_non_recursive_edge(adapter.as_ref(), carrier, &edge_ref, edge.optional, stream)
     };
 
-    // Recurse into the neighboring vertex's own component processing (coercions, filters,
-    // sub-edges), exactly as the sync engine does via `expand_edge` -> `compute_component`.
-    let expanding_to = &component.vertices[&expanding_to_vid];
-    perform_entry_into_new_vertex(adapter, carrier, component, expanding_to, expanded)
+    // Neighbor contexts have arrived at the destination. Process that vertex before expanding
+    // any edge below it, just as `compute_component` processes a component root.
+    prepare_vertex(adapter, carrier, component, edge_ref.to, expanded)
 }
 
-pub(super) fn perform_entry_into_new_vertex<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+/// Apply a vertex's entry conditions and retain it in the context.
+///
+/// Every context that reaches a vertex is coerced, filtered, then recorded under its vertex ID.
+/// Recording last matters: filters and coercions operate on the active vertex, while later edges
+/// reactivate this stored value when they return to the vertex.
+fn prepare_vertex<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     component: &IRQueryComponent,
@@ -456,68 +354,77 @@ pub(super) fn perform_entry_into_new_vertex<'query, AdapterT: AsyncAdapter<'quer
     stream
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn expand_non_recursive_edge<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn expand_non_recursive_edge<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
-    expanding_from: &IRVertex,
-    expanding_to: &IRVertex,
-    edge_id: Eid,
-    edge_name: &Arc<str>,
-    edge_parameters: &EdgeParameters,
+    edge: &EdgeRef<'_>,
     is_optional: bool,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    let (plain, upstream_error) = begin_stage(stream);
-
-    // Re-activate the edge's source vertex before resolving neighbors. Without this, a second edge
-    // expanded from an already-visited vertex would resolve neighbors of the *previous* edge's
-    // destination instead (e.g. two `successor` edges off the same vertex). Mirrors the sync engine.
-    let expanding_from_vid = expanding_from.vid;
-    let plain: ContextStream<'query, AdapterT::Vertex> =
-        Box::pin(plain.map(move |context| context.activate_vertex(&expanding_from_vid)));
-
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from.vid, expanding_to.vid, edge_id);
-    let edge_outcomes = adapter.resolve_neighbors(
-        plain,
-        &expanding_from.type_name,
-        edge_name,
-        edge_parameters,
-        &resolve_info,
+    // Component execution leaves each context at the most recently visited vertex. An edge must
+    // start at its declared source, especially when several sibling edges share that source.
+    let expanding_from_vid = edge.from.vid;
+    let stream: ContextStream<'query, AdapterT::Vertex, AdapterT::Error> = Box::pin(
+        stream
+            .map(move |result| result.map(|context| context.activate_vertex(&expanding_from_vid))),
     );
-    carrier.query = Some(resolve_info.into_inner());
 
-    let staged = finish_stage(edge_outcomes, upstream_error);
-    Box::pin(try_stream! {
-        let mut staged = staged;
-        while let Some(item) = staged.next().await {
-            let (context, neighbors) = item?;
-            let mut has_neighbors = false;
+    let type_name = edge.from.type_name.clone();
+    let edge_outcomes = carrier.resolve_edge_with(edge.from.vid, edge.to.vid, edge.eid, |info| {
+        adapter.resolve_neighbors(stream, &type_name, edge.name, edge.parameters, info)
+    });
+
+    Box::pin(stream! {
+        let mut edge_outcomes = edge_outcomes;
+        while let Some(item) = edge_outcomes.next().await {
+            // A failed row slot passes through untouched, ahead of its siblings.
+            let (context, neighbors) = match item {
+                Ok(pair) => pair,
+                Err(error) => {
+                    yield Err(error);
+                    continue;
+                }
+            };
             let mut neighbors = neighbors;
+            let mut has_resolved_neighbor = false;
+            let mut has_failed_neighbor = false;
             while let Some(neighbor) = neighbors.next().await {
-                let vertex = neighbor?;
-                has_neighbors = true;
-                yield context.split_and_move_to_vertex(Some(vertex));
+                match neighbor {
+                    Ok(vertex) => {
+                        has_resolved_neighbor = true;
+                        yield Ok(context.split_and_move_to_vertex(Some(vertex)));
+                    }
+                    // A failed neighbor becomes a failed row of its own, in its position.
+                    Err(error) => {
+                        has_failed_neighbor = true;
+                        yield Err(error);
+                    }
+                }
             }
 
-            // If there's no current vertex, there couldn't possibly be neighbors.
             if context.active_vertex.is_none() {
-                assert!(!has_neighbors);
+                assert!(!has_resolved_neighbor);
             }
 
-            // Emit a no-vertex context if we're inside a nonexistent `@optional` (so downstream
-            // outputs become null), or if this optional edge itself had no neighbors.
-            if context.active_vertex.is_none() || (!has_neighbors && is_optional) {
-                yield context.split_and_move_to_vertex(None);
+            // There are no neighbors beneath a nonexistent optional vertex. Preserve the absent
+            // vertex, and do the same for an optional edge with no neighbors, so descendants and
+            // outputs observe the optional scope as `null` rather than losing the parent row. A
+            // failed neighbor is not an absent neighbor: it already occupies the parent's row as
+            // an error, so synthesizing a `null` row would incorrectly turn that failure into a
+            // second, successful result.
+            if context.active_vertex.is_none()
+                || (!has_resolved_neighbor && !has_failed_neighbor && is_optional)
+            {
+                yield Ok(context.split_and_move_to_vertex(None));
             }
         }
     })
 }
 
-/// Drain a fold sub-pipeline into its materialized elements, honoring the same early-termination
-/// limits as the sync [`collect_fold_elements`](super::execution). Returns `Ok(None)` when the fold
-/// exceeds its max size (the caller discards that context), or the first `Err` (fail-fast).
+/// Materialize a fold, returning `None` when it exceeds its maximum size.
+///
+/// `Some(vec![])` is an existing empty fold. `None` is reserved for an over-limit fold, which
+/// causes its parent context to be discarded before any post-fold filters run.
 async fn collect_fold_elements<'query, V, E>(
     mut stream: FallibleContextStream<'query, V, E>,
     max_fold_count_limit: &Option<usize>,
@@ -525,18 +432,13 @@ async fn collect_fold_elements<'query, V, E>(
 ) -> Result<Option<Vec<DataContext<V>>>, E> {
     if let Some(max) = max_fold_count_limit {
         let mut elements = Vec::with_capacity((*max).min(16));
-        let mut stopped_early = false;
         for _ in 0..*max {
-            match stream.next().await {
-                Some(item) => elements.push(item?),
-                None => {
-                    stopped_early = true;
-                    break;
-                }
-            }
+            let Some(item) = stream.next().await else {
+                return Ok(Some(elements));
+            };
+            elements.push(item?);
         }
-        if !stopped_early && let Some(item) = stream.next().await {
-            // Propagate an error even while discarding; otherwise the fold is over-size.
+        if let Some(item) = stream.next().await {
             item?;
             return Ok(None);
         }
@@ -559,102 +461,111 @@ async fn collect_fold_elements<'query, V, E>(
     }
 }
 
-/// Apply a post-fold `@filter` on a fold-specific field (e.g. the fold count). Mirrors the sync
-/// [`apply_fold_specific_filter`](super::execution): the fold-specific value is computed from the
-/// already-materialized `folded_contexts` (no adapter call), pushed as the left value, then the
-/// filter predicate is applied. `@tag`-argument fold-count filters are not yet supported.
+fn fold_field_value<V>(
+    context: &DataContext<V>,
+    fold_eid: Eid,
+    kind: FoldSpecificFieldKind,
+) -> FieldValue {
+    match kind {
+        FoldSpecificFieldKind::Count => match context.folded_contexts[&fold_eid].as_ref() {
+            Some(elements) => FieldValue::Uint64(elements.len() as u64),
+            None => unreachable!("post-fold filter reached a @fold inside a nonexistent @optional"),
+        },
+    }
+}
+
+/// Apply a post-fold filter to a materialized field such as the fold count.
+///
+/// Like a local filter, this pushes the left value onto the context stack and delegates tag
+/// arguments to the tag-filter stage. The field is available only after the fold has been
+/// materialized, which is why these filters run after edge resolution and component execution.
 #[allow(clippy::too_many_arguments)]
-fn apply_fold_specific_filter<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn apply_fold_specific_filter<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     parent_component: &IRQueryComponent,
     current_vid: Vid,
     fold: &IRFold,
     filter: &Operation<FoldSpecificFieldKind, Argument>,
-    query_arguments: &Arc<BTreeMap<Arc<str>, FieldValue>>,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
     let fold_eid = fold.eid;
     let kind = *filter.left();
 
-    // Push the fold-specific field value (e.g. the count) onto each context's value stack.
     let with_value: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
         Box::pin(stream.map(move |result| {
             result.map(|mut context| {
-                let value = match &kind {
-                    FoldSpecificFieldKind::Count => {
-                        match context.folded_contexts[&fold_eid].as_ref() {
-                            Some(elements) => FieldValue::Uint64(elements.len() as u64),
-                            None => unreachable!(
-                                "post-fold filter reached a @fold inside a nonexistent @optional"
-                            ),
-                        }
-                    }
-                };
-                context.values.push(value);
+                context.values.push(fold_field_value(&context, fold_eid, kind));
                 context
             })
         }));
 
-    // Tag-argument fold-count filters resolve the tag per context; delegate to the shared tag core.
     let filter_without_field = filter.map(|_| (), |r| r);
     if let Some(Argument::Tag(tag_ref)) = filter_without_field.right() {
         let tag_ref = tag_ref.clone();
-        let filter_owned = filter.map(|_| (), |r| r.clone());
+        let op = ComparisonOp::from_binary_filter(&filter_without_field)
+            .expect("tag fold filters are binary operations");
         return super::engine_filter::apply_tag_comparison(
             adapter,
             carrier,
             parent_component,
             current_vid,
-            filter_owned,
+            op,
             tag_ref,
             with_value,
         );
     }
 
-    let predicate: Box<dyn Fn(&FieldValue) -> bool> =
-        if let Some(unary) = unary_filter_predicate(&filter_without_field) {
-            Box::new(unary)
-        } else {
-            match filter_without_field.right() {
-                Some(Argument::Variable(var)) => {
-                    let right_value = query_arguments[var.variable_name.as_ref()].clone();
-                    static_argument_filter_predicate(&filter_without_field, right_value)
-                }
-                Some(Argument::Tag(_)) => unreachable!("tag fold filters handled above"),
-                None => unreachable!("non-unary fold filter with no argument"),
-            }
-        };
+    let predicate = build_value_predicate(carrier, &filter_without_field);
 
     filter_by_predicate(with_value, predicate)
 }
 
-/// Shared final step of a value-based `@filter`: pop the pushed left value and keep the context if
-/// it's inside a nonexistent `@optional` or the predicate passes. Errors pass through (fail-fast).
+fn seed_nested_fold_outputs(
+    fold: &IRFold,
+    default_value: &Option<ValueOrVec>,
+    values: &mut BTreeMap<(Eid, Arc<str>), Option<ValueOrVec>>,
+) {
+    for nested_fold in fold.component.folds.values() {
+        for output in nested_fold.fold_specific_outputs.keys() {
+            values.insert((nested_fold.eid, output.clone()), default_value.clone());
+        }
+        for output in nested_fold.component.outputs.keys() {
+            values.insert((nested_fold.eid, output.clone()), default_value.clone());
+        }
+        seed_nested_fold_outputs(nested_fold, default_value, values);
+    }
+}
+
+/// Pop a filter value and retain matching contexts.
+///
+/// Each caller has pushed exactly one left value. A nonexistent `@optional` passes filters
+/// vacuously, because there is no inner value that should decide the fate of the outer context.
 fn filter_by_predicate<'query, V, E>(
     stream: FallibleContextStream<'query, V, E>,
-    predicate: Box<dyn Fn(&FieldValue) -> bool>,
+    predicate: ValuePredicate,
 ) -> FallibleContextStream<'query, V, E>
 where
-    V: Clone + Debug + 'query,
+    V: 'query,
     E: 'query,
 {
     Box::pin(stream.filter_map(move |result| {
-        let outcome = match result {
+        std::future::ready(match result {
             Ok(mut context) => {
                 let left_value = context.values.pop().expect("no value present");
-                (context.within_nonexistent_optional() || predicate(&left_value))
+                (context.within_nonexistent_optional() || predicate.passes(&left_value))
                     .then_some(Ok(context))
             }
             Err(error) => Some(Err(error)),
-        };
-        std::future::ready(outcome)
+        })
     }))
 }
 
-/// Resolve a fold's output properties for a single context from its materialized elements, building
-/// the `folded_values` map. Mirrors the output-computation tail of the sync `compute_fold`.
-async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+/// Resolve outputs for one materialized fold.
+///
+/// Fold outputs are accumulated as vectors in the order their element contexts were produced.
+/// An absent fold keeps those outputs `null`; an existing empty fold produces empty vectors.
+async fn compute_fold_outputs<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     fold: &Arc<IRFold>,
@@ -670,7 +581,6 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         "mismatch on whether the fold below {expanding_from_vid:?} was inside an `@optional`",
     );
 
-    // Fold-specific outputs (e.g. count). `null` (not empty) when inside a nonexistent `@optional`.
     for (output_name, fold_specific_field) in &fold.fold_specific_outputs {
         let value = fold_elements.as_ref().map(|elements| match fold_specific_field {
             FoldSpecificFieldKind::Count => {
@@ -689,19 +599,12 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         .map(|output| ((fold_eid, output.clone()), default_value.clone()))
         .collect();
 
-    let fold_contains_elements = fold_elements.as_ref().map(|e| !e.is_empty()).unwrap_or(false);
+    let fold_contains_elements =
+        fold_elements.as_ref().is_some_and(|elements| !elements.is_empty());
     if !fold_contains_elements {
-        // Ensure nested @fold outputs (recursively) get the default value too.
-        let mut queue: Vec<_> = fold.component.folds.values().collect();
-        while let Some(inner_fold) = queue.pop() {
-            for output in inner_fold.fold_specific_outputs.keys() {
-                folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
-            }
-            for output in inner_fold.component.outputs.keys() {
-                folded_values.insert((inner_fold.eid, output.clone()), default_value.clone());
-            }
-            queue.extend(inner_fold.component.folds.values());
-        }
+        // Nested folds cannot run without an outer element. Seed their declared outputs so their
+        // shape still agrees with the query, even though no child context is evaluated.
+        seed_nested_fold_outputs(fold, &default_value, &mut folded_values);
     } else {
         let elements = fold_elements.as_ref().expect("fold did not contain elements").clone();
         let mut output_stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> =
@@ -721,19 +624,16 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     })
                 }));
 
-            let (plain, upstream_error) = begin_stage(moved);
-            let query = carrier.query.take().expect("query was not returned");
-            let resolve_info = ResolveInfo::new(query, vertex_id, true);
-            let field_data = adapter.resolve_property(
-                plain,
-                &fold.component.vertices[&vertex_id].type_name,
-                &context_field.field_name,
-                &resolve_info,
-            );
-            carrier.query = Some(resolve_info.into_inner());
+            let field_data = carrier.resolve_with(vertex_id, true, |info| {
+                adapter.resolve_property(
+                    moved,
+                    &fold.component.vertices[&vertex_id].type_name,
+                    &context_field.field_name,
+                    info,
+                )
+            });
 
-            let staged = finish_stage(field_data, upstream_error);
-            output_stream = Box::pin(staged.map(|result| {
+            output_stream = Box::pin(field_data.map(|result| {
                 result.map(|(mut context, value)| {
                     context.values.push(value);
                     context
@@ -741,9 +641,11 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
             }));
         }
 
-        // Drain the resolved elements, appending values to the fold outputs in name order.
         while let Some(item) = output_stream.next().await {
             let mut folded_context = item?;
+
+            // Nested fold values were computed while resolving this element. Append them before
+            // consuming the ordinary output stack so both kinds retain element order.
             for (key, value) in folded_context.folded_values {
                 folded_values
                     .entry(key)
@@ -755,8 +657,8 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     .push(value.unwrap_or(ValueOrVec::Value(FieldValue::Null)));
             }
 
-            // Values were pushed in increasing output-name order and popped from the back,
-            // so iterate output names in reverse.
+            // Properties were resolved in name order and pushed in that order. Pop in reverse to
+            // attach every value to the output name that requested it.
             for output in output_names.iter().rev() {
                 let value = folded_context.values.pop().unwrap();
                 folded_values
@@ -784,7 +686,7 @@ async fn compute_fold_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn compute_fold<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
     carrier: &mut QueryCarrier,
     expanding_from: &IRVertex,
@@ -792,7 +694,8 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     fold: Arc<IRFold>,
     mut stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> {
-    // === Imported tags needed inside the fold (eager construction). ===
+    // A nested component starts with fresh contexts, so values tagged outside the fold must be
+    // copied in before the fold edge is resolved. They are removed again once the fold is done.
     for imported_field in fold.imported_tags.iter() {
         match imported_field {
             FieldRef::ContextField(field) => {
@@ -803,16 +706,12 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     }));
 
                 let type_name = parent_component.vertices[&field.vertex_id].type_name.clone();
-                let (plain, upstream_error) = begin_stage(activated);
-                let query = carrier.query.take().expect("query was not returned");
-                let resolve_info = ResolveInfo::new(query, vertex_id, true);
-                let field_data =
-                    adapter.resolve_property(plain, &type_name, &field.field_name, &resolve_info);
-                carrier.query = Some(resolve_info.into_inner());
+                let field_data = carrier.resolve_with(vertex_id, true, |info| {
+                    adapter.resolve_property(activated, &type_name, &field.field_name, info)
+                });
 
                 let cloned_field = imported_field.clone();
-                let staged = finish_stage(field_data, upstream_error);
-                stream = Box::pin(staged.map(move |result| {
+                stream = Box::pin(field_data.map(move |result| {
                     result.map(|(mut context, value)| {
                         let tag_value = if context.vertices[&vertex_id].is_some() {
                             TaggedValue::Some(value)
@@ -848,27 +747,26 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         }
     }
 
-    // === Resolve the fold edge to get the initial vertices inside the fold (eager). ===
+    // A fold, like an ordinary edge, starts from its declared source rather than whichever vertex
+    // the component happened to visit most recently.
     let expanding_from_vid = expanding_from.vid;
     let activated: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> = Box::pin(
         stream
             .map(move |result| result.map(|context| context.activate_vertex(&expanding_from_vid))),
     );
     let type_name = expanding_from.type_name.clone();
-    let (plain, upstream_error) = begin_stage(activated);
-    let query = carrier.query.take().expect("query was not returned");
-    let resolve_info = ResolveEdgeInfo::new(query, expanding_from_vid, fold.to_vid, fold.eid);
-    let edge_outcomes = adapter.resolve_neighbors(
-        plain,
-        &type_name,
-        &fold.edge_name,
-        &fold.parameters,
-        &resolve_info,
-    );
-    carrier.query = Some(resolve_info.into_inner());
-    let edge_stream = finish_stage(edge_outcomes, upstream_error);
+    let edge_outcomes =
+        carrier.resolve_edge_with(expanding_from_vid, fold.to_vid, fold.eid, |info| {
+            adapter.resolve_neighbors(
+                activated,
+                &type_name,
+                &fold.edge_name,
+                &fold.parameters,
+                info,
+            )
+        });
+    let edge_stream = edge_outcomes;
 
-    // === Fold count limits (eager), mirroring the sync engine's optimization logic. ===
     let max_fold_size = get_max_fold_count_limit(carrier, fold.as_ref());
     let min_fold_size =
         if let Some(min_fold_size) = get_min_fold_count_limit(carrier, fold.as_ref()) {
@@ -902,20 +800,29 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
     let fold_eid = fold.eid;
     let moved_fold = fold.clone();
 
-    // === Stage 1: materialize each fold and attach it to its parent context. ===
     let folded_stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> = Box::pin(
-        try_stream! {
+        stream! {
             let mut edge_stream = edge_stream;
             while let Some(item) = edge_stream.next().await {
-                let (mut context, neighbors) = item?;
+                // A failed row slot from upstream passes through untouched.
+                let (mut context, neighbors) = match item {
+                    Ok(pair) => pair,
+                    Err(error) => {
+                        yield Err(error);
+                        continue;
+                    }
+                };
                 let imported_tags = context.imported_tags.clone();
 
+                // A failed neighbor inside the fold becomes a failed element; materializing the
+                // fold bubbles it up as the parent's failed row. Fold data is never dropped.
                 let neighbor_contexts: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error> = {
                     let imported_tags = imported_tags.clone();
                     Box::pin(neighbors.map(move |neighbor| {
+                        let imported_tags = imported_tags.clone();
                         neighbor.map(|vertex| {
                             let mut ctx = DataContext::new(Some(vertex));
-                            ctx.imported_tags = imported_tags.clone();
+                            ctx.imported_tags = imported_tags;
                             ctx
                         })
                     }))
@@ -928,13 +835,18 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     neighbor_contexts,
                 );
 
-                // A @fold inside a nonexistent @optional is `None`, not an empty `Some(vec)`.
+                // A fold under a nonexistent optional is absent, not an empty collection. That
+                // distinction is observable in both fold-specific outputs and tagged filters.
                 let fold_exists = context.vertices[&expanding_from_vid].is_some();
                 let fold_elements = if fold_exists {
-                    match collect_fold_elements(computed, &max_fold_size, &min_fold_size).await? {
-                        Some(elements) => Some(elements),
-                        // Over the max size — discard this context (mirrors the sync `?`).
-                        None => continue,
+                    match collect_fold_elements(computed, &max_fold_size, &min_fold_size).await {
+                        Ok(Some(elements)) => Some(elements),
+                        Ok(None) => continue,
+                        // Any failed element fails the parent's row, carrying the error.
+                        Err(error) => {
+                            yield Err(error);
+                            continue;
+                        }
                     }
                 } else {
                     None
@@ -946,13 +858,12 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                     context.imported_tags.remove(imported_tag).unwrap();
                 }
 
-                yield context;
+                yield Ok(context);
             }
         },
     );
 
-    // === Stage 2: post-fold filters (e.g. on the fold count) (eager construction). ===
-    let query_arguments = carrier.query.as_ref().expect("query was not returned").arguments.clone();
+    // Post-fold filters observe materialized fields such as `@fold` count.
     let mut post_filtered = folded_stream;
     for post_fold_filter in fold.post_filters.iter() {
         post_filtered = apply_fold_specific_filter(
@@ -962,25 +873,30 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
             expanding_from_vid,
             fold.as_ref(),
             post_fold_filter,
-            &query_arguments,
             post_filtered,
         );
     }
 
-    // === Stage 3: compute the fold's outputs for each surviving context. ===
     let mut output_names: Vec<Arc<str>> = fold.component.outputs.keys().cloned().collect();
-    output_names.sort_unstable(); // deterministic resolve_property() ordering
+    // Resolver calls are ordered for deterministic adapter behavior and stack consumption.
+    output_names.sort_unstable();
     let output_names = Arc::new(output_names);
 
     let output_adapter = adapter.clone();
     let mut output_carrier = carrier.clone();
     let output_fold = fold.clone();
 
-    Box::pin(try_stream! {
+    Box::pin(stream! {
         let mut post_filtered = post_filtered;
         while let Some(item) = post_filtered.next().await {
-            let context = item?;
-            let output_context = compute_fold_outputs(
+            let context = match item {
+                Ok(context) => context,
+                Err(error) => {
+                    yield Err(error);
+                    continue;
+                }
+            };
+            match compute_fold_outputs(
                 &output_adapter,
                 &mut output_carrier,
                 &output_fold,
@@ -988,24 +904,29 @@ fn compute_fold<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                 expanding_from_vid,
                 context,
             )
-            .await?;
-            yield output_context;
+            .await
+            {
+                Ok(output_context) => yield Ok(output_context),
+                Err(error) => yield Err(error),
+            }
         }
     })
 }
 
 #[allow(clippy::type_complexity)]
-fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
+fn construct_outputs<'query, AdapterT: FallibleAsyncAdapter<'query> + 'query>(
     adapter: &AdapterT,
     carrier: &mut QueryCarrier,
     stream: FallibleContextStream<'query, AdapterT::Vertex, AdapterT::Error>,
 ) -> Pin<Box<dyn Stream<Item = Result<BTreeMap<Arc<str>, FieldValue>, AdapterT::Error>> + 'query>> {
-    let mut query = carrier.query.take().expect("query was not returned");
+    let query = carrier.query.take().expect("query was not returned");
 
     let root_component = query.indexed_query.ir_query.root_component.clone();
     let mut output_names: Vec<Arc<str>> = root_component.outputs.keys().cloned().collect();
-    output_names.sort_unstable(); // deterministic resolve_property() ordering
+    // Resolve each property in a stable order; the values are later drained in the same order.
+    output_names.sort_unstable();
 
+    carrier.query = Some(query);
     let mut output_stream = stream;
 
     for output_name in output_names.iter() {
@@ -1020,16 +941,16 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
                 })
             }));
 
-        let (plain, upstream_error) = begin_stage(moved_stream);
+        let field_data = carrier.resolve_with(vertex_id, true, |info| {
+            adapter.resolve_property(
+                moved_stream,
+                &root_component.vertices[&vertex_id].type_name,
+                &context_field.field_name,
+                info,
+            )
+        });
 
-        let resolve_info = ResolveInfo::new(query, vertex_id, true);
-        let type_name = &root_component.vertices[&vertex_id].type_name;
-        let field_data =
-            adapter.resolve_property(plain, type_name, &context_field.field_name, &resolve_info);
-        query = resolve_info.into_inner();
-
-        let staged = finish_stage(field_data, upstream_error);
-        output_stream = Box::pin(staged.map(|result| {
+        output_stream = Box::pin(field_data.map(|result| {
             result.map(|(mut context, value)| {
                 context.values.push(value);
                 context
@@ -1037,9 +958,9 @@ fn construct_outputs<'query, AdapterT: AsyncAdapter<'query> + 'query>(
         }));
     }
 
+    let query = carrier.query.as_ref().expect("query was not returned");
     let expected_output_names: BTreeSet<Arc<str>> =
         query.indexed_query.outputs.keys().cloned().collect();
-    carrier.query = Some(query);
 
     let output_names = Arc::new(output_names);
     Box::pin(output_stream.map(move |result| {

@@ -6,6 +6,8 @@
 //! batch without collecting it or reducing it to one-item calls.
 
 use std::{
+    cell::RefCell,
+    collections::VecDeque,
     fmt,
     pin::Pin,
     sync::Arc,
@@ -19,7 +21,7 @@ use crate::ir::{EdgeParameters, FieldValue};
 
 use super::{
     AsVertex, ContextIterator, FallibleAdapter, ResolveEdgeInfo, ResolveInfo,
-    async_adapter::{AsyncAdapter, ContextOutcomeStream, ContextStream, VertexStream},
+    async_adapter::{ContextOutcomeStream, ContextStream, FallibleAsyncAdapter, VertexStream},
 };
 
 /// An iterator view of a stream that is guaranteed never to suspend.
@@ -68,7 +70,53 @@ impl<A> SyncAdapter<A> {
     }
 }
 
-impl<'vertex, A> AsyncAdapter<'vertex> for SyncAdapter<A>
+fn separate_upstream_errors<'vertex, V, E>(
+    contexts: ContextStream<'vertex, V, E>,
+) -> (ContextIterator<'vertex, V>, Arc<RefCell<VecDeque<E>>>)
+where
+    V: 'vertex,
+    E: 'vertex,
+{
+    let errors = Arc::new(RefCell::new(VecDeque::new()));
+    let queued_errors = errors.clone();
+    let mut contexts = ReadyIterator::new(contexts);
+    let contexts = Box::new(std::iter::from_fn(move || {
+        loop {
+            match contexts.next()? {
+                Ok(context) => return Some(context),
+                Err(error) => queued_errors.borrow_mut().push_back(error),
+            }
+        }
+    }));
+    (contexts, errors)
+}
+
+fn restore_upstream_errors<'vertex, V, O, E>(
+    errors: Arc<RefCell<VecDeque<E>>>,
+    mut outcomes: impl Iterator<Item = Result<(super::DataContext<V>, O), E>> + 'vertex,
+) -> ContextOutcomeStream<'vertex, V, O, E>
+where
+    V: 'vertex,
+    O: 'vertex,
+    E: 'vertex,
+{
+    let mut held_outcome = None;
+    Box::pin(stream::iter(std::iter::from_fn(move || {
+        if let Some(error) = errors.borrow_mut().pop_front() {
+            return Some(Err(error));
+        }
+
+        let outcome = held_outcome.take().or_else(|| outcomes.next())?;
+        if let Some(error) = errors.borrow_mut().pop_front() {
+            held_outcome = Some(outcome);
+            Some(Err(error))
+        } else {
+            Some(outcome)
+        }
+    })))
+}
+
+impl<'vertex, A> FallibleAsyncAdapter<'vertex> for SyncAdapter<A>
 where
     A: FallibleAdapter<'vertex> + 'vertex,
 {
@@ -90,23 +138,21 @@ where
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeStream<'vertex, V, FieldValue, Self::Error> {
-        let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
-        Box::pin(stream::iter(self.inner.resolve_property(
-            contexts,
-            type_name,
-            property_name,
-            resolve_info,
-        )))
+        let (contexts, errors) = separate_upstream_errors(contexts);
+        restore_upstream_errors(
+            errors,
+            self.inner.resolve_property(contexts, type_name, property_name, resolve_info),
+        )
     }
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
@@ -117,32 +163,33 @@ where
         VertexStream<'vertex, Result<Self::Vertex, Self::Error>>,
         Self::Error,
     > {
-        let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
+        let (contexts, errors) = separate_upstream_errors(contexts);
         let outcomes =
             self.inner.resolve_neighbors(contexts, type_name, edge_name, parameters, resolve_info);
-        Box::pin(stream::iter(outcomes.map(|outcome| {
-            outcome.map(|(context, neighbors)| {
-                let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
-                    Box::pin(stream::iter(neighbors));
-                (context, neighbors)
-            })
-        })))
+        restore_upstream_errors(
+            errors,
+            outcomes.map(|outcome| {
+                outcome.map(|(context, neighbors)| {
+                    let neighbors: VertexStream<'vertex, Result<Self::Vertex, Self::Error>> =
+                        Box::pin(stream::iter(neighbors));
+                    (context, neighbors)
+                })
+            }),
+        )
     }
 
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'vertex>(
         &self,
-        contexts: ContextStream<'vertex, V>,
+        contexts: ContextStream<'vertex, V, Self::Error>,
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeStream<'vertex, V, bool, Self::Error> {
-        let contexts: ContextIterator<'vertex, V> = Box::new(ReadyIterator::new(contexts));
-        Box::pin(stream::iter(self.inner.resolve_coercion(
-            contexts,
-            type_name,
-            coerce_to_type,
-            resolve_info,
-        )))
+        let (contexts, errors) = separate_upstream_errors(contexts);
+        restore_upstream_errors(
+            errors,
+            self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info),
+        )
     }
 }
 

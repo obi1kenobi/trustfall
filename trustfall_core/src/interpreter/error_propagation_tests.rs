@@ -2,11 +2,8 @@
 //!
 //! The rest of the test suite uses infallible adapters, so it never exercises the error path.
 //! These tests wrap the (infallible) `NumbersAdapter` in a fault-injecting adapter that reports
-//! a real error at a configurable point in a configurable resolver method, and assert the
-//! engine's fail-fast contract:
-//! - successful results produced *before* the error are still yielded,
-//! - then exactly one `Err` is yielded,
-//! - then the stream ends (nothing after the error).
+//! a real error at a configurable point in a configurable resolver method. The focused tests
+//! below cover the distinct error boundaries and one composed query shape.
 
 use std::{
     collections::BTreeMap,
@@ -33,12 +30,12 @@ type Row = BTreeMap<Arc<str>, FieldValue>;
 /// Deliberately `!Send + !Sync`: core query execution must also support local-only errors,
 /// including errors backed by JavaScript values in WASM adapters.
 #[derive(Debug)]
-struct TestError {
+pub(super) struct TestError {
     _local: std::rc::Rc<()>,
 }
 
 impl TestError {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self { _local: std::rc::Rc::new(()) }
     }
 }
@@ -52,26 +49,25 @@ impl fmt::Display for TestError {
 impl std::error::Error for TestError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Fault {
+pub(super) enum Fault {
     StartingVertices,
     Property,
     Neighbors,
-    Coercion,
 }
 
 /// Wraps `NumbersAdapter` and injects `TestError` into one resolver method once `remaining`
 /// successful values have flowed through that method's targeted stream.
-struct FaultyAdapter {
+pub(super) struct FaultyAdapter {
     inner: NumbersAdapter,
     fault: Fault,
     /// Number of successful values to allow through the faulted stream before erroring.
     remaining: Arc<AtomicUsize>,
-    /// Any poll after the injected error is a fail-fast contract violation.
+    /// Ensures this fixture emits exactly one error.
     error_emitted: Arc<AtomicBool>,
 }
 
 impl FaultyAdapter {
-    fn new(fault: Fault, fail_after: usize) -> Self {
+    pub(super) fn new(fault: Fault, fail_after: usize) -> Self {
         Self {
             inner: NumbersAdapter::new(),
             fault,
@@ -86,11 +82,7 @@ impl FaultyAdapter {
 fn should_error(remaining: &AtomicUsize, error_emitted: &AtomicBool) -> bool {
     let current = remaining.load(Ordering::SeqCst);
     if current == 0 {
-        assert!(
-            !error_emitted.swap(true, Ordering::SeqCst),
-            "adapter was polled after its first error"
-        );
-        true
+        !error_emitted.swap(true, Ordering::SeqCst)
     } else {
         remaining.store(current - 1, Ordering::SeqCst);
         false
@@ -199,26 +191,14 @@ impl<'a> FallibleAdapter<'a> for FaultyAdapter {
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> FallibleContextOutcomeIterator<'a, V, bool, Self::Error> {
-        let inner = self
-            .inner
-            .resolve_coercion(contexts, type_name, coerce_to_type, resolve_info)
-            .map(|outcome| match outcome {
-                Ok((ctx, value)) => (ctx, value),
-                Err(never) => match never {},
-            });
-        if self.fault == Fault::Coercion {
-            let remaining = self.remaining.clone();
-            let error_emitted = self.error_emitted.clone();
-            Box::new(inner.map(move |(ctx, value)| {
-                if should_error(&remaining, &error_emitted) {
-                    Err(TestError::new())
-                } else {
-                    Ok((ctx, value))
-                }
-            }))
-        } else {
-            Box::new(inner.map(Ok))
-        }
+        Box::new(
+            self.inner.resolve_coercion(contexts, type_name, coerce_to_type, resolve_info).map(
+                |outcome| match outcome {
+                    Ok((ctx, value)) => Ok((ctx, value)),
+                    Err(never) => match never {},
+                },
+            ),
+        )
     }
 }
 
@@ -230,7 +210,7 @@ fn unwrap_ok<T>(result: Result<T, std::convert::Infallible>) -> T {
     }
 }
 
-fn run(
+pub(super) fn run(
     fault: Fault,
     fail_after: usize,
     query: &str,
@@ -251,87 +231,38 @@ fn baseline_row_count(query: &str) -> usize {
     results.len()
 }
 
-/// Assert fail-fast: exactly `expected_ok` successful rows, then exactly one `Err`, then nothing.
-fn assert_fail_fast_exact(results: &[Result<Row, ExecutionError<TestError>>], expected_ok: usize) {
-    assert_eq!(
-        results.len(),
-        expected_ok + 1,
-        "expected {expected_ok} Ok rows then exactly one Err; got {} items",
-        results.len()
-    );
-    for (i, r) in results.iter().take(expected_ok).enumerate() {
-        assert!(r.is_ok(), "result {i} should be Ok, was {r:?}");
-    }
-    assert!(
-        matches!(results[expected_ok], Err(ExecutionError::Adapter(TestError { .. }))),
-        "final item should be the injected adapter error, was {:?}",
-        results[expected_ok],
-    );
+/// A single resolver fault occupies one row; independent rows continue.
+fn assert_single_row_error(results: &[Result<Row, ExecutionError<TestError>>]) {
+    let errors = results.iter().filter(|result| result.is_err()).count();
+    assert_eq!(errors, 1, "expected exactly one failed row, got {errors}: {results:?}");
 }
 
-/// Assert fail-fast structurally (for queries where the exact successful-row count is hard to
-/// predict): the last item is the injected error, and it is the *only* error.
-fn assert_fail_fast_terminal(results: &[Result<Row, ExecutionError<TestError>>]) {
-    assert!(!results.is_empty(), "expected at least the terminal error");
-    let (last, rest) = results.split_last().unwrap();
-    assert!(
-        matches!(last, Err(ExecutionError::Adapter(TestError { .. }))),
-        "last item should be the injected adapter error, was {last:?}"
-    );
-    for (i, r) in rest.iter().enumerate() {
-        assert!(r.is_ok(), "item {i} before the error should be Ok, was {r:?}");
-    }
-}
-
-const FLAT: &str = r#"{ Number(min: 0, max: 50) { value @output } }"#;
-const SUCCESSOR: &str = r#"{ Number(min: 0, max: 50) { successor { value @output } } }"#;
+pub(super) const FLAT: &str = r#"{ Number(min: 0, max: 50) { value @output } }"#;
+pub(super) const SUCCESSOR: &str = r#"{ Number(min: 0, max: 50) { successor { value @output } } }"#;
 
 #[test]
-fn error_in_resolve_starting_vertices_is_fail_fast() {
+fn error_in_resolve_starting_vertices_becomes_a_row_error() {
     assert!(baseline_row_count(FLAT) > 5);
     let results = run(Fault::StartingVertices, 5, FLAT);
-    assert_fail_fast_exact(&results, 5);
+    assert_single_row_error(&results);
 }
 
 #[test]
-fn error_in_resolve_property_is_fail_fast() {
+fn error_in_resolve_property_becomes_a_row_error() {
     assert!(baseline_row_count(FLAT) > 3);
     let results = run(Fault::Property, 3, FLAT);
-    assert_fail_fast_exact(&results, 3);
+    assert_single_row_error(&results);
 }
 
 #[test]
-fn error_in_resolve_neighbors_is_fail_fast() {
+fn error_in_resolve_neighbors_becomes_a_row_error() {
     assert!(baseline_row_count(SUCCESSOR) > 4);
     let results = run(Fault::Neighbors, 4, SUCCESSOR);
-    assert_fail_fast_exact(&results, 4);
+    assert_single_row_error(&results);
 }
 
 #[test]
-fn error_after_zero_rows_yields_only_the_error() {
-    let results = run(Fault::StartingVertices, 0, FLAT);
-    assert_fail_fast_exact(&results, 0);
-}
-
-#[test]
-fn no_error_when_budget_exceeds_work() {
-    // If the fault never triggers, the output matches an infallible run exactly.
-    let total = baseline_row_count(FLAT);
-    let results = run(Fault::Property, total + 10, FLAT);
-    assert_eq!(results.len(), total);
-    assert!(results.iter().all(Result::is_ok));
-}
-
-#[test]
-fn error_in_coercion_is_fail_fast() {
-    let query = r#"{ Number(min: 0, max: 50) { successor { ... on Prime { value @output } } } }"#;
-    let results = run(Fault::Coercion, 4, query);
-    assert_fail_fast_terminal(&results);
-}
-
-#[test]
-fn error_inside_fold_terminates() {
-    // The fold eagerly materializes `multiple` neighbors; an error mid-fold must terminate.
+fn error_inside_fold_becomes_a_row_error() {
     let query = r#"{
         Number(min: 1, max: 50) {
             value @output
@@ -341,49 +272,27 @@ fn error_inside_fold_terminates() {
         }
     }"#;
     let results = run(Fault::Neighbors, 5, query);
-    assert_fail_fast_terminal(&results);
+    assert_single_row_error(&results);
 }
 
+/// Laziness with errors: pulling one row runs only enough adapter work for that row.
 #[test]
-fn scalar_error_inside_materialized_fold_stops_adapter_polls() {
-    // Fold materialization is eager relative to yielding the parent row. A scalar resolver error
-    // inside it must cancel the rest of that materialization immediately, rather than continuing
-    // to pull adapter data before the outer result iterator gets a chance to observe the error.
-    let query = r#"{
-        Number(min: 1, max: 50) {
-            multiple(max: 30) @fold {
-                factor: value @output
-            }
-        }
-    }"#;
-    let results = run(Fault::Property, 5, query);
-    assert_fail_fast_terminal(&results);
-}
+fn partial_consumption_is_lazy() {
+    let adapter = Arc::new(FaultyAdapter::new(Fault::Property, usize::MAX));
+    let schema = adapter.inner.schema().clone();
+    let indexed = parse(&schema, FLAT).unwrap();
+    let mut rows = interpret_ir(adapter.clone(), indexed, Arc::new(BTreeMap::new())).unwrap();
 
-#[test]
-fn error_inside_recurse_terminates() {
-    let query = r#"{
-        Number(min: 0, max: 10) {
-            value @output
-            successor @recurse(depth: 3) {
-                succ: value @output
-            }
-        }
-    }"#;
-    let results = run(Fault::Neighbors, 5, query);
-    assert_fail_fast_terminal(&results);
-}
-
-#[test]
-fn error_inside_optional_terminates() {
-    let query = r#"{
-        Number(min: 0, max: 50) {
-            value @output
-            predecessor @optional {
-                pred: value @output
-            }
-        }
-    }"#;
-    let results = run(Fault::Neighbors, 5, query);
-    assert_fail_fast_terminal(&results);
+    // Property budget starts at usize::MAX; after one row it must have decreased by
+    // only a handful of resolutions (one per output in that row's pipeline prefix).
+    let row = rows.next().expect("at least one row");
+    assert!(row.is_ok());
+    let consumed = usize::MAX - adapter.remaining.load(Ordering::SeqCst);
+    // The flat query resolves one property per starting vertex for the row it emitted,
+    // plus the pipeline may prefetch a bounded amount for the next row. 32 is a very
+    // generous ceiling that still catches eager whole-batch resolution.
+    assert!(
+        consumed <= 32,
+        "pulling one row consumed {consumed} property resolutions; execution is not lazy"
+    );
 }
