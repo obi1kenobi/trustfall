@@ -1,14 +1,15 @@
 //! Asynchronous, `Stream`-native adapter trait and pipeline type aliases.
 //!
-//! This is the kernel's own adapter contract, and the async counterpart of the public
-//! synchronous [`Adapter`](super::Adapter) trait. Where an iterator engine would block one
-//! context at a time, composing lazy [`Stream`]s lets resolvers overlap IO across the contexts
-//! in a batch (order-preserving concurrency, e.g. `contexts.map(fetch).buffered(N)`).
+//! This is the async counterpart of the synchronous [`Adapter`](super::Adapter) trait. Where the
+//! sync engine composes lazy [`Iterator`]s, the async engine composes lazy [`Stream`]s, so adapter
+//! resolvers can overlap IO across the contexts in a batch (order-preserving concurrency, e.g.
+//! `contexts.map(fetch).buffered(N)`), instead of blocking one context at a time.
 //!
 //! # Error handling is strongly typed and native
 //!
 //! The execution kernel threads `Result` natively through its streams and fails fast on the first
-//! `Err` via `?`. Accordingly, resolver *outputs* carry `Result`s in the stream item:
+//! `Err` via `?`. Accordingly, resolver *outputs* carry `Result`s in the
+//! iterator item, exactly as the sync [`Adapter`](super::Adapter) trait does:
 //! - `resolve_starting_vertices` yields `Result<Vertex, Error>`,
 //! - resolver outcomes yield `Result<(context, outcome), Error>`,
 //! - `resolve_neighbors` yields `Result<Vertex, Error>` per neighbor.
@@ -46,19 +47,19 @@ pub type ContextOutcomeStream<'vertex, VertexT, OutcomeT, ErrorT> =
 
 /// Asynchronous data providers implement this trait to enable streaming query execution.
 ///
-/// It mirrors [`Adapter`](super::Adapter) method-for-method; see that trait for the detailed
+/// It mirrors [`FallibleAdapter`](super::FallibleAdapter) method-for-method; see that trait for the detailed
 /// preconditions and postconditions of each resolver (they are identical here). The differences
-/// are purely in shape: inputs and outputs are [`Stream`]s rather than [`Iterator`]s, and
-/// resolver outputs carry a `Result` so a data source can report a failure.
+/// are purely in shape: inputs and outputs are [`Stream`]s rather than [`Iterator`]s.
+///
 pub trait AsyncAdapter<'vertex> {
-    /// The type of vertices in the dataset this adapter queries.
-    /// See [`Adapter::Vertex`](super::Adapter::Vertex).
+    /// The type of vertices in the dataset this adapter queries. See [`FallibleAdapter::Vertex`].
+    ///
+    /// [`FallibleAdapter::Vertex`]: super::FallibleAdapter::Vertex
     type Vertex: Clone + Debug + 'vertex;
 
-    /// The error type this adapter may report while resolving part of a query.
+    /// The error type this adapter may report. See [`FallibleAdapter::Error`].
     ///
-    /// The bound is intentionally only `Error + 'static` — `Send`/`Sync` are *not* required,
-    /// so `!Send` adapters (such as WASM adapters) remain supported.
+    /// [`FallibleAdapter::Error`]: super::FallibleAdapter::Error
     type Error: std::error::Error + 'static;
 
     /// Produce a stream of vertices for the specified starting edge.
