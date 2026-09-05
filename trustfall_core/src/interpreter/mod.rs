@@ -24,6 +24,9 @@ pub mod replay;
 mod sync_adapter;
 pub mod trace;
 
+#[cfg(test)]
+mod error_propagation_tests;
+
 pub use hints::{
     CandidateValue, DynamicallyResolvedValue, EdgeInfo, NeighborInfo, QueryInfo, Range,
     RequiredProperty, ResolveEdgeInfo, ResolveInfo, VertexInfo,
