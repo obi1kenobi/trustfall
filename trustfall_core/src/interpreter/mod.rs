@@ -24,6 +24,12 @@ pub mod replay;
 mod sync_adapter;
 pub mod trace;
 
+#[cfg(feature = "async")]
+pub use async_adapter::{
+    AsyncAdapter, AsyncContextOutcomeStream, AsyncContextStream, AsyncNeighborStream,
+    ContextOutcomeStream, ContextStream, FallibleAsyncAdapter, NeighborOutcomeStream, VertexStream,
+};
+
 #[cfg(test)]
 mod error_propagation_tests;
 
