@@ -2,8 +2,9 @@ use std::{fmt::Debug, ops::Bound, sync::Arc};
 
 use crate::{
     interpreter::{
-        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, ResolveInfo,
-        TaggedValue, VertexIterator, hints::Range,
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, FallibleAdapter,
+        FallibleContextOutcomeIterator, InterpretedQuery, ResolveInfo, TaggedValue, VertexIterator,
+        hints::Range,
     },
     ir::{
         ContextField, FieldRef, FieldValue, FoldSpecificField, IRQueryComponent, Operation, Type,
@@ -166,6 +167,23 @@ impl<'a> DynamicallyResolvedValue<'a> {
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
     ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
+        Box::new(self.try_resolve(adapter, contexts).map(|outcome| match outcome {
+            Ok(value) => value,
+            Err(never) => match never {},
+        }))
+    }
+
+    /// Fallible counterpart of [`DynamicallyResolvedValue::resolve`].
+    pub fn try_resolve<
+        'vertex,
+        AdapterT: FallibleAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, V>,
+    ) -> FallibleContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error>
+    {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -220,20 +238,50 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }))
     }
 
-    /// Resolve a tag by asking the adapter for the tagged vertex's property value.
-    ///
-    /// The tagged vertex is not the context's active vertex, so it is temporarily swapped in
-    /// for the duration of the resolver call and swapped back out afterward.
+    /// Fallible counterpart of [`DynamicallyResolvedValue::resolve_with`].
+    #[allow(clippy::type_complexity)]
+    pub fn try_resolve_with<
+        'vertex,
+        AdapterT: FallibleAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, V>,
+        mut neighbor_resolver: impl FnMut(
+            &AdapterT::Vertex,
+            CandidateValue<FieldValue>,
+        ) -> VertexIterator<'vertex, AdapterT::Vertex>
+        + 'vertex,
+    ) -> FallibleContextOutcomeIterator<
+        'vertex,
+        V,
+        VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>>,
+        AdapterT::Error,
+    > {
+        Box::new(self.try_resolve(adapter, contexts).map(move |outcome| {
+            outcome.map(|(ctx, candidate)| {
+                let neighbors: VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>> =
+                    match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
+                        Some(vertex) => Box::new(neighbor_resolver(vertex, candidate).map(Ok)),
+                        None => Box::new(std::iter::empty()),
+                    };
+                (ctx, neighbors)
+            })
+        }))
+    }
+
     fn compute_candidate_from_tagged_value<
         'vertex,
-        AdapterT: Adapter<'vertex>,
+        AdapterT: FallibleAdapter<'vertex>,
         V: AsVertex<AdapterT::Vertex> + 'vertex,
     >(
         self,
         context_field: &'a ContextField,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
+    ) -> FallibleContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error>
+    {
         let vertex_id = context_field.vertex_id;
         let field_name = context_field.field_name.clone();
         let field_type = context_field.field_type.clone();
@@ -252,7 +300,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
                     true,
                     tagged,
                 );
-                (context, candidate)
+                Ok((context, candidate))
             }));
         };
 
@@ -271,42 +319,44 @@ impl<'a> DynamicallyResolvedValue<'a> {
             &resolve_info,
         );
 
-        Box::new(outcomes.map(move |(mut context, value)| {
-            let tagged = {
-                if context.vertices[&vertex_id].is_some() {
-                    TaggedValue::Some(value)
-                } else {
-                    TaggedValue::NonexistentOptional
-                }
-            };
-            let previous_vertex = context.suspended_vertices.pop().unwrap();
-            let context = context.move_to_vertex(previous_vertex);
-            let candidate = candidate_from_tagged_value(
-                &operation,
-                &initial_candidate,
-                &field_name,
-                &field_type,
-                true,
-                tagged,
-            );
-            (context, candidate)
+        Box::new(outcomes.map(move |outcome| {
+            outcome.map(|(mut context, value)| {
+                let tagged = {
+                    if context.vertices[&vertex_id].is_some() {
+                        TaggedValue::Some(value)
+                    } else {
+                        TaggedValue::NonexistentOptional
+                    }
+                };
+                let previous_vertex = context.suspended_vertices.pop().unwrap();
+                let context = context.move_to_vertex(previous_vertex);
+                let candidate = candidate_from_tagged_value(
+                    &operation,
+                    &initial_candidate,
+                    &field_name,
+                    &field_type,
+                    true,
+                    tagged,
+                );
+                (context, candidate)
+            })
         }))
     }
 
     fn compute_candidate_from_tagged_value_with_imported_tags<
         'vertex,
         VertexT: Debug + Clone + 'vertex,
+        E: 'vertex,
     >(
         self,
         field_ref: &'a FieldRef,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+    ) -> FallibleContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let cloned_field_ref = field_ref.clone();
-        let iterator: ContextOutcomeIterator<'vertex, VertexT, TaggedValue> =
-            Box::new(contexts.map(move |ctx| {
-                let value = ctx.imported_tags[&cloned_field_ref].clone();
-                (ctx, value)
-            }));
+        let iterator = Box::new(contexts.map(move |ctx| {
+            let value = ctx.imported_tags[&cloned_field_ref].clone();
+            Ok((ctx, value))
+        }));
         let (field_name, field_type) = match field_ref {
             FieldRef::ContextField(c) => (c.field_name.clone(), c.field_type.clone()),
             FieldRef::FoldSpecificField(f) => {
@@ -322,55 +372,59 @@ impl<'a> DynamicallyResolvedValue<'a> {
         )
     }
 
-    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex>(
+    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex, E: 'vertex>(
         self,
         fold_field: &'a FoldSpecificField,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+    ) -> FallibleContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let fold_eid = fold_field.fold_eid;
         let iterator = contexts.map(move |context| {
             let tagged = match context.folded_contexts[&fold_eid].as_ref() {
                 None => TaggedValue::NonexistentOptional,
                 Some(values) => TaggedValue::Some(FieldValue::Uint64(values.len() as u64)),
             };
-            (context, tagged)
+            Ok((context, tagged))
         });
         let initial_candidate = self.initial_candidate;
         let operation = self.operation;
         let field_name: Arc<str> = fold_field.kind.field_name().into();
         let field_type = fold_field.kind.field_type().clone();
-        Box::new(iterator.map(move |(context, tagged)| {
+        Box::new(iterator.map(move |outcome| {
+            outcome.map(|(context, tagged)| {
+                let candidate = candidate_from_tagged_value(
+                    &operation,
+                    &initial_candidate,
+                    &field_name,
+                    &field_type,
+                    false,
+                    tagged,
+                );
+                (context, candidate)
+            })
+        }))
+    }
+}
+
+fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex, E: 'vertex>(
+    operation: &Operation<(), ()>,
+    initial_candidate: CandidateValue<FieldValue>,
+    field_name: Arc<str>,
+    field_type: Type,
+    iterator: FallibleContextOutcomeIterator<'vertex, Vertex, TaggedValue, E>,
+) -> FallibleContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>, E> {
+    let operation = operation.clone();
+    Box::new(iterator.map(move |outcome| {
+        outcome.map(|(context, tagged)| {
             let candidate = candidate_from_tagged_value(
                 &operation,
                 &initial_candidate,
                 &field_name,
                 &field_type,
-                false,
+                true,
                 tagged,
             );
             (context, candidate)
-        }))
-    }
-}
-
-fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
-    operation: &Operation<(), ()>,
-    initial_candidate: CandidateValue<FieldValue>,
-    field_name: Arc<str>,
-    field_type: Type,
-    iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue>,
-) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>> {
-    let operation = operation.clone();
-    Box::new(iterator.map(move |(context, tagged)| {
-        let candidate = candidate_from_tagged_value(
-            &operation,
-            &initial_candidate,
-            &field_name,
-            &field_type,
-            true,
-            tagged,
-        );
-        (context, candidate)
+        })
     }))
 }
 
