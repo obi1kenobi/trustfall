@@ -2,7 +2,10 @@ use std::{collections::BTreeSet, fmt::Debug};
 
 use crate::{ir::FieldValue, schema::Schema};
 
-use super::{AsVertex, ContextIterator, ContextOutcomeIterator, Typename, VertexIterator};
+use super::{
+    AsVertex, ContextIterator, ContextOutcomeIterator, FallibleContextOutcomeIterator,
+    NeighborOutcome, Typename, VertexIterator,
+};
 
 mod correctness;
 
@@ -37,6 +40,22 @@ pub fn resolve_property_with<
     }))
 }
 
+/// Fallible counterpart of [`resolve_property_with`].
+pub fn try_resolve_property_with<
+    'vertex,
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
+>(
+    contexts: ContextIterator<'vertex, V>,
+    mut resolver: impl FnMut(&Vertex) -> Result<FieldValue, E> + 'vertex,
+) -> FallibleContextOutcomeIterator<'vertex, V, FieldValue, E> {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
+        None => Ok((ctx, FieldValue::Null)),
+        Some(vertex) => resolver(vertex).map(|value| (ctx, value)),
+    }))
+}
+
 /// Helper for implementing [`BasicAdapter::resolve_neighbors`] and equivalents.
 ///
 /// Takes a neighbor-resolver function and applies it over each of the vertices
@@ -51,19 +70,66 @@ pub fn resolve_neighbors_with<
     contexts: ContextIterator<'vertex, V>,
     mut resolver: impl FnMut(&Vertex) -> VertexIterator<'vertex, Vertex> + 'vertex,
 ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Vertex>> {
-    Box::new(contexts.map(move |ctx| {
-        match ctx.active_vertex::<Vertex>() {
-            None => {
-                // rustc needs a bit of help with the type inference here,
-                // due to the Box<dyn Iterator> conversion.
-                let no_neighbors: VertexIterator<'vertex, Vertex> = Box::new(std::iter::empty());
-                (ctx, no_neighbors)
-            }
-            Some(vertex) => {
-                let neighbors = resolver(vertex);
-                (ctx, neighbors)
-            }
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
+        None => {
+            // rustc needs a bit of help with the type inference here,
+            // due to the Box<dyn Iterator> conversion.
+            let no_neighbors: VertexIterator<'vertex, Vertex> = Box::new(std::iter::empty());
+            (ctx, no_neighbors)
         }
+        Some(vertex) => {
+            let neighbors = resolver(vertex);
+            (ctx, neighbors)
+        }
+    }))
+}
+
+/// Resolve a fallible edge whose successfully-created neighbor iterator is infallible.
+pub fn try_resolve_neighbors_with<'vertex, Vertex, V, E, I>(
+    contexts: ContextIterator<'vertex, V>,
+    mut resolver: impl FnMut(&Vertex) -> Result<I, E> + 'vertex,
+) -> FallibleContextOutcomeIterator<'vertex, V, NeighborOutcome<'vertex, Vertex, E>, E>
+where
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
+    I: IntoIterator<Item = Vertex> + 'vertex,
+    I::IntoIter: 'vertex,
+{
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
+        None => {
+            let neighbors: NeighborOutcome<'vertex, Vertex, E> = Box::new(std::iter::empty());
+            Ok((ctx, neighbors))
+        }
+        Some(vertex) => resolver(vertex).map(|neighbors| {
+            let neighbors: NeighborOutcome<'vertex, Vertex, E> =
+                Box::new(neighbors.into_iter().map(Ok));
+            (ctx, neighbors)
+        }),
+    }))
+}
+
+/// Resolve a fallible edge whose neighbor iterator may also fail between items.
+pub fn try_resolve_neighbors_with_fallible<'vertex, Vertex, V, E, I>(
+    contexts: ContextIterator<'vertex, V>,
+    mut resolver: impl FnMut(&Vertex) -> Result<I, E> + 'vertex,
+) -> FallibleContextOutcomeIterator<'vertex, V, NeighborOutcome<'vertex, Vertex, E>, E>
+where
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
+    I: IntoIterator<Item = Result<Vertex, E>> + 'vertex,
+    I::IntoIter: 'vertex,
+{
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
+        None => {
+            let neighbors: NeighborOutcome<'vertex, Vertex, E> = Box::new(std::iter::empty());
+            Ok((ctx, neighbors))
+        }
+        Some(vertex) => resolver(vertex).map(|neighbors| {
+            let neighbors: NeighborOutcome<'vertex, Vertex, E> = Box::new(neighbors.into_iter());
+            (ctx, neighbors)
+        }),
     }))
 }
 
@@ -87,6 +153,22 @@ pub fn resolve_coercion_with<
             let can_coerce = resolver(vertex);
             (ctx, can_coerce)
         }
+    }))
+}
+
+/// Fallible counterpart of [`resolve_coercion_with`].
+pub fn try_resolve_coercion_with<
+    'vertex,
+    Vertex: Debug + Clone + 'vertex,
+    V: AsVertex<Vertex> + 'vertex,
+    E: 'vertex,
+>(
+    contexts: ContextIterator<'vertex, V>,
+    mut resolver: impl FnMut(&Vertex) -> Result<bool, E> + 'vertex,
+) -> FallibleContextOutcomeIterator<'vertex, V, bool, E> {
+    Box::new(contexts.map(move |ctx| match ctx.active_vertex::<Vertex>() {
+        None => Ok((ctx, false)),
+        Some(vertex) => resolver(vertex).map(|can_coerce| (ctx, can_coerce)),
     }))
 }
 

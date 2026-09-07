@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::{
-    fs,
+    fmt, fs,
     rc::Rc,
     sync::{Arc, OnceLock},
 };
@@ -14,7 +14,8 @@ use trustfall::{
     FieldValue,
     provider::{
         Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, EdgeParameters,
-        ResolveEdgeInfo, ResolveInfo, VertexIterator, field_property, resolve_property_with,
+        FallibleAdapter, FallibleContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+        VertexIterator, field_property, resolve_property_with,
     },
 };
 
@@ -72,6 +73,30 @@ fn get_runtime() -> &'static Runtime {
 }
 
 pub struct DemoAdapter;
+
+/// A data-source failure reported while resolving the live demo's remote edges.
+#[derive(Debug)]
+pub struct DemoError(String);
+
+impl DemoError {
+    fn from_display(error: impl fmt::Display) -> Self {
+        Self(error.to_string())
+    }
+}
+
+impl fmt::Display for DemoError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for DemoError {}
+
+/// The live demo's fallible query adapter.
+///
+/// Pure resolver logic stays on [`DemoAdapter`]. Remote starting-edge failures are explicit
+/// `Result` items instead of being printed and silently discarded.
+pub struct FallibleDemoAdapter(DemoAdapter);
 
 impl DemoAdapter {
     pub fn new() -> Self {
@@ -143,6 +168,156 @@ impl DemoAdapter {
 
     fn most_downloaded_crates(&self) -> VertexIterator<'static, Vertex> {
         Box::new(CratesPager::new(get_crates_client()).into_iter().map(|x| x.into()))
+    }
+}
+
+impl FallibleDemoAdapter {
+    pub fn new() -> Self {
+        Self(DemoAdapter::new())
+    }
+}
+
+fn resolve_hackernews_items(
+    item_ids: Vec<u32>,
+    max: Option<usize>,
+) -> VertexIterator<'static, Result<Vertex, DemoError>> {
+    Box::new(item_ids.into_iter().take(max.unwrap_or(usize::MAX)).filter_map(|item_id| {
+        match get_hn_client().get_item(item_id) {
+            Ok(Some(item)) => Some(Ok(item.into())),
+            Ok(None) => None,
+            Err(error) => Some(Err(DemoError::from_display(error))),
+        }
+    }))
+}
+
+/// Lift a local iterator into the demo's fallible result stream.
+///
+/// Keeping this conversion at the boundary lets the ordinary adapter remain ordinary: its
+/// property and local graph traversal code never has to manufacture a `Result`.
+fn infallible_vertices<'a>(
+    vertices: VertexIterator<'a, Vertex>,
+) -> VertexIterator<'a, Result<Vertex, DemoError>> {
+    Box::new(vertices.map(Ok))
+}
+
+fn infallible_outcomes<'a, V, Outcome>(
+    outcomes: ContextOutcomeIterator<'a, V, Outcome>,
+) -> FallibleContextOutcomeIterator<'a, V, Outcome, DemoError>
+where
+    V: 'a,
+    Outcome: 'a,
+{
+    Box::new(outcomes.map(Ok))
+}
+
+fn infallible_neighbor_outcomes<'a, V>(
+    outcomes: ContextOutcomeIterator<'a, V, VertexIterator<'a, Vertex>>,
+) -> FallibleContextOutcomeIterator<'a, V, VertexIterator<'a, Result<Vertex, DemoError>>, DemoError>
+where
+    V: 'a,
+{
+    Box::new(outcomes.map(|(context, vertices)| Ok((context, infallible_vertices(vertices)))))
+}
+
+impl<'a> FallibleAdapter<'a> for FallibleDemoAdapter {
+    type Vertex = Vertex;
+    type Error = DemoError;
+
+    fn resolve_starting_vertices(
+        &self,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        _resolve_info: &ResolveInfo,
+    ) -> VertexIterator<'a, Result<Self::Vertex, Self::Error>> {
+        let result = match edge_name.as_ref() {
+            "HackerNewsFrontPage" => get_hn_client()
+                .get_top_stories()
+                .map_err(DemoError::from_display)
+                .map(|ids| resolve_hackernews_items(ids, Some(30))),
+            "HackerNewsTop" => {
+                let max = parameters.get("max").map(|value| value.as_u64().unwrap() as usize);
+                get_hn_client()
+                    .get_top_stories()
+                    .map_err(DemoError::from_display)
+                    .map(|ids| resolve_hackernews_items(ids, max))
+            }
+            "HackerNewsLatestStories" => {
+                let max = parameters.get("max").map(|value| value.as_u64().unwrap() as usize);
+                reqwest::blocking::get("https://hacker-news.firebaseio.com/v0/newstories.json")
+                    .map_err(DemoError::from_display)
+                    .and_then(|response| response.json().map_err(DemoError::from_display))
+                    .map(|ids| resolve_hackernews_items(ids, max))
+            }
+            "HackerNewsUser" => {
+                let username = parameters["name"].as_str().unwrap();
+                get_hn_client()
+                    .get_user(username)
+                    .map_err(DemoError::from_display)
+                    .map(|user| infallible_vertices(Box::new(user.into_iter().map(Into::into))))
+            }
+            "MostDownloadedCrates" => Ok(infallible_vertices(self.0.most_downloaded_crates())),
+            _ => unreachable!(),
+        };
+
+        match result {
+            Ok(vertices) => vertices,
+            Err(error) => Box::new(std::iter::once(Err(error))),
+        }
+    }
+
+    fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
+        &self,
+        contexts: ContextIterator<'a, V>,
+        type_name: &Arc<str>,
+        property_name: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> FallibleContextOutcomeIterator<'a, V, FieldValue, Self::Error> {
+        infallible_outcomes(Adapter::resolve_property(
+            &self.0,
+            contexts,
+            type_name,
+            property_name,
+            resolve_info,
+        ))
+    }
+
+    fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
+        &self,
+        contexts: ContextIterator<'a, V>,
+        type_name: &Arc<str>,
+        edge_name: &Arc<str>,
+        parameters: &EdgeParameters,
+        resolve_info: &ResolveEdgeInfo,
+    ) -> FallibleContextOutcomeIterator<
+        'a,
+        V,
+        VertexIterator<'a, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
+        infallible_neighbor_outcomes(Adapter::resolve_neighbors(
+            &self.0,
+            contexts,
+            type_name,
+            edge_name,
+            parameters,
+            resolve_info,
+        ))
+    }
+
+    fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
+        &self,
+        contexts: ContextIterator<'a, V>,
+        type_name: &Arc<str>,
+        coerce_to_type: &Arc<str>,
+        resolve_info: &ResolveInfo,
+    ) -> FallibleContextOutcomeIterator<'a, V, bool, Self::Error> {
+        infallible_outcomes(Adapter::resolve_coercion(
+            &self.0,
+            contexts,
+            type_name,
+            coerce_to_type,
+            resolve_info,
+        ))
     }
 }
 
