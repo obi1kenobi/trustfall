@@ -1,16 +1,8 @@
-use std::{fmt::Debug, mem};
+use std::mem;
 
 use regex::Regex;
 
-use crate::ir::{Argument, FieldRef, FieldValue, IRQueryComponent, LocalField, Operation, Vid};
-
-use super::{
-    Adapter, ContextIterator, ContextOutcomeIterator, DataContext, TaggedValue,
-    execution::{
-        QueryCarrier, compute_context_field_with_separate_value,
-        compute_fold_specific_field_with_separate_value, compute_local_field_with_separate_value,
-    },
-};
+use crate::ir::{Argument, FieldValue, Operation};
 
 #[inline(always)]
 pub(super) fn equals(left: &FieldValue, right: &FieldValue) -> bool {
@@ -223,489 +215,70 @@ pub(super) fn regex_matches_optimized(left: &FieldValue, regex: &Regex) -> bool 
     }
 }
 
-fn apply_unary_filter<
-    'query,
-    Vertex: Debug + Clone + 'query,
-    FilterFn: Fn(&FieldValue) -> bool + 'query,
->(
-    filter_op: FilterFn,
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
-    Box::new(iterator.filter_map(move |mut context| {
-        let last_value = context.values.pop().expect("no value present");
-        (context.within_nonexistent_optional() || filter_op(&last_value)).then_some(context)
-    }))
-}
-
 #[inline(always)]
 fn is_null(value: &FieldValue) -> bool {
     matches!(value, FieldValue::Null)
 }
 
-fn attempt_apply_unary_filter<'query, Vertex: Debug + Clone + 'query>(
+/// The per-value comparison of a unary filter (`@filter(op: "is_null")` / `"is_not_null"`),
+/// or `None` if `filter` is not a unary operation.
+///
+/// Shared with the async engine so both engines apply identical filter semantics.
+pub(super) fn unary_filter_predicate(
     filter: &Operation<(), &Argument>,
-    iterator: ContextIterator<'query, Vertex>,
-) -> Result<ContextIterator<'query, Vertex>, ContextIterator<'query, Vertex>> {
+) -> Option<fn(&FieldValue) -> bool> {
     match filter {
-        Operation::IsNull(_) => Ok(apply_unary_filter(is_null, iterator)),
-        Operation::IsNotNull(_) => Ok(apply_unary_filter(|v| !is_null(v), iterator)),
-        _ => Err(iterator),
+        Operation::IsNull(_) => Some(is_null),
+        Operation::IsNotNull(_) => Some(|value| !is_null(value)),
+        _ => None,
     }
 }
 
-pub(super) fn apply_filter<'query, AdapterT: Adapter<'query>>(
-    adapter: &AdapterT,
-    carrier: &mut QueryCarrier,
-    component: &IRQueryComponent,
-    current_vid: Vid,
-    filter: &Operation<(), &Argument>,
-    iterator: ContextIterator<'query, AdapterT::Vertex>,
-) -> ContextIterator<'query, AdapterT::Vertex> {
-    // If the filter operator is unary, we don't need to evaluate any arguments.
-    // Short-circuit it here.
-    let iterator = match attempt_apply_unary_filter(filter, iterator) {
-        Ok(output) => return output,
-        Err(iterator) => iterator,
-    };
-
-    // TODO: implement more efficient filtering with:
-    //       - type awareness: we know the type of the field being filtered,
-    //         and we probably know (or can infer) the type of the filtering argument(s)
-    //       - when using tagged values as regexes, adjacent tag values are likely to be equal
-    //         due to expansion rules, so keep the previous regex around and reuse if possible
-    //         instead of rebuilding
-    //       - turn "in_collection" filter arguments into sets if possible
-    match filter.right() {
-        Some(Argument::Variable(var)) => {
-            let query_arguments =
-                &carrier.query.as_ref().expect("query was not returned").arguments;
-            let right_value = query_arguments[var.variable_name.as_ref()].to_owned();
-            apply_filter_with_static_argument_value(filter, right_value, iterator)
-        }
-        Some(Argument::Tag(FieldRef::ContextField(context_field))) => {
-            // TODO: Benchmark if it would be faster to duplicate the filtering code to special-case
-            //       the situation when the tag is always known to exist, so we don't have to unwrap
-            //       a TaggedValue enum, because we know it would be TaggedValue::Some.
-            let argument_value_iterator = if context_field.vertex_id == current_vid {
-                // This tag is from the vertex we're currently filtering. That means the field
-                // whose value we want to get is actually local, so there's no need to compute it
-                // using the more expensive approach we use for non-local fields.
-                let local_equivalent_field = LocalField {
-                    field_name: context_field.field_name.clone(),
-                    field_type: context_field.field_type.clone(),
-                };
-                Box::new(
-                    compute_local_field_with_separate_value(
-                        adapter,
-                        carrier,
-                        component,
-                        current_vid,
-                        &local_equivalent_field,
-                        iterator,
-                    )
-                    .map(|(ctx, value)| (ctx, TaggedValue::Some(value))),
-                )
-            } else {
-                compute_context_field_with_separate_value(
-                    adapter,
-                    carrier,
-                    component,
-                    context_field,
-                    iterator,
-                )
-            };
-            apply_filter_with_tagged_argument_value(filter, argument_value_iterator)
-        }
-        Some(Argument::Tag(field_ref @ FieldRef::FoldSpecificField(fold_field))) => {
-            let argument_value_iterator = if component.folds.contains_key(&fold_field.fold_eid) {
-                compute_fold_specific_field_with_separate_value(
-                    fold_field.fold_eid,
-                    &fold_field.kind,
-                    iterator,
-                )
-            } else {
-                // This value represents an imported tag value from an outer component.
-                // Grab its value from the context itself.
-                let cloned_ref = field_ref.clone();
-                Box::new(iterator.map(move |ctx| {
-                    let right_value = ctx.imported_tags[&cloned_ref].clone();
-                    (ctx, right_value)
-                }))
-            };
-            apply_filter_with_tagged_argument_value(filter, argument_value_iterator)
-        }
-        None => unreachable!(
-            "no argument present for filter, but not handled in unary filters fn: {filter:?}"
-        ),
-    }
-}
-
-macro_rules! not {
-    ($fn_name:ident) => {
-        |l, r| !$fn_name(l, r)
-    };
-}
-
-fn apply_filter_op_with_static_argument<
-    'query,
-    RightValue: 'query,
-    Vertex: Debug + Clone + 'query,
-    FilterFn: Fn(&FieldValue, &RightValue) -> bool + 'query,
->(
-    right_value: RightValue,
-    filter_op: FilterFn,
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
-    Box::new(iterator.filter_map(move |mut ctx| {
-        let left_value = ctx.values.pop().expect("no value present");
-        apply_filter_op(ctx, &filter_op, &left_value, &right_value)
-    }))
-}
-
-fn apply_filter_op_with_tagged_argument<
-    'query,
-    Vertex: Debug + Clone + 'query,
-    FilterFn: Fn(&FieldValue, &FieldValue) -> bool + 'query,
->(
-    filter_op: FilterFn,
-    iterator: ContextOutcomeIterator<'query, Vertex, TaggedValue>,
-) -> ContextIterator<'query, Vertex> {
-    Box::new(iterator.filter_map(move |(mut ctx, tagged_value)| {
-        let left_value = ctx.values.pop().expect("no value present");
-        let TaggedValue::Some(right_value) = tagged_value else {
-            return Some(ctx);
-        };
-        apply_filter_op(ctx, &filter_op, &left_value, &right_value)
-    }))
-}
-
-#[inline(always)]
-fn apply_filter_op<
-    'query,
-    RightValue: 'query,
-    Vertex: Debug + Clone + 'query,
-    FilterFn: Fn(&FieldValue, &RightValue) -> bool + 'query,
->(
-    ctx: DataContext<Vertex>,
-    filter_op: &FilterFn,
-    left: &FieldValue,
-    right: &RightValue,
-) -> Option<DataContext<Vertex>> {
-    // TODO: This is a missed optimization opportunity:
-    //       It's possible that computing the arguments for the filter function was expensive,
-    //       and we might have been able to skip it if `ctx.within_nonexistent_optional()` is true.
-    //       With the current impl, we fail to do so.
-    //       For example: we may have created a Regex value from a tag, or used a `@transform` on
-    //       a property to perform some computation on either the left or right value (#617).
-    (ctx.within_nonexistent_optional() || filter_op(left, right)).then_some(ctx)
-}
-
-fn apply_filter_with_static_argument_value<'query, Vertex: Debug + Clone + 'query>(
+/// The per-value comparison of a filter whose right-hand side is a static (runtime-argument) value,
+/// e.g. `equals` bound to the provided `right_value`. Panics on unary ops (use
+/// [`unary_filter_predicate`]) and is not applicable to tag arguments.
+///
+/// Shared with the async engine so both engines apply identical filter semantics.
+pub(super) fn static_argument_filter_predicate<'query>(
     filter: &Operation<(), &Argument>,
     right_value: FieldValue,
-    iterator: ContextIterator<'query, Vertex>,
-) -> ContextIterator<'query, Vertex> {
+) -> Box<dyn Fn(&FieldValue) -> bool + 'query> {
+    macro_rules! bind {
+        ($op:expr) => {
+            Box::new(move |left: &FieldValue| $op(left, &right_value))
+        };
+    }
     match filter {
-        Operation::Equals(_, _) => {
-            apply_filter_op_with_static_argument(right_value, equals, iterator)
-        }
-        Operation::NotEquals(_, _) => {
-            apply_filter_op_with_static_argument(right_value, not!(equals), iterator)
-        }
-        Operation::LessThan(_, _) => {
-            apply_filter_op_with_static_argument(right_value, less_than, iterator)
-        }
-        Operation::LessThanOrEqual(_, _) => {
-            apply_filter_op_with_static_argument(right_value, less_than_or_equal, iterator)
-        }
-        Operation::GreaterThan(_, _) => {
-            apply_filter_op_with_static_argument(right_value, greater_than, iterator)
-        }
-        Operation::GreaterThanOrEqual(_, _) => {
-            apply_filter_op_with_static_argument(right_value, greater_than_or_equal, iterator)
-        }
-        Operation::Contains(_, _) => {
-            apply_filter_op_with_static_argument(right_value, contains, iterator)
-        }
-        Operation::NotContains(_, _) => {
-            apply_filter_op_with_static_argument(right_value, not!(contains), iterator)
-        }
-        Operation::OneOf(_, _) => {
-            apply_filter_op_with_static_argument(right_value, one_of, iterator)
-        }
-        Operation::NotOneOf(_, _) => {
-            apply_filter_op_with_static_argument(right_value, not!(one_of), iterator)
-        }
-        Operation::HasPrefix(_, _) => {
-            apply_filter_op_with_static_argument(right_value, has_prefix, iterator)
-        }
-        Operation::NotHasPrefix(_, _) => {
-            apply_filter_op_with_static_argument(right_value, not!(has_prefix), iterator)
-        }
-        Operation::HasSuffix(_, _) => {
-            apply_filter_op_with_static_argument(right_value, has_suffix, iterator)
-        }
-        Operation::NotHasSuffix(_, _) => {
-            apply_filter_op_with_static_argument(right_value, not!(has_suffix), iterator)
-        }
-        Operation::HasSubstring(_, _) => {
-            apply_filter_op_with_static_argument(right_value, has_substring, iterator)
-        }
-        Operation::NotHasSubstring(_, _) => {
-            apply_filter_op_with_static_argument(right_value, not!(has_substring), iterator)
-        }
+        Operation::Equals(_, _) => bind!(equals),
+        Operation::NotEquals(_, _) => bind!(|l, r| !equals(l, r)),
+        Operation::LessThan(_, _) => bind!(less_than),
+        Operation::LessThanOrEqual(_, _) => bind!(less_than_or_equal),
+        Operation::GreaterThan(_, _) => bind!(greater_than),
+        Operation::GreaterThanOrEqual(_, _) => bind!(greater_than_or_equal),
+        Operation::Contains(_, _) => bind!(contains),
+        Operation::NotContains(_, _) => bind!(|l, r| !contains(l, r)),
+        Operation::OneOf(_, _) => bind!(one_of),
+        Operation::NotOneOf(_, _) => bind!(|l, r| !one_of(l, r)),
+        Operation::HasPrefix(_, _) => bind!(has_prefix),
+        Operation::NotHasPrefix(_, _) => bind!(|l, r| !has_prefix(l, r)),
+        Operation::HasSuffix(_, _) => bind!(has_suffix),
+        Operation::NotHasSuffix(_, _) => bind!(|l, r| !has_suffix(l, r)),
+        Operation::HasSubstring(_, _) => bind!(has_substring),
+        Operation::NotHasSubstring(_, _) => bind!(|l, r| !has_substring(l, r)),
         Operation::RegexMatches(_, _) => {
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            apply_filter_op_with_static_argument(pattern, regex_matches_optimized, iterator)
+            Box::new(move |left: &FieldValue| regex_matches_optimized(left, &pattern))
         }
         Operation::NotRegexMatches(_, _) => {
             let pattern =
                 Regex::new(right_value.as_str().expect("regex argument was not a string"))
                     .expect("regex argument was not a valid regex");
-            apply_filter_op_with_static_argument(pattern, not!(regex_matches_optimized), iterator)
+            Box::new(move |left: &FieldValue| !regex_matches_optimized(left, &pattern))
         }
-
-        Operation::IsNull(_) | Operation::IsNotNull(_) => unreachable!("{filter:?}"),
-    }
-}
-
-fn apply_filter_with_tagged_argument_value<'query, Vertex: Debug + Clone + 'query>(
-    filter: &Operation<(), &Argument>,
-    argument_value_iterator: ContextOutcomeIterator<'query, Vertex, TaggedValue>,
-) -> ContextIterator<'query, Vertex> {
-    match filter {
-        Operation::Equals(_, _) => {
-            apply_filter_op_with_tagged_argument(equals, argument_value_iterator)
-        }
-        Operation::NotEquals(_, _) => {
-            apply_filter_op_with_tagged_argument(not!(equals), argument_value_iterator)
-        }
-        Operation::LessThan(_, _) => {
-            apply_filter_op_with_tagged_argument(less_than, argument_value_iterator)
-        }
-        Operation::LessThanOrEqual(_, _) => {
-            apply_filter_op_with_tagged_argument(less_than_or_equal, argument_value_iterator)
-        }
-        Operation::GreaterThan(_, _) => {
-            apply_filter_op_with_tagged_argument(greater_than, argument_value_iterator)
-        }
-        Operation::GreaterThanOrEqual(_, _) => {
-            apply_filter_op_with_tagged_argument(greater_than_or_equal, argument_value_iterator)
-        }
-        Operation::Contains(_, _) => {
-            apply_filter_op_with_tagged_argument(contains, argument_value_iterator)
-        }
-        Operation::NotContains(_, _) => {
-            apply_filter_op_with_tagged_argument(not!(contains), argument_value_iterator)
-        }
-        Operation::OneOf(_, _) => {
-            apply_filter_op_with_tagged_argument(one_of, argument_value_iterator)
-        }
-        Operation::NotOneOf(_, _) => {
-            apply_filter_op_with_tagged_argument(not!(one_of), argument_value_iterator)
-        }
-        Operation::HasPrefix(_, _) => {
-            apply_filter_op_with_tagged_argument(has_prefix, argument_value_iterator)
-        }
-        Operation::NotHasPrefix(_, _) => {
-            apply_filter_op_with_tagged_argument(not!(has_prefix), argument_value_iterator)
-        }
-        Operation::HasSuffix(_, _) => {
-            apply_filter_op_with_tagged_argument(has_suffix, argument_value_iterator)
-        }
-        Operation::NotHasSuffix(_, _) => {
-            apply_filter_op_with_tagged_argument(not!(has_suffix), argument_value_iterator)
-        }
-        Operation::HasSubstring(_, _) => {
-            apply_filter_op_with_tagged_argument(has_substring, argument_value_iterator)
-        }
-        Operation::NotHasSubstring(_, _) => {
-            apply_filter_op_with_tagged_argument(not!(has_substring), argument_value_iterator)
-        }
-        Operation::RegexMatches(_, _) => {
-            apply_filter_op_with_tagged_argument(regex_matches_slow_path, argument_value_iterator)
-        }
-        Operation::NotRegexMatches(_, _) => apply_filter_op_with_tagged_argument(
-            not!(regex_matches_slow_path),
-            argument_value_iterator,
-        ),
-        Operation::IsNull(_) | Operation::IsNotNull(_) => unreachable!("{filter:?}"),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use crate::{
-        interpreter::filtering::{equals, greater_than_or_equal, less_than, less_than_or_equal},
-        ir::FieldValue,
-    };
-
-    use super::greater_than;
-
-    #[test]
-    fn test_integer_strict_inequality_comparisons() {
-        let test_data = [
-            // both values can convert to each other
-            (FieldValue::Uint64(0), FieldValue::Int64(0), false),
-            (FieldValue::Uint64(0), FieldValue::Int64(1), false),
-            (FieldValue::Uint64(1), FieldValue::Int64(0), true),
-            //
-            // the left value can convert into the right
-            (FieldValue::Uint64(0), FieldValue::Int64(-1), true),
-            //
-            // the right value can convert into the left
-            (FieldValue::Uint64(u64::MAX), FieldValue::Int64(2), true),
-            //
-            // neither value can convert into the other
-            (FieldValue::Uint64(u64::MAX), FieldValue::Int64(-2), true),
-        ];
-
-        for (left, right, expected_outcome) in test_data {
-            assert_eq!(expected_outcome, greater_than(&left, &right), "{left:?} > {right:?}",);
-            assert_eq!(expected_outcome, less_than(&right, &left), "{right:?} < {left:?}",);
-        }
-    }
-
-    #[test]
-    fn test_integer_non_strict_inequality_comparisons() {
-        let test_data = [
-            // both values can convert to each other
-            (FieldValue::Uint64(0), FieldValue::Int64(0), true),
-            (FieldValue::Uint64(0), FieldValue::Int64(1), false),
-            (FieldValue::Uint64(1), FieldValue::Int64(0), true),
-            //
-            // the left value can convert into the right
-            (FieldValue::Uint64(0), FieldValue::Int64(-1), true),
-            //
-            // the right value can convert into the left
-            (FieldValue::Uint64(u64::MAX), FieldValue::Int64(2), true),
-            //
-            // neither value can convert into the other
-            (FieldValue::Uint64(u64::MAX), FieldValue::Int64(-2), true),
-        ];
-
-        for (left, right, expected_outcome) in test_data {
-            assert_eq!(
-                expected_outcome,
-                greater_than_or_equal(&left, &right),
-                "{left:?} >= {right:?}",
-            );
-            assert_eq!(
-                expected_outcome,
-                less_than_or_equal(&right, &left),
-                "{right:?} <= {left:?}",
-            );
-        }
-    }
-
-    #[test]
-    fn test_integer_equality_comparisons() {
-        let test_data = [
-            // both values can convert to each other
-            (FieldValue::Uint64(0), FieldValue::Int64(0), true),
-            (FieldValue::Uint64(0), FieldValue::Int64(1), false),
-            (FieldValue::Uint64(1), FieldValue::Int64(0), false),
-            //
-            // the left value can convert into the right
-            (FieldValue::Uint64(0), FieldValue::Int64(-1), false),
-            //
-            // the right value can convert into the left
-            (FieldValue::Uint64(u64::MAX), FieldValue::Int64(2), false),
-            //
-            // neither value can convert into the other
-            (FieldValue::Uint64(u64::MAX), FieldValue::Int64(-2), false),
-        ];
-
-        for (left, right, expected_outcome) in test_data {
-            assert_eq!(expected_outcome, equals(&left, &right), "{left:?} = {right:?}",);
-            assert_eq!(expected_outcome, equals(&right, &left), "{right:?} = {left:?}",);
-
-            if expected_outcome {
-                // both >= and <= comparisons in either direction should return true
-                assert!(less_than_or_equal(&left, &right), "{left:?} <= {right:?}",);
-                assert!(greater_than_or_equal(&left, &right), "{left:?} >= {right:?}",);
-                assert!(less_than_or_equal(&right, &left), "{right:?} <= {left:?}",);
-                assert!(greater_than_or_equal(&right, &left), "{right:?} >= {left:?}",);
-
-                // both > and < comparisons in either direction should return false
-                assert!(!less_than(&left, &right), "{left:?} < {right:?}");
-                assert!(!greater_than(&left, &right), "{left:?} > {right:?}");
-                assert!(!less_than(&right, &left), "{right:?} < {left:?}");
-                assert!(!greater_than(&right, &left), "{right:?} > {left:?}");
-            } else {
-                // exactly one of <= / >= / < / > comparisons should return true per direction
-                assert!(
-                    less_than_or_equal(&left, &right) ^ greater_than_or_equal(&left, &right),
-                    "{left:?} <= {right:?} ^ {left:?} >= {right:?}",
-                );
-                assert!(
-                    less_than_or_equal(&right, &left) ^ greater_than_or_equal(&right, &left),
-                    "{right:?} <= {left:?} ^ {right:?} >= {left:?}",
-                );
-                assert!(
-                    less_than(&left, &right) ^ greater_than(&left, &right),
-                    "{left:?} <= {right:?} ^ {left:?} >= {right:?}",
-                );
-                assert!(
-                    less_than(&right, &left) ^ greater_than(&right, &left),
-                    "{right:?} <= {left:?} ^ {right:?} >= {left:?}",
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_mixed_list_equality_comparison() {
-        let test_data = [
-            (
-                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
-                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
-                true,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
-                FieldValue::List(Arc::new([FieldValue::Int64(0), FieldValue::Uint64(0)])),
-                true,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Int64(0), FieldValue::Uint64(0)])),
-                FieldValue::List(Arc::new([FieldValue::Int64(0), FieldValue::Uint64(0)])),
-                true,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(-2)])),
-                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(-2)])),
-                true,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Int64(-1), FieldValue::Uint64(2)])),
-                FieldValue::List(Arc::new([FieldValue::Int64(-1), FieldValue::Uint64(2)])),
-                true,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Int64(-1), FieldValue::Uint64(2)])),
-                FieldValue::List(Arc::new([FieldValue::Uint64(2), FieldValue::Int64(-1)])),
-                false,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Uint64(0), FieldValue::Int64(0)])),
-                FieldValue::List(Arc::new([FieldValue::Int64(0)])),
-                false,
-            ),
-            (
-                FieldValue::List(Arc::new([FieldValue::Uint64(0)])),
-                FieldValue::List(Arc::new([])),
-                false,
-            ),
-        ];
-
-        for (left, right, expected_outcome) in test_data {
-            assert_eq!(expected_outcome, equals(&left, &right), "{left:?} = {right:?}",);
-            assert_eq!(expected_outcome, equals(&right, &left), "{right:?} = {left:?}",);
+        Operation::IsNull(_) | Operation::IsNotNull(_) => {
+            unreachable!("unary filter passed to static_argument_filter_predicate: {filter:?}")
         }
     }
 }
