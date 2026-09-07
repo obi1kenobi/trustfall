@@ -76,7 +76,8 @@ pub fn interpret_query(
         .map_err(|err| crate::errors::QueryArgumentsError::new_err(format!("{err}")))?;
     let owned_iter: Box<dyn Iterator<Item = BTreeMap<String, Py<PyAny>>>> =
         Box::new(execution.map(|res| {
-            res.iter()
+            res.expect("Python adapters are infallible")
+                .iter()
                 .map(|(k, v)| {
                     let py_value: FieldValue = v.clone().into();
                     Python::attach(|py| (k.to_string(), py_value.into_pyobject(py).expect("failed to convert FieldValue to Python object, this shouldn't be possible").unbind()))
