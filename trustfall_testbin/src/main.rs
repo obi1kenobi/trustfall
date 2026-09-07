@@ -17,7 +17,6 @@ use std::{
 };
 
 use async_graphql_parser::{parse_query, parse_schema};
-use itertools::Itertools;
 use serde::{Serialize, de::DeserializeOwned};
 
 use trustfall_core::{
@@ -122,7 +121,8 @@ where
     let execution_result = execution::interpret_ir(Arc::new(adapter), query, arguments);
     match execution_result {
         Ok(results_iter) => {
-            let results = results_iter.collect_vec();
+            let results: Vec<BTreeMap<Arc<str>, FieldValue>> =
+                results_iter.map(|r| r.expect("infallible adapter")).collect();
 
             // Ensure that each result has each of the declared outputs in the metadata,
             // and no unexpected outputs.
@@ -185,7 +185,10 @@ fn trace_with_adapter<'a, AdapterT>(
     let execution_result = execution::interpret_ir(adapter_tap.clone(), query, arguments);
     match execution_result {
         Ok(results_iter) => {
-            let results = tap_results(adapter_tap.clone(), results_iter).collect_vec();
+            let results: Vec<BTreeMap<Arc<str>, FieldValue>> =
+                tap_results(adapter_tap.clone(), results_iter)
+                    .map(|r| r.expect("infallible adapter"))
+                    .collect();
             let expected_results = expected_results_func();
             assert_eq!(
                 &expected_results, &results,
