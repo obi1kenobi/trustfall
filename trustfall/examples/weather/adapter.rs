@@ -1,8 +1,9 @@
+use trustfall::provider::async_helpers::{resolve_neighbors_with, resolve_property_with};
 use trustfall::{
     FieldValue,
     provider::{
-        BasicAdapter, ContextIterator, ContextOutcomeIterator, EdgeParameters, TrustfallEnumVertex,
-        VertexIterator, field_property, resolve_neighbors_with, resolve_property_with,
+        AsyncBasicAdapter, AsyncContextOutcomeStream, AsyncContextStream, AsyncNeighborStream,
+        EdgeParameters, TrustfallEnumVertex, field_property,
     },
 };
 use trustfall_core::interpreter::AsVertex;
@@ -53,16 +54,18 @@ macro_rules! float {
     };
 }
 
-impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
+impl<'a> AsyncBasicAdapter<'a> for MetarAdapter<'a> {
     type Vertex = Vertex<'a>;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> VertexIterator<'a, Self::Vertex> {
+    ) -> AsyncNeighborStream<'a, Self::Vertex> {
         match edge_name {
-            "MetarReport" => Box::new(self.data.iter().map(|x| x.into())),
+            "MetarReport" => {
+                Box::pin(futures_util::stream::iter(self.data.iter().map(|x| x.into())))
+            }
             "LatestMetarReportForAirport" => {
                 let station_code = parameters["airport_code"].as_str().unwrap().to_string();
                 let iter = self
@@ -70,7 +73,7 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
                     .iter()
                     .filter(move |&x| x.station_id == station_code)
                     .map(|x| x.into());
-                Box::new(iter)
+                Box::pin(futures_util::stream::iter(iter))
             }
             _ => unreachable!(),
         }
@@ -78,10 +81,10 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
 
     fn resolve_property<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, V>,
+        contexts: AsyncContextStream<'a, V>,
         type_name: &str,
         property_name: &str,
-    ) -> ContextOutcomeIterator<'a, V, FieldValue> {
+    ) -> AsyncContextOutcomeStream<'a, V, FieldValue> {
         match type_name {
             "MetarReport" => match property_name {
                 "station_id" => {
@@ -140,11 +143,11 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
 
     fn resolve_neighbors<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, V>,
+        contexts: AsyncContextStream<'a, V>,
         type_name: &str,
         edge_name: &str,
         parameters: &EdgeParameters,
-    ) -> ContextOutcomeIterator<'a, V, VertexIterator<'a, Self::Vertex>> {
+    ) -> AsyncContextOutcomeStream<'a, V, AsyncNeighborStream<'a, Self::Vertex>> {
         match (type_name, edge_name) {
             ("MetarReport", "cloud_cover") => {
                 assert!(parameters.is_empty());
@@ -155,7 +158,7 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
                         .cloud_cover
                         .iter()
                         .map(|c| c.into());
-                    Box::new(neighbors)
+                    Box::pin(futures_util::stream::iter(neighbors))
                 })
             }
             _ => unreachable!(),
@@ -165,10 +168,10 @@ impl<'a> BasicAdapter<'a> for MetarAdapter<'a> {
     #[allow(unused_variables)]
     fn resolve_coercion<V: AsVertex<Self::Vertex> + 'a>(
         &self,
-        contexts: ContextIterator<'a, V>,
+        contexts: AsyncContextStream<'a, V>,
         type_name: &str,
         coerce_to_type: &str,
-    ) -> ContextOutcomeIterator<'a, V, bool> {
+    ) -> AsyncContextOutcomeStream<'a, V, bool> {
         unimplemented!("no types in our schema have subtypes")
     }
 }

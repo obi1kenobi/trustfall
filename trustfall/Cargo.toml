@@ -13,9 +13,17 @@ authors.workspace = true
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
+# Build the docs with all public features: the async API is part of the public surface.
+all-features = true
+
+[features]
+# Opt-in asynchronous, `Stream`-native query engine and `AsyncAdapter` / `AsyncBasicAdapter` traits.
+async = ["dep:futures-core", "dep:futures-util", "trustfall_core/async"]
 
 [dependencies]
 anyhow = { workspace = true }
+futures-core = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
 trustfall_core = { version = "=0.8.1", path = "../trustfall_core" }
 trustfall_derive = { version = "=0.3.1", path = "../trustfall_derive" }
 
@@ -30,6 +38,7 @@ feed-rs = "2.3.1"
 hn_api = "0.1.0"
 csv = "1.1.6"
 flate2 = "1.0"
+futures-executor = { workspace = true }
 
 [[example]]
 # Running queries over RSS/Atom feeds.
@@ -42,3 +51,4 @@ name = "hackernews"
 [[example]]
 # Running queries over CSV data of weather at US airports (the METAR system).
 name = "weather"
+required-features = ["async"]
