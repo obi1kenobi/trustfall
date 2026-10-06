@@ -49,25 +49,31 @@ pub(crate) enum VertexKind {
     Type,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, derive_new::new)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct InferredField {
     ty: InferredType,
-
-    #[new(default)]
     parameters: BTreeMap<Rc<str>, InferredType>,
 }
 
+impl InferredField {
+    pub(crate) fn new(ty: InferredType) -> Self {
+        Self { ty, parameters: BTreeMap::new() }
+    }
+}
+
 #[allow(dead_code)]
-#[derive(Debug, Clone, derive_new::new)]
+#[derive(Debug, Clone)]
 pub(crate) struct InferredVertexType {
     name: Rc<str>,
     kind: VertexKind,
-
-    #[new(default)]
     implements: BTreeSet<Rc<str>>,
-
-    #[new(default)]
     fields: BTreeMap<Rc<str>, InferredField>,
+}
+
+impl InferredVertexType {
+    pub(crate) fn new(name: Rc<str>, kind: VertexKind) -> Self {
+        Self { name, kind, implements: BTreeSet::new(), fields: BTreeMap::new() }
+    }
 }
 
 #[derive(Debug)]
