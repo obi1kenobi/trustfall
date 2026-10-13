@@ -127,7 +127,11 @@ fn run_query<'a, A: Adapter<'a> + 'a, T: serde::de::DeserializeOwned>(
     let indexed = crate::frontend::parse(schema, query).expect("not a valid query");
     crate::interpreter::execution::interpret_ir(adapter, indexed, Arc::new(variables))
         .expect("execution error")
-        .map(|row| row.try_into_struct::<T>().expect("incorrect result shape"))
+        .map(|row| {
+            row.unwrap_or_else(|e| panic!("adapter errored during invariant check: {e}"))
+                .try_into_struct::<T>()
+                .expect("incorrect result shape")
+        })
 }
 
 /// Construct a *believable* [`ResolveInfo`] that would pass muster under a cursory examination.
@@ -236,12 +240,13 @@ fn check_properties_are_implemented<'a, A: Adapter<'a>>(
 
             let mut final_contexts = Vec::with_capacity(sample_size);
 
-            for (ctx, value) in adapter_under_test.resolve_property(
+            for outcome in adapter_under_test.resolve_property(
                 contexts,
                 type_name,
                 &property_name,
                 &resolve_info,
             ) {
+                let (ctx, value) = outcome;
                 assert_eq!(
                     FieldValue::NULL,
                     value,
@@ -426,13 +431,14 @@ fn check_edges_are_implemented<'a, A: Adapter<'a>>(
 
         let mut final_contexts = Vec::with_capacity(sample_size);
 
-        for (ctx, mut neighbors) in adapter_under_test.resolve_neighbors(
+        for outcome in adapter_under_test.resolve_neighbors(
             contexts,
             &type_name,
             &edge_name,
             &parameters,
             &resolve_info,
         ) {
+            let (ctx, mut neighbors) = outcome;
             assert!(
                 neighbors.next().is_none(),
                 "resolve_neighbors() produced a non-empty neighbor iterator \
@@ -552,9 +558,10 @@ fn check_type_coercions_are_implemented<'a, A: Adapter<'a>>(
 
         let mut final_contexts = Vec::with_capacity(sample_size);
 
-        for (ctx, value) in
+        for outcome in
             adapter_under_test.resolve_coercion(contexts, type_name, coerce_to, &resolve_info)
         {
+            let (ctx, value) = outcome;
             assert!(
                 !value,
                 "resolve_coercion() claimed that a non-existent vertex could be coerced \
