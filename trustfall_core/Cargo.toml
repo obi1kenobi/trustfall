@@ -35,6 +35,9 @@ smallvec = { version = "1.6.1", features = ["serde"] }
 regex = { workspace = true }
 thiserror = { workspace = true }
 itertools = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+async-stream = { workspace = true }
 
 [dev-dependencies]
 ron = { workspace = true }
@@ -42,3 +45,4 @@ trustfall_filetests_macros = { path = "../trustfall_filetests_macros", version =
 similar-asserts = { workspace = true, features = ["serde"] }
 globset = { workspace = true }
 walkdir = { workspace = true }
+futures-executor = { workspace = true }
