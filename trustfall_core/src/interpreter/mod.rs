@@ -10,13 +10,18 @@ use crate::{
 
 use self::error::QueryArgumentsError;
 
+mod async_adapter;
 pub mod basic_adapter;
+mod engine;
+mod engine_filter;
+mod engine_recurse;
 pub mod error;
 pub mod execution;
 mod filtering;
 pub mod helpers;
 mod hints;
 pub mod replay;
+mod sync_adapter;
 pub mod trace;
 
 pub use hints::{
