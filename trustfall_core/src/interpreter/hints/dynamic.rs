@@ -2,12 +2,8 @@ use std::{fmt::Debug, ops::Bound, sync::Arc};
 
 use crate::{
     interpreter::{
-        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, InterpretedQuery, TaggedValue,
-        VertexIterator,
-        execution::{
-            QueryCarrier, compute_context_field_with_separate_value,
-            compute_fold_specific_field_with_separate_value,
-        },
+        Adapter, AsVertex, ContextIterator, ContextOutcomeIterator, FallibleAdapter,
+        FallibleContextOutcomeIterator, InterpretedQuery, ResolveInfo, TaggedValue, VertexIterator,
         hints::Range,
     },
     ir::{
@@ -154,35 +150,6 @@ pub struct DynamicallyResolvedValue<'a> {
     initial_candidate: CandidateValue<FieldValue>,
 }
 
-macro_rules! compute_candidate_from_tagged_value {
-    ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
-        Box::new($iterator.map(move |(ctx, tagged_value)| {
-            let mut $candidate = $initial_candidate.clone();
-            match tagged_value {
-                TaggedValue::NonexistentOptional => (ctx, $candidate),
-                TaggedValue::Some($value) => {
-                    {
-                        $blk
-                    }
-                    (ctx, $candidate)
-                }
-            }
-        }))
-    };
-}
-
-macro_rules! resolve_fold_specific_field {
-    ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
-        Box::new($iterator.map(move |(ctx, tagged_value)| {
-            let mut $candidate = $initial_candidate.clone();
-            if let TaggedValue::Some($value) = tagged_value {
-                $blk
-            }
-            (ctx, $candidate)
-        }))
-    };
-}
-
 impl<'a> DynamicallyResolvedValue<'a> {
     pub(super) fn new(
         query: InterpretedQuery,
@@ -200,6 +167,23 @@ impl<'a> DynamicallyResolvedValue<'a> {
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
     ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
+        Box::new(self.try_resolve(adapter, contexts).map(|outcome| match outcome {
+            Ok(value) => value,
+            Err(never) => match never {},
+        }))
+    }
+
+    /// Fallible counterpart of [`DynamicallyResolvedValue::resolve`].
+    pub fn try_resolve<
+        'vertex,
+        AdapterT: FallibleAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, V>,
+    ) -> FallibleContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error>
+    {
         match &self.field {
             FieldRef::ContextField(context_field) => {
                 if context_field.vertex_id < self.resolve_on_component.root {
@@ -230,6 +214,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
     }
 
     #[allow(dead_code)] // false-positive: dead in the bin target, not dead in the lib
+    #[allow(clippy::type_complexity)]
     pub fn resolve_with<
         'vertex,
         AdapterT: Adapter<'vertex>,
@@ -253,49 +238,124 @@ impl<'a> DynamicallyResolvedValue<'a> {
         }))
     }
 
+    /// Fallible counterpart of [`DynamicallyResolvedValue::resolve_with`].
+    #[allow(clippy::type_complexity)]
+    pub fn try_resolve_with<
+        'vertex,
+        AdapterT: FallibleAdapter<'vertex>,
+        V: AsVertex<AdapterT::Vertex> + 'vertex,
+    >(
+        self,
+        adapter: &AdapterT,
+        contexts: ContextIterator<'vertex, V>,
+        mut neighbor_resolver: impl FnMut(
+            &AdapterT::Vertex,
+            CandidateValue<FieldValue>,
+        ) -> VertexIterator<'vertex, AdapterT::Vertex>
+        + 'vertex,
+    ) -> FallibleContextOutcomeIterator<
+        'vertex,
+        V,
+        VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>>,
+        AdapterT::Error,
+    > {
+        Box::new(self.try_resolve(adapter, contexts).map(move |outcome| {
+            outcome.map(|(ctx, candidate)| {
+                let neighbors: VertexIterator<'vertex, Result<AdapterT::Vertex, AdapterT::Error>> =
+                    match ctx.active_vertex.as_ref().and_then(AsVertex::as_vertex) {
+                        Some(vertex) => Box::new(neighbor_resolver(vertex, candidate).map(Ok)),
+                        None => Box::new(std::iter::empty()),
+                    };
+                (ctx, neighbors)
+            })
+        }))
+    }
+
     fn compute_candidate_from_tagged_value<
         'vertex,
-        AdapterT: Adapter<'vertex>,
+        AdapterT: FallibleAdapter<'vertex>,
         V: AsVertex<AdapterT::Vertex> + 'vertex,
     >(
         self,
         context_field: &'a ContextField,
         adapter: &AdapterT,
         contexts: ContextIterator<'vertex, V>,
-    ) -> ContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>> {
-        let mut carrier = QueryCarrier { query: Some(self.query) };
-        let iterator = compute_context_field_with_separate_value(
-            adapter,
-            &mut carrier,
-            self.resolve_on_component,
-            context_field,
-            contexts,
-        );
-
+    ) -> FallibleContextOutcomeIterator<'vertex, V, CandidateValue<FieldValue>, AdapterT::Error>
+    {
+        let vertex_id = context_field.vertex_id;
         let field_name = context_field.field_name.clone();
         let field_type = context_field.field_type.clone();
+        let operation = self.operation;
+        let initial_candidate = self.initial_candidate;
 
-        compute_candidate_from_operation(
-            &self.operation,
-            self.initial_candidate,
-            field_name,
-            field_type,
-            iterator,
-        )
+        let Some(vertex) = self.resolve_on_component.vertices.get(&vertex_id) else {
+            let field_ref = FieldRef::ContextField(context_field.clone());
+            return Box::new(contexts.map(move |context| {
+                let tagged = context.imported_tags[&field_ref].clone();
+                let candidate = candidate_from_tagged_value(
+                    &operation,
+                    &initial_candidate,
+                    &field_name,
+                    &field_type,
+                    true,
+                    tagged,
+                );
+                Ok((context, candidate))
+            }));
+        };
+
+        let contexts = contexts.map(move |mut context| {
+            let active_vertex = context.active_vertex.clone();
+            let tagged_vertex = context.vertices[&vertex_id].clone();
+            context.suspended_vertices.push(active_vertex);
+            context.move_to_vertex(tagged_vertex)
+        });
+
+        let resolve_info = ResolveInfo::new(self.query, vertex_id, true);
+        let outcomes = adapter.resolve_property(
+            Box::new(contexts),
+            &vertex.type_name,
+            &field_name,
+            &resolve_info,
+        );
+
+        Box::new(outcomes.map(move |outcome| {
+            outcome.map(|(mut context, value)| {
+                let tagged = {
+                    if context.vertices[&vertex_id].is_some() {
+                        TaggedValue::Some(value)
+                    } else {
+                        TaggedValue::NonexistentOptional
+                    }
+                };
+                let previous_vertex = context.suspended_vertices.pop().unwrap();
+                let context = context.move_to_vertex(previous_vertex);
+                let candidate = candidate_from_tagged_value(
+                    &operation,
+                    &initial_candidate,
+                    &field_name,
+                    &field_type,
+                    true,
+                    tagged,
+                );
+                (context, candidate)
+            })
+        }))
     }
 
     fn compute_candidate_from_tagged_value_with_imported_tags<
         'vertex,
         VertexT: Debug + Clone + 'vertex,
+        E: 'vertex,
     >(
         self,
         field_ref: &'a FieldRef,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
+    ) -> FallibleContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
         let cloned_field_ref = field_ref.clone();
         let iterator = Box::new(contexts.map(move |ctx| {
             let value = ctx.imported_tags[&cloned_field_ref].clone();
-            (ctx, value)
+            Ok((ctx, value))
         }));
         let (field_name, field_type) = match field_ref {
             FieldRef::ContextField(c) => (c.field_name.clone(), c.field_type.clone()),
@@ -312,148 +372,98 @@ impl<'a> DynamicallyResolvedValue<'a> {
         )
     }
 
-    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex>(
+    fn resolve_fold_specific_field<'vertex, VertexT: Debug + Clone + 'vertex, E: 'vertex>(
         self,
         fold_field: &'a FoldSpecificField,
         contexts: ContextIterator<'vertex, VertexT>,
-    ) -> ContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>> {
-        let iterator = compute_fold_specific_field_with_separate_value(
-            fold_field.fold_eid,
-            &fold_field.kind,
-            contexts,
-        );
+    ) -> FallibleContextOutcomeIterator<'vertex, VertexT, CandidateValue<FieldValue>, E> {
+        let fold_eid = fold_field.fold_eid;
+        let iterator = contexts.map(move |context| {
+            let tagged = match context.folded_contexts[&fold_eid].as_ref() {
+                None => TaggedValue::NonexistentOptional,
+                Some(values) => TaggedValue::Some(FieldValue::Uint64(values.len() as u64)),
+            };
+            Ok((context, tagged))
+        });
         let initial_candidate = self.initial_candidate;
-
-        match &self.operation {
-            Operation::Equals(_, _) => {
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.intersect(CandidateValue::Single(value));
-                })
-            }
-            Operation::NotEquals(_, _) => {
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.exclude_single_value(&value);
-                })
-            }
-            Operation::LessThan(_, _) => {
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.intersect(CandidateValue::Range(Range::with_end(
-                        Bound::Excluded(value),
-                        false,
-                    )));
-                })
-            }
-            Operation::LessThanOrEqual(_, _) => {
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.intersect(CandidateValue::Range(Range::with_end(
-                        Bound::Included(value),
-                        false,
-                    )));
-                })
-            }
-            Operation::GreaterThan(_, _) => {
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.intersect(CandidateValue::Range(Range::with_start(
-                        Bound::Excluded(value),
-                        false,
-                    )));
-                })
-            }
-            Operation::GreaterThanOrEqual(_, _) => {
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.intersect(CandidateValue::Range(Range::with_end(
-                        Bound::Included(value),
-                        false,
-                    )));
-                })
-            }
-            Operation::OneOf(_, _) => {
-                let fold_field = fold_field.clone();
-                resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    let values = value
-                        .as_slice()
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "\
-field {fold_field:?} produced an invalid value when resolving @tag: {value:?}",
-                            )
-                        })
-                        .to_vec();
-                    candidate.intersect(CandidateValue::Multiple(values));
-                })
-            }
-            _ => unreachable!(
-                "unsupported 'operation' {:?} for tag {:?} in component {:?}",
-                &self.operation, fold_field, self.resolve_on_component,
-            ),
-        }
+        let operation = self.operation;
+        let field_name: Arc<str> = fold_field.kind.field_name().into();
+        let field_type = fold_field.kind.field_type().clone();
+        Box::new(iterator.map(move |outcome| {
+            outcome.map(|(context, tagged)| {
+                let candidate = candidate_from_tagged_value(
+                    &operation,
+                    &initial_candidate,
+                    &field_name,
+                    &field_type,
+                    false,
+                    tagged,
+                );
+                (context, candidate)
+            })
+        }))
     }
 }
 
-fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
+fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex, E: 'vertex>(
     operation: &Operation<(), ()>,
     initial_candidate: CandidateValue<FieldValue>,
     field_name: Arc<str>,
     field_type: Type,
-    iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue>,
-) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>> {
+    iterator: FallibleContextOutcomeIterator<'vertex, Vertex, TaggedValue, E>,
+) -> FallibleContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>, E> {
+    let operation = operation.clone();
+    Box::new(iterator.map(move |outcome| {
+        outcome.map(|(context, tagged)| {
+            let candidate = candidate_from_tagged_value(
+                &operation,
+                &initial_candidate,
+                &field_name,
+                &field_type,
+                true,
+                tagged,
+            );
+            (context, candidate)
+        })
+    }))
+}
+
+fn candidate_from_tagged_value(
+    operation: &Operation<(), ()>,
+    initial: &CandidateValue<FieldValue>,
+    field_name: &Arc<str>,
+    field_type: &Type,
+    nullable: bool,
+    tagged: TaggedValue,
+) -> CandidateValue<FieldValue> {
+    let TaggedValue::Some(value) = tagged else {
+        return initial.clone();
+    };
+
+    let mut candidate = initial.clone();
     match operation {
-        Operation::Equals(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Single(value));
-            })
-        }
-        Operation::NotEquals(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.exclude_single_value(&value);
-            })
-        }
-        Operation::LessThan(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_end(
-                    Bound::Excluded(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
-        }
-        Operation::LessThanOrEqual(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_end(
-                    Bound::Included(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
-        }
-        Operation::GreaterThan(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_start(
-                    Bound::Excluded(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
-        }
-        Operation::GreaterThanOrEqual(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_end(
-                    Bound::Included(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
-        }
+        Operation::Equals(_, _) => candidate.intersect(CandidateValue::Single(value)),
+        Operation::NotEquals(_, _) => candidate.exclude_single_value(&value),
+        Operation::LessThan(_, _) => candidate
+            .intersect(CandidateValue::Range(Range::with_end(Bound::Excluded(value), nullable))),
+        Operation::LessThanOrEqual(_, _) => candidate
+            .intersect(CandidateValue::Range(Range::with_end(Bound::Included(value), nullable))),
+        Operation::GreaterThan(_, _) => candidate
+            .intersect(CandidateValue::Range(Range::with_start(Bound::Excluded(value), nullable))),
+        Operation::GreaterThanOrEqual(_, _) => candidate
+            .intersect(CandidateValue::Range(Range::with_end(Bound::Included(value), nullable))),
         Operation::OneOf(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                let values = value
-                    .as_slice()
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "\
-field {field_name} of type {field_type} produced an invalid value when resolving @tag: {value:?}",
-                        )
-                    })
-                    .to_vec();
-                candidate.intersect(CandidateValue::Multiple(values));
-            })
+            let values = value
+                .as_slice()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "field {field_name} of type {field_type} produced an invalid value when resolving @tag: {value:?}"
+                    )
+                })
+                .to_vec();
+            candidate.intersect(CandidateValue::Multiple(values));
         }
-        _ => unreachable!("unsupported 'operation': {:?}", operation,),
+        _ => unreachable!("unsupported 'operation': {operation:?}"),
     }
+    candidate
 }

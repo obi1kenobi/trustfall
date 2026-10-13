@@ -6,14 +6,14 @@ use std::{
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::{
-    interpreter::{Adapter, DataContext},
+    interpreter::{DataContext, FallibleAdapter},
     ir::{EdgeParameters, Eid, FieldValue, IRQuery, Vid},
     util::BTreeMapTryInsertExt,
 };
 
 use super::{
-    AsVertex, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo, VertexInfo,
-    VertexIterator,
+    AsVertex, ContextIterator, FallibleContextOutcomeIterator, ResolveEdgeInfo, ResolveInfo,
+    VertexInfo, VertexIterator, error::ExecutionError,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -160,7 +160,7 @@ fn make_iter_with_pre_action<T, I: Iterator<Item = T>, F: Fn()>(
 #[derive(Debug, Clone)]
 pub struct AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex>,
+    AdapterT: FallibleAdapter<'vertex>,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>,
@@ -170,7 +170,7 @@ where
 
 impl<'vertex, AdapterT> AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex>,
+    AdapterT: FallibleAdapter<'vertex>,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     pub fn new(adapter: AdapterT, tracer: Rc<RefCell<Trace<AdapterT::Vertex>>>) -> Self {
@@ -188,33 +188,41 @@ where
 
 pub fn tap_results<'vertex, AdapterT>(
     adapter_tap: Arc<AdapterTap<'vertex, AdapterT>>,
-    result_iter: impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex,
-) -> impl Iterator<Item = BTreeMap<Arc<str>, FieldValue>> + 'vertex
+    result_iter: impl Iterator<
+        Item = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<AdapterT::Error>>,
+    > + 'vertex,
+) -> impl Iterator<Item = Result<BTreeMap<Arc<str>, FieldValue>, ExecutionError<AdapterT::Error>>>
++ 'vertex
 where
-    AdapterT: Adapter<'vertex> + 'vertex,
+    AdapterT: FallibleAdapter<'vertex> + 'vertex,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     result_iter.inspect(move |result| {
-        adapter_tap
-            .tracer
-            .borrow_mut()
-            .record(TraceOpContent::ProduceQueryResult(result.clone()), None);
+        // Only successful query results are recorded into the trace.
+        if let Ok(result) = result {
+            adapter_tap
+                .tracer
+                .borrow_mut()
+                .record(TraceOpContent::ProduceQueryResult(result.clone()), None);
+        }
     })
 }
 
-impl<'vertex, AdapterT> Adapter<'vertex> for AdapterTap<'vertex, AdapterT>
+impl<'vertex, AdapterT> FallibleAdapter<'vertex> for AdapterTap<'vertex, AdapterT>
 where
-    AdapterT: Adapter<'vertex>,
+    AdapterT: FallibleAdapter<'vertex>,
     AdapterT::Vertex: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + 'vertex,
 {
     type Vertex = AdapterT::Vertex;
+
+    type Error = AdapterT::Error;
 
     fn resolve_starting_vertices(
         &self,
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveInfo,
-    ) -> VertexIterator<'vertex, Self::Vertex> {
+    ) -> VertexIterator<'vertex, Result<Self::Vertex, Self::Error>> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveStartingVertices(resolve_info.vid())),
@@ -232,10 +240,16 @@ where
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
             .inspect(move |vertex| {
-                tracer_ref_2.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(vertex.clone())),
-                    Some(call_opid),
-                );
+                // Only successful yields are recorded: an errored execution isn't replayable, and
+                // the adapter error type is not part of the (serializable) trace format.
+                if let Ok(vertex) = vertex {
+                    tracer_ref_2.borrow_mut().record(
+                        TraceOpContent::YieldFrom(YieldValue::ResolveStartingVertices(
+                            vertex.clone(),
+                        )),
+                        Some(call_opid),
+                    );
+                }
             }),
         )
     }
@@ -246,7 +260,7 @@ where
         type_name: &Arc<str>,
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, FieldValue> {
+    ) -> FallibleContextOutcomeIterator<'vertex, V, FieldValue, Self::Error> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveProperty(
@@ -292,16 +306,16 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |(context, value)| {
-                tracer_ref_5.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveProperty(
-                        context.clone().flat_map(&mut |v| v.into_vertex()),
-                        value.clone(),
-                    )),
-                    Some(call_opid),
-                );
-
-                (context, value)
+            .inspect(move |outcome| {
+                if let Ok((context, value)) = &outcome {
+                    tracer_ref_5.borrow_mut().record(
+                        TraceOpContent::YieldFrom(YieldValue::ResolveProperty(
+                            context.clone().flat_map(&mut |v| v.into_vertex()),
+                            value.clone(),
+                        )),
+                        Some(call_opid),
+                    );
+                }
             }),
         )
     }
@@ -313,7 +327,12 @@ where
         edge_name: &Arc<str>,
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, VertexIterator<'vertex, Self::Vertex>> {
+    ) -> FallibleContextOutcomeIterator<
+        'vertex,
+        V,
+        VertexIterator<'vertex, Result<Self::Vertex, Self::Error>>,
+        Self::Error,
+    > {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveNeighbors(
@@ -364,39 +383,46 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |(context, neighbor_iter)| {
-                let mut trace = tracer_ref_5.borrow_mut();
-                let outer_iterator_opid = trace.record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(
-                        context.clone().flat_map(&mut |v| v.into_vertex()),
-                    )),
-                    Some(call_opid),
-                );
-                drop(trace);
-
-                let tracer_ref_6 = tracer_ref_5.clone();
-                let tapped_neighbor_iter = neighbor_iter.enumerate().map(move |(pos, vertex)| {
-                    tracer_ref_6.borrow_mut().record(
-                        TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(
-                            pos,
-                            vertex.clone(),
+            .map(move |outcome| {
+                outcome.map(|(context, neighbor_iter)| {
+                    let mut trace = tracer_ref_5.borrow_mut();
+                    let outer_iterator_opid = trace.record(
+                        TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsOuter(
+                            context.clone().flat_map(&mut |v| v.into_vertex()),
                         )),
-                        Some(outer_iterator_opid),
+                        Some(call_opid),
                     );
+                    drop(trace);
 
-                    vertex
-                });
+                    let tracer_ref_6 = tracer_ref_5.clone();
+                    let tapped_neighbor_iter =
+                        neighbor_iter.enumerate().map(move |(pos, vertex)| {
+                            if let Ok(vertex) = &vertex {
+                                tracer_ref_6.borrow_mut().record(
+                                    TraceOpContent::YieldFrom(YieldValue::ResolveNeighborsInner(
+                                        pos,
+                                        vertex.clone(),
+                                    )),
+                                    Some(outer_iterator_opid),
+                                );
+                            }
 
-                let tracer_ref_7 = tracer_ref_5.clone();
-                let final_neighbor_iter: VertexIterator<'vertex, Self::Vertex> =
-                    Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
+                            vertex
+                        });
+
+                    let tracer_ref_7 = tracer_ref_5.clone();
+                    let final_neighbor_iter: VertexIterator<
+                        'vertex,
+                        Result<Self::Vertex, Self::Error>,
+                    > = Box::new(make_iter_with_end_action(tapped_neighbor_iter, move || {
                         tracer_ref_7.borrow_mut().record(
                             TraceOpContent::OutputIteratorExhausted,
                             Some(outer_iterator_opid),
                         );
                     }));
 
-                (context, final_neighbor_iter)
+                    (context, final_neighbor_iter)
+                })
             }),
         )
     }
@@ -407,7 +433,7 @@ where
         type_name: &Arc<str>,
         coerce_to_type: &Arc<str>,
         resolve_info: &ResolveInfo,
-    ) -> ContextOutcomeIterator<'vertex, V, bool> {
+    ) -> FallibleContextOutcomeIterator<'vertex, V, bool, Self::Error> {
         let mut trace = self.tracer.borrow_mut();
         let call_opid = trace.record(
             TraceOpContent::Call(FunctionCall::ResolveCoercion(
@@ -453,16 +479,16 @@ where
                     .borrow_mut()
                     .record(TraceOpContent::OutputIteratorExhausted, Some(call_opid));
             })
-            .map(move |(context, can_coerce)| {
-                tracer_ref_5.borrow_mut().record(
-                    TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(
-                        context.clone().flat_map(&mut |v| v.into_vertex()),
-                        can_coerce,
-                    )),
-                    Some(call_opid),
-                );
-
-                (context, can_coerce)
+            .inspect(move |outcome| {
+                if let Ok((context, can_coerce)) = &outcome {
+                    tracer_ref_5.borrow_mut().record(
+                        TraceOpContent::YieldFrom(YieldValue::ResolveCoercion(
+                            context.clone().flat_map(&mut |v| v.into_vertex()),
+                            *can_coerce,
+                        )),
+                        Some(call_opid),
+                    );
+                }
             }),
         )
     }

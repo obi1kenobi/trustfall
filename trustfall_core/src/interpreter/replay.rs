@@ -528,7 +528,9 @@ pub fn assert_interpreted_results<'query, 'trace, Vertex>(
     let arguments = Arc::new(
         trace.arguments.iter().map(|(k, v)| (Arc::from(k.to_owned()), v.clone())).collect(),
     );
-    let mut trace_iter = interpret_ir(trace_reader_adapter, query, arguments).unwrap();
+    let mut trace_iter = interpret_ir(trace_reader_adapter, query, arguments)
+        .unwrap()
+        .map(|row| row.expect("trace replay uses an infallible adapter"));
     let mut expected_iter = expected_results.iter();
 
     loop {
