@@ -102,7 +102,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust + caching
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -173,7 +173,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust + caching
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           components: rustfmt, clippy
 
@@ -204,7 +204,7 @@ jobs:
           persist-credentials: true
 
       - name: Install rust + caching
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""
 
@@ -250,7 +250,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           cache: false
           components: clippy, rustfmt
@@ -289,7 +289,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           cache: false
           components: clippy, rustfmt
@@ -335,7 +335,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust + caching
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -409,7 +409,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust + caching  # necessary for `npm run build:wasm` later
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
 
       - uses: actions/setup-node@v7
         with:
@@ -448,7 +448,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           cache: false
           rustflags: ""
