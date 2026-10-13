@@ -14,6 +14,7 @@ Copyright &copy; 2022-present Predrag Gruevski
 nav = [
   { "Welcome" = "overview/index.md" },
   { "Getting Started" = "getting_started/index.md" },
+  { "Rust Adapters" = "rust_adapters/index.md" },
   { "Language Reference" = [
     { "Querying" = [
       "language_reference/querying/index.md",
