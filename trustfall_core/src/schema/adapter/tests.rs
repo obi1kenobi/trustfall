@@ -48,7 +48,9 @@ fn check_vertex_type_properties() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("incorrect result shape"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("incorrect result shape")
+        })
         .collect();
     rows.sort_unstable();
 
@@ -88,7 +90,9 @@ fn check_vertex_type_properties_using_one_of() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("incorrect result shape"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("incorrect result shape")
+        })
         .collect();
     rows.sort_unstable();
 
@@ -133,7 +137,9 @@ fn check_schema_then_vertex_type() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
+        .map(|x| {
+            x.expect("infallible adapter").try_into_struct::<Output>().expect("invalid conversion")
+        })
         .collect::<Vec<_>>();
     rows.sort_unstable();
 
@@ -183,7 +189,9 @@ fn use_vertex_type_in_schema_edge_multiple_times() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|x| x.try_into_struct::<Output>().expect("invalid conversion"))
+        .map(|x| {
+            x.expect("infallible adapter").try_into_struct::<Output>().expect("invalid conversion")
+        })
         .collect::<Vec<_>>();
     rows.sort_unstable();
 
@@ -237,6 +245,7 @@ fn check_entrypoint_target_edges() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
+        .map(|r| r.expect("infallible adapter"))
         .collect();
 
     let expected_rows = [
@@ -299,7 +308,9 @@ fn check_parameterized_edges() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<_> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("result shape did not match"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("result shape did not match")
+        })
         .collect();
     rows.sort_unstable();
 
@@ -407,7 +418,9 @@ fn check_entrypoint_docs() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("invalid result shape")
+        })
         .collect();
     rows.sort_unstable();
 
@@ -445,7 +458,9 @@ fn check_vertex_type_docs() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("invalid result shape")
+        })
         .collect();
     rows.sort_unstable();
 
@@ -481,7 +496,9 @@ fn check_property_docs() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("invalid result shape")
+        })
         .collect();
     rows.sort_unstable();
 
@@ -522,7 +539,9 @@ fn check_edge_docs() {
     let indexed = crate::frontend::parse(get_schema(), query).expect("not a valid query");
     let mut rows: Vec<Output> = crate::interpreter::execution::interpret_ir(adapter, indexed, args)
         .expect("execution error")
-        .map(|row| row.try_into_struct().expect("invalid result shape"))
+        .map(|row| {
+            row.expect("infallible adapter").try_into_struct().expect("invalid result shape")
+        })
         .collect();
     rows.sort_unstable();
 
