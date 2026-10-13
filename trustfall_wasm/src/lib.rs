@@ -100,7 +100,8 @@ pub fn execute_query(
 
     let results_iter =
         trustfall_core::interpreter::execution::interpret_ir(wrapped_adapter, query, args)
-            .map_err(|e| format!("{e}"))?;
+            .map_err(|e| format!("{e}"))?
+            .map(|row| row.expect("JavaScript adapter is currently infallible"));
 
-    Ok(QueryResultIterator::new(results_iter))
+    Ok(QueryResultIterator::new(Box::new(results_iter)))
 }

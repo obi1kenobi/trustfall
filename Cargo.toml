@@ -42,6 +42,10 @@ quote = "1.0"
 proc-macro2 = "1.0.51"
 globset = "0.4.6"
 walkdir = "2.3.1"
+futures-core = "0.3.31"
+futures-util = { version = "0.3.31", default-features = false, features = ["alloc"] }
+futures-executor = "0.3.31"
+async-stream = "0.3.6"
 
 [profile.release]
 lto = true
