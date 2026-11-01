@@ -1,0 +1,25 @@
+TestGraphQLQuery (
+    // The outer fold contains [4, 8], whose successors are 5 and 9.
+    // Their multiple folds contain [10, 15] and [9, 18, 27], so the nested
+    // count output must be [[2], [3]], even though the outer count filter
+    // permits zero elements. No component has a property output.
+    // An outputless sibling fold must not hide the branch with count outputs.
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        multiple(max: 2) @fold @transform(op: "count")
+                         @filter(op: ">=", value: ["$zero"]) {
+            successor @fold {
+                multiple(max: 3) @fold @transform(op: "count")
+                                 @output(name: "nested_counts")
+            }
+
+            predecessor @fold
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)
