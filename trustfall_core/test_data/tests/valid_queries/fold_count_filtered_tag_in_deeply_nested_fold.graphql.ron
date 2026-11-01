@@ -1,0 +1,27 @@
+TestGraphQLQuery (
+    // The count of [4, 8] is used two folded components below its definition.
+    // The outer divisor fold owns the import even though its own filters do not
+    // use the count. The innermost count comparisons must both pass: 1 < 2.
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        value @output
+
+        multiple(max: 2) @fold @transform(op: "count")
+                         @filter(op: ">", value: ["$zero"])
+                         @tag(name: "count")
+
+        divisor @fold {
+            successor @fold {
+                successor @fold @transform(op: "count")
+                          @filter(op: "<", value: ["%count"])
+                          @output(name: "counts")
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)

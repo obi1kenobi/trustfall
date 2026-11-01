@@ -1,0 +1,28 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "counts": Output(
+      name: "counts",
+      value_type: "[[Int!]!]!",
+      vid: Vid(5),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "counts": List([
+        List([
+          Uint64(1),
+        ]),
+        List([
+          Uint64(1),
+        ]),
+      ]),
+      "value": Int64(4),
+    },
+  ],
+)
