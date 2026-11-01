@@ -11,6 +11,8 @@ use crate::{
     test_types::{TestIRQuery, TestIRQueryResult},
 };
 
+mod optional_lookahead;
+
 type ResolveInfoFn = Box<dyn FnMut(&ResolveInfo)>;
 type ResolveEdgeInfoFn = Box<dyn FnMut(&ResolveEdgeInfo)>;
 

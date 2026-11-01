@@ -404,7 +404,7 @@ impl InternalVertexInfo for NeighborInfo {
             starting_vertex: self.starting_vertex,
             neighbor_vertex: edge.to_vid,
             neighbor_path,
-            within_optional_scope: self.within_optional_scope,
+            within_optional_scope: self.within_optional_scope || edge.optional,
             locally_non_binding_filters: check_locally_non_binding_filters_for_edge(edge),
         };
         EdgeInfo {

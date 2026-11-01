@@ -44,6 +44,30 @@ Other subdirectories test error conditions at various stages, and will have a
 subset of these `Y` options as well as some new ones for stage errors: `Y =
 parse-error`, `Y = frontend-error`, or `Y = exec-error`.
 
+### Writing and reviewing test queries
+
+Keep regression queries complete and readable at the test site. Prefer some
+duplication to query construction or placeholder replacement when those would
+obscure the query being tested. State expected results explicitly. Shared helpers
+for adapter setup and assertions are useful when they keep the query and its
+expectations easy to see.
+
+Review query text in both Rust source, including raw-string literals, and
+`.graphql.ron` test files. Follow the existing core test conventions:
+
+- Start the query's opening brace at column zero and use four spaces per nesting level.
+- Expand selection sets across lines so the traversal structure is visible.
+- Separate property and filter groups from subsequent edge blocks with a blank line.
+- Wrap long directive chains and align continuation directives with the first directive.
+
+For examples, see the [embedded schema-adapter queries](../src/schema/adapter/tests.rs)
+and the [nested-fold regression](tests/valid_queries/fold_count_filtered_deeply_nested_output.graphql.ron).
+
+The repository's Rust formatting checks do not format GraphQL inside raw strings
+or `.graphql.ron` fixtures. `git diff --check` also does not check query layout.
+Inspect the query bodies directly rather than treating those checks as evidence
+that the GraphQL is formatted.
+
 ### Composition of tests ➡ End-to-end tests
 
 Trustfall is a deterministic compiler; any non-determinism is considered a bug
