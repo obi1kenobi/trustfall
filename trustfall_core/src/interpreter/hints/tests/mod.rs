@@ -1241,6 +1241,8 @@ mod static_property_values {
 }
 
 mod dynamic_property_values {
+    mod null_tags;
+
     use std::{collections::BTreeMap, ops::Bound, sync::Arc};
 
     use itertools::{EitherOrBoth, Itertools};
