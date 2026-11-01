@@ -1,0 +1,22 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "nested_counts": Output(
+      name: "nested_counts",
+      value_type: "[[Int!]!]!",
+      vid: Vid(4),
+    ),
+  },
+  results: [
+    {
+      "nested_counts": List([
+        List([
+          Uint64(2),
+        ]),
+        List([
+          Uint64(3),
+        ]),
+      ]),
+    },
+  ],
+)

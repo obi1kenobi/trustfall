@@ -1,0 +1,27 @@
+TestGraphQLQuery (
+    // The outer fold contains [4, 6], and two nested successor folds produce
+    // [[[6]], [[8]]]. Those outputs require both outer elements even though
+    // the outer and intermediate components have no direct outputs.
+    // An outputless sibling fold must not hide the branch with outputs.
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        value @output
+
+        multiple(max: 3) @fold @transform(op: "count")
+                         @filter(op: ">", value: ["$zero"]) {
+            predecessor @fold
+
+            successor @fold {
+                successor @fold {
+                    value @output(name: "nested")
+                }
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)

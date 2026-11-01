@@ -409,6 +409,18 @@ fn collect_fold_elements<'query, Vertex: Clone + Debug + 'query>(
     }
 }
 
+/// Whether this fold or any descendant produces an output.
+///
+/// Property outputs are stored in `component.outputs`, while outputs of transformations
+/// such as count are stored in `fold_specific_outputs`. Ordinary edges stay within
+/// a component; only folds introduce child components. Checking both maps and recursing
+/// into child folds therefore covers every output in this fold's subtree.
+fn fold_has_outputs(fold: &IRFold) -> bool {
+    !fold.component.outputs.is_empty()
+        || !fold.fold_specific_outputs.is_empty()
+        || fold.component.folds.values().any(|child| fold_has_outputs(child))
+}
+
 #[allow(unused_variables)]
 fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     adapter: Arc<AdapterT>,
@@ -505,9 +517,10 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
     // of the fold, we can stop computing the rest of the fold after seeing we have 11 elements.
     let min_fold_size =
         if let Some(min_fold_size) = get_min_fold_count_limit(carrier, fold.as_ref()) {
-            let no_outputs_in_fold = fold.component.outputs.is_empty();
-            let has_output_on_fold_count =
-                fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
+            // Descendant outputs contribute one entry per element of every enclosing fold.
+            // Stopping early would incorrectly truncate those output lists
+            // even if this component has no outputs of its own.
+            let has_outputs_in_fold = fold_has_outputs(&fold);
 
             // A tag on this fold's count is defined in `parent_component`, outside the fold's
             // body. Tags are consumed only by filters, so every legal use is in one of three places:
@@ -548,11 +561,7 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
                         && tagged_fold_count.kind == FoldSpecificFieldKind::Count
                 });
 
-            if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
-                Some(min_fold_size)
-            } else {
-                None
-            }
+            if !has_outputs_in_fold && !has_tag_on_fold_count { Some(min_fold_size) } else { None }
         } else {
             None
         };

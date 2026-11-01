@@ -1,0 +1,32 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "nested": Output(
+      name: "nested",
+      value_type: "[[[Int]!]!]!",
+      vid: Vid(5),
+    ),
+    "value": Output(
+      name: "value",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "nested": List([
+        List([
+          List([
+            Int64(6),
+          ]),
+        ]),
+        List([
+          List([
+            Int64(8),
+          ]),
+        ]),
+      ]),
+      "value": Int64(2),
+    },
+  ],
+)
