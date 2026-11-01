@@ -1,0 +1,23 @@
+TestGraphQLQuery (
+    // The count of [4, 8] is imported into the sibling divisor fold.
+    // Its exact value must be preserved even though the count is not output,
+    // so the filter selects divisor 2 rather than divisor 1.
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        value @output
+
+        multiple(max: 2) @fold @transform(op: "count")
+                         @filter(op: ">", value: ["$zero"])
+                         @tag(name: "count")
+
+        divisor @fold {
+            value @filter(op: "=", value: ["%count"]) @output(name: "selected")
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)

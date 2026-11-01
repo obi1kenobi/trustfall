@@ -508,19 +508,45 @@ fn compute_fold<'query, AdapterT: Adapter<'query> + 'query>(
             let no_outputs_in_fold = fold.component.outputs.is_empty();
             let has_output_on_fold_count =
                 fold.fold_specific_outputs.values().any(|x| *x == FoldSpecificFieldKind::Count);
-            let has_tag_on_fold_count = parent_component.vertices.values().any(|vertex| {
-                vertex.filters.iter().any(|filter| {
-                    let Some(Argument::Tag(FieldRef::FoldSpecificField(tagged_fold_count))) =
-                        filter.right()
-                    else {
+
+            // A tag on this fold's count is defined in `parent_component`, outside the fold's
+            // body. Tags are consumed only by filters, so every legal use is in one of three places:
+            // 1. A vertex filter in `parent_component`.
+            // 2. A count filter (`post_filters`) on a fold in `parent_component`.
+            // 3. A filter inside a child fold's component or any of its descendants.
+            //    The frontend records these uses in that child's `imported_tags`,
+            //    even when the consumer is several folds deeper.
+            //
+            // Ordinary edges stay in the same component, and tag scope forbids uses outside
+            // the defining component and its descendants. These cases therefore cover every
+            // legal consumer without searching ancestors or recursively inspecting descendants.
+            // Such uses need the full count, and prevent early termination as a result.
+            let has_tag_on_fold_count = parent_component
+                // Case 1: vertex filters in the defining component.
+                .vertices
+                .values()
+                .flat_map(|vertex| &vertex.filters)
+                .map(|filter| filter.right())
+                // Case 2: count filters on folds in the defining component.
+                .chain(
+                    parent_component
+                        .folds
+                        .values()
+                        .flat_map(|fold| &fold.post_filters)
+                        .map(|filter| filter.right()),
+                )
+                .filter_map(|rhs| rhs.and_then(Argument::as_tag))
+                // Case 3: imports for consumers inside child folds or their descendants.
+                .chain(parent_component.folds.values().flat_map(|fold| &fold.imported_tags))
+                .any(|tag| {
+                    let FieldRef::FoldSpecificField(tagged_fold_count) = tag else {
                         return false;
                     };
 
                     tagged_fold_count.fold_root_vid == fold.to_vid
                         && tagged_fold_count.fold_eid == fold.eid
                         && tagged_fold_count.kind == FoldSpecificFieldKind::Count
-                })
-            });
+                });
 
             if no_outputs_in_fold && !has_output_on_fold_count && !has_tag_on_fold_count {
                 Some(min_fold_size)

@@ -1,0 +1,23 @@
+TestGraphQLQuery (
+    // Both folds contain 4 and 6. The first count must remain exact because
+    // the second fold compares its count to the tag, even without an output
+    // on the first count. Pruning the first fold-count after its condition
+    // is fulfilled would cause the tagged value to not be computed properly.
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        value @output
+
+        multiple(max: 3) @fold @transform(op: "count")
+                         @filter(op: ">", value: ["$zero"])
+                         @tag(name: "matching_count")
+
+        multiple(max: 3) @fold @transform(op: "count")
+                         @filter(op: "=", value: ["%matching_count"])
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)
