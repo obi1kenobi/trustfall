@@ -11,6 +11,7 @@ use crate::{
     test_types::{TestIRQuery, TestIRQueryResult},
 };
 
+mod mandatory_edge_pruning;
 mod optional_lookahead;
 mod required_properties;
 
@@ -204,8 +205,10 @@ fn duplicated_edge() {
                 let second_edge = &edges[1];
                 assert_eq!(first_edge.eid(), eid(1));
                 assert!(first_edge.parameters().is_empty());
+                assert!(first_edge.is_mandatory());
                 assert_eq!(second_edge.eid(), eid(2));
                 assert!(second_edge.parameters().is_empty());
+                assert!(second_edge.is_mandatory());
 
                 let mandatory_edges: Vec<_> = info.mandatory_edges_with_name("successor").collect();
                 assert_eq!(edges, mandatory_edges);
@@ -225,12 +228,14 @@ fn duplicated_edge() {
         on_edge_resolver: btreemap! {
             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 assert_eq!(info.origin_vid(), vid(1));
+                assert!(info.edge().is_mandatory());
 
                 let destination = info.destination();
                 assert_eq!(destination.vid(), vid(2));
             })),
             eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 assert_eq!(info.origin_vid(), vid(1));
+                assert!(info.edge().is_mandatory());
 
                 let destination = info.destination();
                 assert_eq!(destination.vid(), vid(3));
@@ -266,6 +271,7 @@ fn optional_directive() {
                 assert_eq!(edge.folded, FoldState::None);
                 assert!(edge.recursive.is_none());
                 assert_eq!(edge.destination().vid(), vid(2));
+                assert!(!edge.is_mandatory());
 
                 // The "first_edge()" method produces the same outcome
                 // `as the iterator-based method.
@@ -279,6 +285,7 @@ fn optional_directive() {
         on_edge_resolver: btreemap! {
             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 assert_eq!(info.origin_vid(), vid(1));
+                assert!(!info.edge().is_mandatory());
 
                 let destination = info.destination();
                 assert_eq!(destination.vid(), vid(2));
@@ -313,6 +320,7 @@ fn recurse_directive() {
                 assert_eq!(edge.folded, FoldState::None);
                 assert_eq!(edge.recursive, Some(Recursive::new(NonZeroUsize::new(3).unwrap(), None)));
                 assert_eq!(edge.destination().vid(), vid(2));
+                assert!(!edge.is_mandatory());
 
                 // The "first_edge()" method produces the same outcome
                 // `as the iterator-based method.
@@ -325,6 +333,7 @@ fn recurse_directive() {
         on_edge_resolver: btreemap! {
             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 assert_eq!(info.origin_vid(), vid(1));
+                assert!(!info.edge().is_mandatory());
 
                 let destination = info.destination();
                 assert_eq!(destination.vid(), vid(2));
@@ -358,6 +367,7 @@ fn fold_directive() {
                 assert_eq!(edge.folded, FoldState::FoldedOptional);
                 assert!(edge.recursive.is_none());
                 assert_eq!(edge.destination().vid(), vid(2));
+                assert!(!edge.is_mandatory());
 
                 // The "first_edge()" method produces the same outcome
                 // `as the iterator-based method.
@@ -371,6 +381,7 @@ fn fold_directive() {
         on_edge_resolver: btreemap! {
             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 assert_eq!(info.origin_vid(), vid(1));
+                assert!(!info.edge().is_mandatory());
 
                 let destination = info.destination();
                 assert_eq!(destination.vid(), vid(2));
@@ -450,6 +461,7 @@ fn recurse_then_required_edge_depth_one() {
                 let neighbor = edge_info.destination();
 
                 assert_eq!(vid(2), neighbor.vid());
+                assert!(neighbor.first_edge("predecessor").unwrap().is_mandatory());
 
                 // This edge is mandatory, since the recursion is `depth: 1`.
                 // The edge is recursively traversed only once, i.e. the selected vertices
@@ -465,6 +477,7 @@ fn recurse_then_required_edge_depth_one() {
             eid(1) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 let destination = info.destination();
                 assert_eq!(vid(2), destination.vid());
+                assert!(destination.first_edge("predecessor").unwrap().is_mandatory());
                 assert!(destination.coerced_to_type().is_none());
 
                 // This edge is mandatory, since the recursion is `depth: 1`.
@@ -507,6 +520,12 @@ fn recurse_then_nested_required_edge_depth_two() {
                 // The "middle" vertices in the recursion are not required to include
                 // the `predecessor` edge, and including it here would be a footgun.
                 assert_eq!(None, neighbor.first_mandatory_edge("predecessor"));
+                let required = neighbor.first_edge("predecessor").unwrap();
+                assert!(!required.is_mandatory());
+
+                // Recursion suppresses requirements at its intermediate vertices, but
+                // the following required edge is outside that recursive traversal.
+                assert!(required.destination().first_edge("predecessor").unwrap().is_mandatory());
             })),
         }.into(),
         on_edge_resolver: btreemap! {
@@ -522,10 +541,13 @@ fn recurse_then_nested_required_edge_depth_two() {
                 // The "middle" vertices in the recursion are not required to include
                 // the `predecessor` edge, and including it here would be a footgun.
                 assert_eq!(None, destination.first_mandatory_edge("predecessor"));
+                assert!(!destination.first_edge("predecessor").unwrap().is_mandatory());
             })),
             eid(2) => TrackCalls::<ResolveEdgeInfoFn>::new_underlying(Box::new(|info| {
                 let destination = info.destination();
                 assert_eq!(vid(3), destination.vid());
+                assert!(info.edge().is_mandatory());
+                assert!(destination.first_edge("predecessor").unwrap().is_mandatory());
                 assert!(destination.coerced_to_type().is_none());
 
                 // Now the edge is mandatory, because we've already finished resolving
