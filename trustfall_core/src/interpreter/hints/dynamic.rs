@@ -155,11 +155,14 @@ pub struct DynamicallyResolvedValue<'a> {
 }
 
 macro_rules! compute_candidate_from_tagged_value {
-    ($iterator:ident, $initial_candidate:ident, $candidate:ident, $value:ident, $blk:block) => {
+    ($iterator:ident, $initial_candidate:ident, $rejects_null:ident, $candidate:ident, $value:ident, $blk:block) => {
         Box::new($iterator.map(move |(ctx, tagged_value)| {
             let mut $candidate = $initial_candidate.clone();
             match tagged_value {
                 TaggedValue::NonexistentOptional => (ctx, $candidate),
+                TaggedValue::Some(FieldValue::Null) if $rejects_null => {
+                    (ctx, CandidateValue::Impossible)
+                }
                 TaggedValue::Some($value) => {
                     {
                         $blk
@@ -396,62 +399,121 @@ fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
     field_type: Type,
     iterator: ContextOutcomeIterator<'vertex, Vertex, TaggedValue>,
 ) -> ContextOutcomeIterator<'vertex, Vertex, CandidateValue<FieldValue>> {
+    // A `null` operand for these operations discards the row regardless of the left-hand value.
+    let rejects_null = matches!(
+        operation,
+        Operation::LessThan(..)
+            | Operation::LessThanOrEqual(..)
+            | Operation::GreaterThan(..)
+            | Operation::GreaterThanOrEqual(..)
+            | Operation::OneOf(..)
+    );
+
     match operation {
         Operation::Equals(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Single(value));
-            })
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    candidate.intersect(CandidateValue::Single(value));
+                }
+            )
         }
         Operation::NotEquals(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.exclude_single_value(&value);
-            })
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    candidate.exclude_single_value(&value);
+                }
+            )
         }
         Operation::LessThan(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_end(
-                    Bound::Excluded(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    candidate.intersect(CandidateValue::Range(Range::with_end(
+                        Bound::Excluded(value),
+                        true, // nullability is handled in the initial_candidate
+                    )));
+                }
+            )
         }
         Operation::LessThanOrEqual(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_end(
-                    Bound::Included(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    candidate.intersect(CandidateValue::Range(Range::with_end(
+                        Bound::Included(value),
+                        true, // nullability is handled in the initial_candidate
+                    )));
+                }
+            )
         }
         Operation::GreaterThan(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_start(
-                    Bound::Excluded(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    candidate.intersect(CandidateValue::Range(Range::with_start(
+                        Bound::Excluded(value),
+                        true, // nullability is handled in the initial_candidate
+                    )));
+                }
+            )
         }
         Operation::GreaterThanOrEqual(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_start(
-                    Bound::Included(value),
-                    true, // nullability is handled in the initial_candidate
-                )));
-            })
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    candidate.intersect(CandidateValue::Range(Range::with_start(
+                        Bound::Included(value),
+                        true, // nullability is handled in the initial_candidate
+                    )));
+                }
+            )
         }
         Operation::OneOf(_, _) => {
-            compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                let values = value
-                    .as_slice()
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "\
+            compute_candidate_from_tagged_value!(
+                iterator,
+                initial_candidate,
+                rejects_null,
+                candidate,
+                value,
+                {
+                    let values = value
+                        .as_slice()
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "\
 field {field_name} of type {field_type} produced an invalid value when resolving @tag: {value:?}",
-                        )
-                    })
-                    .to_vec();
-                candidate.intersect(CandidateValue::Multiple(values));
-            })
+                            )
+                        })
+                        .to_vec();
+                    candidate.intersect(CandidateValue::Multiple(values));
+                }
+            )
         }
         _ => unreachable!("unsupported 'operation': {:?}", operation,),
     }

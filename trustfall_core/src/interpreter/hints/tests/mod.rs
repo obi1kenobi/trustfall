@@ -1244,6 +1244,8 @@ mod static_property_values {
 }
 
 mod dynamic_property_values {
+    mod null_tags;
+
     use std::{cell::Cell, collections::BTreeMap, ops::Bound, rc::Rc, sync::Arc};
 
     use itertools::{EitherOrBoth, Itertools};
