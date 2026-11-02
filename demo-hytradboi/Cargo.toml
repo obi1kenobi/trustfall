@@ -9,7 +9,7 @@ rust-version.workspace = true
 [dependencies]
 async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
-base64 = "0.22.1"
+base64 = "0.23.1"
 consecrates = "0.1.1"
 csv = "1.1.6"
 futures-executor = "0.3.21"

@@ -121,7 +121,7 @@ fn make_iterator<'py>(value: &Bound<'py, PyAny>, origin: &'static str) -> Bound<
     value.try_iter().unwrap_or_else(|e| panic!("{origin} is not an iterable (caused by {e})"))
 }
 
-#[pyclass(unsendable, skip_from_py_object)]
+#[pyclass(unsendable)]
 pub(crate) struct Opaque {
     data: Option<Box<dyn Any>>,
     pub(crate) vertex: Option<Arc<Py<PyAny>>>,
