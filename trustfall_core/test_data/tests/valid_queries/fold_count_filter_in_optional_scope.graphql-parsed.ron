@@ -1,0 +1,128 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      arguments: {
+        "max": Int64(3),
+        "min": Int64(0),
+      },
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Number",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          output: [
+            OutputDirective(
+              name: Some("start"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          optional: Some(OptionalDirective()),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "predecessor",
+              fold: Some(FoldGroup(
+                fold: FoldDirective(),
+                transform: Some(TransformGroup(
+                  transform: TransformDirective(
+                    kind: Count,
+                  ),
+                  output: [
+                    OutputDirective(
+                      name: Some("count"),
+                    ),
+                  ],
+                  filter: [
+                    FilterDirective(
+                      operation: GreaterThan((), VariableRef("zero")),
+                    ),
+                  ],
+                )),
+              )),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "predecessor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 9,
+                    column: 17,
+                  ),
+                  name: "value",
+                ), FieldNode(
+                  position: Pos(
+                    line: 9,
+                    column: 17,
+                  ),
+                  name: "value",
+                  output: [
+                    OutputDirective(
+                      name: Some("folded"),
+                    ),
+                  ],
+                )),
+              ],
+              transform_group: Some(TransformGroup(
+                transform: TransformDirective(
+                  kind: Count,
+                ),
+                output: [
+                  OutputDirective(
+                    name: Some("count"),
+                  ),
+                ],
+                filter: [
+                  FilterDirective(
+                    operation: GreaterThan((), VariableRef("zero")),
+                  ),
+                ],
+              )),
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+  arguments: {
+    "zero": Int64(0),
+  },
+))
