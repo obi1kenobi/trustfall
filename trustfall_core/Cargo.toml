@@ -31,7 +31,7 @@ serde_json = { workspace = true }
 async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
 maplit = { workspace = true }
-smallvec = { version = "1.6.1", features = ["serde"] }
+smallvec = { version = "1.16.4", features = ["serde"] }
 regex = { workspace = true }
 thiserror = { workspace = true }
 itertools = { workspace = true }
