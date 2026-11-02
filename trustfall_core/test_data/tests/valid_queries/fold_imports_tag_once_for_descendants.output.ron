@@ -1,0 +1,41 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "above": Output(
+      name: "above",
+      value_type: "[[[Int]!]!]!",
+      vid: Vid(5),
+    ),
+    "below": Output(
+      name: "below",
+      value_type: "[[[Int]!]!]!",
+      vid: Vid(4),
+    ),
+    "sibling": Output(
+      name: "sibling",
+      value_type: "[Int]!",
+      vid: Vid(6),
+    ),
+  },
+  results: [
+    {
+      "above": List([
+        List([
+          List([
+            Int64(3),
+          ]),
+        ]),
+      ]),
+      "below": List([
+        List([
+          List([
+            Int64(1),
+          ]),
+        ]),
+      ]),
+      "sibling": List([
+        Int64(3),
+      ]),
+    },
+  ],
+)

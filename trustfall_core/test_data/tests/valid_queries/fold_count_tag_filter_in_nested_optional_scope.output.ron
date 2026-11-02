@@ -1,0 +1,61 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "after": Output(
+      name: "after",
+      value_type: "[Int]!",
+      vid: Vid(8),
+    ),
+    "count": Output(
+      name: "count",
+      value_type: "[Int]!",
+      vid: Vid(6),
+    ),
+    "nested": Output(
+      name: "nested",
+      value_type: "[[[Int]!]]!",
+      vid: Vid(7),
+    ),
+    "start": Output(
+      name: "start",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "after": List([
+        Int64(2),
+      ]),
+      "count": List([
+        Null,
+      ]),
+      "nested": List([
+        Null,
+      ]),
+      "start": Int64(0),
+    },
+    {
+      "after": List([
+        Int64(3),
+      ]),
+      "count": List([
+        Uint64(1),
+      ]),
+      "nested": List([
+        List([
+          List([
+            Int64(1),
+          ]),
+        ]),
+      ]),
+      "start": Int64(1),
+    },
+    {
+      "after": List([]),
+      "count": List([]),
+      "nested": List([]),
+      "start": Int64(2),
+    },
+  ],
+)

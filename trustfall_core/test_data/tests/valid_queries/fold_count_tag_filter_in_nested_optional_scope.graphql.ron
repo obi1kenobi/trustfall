@@ -1,0 +1,37 @@
+TestGraphQLQuery (
+    // The tagged bound exists even when the optional scope is absent. Resolving it
+    // must restore that absent scope before filtering the inner fold's count.
+    // Start 0 retains null entries, start 1 retains count=[1] and nested=[[[1]]],
+    // and start 2 loses its outer fold element because count=1 differs from bound=2.
+    // The final sibling traversal must run from the enclosing fold's root.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 0, max: 2) {
+        value @output(name: "start")
+
+        successor @fold {
+            predecessor {
+                value @tag(name: "bound")
+
+                predecessor @optional {
+                    successor {
+                        predecessor @fold @transform(op: "count")
+                                    @filter(op: "=", value: ["%bound"])
+                                    @output(name: "count") {
+                            successor @fold {
+                                value @output(name: "nested")
+                            }
+                        }
+                    }
+                }
+            }
+
+            successor {
+                value @output(name: "after")
+            }
+        }
+    }
+}"#,
+    arguments: {},
+)

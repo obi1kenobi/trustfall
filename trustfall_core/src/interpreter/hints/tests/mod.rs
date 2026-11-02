@@ -11,6 +11,9 @@ use crate::{
     test_types::{TestIRQuery, TestIRQueryResult},
 };
 
+mod optional_lookahead;
+mod required_properties;
+
 type ResolveInfoFn = Box<dyn FnMut(&ResolveInfo)>;
 type ResolveEdgeInfoFn = Box<dyn FnMut(&ResolveEdgeInfo)>;
 
@@ -1243,7 +1246,7 @@ mod static_property_values {
 mod dynamic_property_values {
     mod null_tags;
 
-    use std::{collections::BTreeMap, ops::Bound, sync::Arc};
+    use std::{cell::Cell, collections::BTreeMap, ops::Bound, rc::Rc, sync::Arc};
 
     use itertools::{EitherOrBoth, Itertools};
 
@@ -1432,6 +1435,190 @@ mod dynamic_property_values {
         }
     }
 
+    fn check_dynamic_ordering_bounds(query_source: &str, consumer_edge: usize, folded: bool) {
+        struct CheckCandidate {
+            expected: [bool; 4],
+            resolved_contexts: Rc<Cell<usize>>,
+            case: String,
+        }
+
+        impl ResolveEdgeInfoFn for CheckCandidate {
+            fn call<V: AsVertex<NumbersVertex> + 'static>(
+                &mut self,
+                adapter: &NumbersAdapter,
+                ctxs: ContextIterator<'static, V>,
+                info: &ResolveEdgeInfo,
+            ) -> ContextIterator<'static, V> {
+                let expected = self.expected;
+                let resolved_contexts = self.resolved_contexts.clone();
+                let case = self.case.clone();
+                Box::new(
+                    info.destination()
+                        .dynamically_required_property("value")
+                        .expect("the divisor value must have a dynamic constraint")
+                        .resolve(adapter, ctxs)
+                        .map(move |(ctx, candidate)| {
+                            resolved_contexts.set(resolved_contexts.get() + 1);
+                            for (value, expected) in (1..=4).zip(expected) {
+                                let value = FieldValue::Int64(value);
+                                let accepted = match &candidate {
+                                    CandidateValue::Impossible => false,
+                                    CandidateValue::Single(single) => single == &value,
+                                    CandidateValue::Multiple(values) => values.contains(&value),
+                                    CandidateValue::Range(range) => range.contains(&value),
+                                    CandidateValue::All => true,
+                                };
+                                assert_eq!(
+                                    expected, accepted,
+                                    "{case}: candidate {candidate:?} for value {value:?}",
+                                );
+                            }
+                            ctx
+                        }),
+                )
+            }
+        }
+
+        // Every query tags 2, then resolves divisors of 4, 6, and 8. Checking membership
+        // below, at, and above the tag catches both reversed and exclusive bounds.
+        // The optional static upper bound also checks intersection with the dynamic range.
+        for (operator, membership) in [
+            (">=", [false, true, true, true]),
+            (">", [false, false, true, true]),
+            ("<=", [true, true, false, false]),
+            ("<", [true, false, false, false]),
+        ] {
+            for has_upper_bound in [false, true] {
+                let mut expected = membership;
+                let (upper_filter, arguments) = if has_upper_bound {
+                    expected[3] = false;
+                    (
+                        r#"@filter(op: "<=", value: ["$upper"])"#,
+                        btreemap! { Arc::from("upper") => FieldValue::Int64(3) },
+                    )
+                } else {
+                    ("", BTreeMap::new())
+                };
+                let query =
+                    query_source.replace("OPERATOR", operator).replace("UPPER", upper_filter);
+                let case = format!("operator {operator}, static upper bound {has_upper_bound}");
+                let resolved_contexts = Rc::new(Cell::new(0));
+                let adapter: DynamicTestAdapter<(), (), CheckCandidate, ()> = DynamicTestAdapter {
+                    on_edge_resolver: btreemap! {
+                        eid(consumer_edge) => TrackCalls::new_underlying(CheckCandidate {
+                            expected,
+                            resolved_contexts: resolved_contexts.clone(),
+                            case: case.clone(),
+                        }),
+                    }
+                    .into(),
+                    ..Default::default()
+                };
+                let query = crate::frontend::parse(adapter.inner.schema(), query).unwrap();
+                #[expect(clippy::arc_with_non_send_sync)]
+                let adapter = Arc::new(adapter);
+                let rows = interpret_ir(adapter.clone(), query, Arc::new(arguments))
+                    .unwrap()
+                    .collect::<Vec<_>>();
+
+                let expected_values: Vec<_> = [1, 2, 1, 2, 3, 1, 2, 4]
+                    .into_iter()
+                    .filter(|value| expected[(*value - 1) as usize])
+                    .map(FieldValue::Int64)
+                    .collect();
+                let expected_rows = if folded {
+                    vec![btreemap! {
+                        Arc::from("value") => FieldValue::List(expected_values.into()),
+                    }]
+                } else {
+                    expected_values
+                        .into_iter()
+                        .map(|value| btreemap! { Arc::from("value") => value })
+                        .collect()
+                };
+                assert_eq!(expected_rows, rows, "{case}");
+                assert_eq!(3, resolved_contexts.get(), "{case}");
+                assert_eq!(
+                    1,
+                    adapter.on_edge_resolver.borrow()[&eid(consumer_edge)].calls,
+                    "{case}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn dynamic_ordering_bounds_from_local_property() {
+        check_dynamic_ordering_bounds(
+            r#"{
+                Two {
+                    value @tag(name: "bound")
+                    multiple(max: 4) {
+                        divisor {
+                            value @filter(op: "OPERATOR", value: ["%bound"]) UPPER @output
+                        }
+                    }
+                }
+            }"#,
+            2,
+            false,
+        );
+    }
+
+    #[test]
+    fn dynamic_ordering_bounds_from_local_fold_count() {
+        check_dynamic_ordering_bounds(
+            r#"{
+                Two {
+                    multiple(max: 3) @fold @transform(op: "count") @tag(name: "bound")
+                    multiple(max: 4) {
+                        divisor {
+                            value @filter(op: "OPERATOR", value: ["%bound"]) UPPER @output
+                        }
+                    }
+                }
+            }"#,
+            3,
+            false,
+        );
+    }
+
+    #[test]
+    fn dynamic_ordering_bounds_from_imported_property() {
+        check_dynamic_ordering_bounds(
+            r#"{
+                Two {
+                    value @tag(name: "bound")
+                    multiple(max: 4) @fold {
+                        divisor {
+                            value @filter(op: "OPERATOR", value: ["%bound"]) UPPER @output
+                        }
+                    }
+                }
+            }"#,
+            2,
+            true,
+        );
+    }
+
+    #[test]
+    fn dynamic_ordering_bounds_from_imported_fold_count() {
+        check_dynamic_ordering_bounds(
+            r#"{
+                Two {
+                    multiple(max: 3) @fold @transform(op: "count") @tag(name: "bound")
+                    multiple(max: 4) @fold {
+                        divisor {
+                            value @filter(op: "OPERATOR", value: ["%bound"]) UPPER @output
+                        }
+                    }
+                }
+            }"#,
+            3,
+            true,
+        );
+    }
+
     /// Ensure that statically-known values are propagated and automatically
     /// intersected with dynamically-known property values.
     #[test]
@@ -1479,8 +1666,12 @@ mod dynamic_property_values {
                 let destination = info.destination();
 
                 let expected_values = [
-                    CandidateValue::Single(FieldValue::Int64(3)),
-                    CandidateValue::Multiple(vec![FieldValue::Int64(3), FieldValue::Int64(4)]),
+                    CandidateValue::Multiple(vec![
+                        FieldValue::Int64(3),
+                        FieldValue::Int64(4),
+                        FieldValue::Int64(5),
+                    ]),
+                    CandidateValue::Multiple(vec![FieldValue::Int64(4), FieldValue::Int64(5)]),
                 ];
                 let value_candidate = destination.dynamically_required_property("value");
                 Box::new(

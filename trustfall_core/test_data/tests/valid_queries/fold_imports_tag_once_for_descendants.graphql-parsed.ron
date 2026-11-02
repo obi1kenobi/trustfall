@@ -1,0 +1,198 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Two",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Two",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          tag: [
+            TagDirective(
+              name: Some("bound"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 6,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "successor",
+              fold: Some(FoldGroup(
+                fold: FoldDirective(),
+              )),
+            ), FieldNode(
+              position: Pos(
+                line: 7,
+                column: 13,
+              ),
+              name: "successor",
+              connections: [
+                (FieldConnection(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "predecessor",
+                  fold: Some(FoldGroup(
+                    fold: FoldDirective(),
+                  )),
+                ), FieldNode(
+                  position: Pos(
+                    line: 8,
+                    column: 17,
+                  ),
+                  name: "predecessor",
+                  connections: [
+                    (FieldConnection(
+                      position: Pos(
+                        line: 9,
+                        column: 21,
+                      ),
+                      name: "value",
+                    ), FieldNode(
+                      position: Pos(
+                        line: 9,
+                        column: 21,
+                      ),
+                      name: "value",
+                      filter: [
+                        FilterDirective(
+                          operation: LessThan((), TagRef("bound")),
+                        ),
+                      ],
+                      output: [
+                        OutputDirective(
+                          name: Some("below"),
+                        ),
+                      ],
+                    )),
+                  ],
+                )),
+                (FieldConnection(
+                  position: Pos(
+                    line: 12,
+                    column: 17,
+                  ),
+                  name: "successor",
+                  fold: Some(FoldGroup(
+                    fold: FoldDirective(),
+                  )),
+                ), FieldNode(
+                  position: Pos(
+                    line: 12,
+                    column: 17,
+                  ),
+                  name: "successor",
+                  connections: [
+                    (FieldConnection(
+                      position: Pos(
+                        line: 13,
+                        column: 21,
+                      ),
+                      name: "value",
+                    ), FieldNode(
+                      position: Pos(
+                        line: 13,
+                        column: 21,
+                      ),
+                      name: "value",
+                      filter: [
+                        FilterDirective(
+                          operation: GreaterThan((), TagRef("bound")),
+                        ),
+                      ],
+                      output: [
+                        OutputDirective(
+                          name: Some("above"),
+                        ),
+                      ],
+                    )),
+                  ],
+                )),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 18,
+            column: 9,
+          ),
+          name: "successor",
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 18,
+            column: 9,
+          ),
+          name: "successor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 19,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 19,
+                column: 13,
+              ),
+              name: "value",
+              filter: [
+                FilterDirective(
+                  operation: GreaterThan((), TagRef("bound")),
+                ),
+              ],
+              output: [
+                OutputDirective(
+                  name: Some("sibling"),
+                ),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

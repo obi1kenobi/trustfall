@@ -1,0 +1,20 @@
+TestGraphQLQuery (
+    // The successor count is 1 and the multiple count is 2. Reusing the latter
+    // around a reference to the former must import each count exactly once.
+    // Of Four's proper divisors [1, 2], only 2 satisfies all three filters.
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        successor @fold @transform(op: "count") @tag(name: "one_count")
+        multiple(max: 2) @fold @transform(op: "count") @tag(name: "two_count")
+
+        divisor @fold {
+            value @filter(op: ">=", value: ["%two_count"])
+                  @filter(op: ">", value: ["%one_count"])
+                  @filter(op: "<=", value: ["%two_count"]) @output(name: "selected")
+        }
+    }
+}"#,
+    arguments: {},
+)

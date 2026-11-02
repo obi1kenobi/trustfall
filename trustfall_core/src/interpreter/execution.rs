@@ -783,16 +783,22 @@ fn apply_fold_specific_filter<'query, AdapterT: Adapter<'query>>(
     iterator: ContextIterator<'query, AdapterT::Vertex>,
 ) -> ContextIterator<'query, AdapterT::Vertex> {
     let fold_specific_field = filter.left();
-    let field_iterator = Box::new(compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator).map(|(mut ctx, tagged_value)| {
-        let value = match tagged_value {
-            TaggedValue::Some(value) => value,
-            TaggedValue::NonexistentOptional => {
-                unreachable!("while applying fold-specific filter, the @fold turned out to not exist: {ctx:?}")
-            }
-        };
-        ctx.values.push(value);
-        ctx
-    }));
+    let field_iterator = Box::new(
+        compute_fold_specific_field_with_separate_value(fold.eid, fold_specific_field, iterator)
+            .map(|(mut ctx, tagged_value)| {
+                let value = match tagged_value {
+                    TaggedValue::Some(value) => value,
+                    TaggedValue::NonexistentOptional => {
+                        // This `@fold` is inside a non-existent `@optional` block.
+                        // There's no data here.
+                        debug_assert!(ctx.within_nonexistent_optional());
+                        FieldValue::Null
+                    }
+                };
+                ctx.values.push(value);
+                ctx
+            }),
+    );
 
     apply_filter(
         adapter,

@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    // Both absent and empty folds are kept, but their outputs differ:
+    // start=0 has count=null and folded=null; start=1 has count=0 and folded=[].
+    // Starts 2 and 3 have nonempty folds and fail the count filter.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 0, max: 3) {
+        value @output(name: "start")
+
+        predecessor @optional {
+            predecessor @fold @transform(op: "count")
+                        @filter(op: "=", value: ["$zero"]) @output(name: "count") {
+                value @output(name: "folded")
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)

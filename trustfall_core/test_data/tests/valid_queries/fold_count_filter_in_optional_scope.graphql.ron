@@ -1,0 +1,22 @@
+TestGraphQLQuery (
+    // For start=0 the optional scope is absent, so count and folded are null.
+    // For start=1 the scope exists but the fold is empty, so count > 0 rejects it.
+    // Starts 2 and 3 each have one folded predecessor and are kept.
+    schema_name: "numbers",
+    query: r#"
+{
+    Number(min: 0, max: 3) {
+        value @output(name: "start")
+
+        predecessor @optional {
+            predecessor @fold @transform(op: "count")
+                        @filter(op: ">", value: ["$zero"]) @output(name: "count") {
+                value @output(name: "folded")
+            }
+        }
+    }
+}"#,
+    arguments: {
+        "zero": Int64(0),
+    },
+)

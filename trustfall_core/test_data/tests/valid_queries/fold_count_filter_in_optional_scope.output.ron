@@ -1,0 +1,41 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "count": Output(
+      name: "count",
+      value_type: "Int",
+      vid: Vid(3),
+    ),
+    "folded": Output(
+      name: "folded",
+      value_type: "[Int]",
+      vid: Vid(3),
+    ),
+    "start": Output(
+      name: "start",
+      value_type: "Int",
+      vid: Vid(1),
+    ),
+  },
+  results: [
+    {
+      "count": Null,
+      "folded": Null,
+      "start": Int64(0),
+    },
+    {
+      "count": Uint64(1),
+      "folded": List([
+        Int64(0),
+      ]),
+      "start": Int64(2),
+    },
+    {
+      "count": Uint64(1),
+      "folded": List([
+        Int64(1),
+      ]),
+      "start": Int64(3),
+    },
+  ],
+)
