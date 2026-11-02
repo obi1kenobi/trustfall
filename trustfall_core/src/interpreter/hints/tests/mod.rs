@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod optional_lookahead;
+mod required_properties;
 
 type ResolveInfoFn = Box<dyn FnMut(&ResolveInfo)>;
 type ResolveEdgeInfoFn = Box<dyn FnMut(&ResolveEdgeInfo)>;
