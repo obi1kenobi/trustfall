@@ -1,0 +1,146 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Number",
+    root_parameters: EdgeParameters(
+      contents: {
+        "max": Int64(2),
+        "min": Int64(0),
+      },
+    ),
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Number",
+        ),
+      },
+      folds: {
+        Eid(1): IRFold(
+          eid: Eid(1),
+          from_vid: Vid(1),
+          to_vid: Vid(2),
+          edge_name: "successor",
+          component: IRQueryComponent(
+            root: Vid(2),
+            vertices: {
+              Vid(2): IRVertex(
+                vid: Vid(2),
+                type_name: "Number",
+              ),
+              Vid(3): IRVertex(
+                vid: Vid(3),
+                type_name: "Number",
+              ),
+              Vid(4): IRVertex(
+                vid: Vid(4),
+                type_name: "Number",
+              ),
+              Vid(5): IRVertex(
+                vid: Vid(5),
+                type_name: "Number",
+              ),
+              Vid(8): IRVertex(
+                vid: Vid(8),
+                type_name: "Number",
+              ),
+            },
+            edges: {
+              Eid(2): IREdge(
+                eid: Eid(2),
+                from_vid: Vid(2),
+                to_vid: Vid(3),
+                edge_name: "predecessor",
+              ),
+              Eid(3): IREdge(
+                eid: Eid(3),
+                from_vid: Vid(3),
+                to_vid: Vid(4),
+                edge_name: "predecessor",
+                optional: true,
+              ),
+              Eid(4): IREdge(
+                eid: Eid(4),
+                from_vid: Vid(4),
+                to_vid: Vid(5),
+                edge_name: "successor",
+              ),
+              Eid(7): IREdge(
+                eid: Eid(7),
+                from_vid: Vid(2),
+                to_vid: Vid(8),
+                edge_name: "successor",
+              ),
+            },
+            folds: {
+              Eid(5): IRFold(
+                eid: Eid(5),
+                from_vid: Vid(5),
+                to_vid: Vid(6),
+                edge_name: "predecessor",
+                component: IRQueryComponent(
+                  root: Vid(6),
+                  vertices: {
+                    Vid(6): IRVertex(
+                      vid: Vid(6),
+                      type_name: "Number",
+                    ),
+                  },
+                  folds: {
+                    Eid(6): IRFold(
+                      eid: Eid(6),
+                      from_vid: Vid(6),
+                      to_vid: Vid(7),
+                      edge_name: "successor",
+                      component: IRQueryComponent(
+                        root: Vid(7),
+                        vertices: {
+                          Vid(7): IRVertex(
+                            vid: Vid(7),
+                            type_name: "Number",
+                          ),
+                        },
+                        outputs: {
+                          "nested": ContextField(
+                            vertex_id: Vid(7),
+                            field_name: "value",
+                            field_type: "Int",
+                          ),
+                        },
+                      ),
+                    ),
+                  },
+                ),
+                fold_specific_outputs: {
+                  "count": Count,
+                },
+                post_filters: [
+                  Equals(Count, Tag(ContextField(ContextField(
+                    vertex_id: Vid(3),
+                    field_name: "value",
+                    field_type: "Int",
+                  )))),
+                ],
+              ),
+            },
+            outputs: {
+              "after": ContextField(
+                vertex_id: Vid(8),
+                field_name: "value",
+                field_type: "Int",
+              ),
+            },
+          ),
+        ),
+      },
+      outputs: {
+        "start": ContextField(
+          vertex_id: Vid(1),
+          field_name: "value",
+          field_type: "Int",
+        ),
+      },
+    ),
+  ),
+))
