@@ -11,18 +11,18 @@ async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
 base64 = "0.23.1"
 consecrates = "0.1.1"
-csv = "1.1.6"
-futures-executor = "0.3.21"
+csv = "1.4.0"
+futures-executor = "0.3.34"
 git-url-parse = "0.6.0"
 hn_api = "0.1.0"
 itertools = { workspace = true }
 maplit = { workspace = true }
 octorust = "0.10.0"
 regex = { workspace = true }
-reqwest = { version = "0.13.4", features = ["blocking", "json"] }
+reqwest = { version = "0.13.5", features = ["blocking", "json"] }
 ron = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-tokio = "1.17.0"
+tokio = "1.54.1"
 trustfall = { path = "../trustfall" }
 yaml-rust = "0.4.5"
