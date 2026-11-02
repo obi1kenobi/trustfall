@@ -1,0 +1,17 @@
+TestInterpreterOutputData(
+  schema_name: "numbers",
+  outputs: {
+    "selected": Output(
+      name: "selected",
+      value_type: "[Int]!",
+      vid: Vid(3),
+    ),
+  },
+  results: [
+    {
+      "selected": List([
+        Int64(4),
+      ]),
+    },
+  ],
+)
