@@ -173,20 +173,34 @@ impl<T: InternalVertexInfo + super::sealed::__Sealed> VertexInfo for T {
                 .map(|f| RequiredProperty::new(f.left().field_name.clone())),
         );
 
-        let properties = properties.chain(current_component.vertices.values().flat_map(|v| {
-            v.filters
-                .iter()
-                .filter_map(|f| match f.right() {
-                    Some(Argument::Tag(FieldRef::ContextField(ctx))) => {
-                        if current_vertex.vid == ctx.vertex_id {
-                            Some(ctx.field_name.clone())
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                })
-                .map(RequiredProperty::new)
+        // A tagged property can be consumed in three places:
+        // 1. A vertex filter in this component.
+        // 2. A count filter (`post_filters`) on a fold in this component.
+        // 3. A filter inside a child fold's component or any of its descendants.
+        //    The frontend records all such uses in that child's `imported_tags`.
+        let tag_uses = current_component
+            // Case 1: vertex filters.
+            .vertices
+            .values()
+            .flat_map(|vertex| &vertex.filters)
+            .map(|filter| filter.right())
+            // Case 2: fold count filters.
+            .chain(
+                current_component
+                    .folds
+                    .values()
+                    .flat_map(|fold| &fold.post_filters)
+                    .map(|filter| filter.right()),
+            )
+            .filter_map(|rhs| rhs.and_then(Argument::as_tag))
+            // Case 3: imports for consumers inside descendant components.
+            .chain(current_component.folds.values().flat_map(|fold| &fold.imported_tags));
+
+        let properties = properties.chain(tag_uses.filter_map(|tag| match tag {
+            FieldRef::ContextField(ctx) if ctx.vertex_id == current_vertex.vid => {
+                Some(RequiredProperty::new(ctx.field_name.clone()))
+            }
+            _ => None,
         }));
 
         let mut seen_property = HashSet::new();
