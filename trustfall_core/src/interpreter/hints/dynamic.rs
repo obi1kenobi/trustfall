@@ -214,7 +214,6 @@ impl<'a> DynamicallyResolvedValue<'a> {
                 }
             }
             FieldRef::FoldSpecificField(fold_field) => {
-                // TODO cover this with tests
                 if fold_field.fold_root_vid < self.resolve_on_component.root {
                     // We're inside at least one level of `@fold` relative to
                     // the origin of this tag.
@@ -361,7 +360,7 @@ impl<'a> DynamicallyResolvedValue<'a> {
             }
             Operation::GreaterThanOrEqual(_, _) => {
                 resolve_fold_specific_field!(iterator, initial_candidate, candidate, value, {
-                    candidate.intersect(CandidateValue::Range(Range::with_end(
+                    candidate.intersect(CandidateValue::Range(Range::with_start(
                         Bound::Included(value),
                         false,
                     )));
@@ -434,7 +433,7 @@ fn compute_candidate_from_operation<'vertex, Vertex: Debug + Clone + 'vertex>(
         }
         Operation::GreaterThanOrEqual(_, _) => {
             compute_candidate_from_tagged_value!(iterator, initial_candidate, candidate, value, {
-                candidate.intersect(CandidateValue::Range(Range::with_end(
+                candidate.intersect(CandidateValue::Range(Range::with_start(
                     Bound::Included(value),
                     true, // nullability is handled in the initial_candidate
                 )));
