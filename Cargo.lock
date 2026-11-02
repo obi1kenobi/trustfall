@@ -3794,7 +3794,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "csv",
@@ -3813,7 +3813,7 @@ dependencies = [
 
 [[package]]
 name = "trustfall_core"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
