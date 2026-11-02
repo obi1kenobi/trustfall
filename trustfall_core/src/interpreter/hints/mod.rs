@@ -140,6 +140,7 @@ impl InternalVertexInfo for ResolveInfo {
         EdgeInfo {
             eid: edge.eid,
             parameters: edge.parameters.clone(),
+            source_has_non_binding_filters: self.non_binding_filters(),
             optional: edge.optional,
             recursive: edge.recursive.clone(),
             folded: FoldState::None,
@@ -163,6 +164,7 @@ impl InternalVertexInfo for ResolveInfo {
         EdgeInfo {
             eid: fold.eid,
             parameters: fold.parameters.clone(),
+            source_has_non_binding_filters: self.non_binding_filters(),
             optional: false,
             recursive: None,
             folded: if at_least_one_element_required {
@@ -237,6 +239,7 @@ impl ResolveEdgeInfo {
                 EdgeInfo {
                     eid,
                     parameters: regular.parameters.clone(),
+                    source_has_non_binding_filters: false,
                     optional: regular.optional,
                     recursive: regular.recursive.clone(),
                     folded: FoldState::None,
@@ -260,15 +263,21 @@ impl ResolveEdgeInfo {
                     self.target_vid, fold.to_vid
                 );
 
-                // In this case, we are *currently* resolving the folded edge.
-                // Its own filters always apply, and we don't need to check whether
-                // the fold is required to have at least one element.
+                // While resolving the fold, its body constrains which elements are collected,
+                // even when an empty fold does not discard the containing row. Keep those local
+                // constraints separate from whether the folded edge itself must exist.
                 let within_optional_scope = false;
-                let folded = FoldState::FoldedMandatory;
+                let folded =
+                    if filters::fold_requires_at_least_one_element(&self.query.arguments, fold) {
+                        FoldState::FoldedMandatory
+                    } else {
+                        FoldState::FoldedOptional
+                    };
 
                 EdgeInfo {
                     eid,
                     parameters: fold.parameters.clone(),
+                    source_has_non_binding_filters: false,
                     optional: false,
                     recursive: None,
                     folded,
@@ -293,6 +302,11 @@ impl ResolveEdgeInfo {
 pub struct EdgeInfo {
     eid: Eid,
     parameters: EdgeParameters,
+    // Preserve the source's state: it cannot be inferred from the destination,
+    // since recursion's non-binding requirements apply only at its intermediate vertices.
+    // An intermediate vertex may fail the query's requirements but still lead to a matching
+    // vertex farther along the recursion, so those requirements cannot justify pruning it.
+    source_has_non_binding_filters: bool,
     optional: bool,
     recursive: Option<Recursive>,
     folded: FoldState,
@@ -322,9 +336,20 @@ impl EdgeInfo {
     }
 
     /// Whether this edge is required to exist, or else the computed row will be discarded.
+    ///
+    /// This is relative to the resolver that obtained this information. Requirements inside
+    /// an `@optional`, a fold that may be empty, or an intermediate layer of recursion
+    /// cannot be used by an earlier resolver to discard vertices. Once resolution reaches
+    /// that scope, its local requirements can bind.
+    ///
+    /// An `@optional` or `@recurse` edge is never mandatory. A folded edge is mandatory
+    /// only when its count filters are known to require at least one element.
     #[inline]
     pub fn is_mandatory(&self) -> bool {
-        self.folded != FoldState::FoldedOptional && !self.optional && self.recursive.is_none()
+        !self.source_has_non_binding_filters
+            && self.folded != FoldState::FoldedOptional
+            && !self.optional
+            && self.recursive.is_none()
     }
 }
 
@@ -410,6 +435,7 @@ impl InternalVertexInfo for NeighborInfo {
         EdgeInfo {
             eid: edge.eid,
             parameters: edge.parameters.clone(),
+            source_has_non_binding_filters: self.non_binding_filters(),
             optional: edge.optional,
             recursive: edge.recursive.clone(),
             folded: FoldState::None,
@@ -435,6 +461,7 @@ impl InternalVertexInfo for NeighborInfo {
         EdgeInfo {
             eid: fold.eid,
             parameters: fold.parameters.clone(),
+            source_has_non_binding_filters: self.non_binding_filters(),
             optional: false,
             recursive: None,
             folded: if at_least_one_element_required {

@@ -87,11 +87,14 @@ pub trait VertexInfo: super::sealed::__Sealed {
     /// Returns info for the first not-yet-resolved edge by the given name that is *mandatory*:
     /// this vertex must contain the edge, or its result set will be discarded.
     ///
-    /// Edges marked `@optional`, `@fold`, or `@recurse` are not mandatory:
+    /// Edges marked `@optional` or `@recurse` are not mandatory:
     /// - `@optional` edges that don't exist produce `null` outputs.
-    /// - `@fold` edges that don't exist produce empty aggregations.
     /// - `@recurse` always starts at depth 0 (i.e. returning the *current* vertex),
     ///   so the edge is not required to exist.
+    ///
+    /// A folded edge is mandatory only when its count filters are known to require
+    /// at least one element. Mandatory status is relative to the currently executing resolver;
+    /// see [`EdgeInfo::is_mandatory()`].
     fn first_mandatory_edge(&self, name: &str) -> Option<EdgeInfo>;
 
     /// Returns info for the first not-yet-resolved edge by the given name.
