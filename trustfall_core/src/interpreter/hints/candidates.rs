@@ -6,7 +6,6 @@ use std::{
     ops::Bound,
 };
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::FieldValue;
@@ -93,7 +92,7 @@ impl<T: Clone + PartialEq> PartialEq<CandidateValue<&T>> for CandidateValue<Cow<
             (CandidateValue::Impossible, CandidateValue::Impossible) => true,
             (CandidateValue::Single(l), CandidateValue::Single(r)) => l.as_ref() == *r,
             (CandidateValue::Multiple(mult_l), CandidateValue::Multiple(mult_r)) => {
-                mult_l.len() == mult_r.len() && mult_l.iter().zip(mult_r.iter()).all_equal()
+                mult_l.iter().map(Cow::as_ref).eq(mult_r.iter().copied())
             }
             (CandidateValue::Range(l), CandidateValue::Range(r)) => l.as_deref() == *r,
             (CandidateValue::All, CandidateValue::All) => true,
@@ -108,7 +107,7 @@ impl<T: Clone + PartialEq> PartialEq<CandidateValue<T>> for CandidateValue<Cow<'
             (CandidateValue::Impossible, CandidateValue::Impossible) => true,
             (CandidateValue::Single(l), CandidateValue::Single(r)) => l.as_ref() == r,
             (CandidateValue::Multiple(mult_l), CandidateValue::Multiple(mult_r)) => {
-                mult_l.len() == mult_r.len() && mult_l.iter().zip(mult_r.iter()).all_equal()
+                mult_l.iter().map(Cow::as_ref).eq(mult_r.iter())
             }
             (CandidateValue::Range(l), CandidateValue::Range(r)) => l.as_deref() == r.as_ref(),
             (CandidateValue::All, CandidateValue::All) => true,
@@ -547,13 +546,57 @@ impl<T: Debug + Clone + PartialEq + Eq + PartialOrd + NullableValue> Range<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Bound;
+    use std::{borrow::Cow, ops::Bound};
 
     use itertools::Itertools;
 
     use crate::ir::FieldValue;
 
     use super::CandidateValue;
+
+    #[test]
+    fn multiple_cow_equality_with_borrowed_values() {
+        let test_cases = [
+            (vec![1, 2], vec![1, 2], true),
+            (vec![1, 1], vec![2, 2], false),
+            (vec![1, 2], vec![1, 3], false),
+            (vec![1, 2], vec![2, 1], false),
+            (vec![1, 2], vec![1, 2, 3], false),
+            (vec![1, 2, 3], vec![1, 2], false),
+        ];
+
+        for (left, right, expected) in test_cases {
+            let right = CandidateValue::Multiple(right.iter().collect());
+            for left in [
+                CandidateValue::Multiple(left.iter().map(Cow::Borrowed).collect()),
+                CandidateValue::Multiple(left.iter().copied().map(Cow::Owned).collect()),
+            ] {
+                assert_eq!(left == right, expected, "{left:?} == {right:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn multiple_cow_equality_with_owned_values() {
+        let test_cases = [
+            (vec![1, 2], vec![1, 2], true),
+            (vec![1, 1], vec![2, 2], false),
+            (vec![1, 2], vec![1, 3], false),
+            (vec![1, 2], vec![2, 1], false),
+            (vec![1, 2], vec![1, 2, 3], false),
+            (vec![1, 2, 3], vec![1, 2], false),
+        ];
+
+        for (left, right, expected) in test_cases {
+            let right = CandidateValue::Multiple(right);
+            for left in [
+                CandidateValue::Multiple(left.iter().map(Cow::Borrowed).collect()),
+                CandidateValue::Multiple(left.iter().copied().map(Cow::Owned).collect()),
+            ] {
+                assert_eq!(left == right, expected, "{left:?} == {right:?}");
+            }
+        }
+    }
 
     #[test]
     fn candidate_intersecting() {
