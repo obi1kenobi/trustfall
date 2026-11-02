@@ -1,0 +1,161 @@
+Ok(TestIRQuery(
+  schema_name: "numbers",
+  ir_query: IRQuery(
+    root_name: "Two",
+    root_component: IRQueryComponent(
+      root: Vid(1),
+      vertices: {
+        Vid(1): IRVertex(
+          vid: Vid(1),
+          type_name: "Prime",
+        ),
+      },
+      folds: {
+        Eid(1): IRFold(
+          eid: Eid(1),
+          from_vid: Vid(1),
+          to_vid: Vid(2),
+          edge_name: "predecessor",
+          component: IRQueryComponent(
+            root: Vid(2),
+            vertices: {
+              Vid(2): IRVertex(
+                vid: Vid(2),
+                type_name: "Number",
+              ),
+            },
+            folds: {
+              Eid(2): IRFold(
+                eid: Eid(2),
+                from_vid: Vid(2),
+                to_vid: Vid(3),
+                edge_name: "successor",
+                component: IRQueryComponent(
+                  root: Vid(3),
+                  vertices: {
+                    Vid(3): IRVertex(
+                      vid: Vid(3),
+                      type_name: "Number",
+                    ),
+                  },
+                  folds: {
+                    Eid(3): IRFold(
+                      eid: Eid(3),
+                      from_vid: Vid(3),
+                      to_vid: Vid(4),
+                      edge_name: "predecessor",
+                      component: IRQueryComponent(
+                        root: Vid(4),
+                        vertices: {
+                          Vid(4): IRVertex(
+                            vid: Vid(4),
+                            type_name: "Number",
+                            filters: [
+                              LessThan(LocalField(
+                                field_name: "value",
+                                field_type: "Int",
+                              ), Tag(ContextField(ContextField(
+                                vertex_id: Vid(1),
+                                field_name: "value",
+                                field_type: "Int",
+                              )))),
+                            ],
+                          ),
+                        },
+                        outputs: {
+                          "below": ContextField(
+                            vertex_id: Vid(4),
+                            field_name: "value",
+                            field_type: "Int",
+                          ),
+                        },
+                      ),
+                    ),
+                    Eid(4): IRFold(
+                      eid: Eid(4),
+                      from_vid: Vid(3),
+                      to_vid: Vid(5),
+                      edge_name: "successor",
+                      component: IRQueryComponent(
+                        root: Vid(5),
+                        vertices: {
+                          Vid(5): IRVertex(
+                            vid: Vid(5),
+                            type_name: "Number",
+                            filters: [
+                              GreaterThan(LocalField(
+                                field_name: "value",
+                                field_type: "Int",
+                              ), Tag(ContextField(ContextField(
+                                vertex_id: Vid(1),
+                                field_name: "value",
+                                field_type: "Int",
+                              )))),
+                            ],
+                          ),
+                        },
+                        outputs: {
+                          "above": ContextField(
+                            vertex_id: Vid(5),
+                            field_name: "value",
+                            field_type: "Int",
+                          ),
+                        },
+                      ),
+                    ),
+                  },
+                ),
+              ),
+            },
+          ),
+          imported_tags: [
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "value",
+              field_type: "Int",
+            )),
+          ],
+        ),
+        Eid(5): IRFold(
+          eid: Eid(5),
+          from_vid: Vid(1),
+          to_vid: Vid(6),
+          edge_name: "successor",
+          component: IRQueryComponent(
+            root: Vid(6),
+            vertices: {
+              Vid(6): IRVertex(
+                vid: Vid(6),
+                type_name: "Number",
+                filters: [
+                  GreaterThan(LocalField(
+                    field_name: "value",
+                    field_type: "Int",
+                  ), Tag(ContextField(ContextField(
+                    vertex_id: Vid(1),
+                    field_name: "value",
+                    field_type: "Int",
+                  )))),
+                ],
+              ),
+            },
+            outputs: {
+              "sibling": ContextField(
+                vertex_id: Vid(6),
+                field_name: "value",
+                field_type: "Int",
+              ),
+            },
+          ),
+          imported_tags: [
+            ContextField(ContextField(
+              vertex_id: Vid(1),
+              field_name: "value",
+              field_type: "Int",
+            )),
+          ],
+        ),
+      },
+    ),
+  ),
+))

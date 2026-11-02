@@ -206,6 +206,7 @@ pub struct IRFold {
 
     /// Tags from the directly-enclosing component whose values are needed
     /// inside this fold's component or one of its subcomponents.
+    /// Each field appears at most once, even if several tags or filters refer to it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub imported_tags: Vec<FieldRef>,
 

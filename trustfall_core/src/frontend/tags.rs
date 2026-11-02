@@ -80,7 +80,10 @@ impl<'a> TagHandler<'a> {
                 let (component_root, imported_tags) =
                     self.component_imported_tags.get_mut(entry.path.len() - 1).unwrap();
                 assert_eq!(*component_root, importing_component_root);
-                imported_tags.push(entry.field.clone());
+
+                if !imported_tags.contains(&entry.field) {
+                    imported_tags.push(entry.field.clone());
+                }
             }
 
             self.used_tags.insert(entry.name);

@@ -1,0 +1,161 @@
+Ok(TestParsedGraphQLQuery(
+  schema_name: "numbers",
+  query: Query(
+    root_connection: FieldConnection(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+    ),
+    root_field: FieldNode(
+      position: Pos(
+        line: 3,
+        column: 5,
+      ),
+      name: "Four",
+      connections: [
+        (FieldConnection(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+        ), FieldNode(
+          position: Pos(
+            line: 4,
+            column: 9,
+          ),
+          name: "value",
+          tag: [
+            TagDirective(
+              name: Some("lower"),
+            ),
+            TagDirective(
+              name: Some("upper"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "name",
+        ), FieldNode(
+          position: Pos(
+            line: 5,
+            column: 9,
+          ),
+          name: "name",
+          tag: [
+            TagDirective(
+              name: Some("source_name"),
+            ),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 7,
+            column: 9,
+          ),
+          name: "predecessor",
+        ), FieldNode(
+          position: Pos(
+            line: 7,
+            column: 9,
+          ),
+          name: "predecessor",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 8,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 8,
+                column: 13,
+              ),
+              name: "value",
+              tag: [
+                TagDirective(
+                  name: Some("other"),
+                ),
+              ],
+            )),
+          ],
+        )),
+        (FieldConnection(
+          position: Pos(
+            line: 11,
+            column: 9,
+          ),
+          name: "multiple",
+          arguments: {
+            "max": Int64(2),
+          },
+          fold: Some(FoldGroup(
+            fold: FoldDirective(),
+          )),
+        ), FieldNode(
+          position: Pos(
+            line: 11,
+            column: 9,
+          ),
+          name: "multiple",
+          connections: [
+            (FieldConnection(
+              position: Pos(
+                line: 12,
+                column: 13,
+              ),
+              name: "value",
+            ), FieldNode(
+              position: Pos(
+                line: 12,
+                column: 13,
+              ),
+              name: "value",
+              filter: [
+                FilterDirective(
+                  operation: GreaterThanOrEqual((), TagRef("lower")),
+                ),
+                FilterDirective(
+                  operation: GreaterThanOrEqual((), TagRef("other")),
+                ),
+                FilterDirective(
+                  operation: LessThanOrEqual((), TagRef("upper")),
+                ),
+              ],
+              output: [
+                OutputDirective(
+                  name: Some("selected"),
+                ),
+              ],
+            )),
+            (FieldConnection(
+              position: Pos(
+                line: 15,
+                column: 13,
+              ),
+              name: "name",
+            ), FieldNode(
+              position: Pos(
+                line: 15,
+                column: 13,
+              ),
+              name: "name",
+              filter: [
+                FilterDirective(
+                  operation: Equals((), TagRef("source_name")),
+                ),
+              ],
+            )),
+          ],
+        )),
+      ],
+    ),
+  ),
+))

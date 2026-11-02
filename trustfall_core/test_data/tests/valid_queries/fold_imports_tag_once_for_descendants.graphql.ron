@@ -1,0 +1,29 @@
+TestGraphQLQuery (
+    // Both deeply nested consumers share one import on the first predecessor fold.
+    // The later sibling fold needs its own import of the same field.
+    // The results are below=[[[1]]], above=[[[3]]], and sibling=[3].
+    schema_name: "numbers",
+    query: r#"
+{
+    Two {
+        value @tag(name: "bound")
+
+        predecessor @fold {
+            successor @fold {
+                predecessor @fold {
+                    value @filter(op: "<", value: ["%bound"]) @output(name: "below")
+                }
+
+                successor @fold {
+                    value @filter(op: ">", value: ["%bound"]) @output(name: "above")
+                }
+            }
+        }
+
+        successor @fold {
+            value @filter(op: ">", value: ["%bound"]) @output(name: "sibling")
+        }
+    }
+}"#,
+    arguments: {},
+)

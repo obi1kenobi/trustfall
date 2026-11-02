@@ -1,0 +1,25 @@
+TestGraphQLQuery (
+    // The two bounds name the same field, with another vertex's value used between them.
+    // Import the value of Four once, but keep its name and its predecessor's value
+    // as separate imports. Of the folded values [4, 8], only 4 satisfies the filters.
+    schema_name: "numbers",
+    query: r#"
+{
+    Four {
+        value @tag(name: "lower") @tag(name: "upper")
+        name @tag(name: "source_name")
+
+        predecessor {
+            value @tag(name: "other")
+        }
+
+        multiple(max: 2) @fold {
+            value @filter(op: ">=", value: ["%lower"])
+                  @filter(op: ">=", value: ["%other"])
+                  @filter(op: "<=", value: ["%upper"]) @output(name: "selected")
+            name @filter(op: "=", value: ["%source_name"])
+        }
+    }
+}"#,
+    arguments: {},
+)
