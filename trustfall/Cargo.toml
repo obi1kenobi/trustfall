@@ -26,7 +26,7 @@ serde_json = { workspace = true }
 regex = { workspace = true }
 reqwest = { version = "0.13.4", features = ["blocking", "json"] }
 time = { version = "0.3.23", features = ["serde-human-readable"] }
-feed-rs = "2.3.1"
+feed-rs = "3.0.0"
 hn_api = "0.1.0"
 csv = "1.1.6"
 flate2 = "1.0"

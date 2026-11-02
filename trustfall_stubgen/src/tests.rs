@@ -53,7 +53,10 @@ trustfall = {{ path = '{trustfall_lib_str}' }}
     cargo_toml_path.push("Cargo.toml");
     write_new_file(cargo_toml_path.as_path(), &cargo_toml);
 
+    // The stubs have unfinished bodies, and this wrapper doesn't use their full API.
+    // Allow the resulting unused-code lints so CI can deny all other warnings.
     let lib_rs = "\
+#[allow(dead_code, unused_imports, unused_variables)]
 mod adapter;
 ";
     let mut lib_rs_path = PathBuf::from(path);

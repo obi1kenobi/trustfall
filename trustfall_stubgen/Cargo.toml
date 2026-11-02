@@ -29,7 +29,7 @@ async-graphql-parser = { workspace = true }
 async-graphql-value = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-prettyplease = "0.2.6"
+prettyplease = "0.3.0"
 regex = { workspace = true }
 clap = { version = "4.0.0", features = ["derive"], optional = true }
 
