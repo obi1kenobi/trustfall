@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 pub use self::indexed::{EdgeKind, IndexedQuery, InvalidIRQueryError, Output};
 pub use self::types::{NamedTypedValue, Type};
 pub use self::value::{FieldValue, TransparentValue};
+pub(crate) use self::types::OperandType;
 
 mod indexed;
 mod types;
